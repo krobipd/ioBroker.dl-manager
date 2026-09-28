@@ -1,5 +1,6 @@
 import type { PauseStore } from "../core/emulated-pause";
 import type { ProgramDriver } from "../core/model";
+import { DlDriver } from "./deluge/driver";
 import { JdDriver } from "./jdownloader/driver";
 import { QbDriver } from "./qbittorrent/driver";
 import { TrDriver } from "./transmission/driver";
@@ -60,6 +61,7 @@ export const PROGRAMS: readonly ProgramEntry[] = [
   { type: "jdownloader", needs: ["host"], create: (cfg, deps) => new JdDriver(cfg, deps) },
   { type: "qbittorrent", needs: ["host"], create: (cfg, deps) => new QbDriver(cfg, deps) },
   { type: "transmission", needs: ["host"], create: (cfg, deps) => new TrDriver(cfg, deps) },
+  { type: "deluge", needs: ["host", "password"], create: (cfg, deps) => new DlDriver(cfg, deps) },
 ];
 
 /**

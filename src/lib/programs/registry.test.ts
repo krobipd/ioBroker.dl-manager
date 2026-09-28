@@ -40,6 +40,10 @@ describe("registry", () => {
     expect(findProgram("transmission")?.needs).toEqual(["host"]);
   });
 
+  it("knows Deluge (password only — the web UI has no user)", () => {
+    expect(findProgram("deluge")?.needs).toEqual(["host", "password"]);
+  });
+
   it("returns nothing for an unknown type", () => {
     expect(findProgram("emule")).toBeUndefined();
   });
