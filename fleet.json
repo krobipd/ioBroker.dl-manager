@@ -1,0 +1,39 @@
+{
+  "_comment": "Adapter-specific declarations for the fleet tooling (Entwicklung/scripts). They live HERE so that a change in this adapter never touches the locked tooling. Readers: sync-iopackage-from-i18n.py (manifestI18n, release gate B03) and submit-stable.py (forumThread). Keys starting with an underscore are comments.",
+  "manifestI18n": {
+    "_comment": "instanceObjects id -> key in admin/i18n/<lang>.json. Every manifest object needs a `name` entry; `desc` only where the name does not already say it.",
+    "name": {
+      "info": "channelInfo",
+      "info.connection": "connection",
+      "info.programsTotal": "programsTotal",
+      "info.programsOnline": "programsOnline",
+      "info.programsAllOnline": "programsAllOnline",
+      "summary": "channelSummary",
+      "summary.downloading": "summaryDownloading",
+      "summary.active": "summaryActive",
+      "summary.queued": "summaryQueued",
+      "summary.downloadSpeed": "summaryDownloadSpeed",
+      "summary.uploadSpeed": "summaryUploadSpeed",
+      "summary.pauseAll": "summaryPauseAll",
+      "summary.lastFinished": "lastFinished",
+      "summary.lastFinishedTime": "lastFinishedTime",
+      "summary.lastFailed": "lastFailed",
+      "summary.lastFailedTime": "lastFailedTime"
+    },
+    "desc": {
+      "info.connection": "descConnection",
+      "info.programsTotal": "descProgramsTotal",
+      "info.programsOnline": "descProgramsOnline",
+      "info.programsAllOnline": "descProgramsAllOnline",
+      "summary.downloading": "descSummaryDownloading",
+      "summary.active": "descSummaryActive",
+      "summary.queued": "descSummaryQueued",
+      "summary.downloadSpeed": "descSummaryDownloadSpeed",
+      "summary.uploadSpeed": "descSummaryUploadSpeed",
+      "summary.pauseAll": "descSummaryPauseAll",
+      "summary.lastFinished": "descLastFinished",
+      "summary.lastFailed": "descLastFailed"
+    }
+  },
+  "forumThread": null
+}

@@ -1,0 +1,664 @@
+{
+  "common": {
+    "name": "download-manager",
+    "version": "0.0.1",
+    "news": {
+      "0.0.1": {
+        "en": "Initial release",
+        "de": "Erste Version",
+        "ru": "Первый выпуск",
+        "pt": "Primeira versão",
+        "nl": "Eerste release",
+        "fr": "Première version",
+        "it": "Prima versione",
+        "es": "Primera versión",
+        "pl": "Pierwsze wydanie",
+        "uk": "Перший випуск",
+        "zh-cn": "首次发布"
+      }
+    },
+    "titleLang": {
+      "en": "Download Manager",
+      "de": "Download-Manager",
+      "ru": "Менеджер загрузок",
+      "pt": "Gestor de downloads",
+      "nl": "Downloadmanager",
+      "fr": "Gestionnaire de téléchargements",
+      "it": "Gestore download",
+      "es": "Gestor de descargas",
+      "pl": "Menedżer pobierania",
+      "uk": "Менеджер завантажень",
+      "zh-cn": "下载管理器"
+    },
+    "desc": {
+      "en": "Monitors and controls download programs: JDownloader, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 and pyLoad",
+      "de": "Überwacht und steuert Download-Programme: JDownloader, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 und pyLoad",
+      "ru": "Отслеживает и управляет программами загрузки: JDownloader, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 и pyLoad",
+      "pt": "Monitoriza e controla programas de download: JDownloader, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 e pyLoad",
+      "nl": "Bewaakt en bestuurt downloadprogramma's: JDownloader, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 en pyLoad",
+      "fr": "Surveille et pilote les programmes de téléchargement : JDownloader, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 et pyLoad",
+      "it": "Monitora e controlla i programmi di download: JDownloader, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 e pyLoad",
+      "es": "Supervisa y controla programas de descarga: JDownloader, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 y pyLoad",
+      "pl": "Monitoruje i steruje programami do pobierania: JDownloader, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 i pyLoad",
+      "uk": "Відстежує та керує програмами завантаження: JDownloader, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 і pyLoad",
+      "zh-cn": "监控和控制下载程序：JDownloader、qBittorrent、Transmission、Deluge、SABnzbd、NZBGet、aria2 和 pyLoad"
+    },
+    "plugins": {
+      "sentry": {
+        "dsn": "https://66f27ceff38c1ce1e6cdcc3095ba06d3@o4511524771266560.ingest.de.sentry.io/4511524773560400"
+      }
+    },
+    "docs": {
+      "en": [
+        "docs/en/README.md"
+      ],
+      "de": [
+        "docs/de/README.md"
+      ]
+    },
+    "authors": [
+      "krobi <krobi@power-dreams.com>"
+    ],
+    "keywords": [
+      "download",
+      "jdownloader",
+      "qbittorrent",
+      "transmission",
+      "deluge",
+      "sabnzbd",
+      "nzbget",
+      "aria2",
+      "pyload",
+      "torrent",
+      "usenet"
+    ],
+    "licenseInformation": {
+      "license": "MIT",
+      "type": "free"
+    },
+    "platform": "Javascript/Node.js",
+    "icon": "download-manager.svg",
+    "extIcon": "https://raw.githubusercontent.com/krobipd/ioBroker.download-manager/main/admin/download-manager.svg",
+    "readme": "https://github.com/krobipd/ioBroker.download-manager/blob/main/README.md",
+    "enabled": true,
+    "tier": 3,
+    "loglevel": "info",
+    "mode": "daemon",
+    "messagebox": true,
+    "type": "infrastructure",
+    "compact": true,
+    "connectionType": "local",
+    "dataSource": "poll",
+    "adminUI": {
+      "config": "json"
+    },
+    "dependencies": [
+      {
+        "js-controller": ">=7.2.2"
+      }
+    ],
+    "globalDependencies": [
+      {
+        "admin": ">=8.0.14"
+      }
+    ],
+    "nogit": true
+  },
+  "native": {
+    "programs": [],
+    "pollInterval": 10,
+    "removeFinished": false
+  },
+  "encryptedNative": [],
+  "protectedNative": [
+    "programs"
+  ],
+  "instanceObjects": [
+    {
+      "_id": "info",
+      "type": "channel",
+      "common": {
+        "name": {
+          "en": "Information",
+          "de": "Information",
+          "ru": "Информация",
+          "pt": "Informação",
+          "nl": "Informatie",
+          "fr": "Informations",
+          "it": "Informazioni",
+          "es": "Información",
+          "pl": "Informacje",
+          "uk": "Інформація",
+          "zh-cn": "信息"
+        }
+      },
+      "native": {}
+    },
+    {
+      "_id": "info.connection",
+      "type": "state",
+      "common": {
+        "name": {
+          "en": "Connected",
+          "de": "Verbunden",
+          "ru": "Подключено",
+          "pt": "Ligado",
+          "nl": "Verbonden",
+          "fr": "Connecté",
+          "it": "Connesso",
+          "es": "Conectado",
+          "pl": "Połączono",
+          "uk": "Підключено",
+          "zh-cn": "已连接"
+        },
+        "type": "boolean",
+        "role": "indicator.connected",
+        "read": true,
+        "write": false,
+        "def": false,
+        "desc": {
+          "en": "At least one download program answered the last query.",
+          "de": "Mindestens ein Download-Programm hat auf die letzte Abfrage geantwortet.",
+          "ru": "Хотя бы одна программа загрузки ответила на последний запрос.",
+          "pt": "Pelo menos um programa de download respondeu à última consulta.",
+          "nl": "Minstens één downloadprogramma heeft op de laatste opvraging geantwoord.",
+          "fr": "Au moins un programme de téléchargement a répondu à la dernière requête.",
+          "it": "Almeno un programma di download ha risposto all'ultima interrogazione.",
+          "es": "Al menos un programa de descarga respondió a la última consulta.",
+          "pl": "Co najmniej jeden program do pobierania odpowiedział na ostatnie zapytanie.",
+          "uk": "Принаймні одна програма завантаження відповіла на останній запит.",
+          "zh-cn": "至少有一个下载程序响应了上次查询。"
+        }
+      },
+      "native": {}
+    },
+    {
+      "_id": "info.programsTotal",
+      "type": "state",
+      "common": {
+        "name": {
+          "en": "Programs total",
+          "de": "Programme gesamt",
+          "ru": "Всего программ",
+          "pt": "Total de programas",
+          "nl": "Programma's totaal",
+          "fr": "Programmes au total",
+          "it": "Programmi totali",
+          "es": "Programas en total",
+          "pl": "Programy łącznie",
+          "uk": "Усього програм",
+          "zh-cn": "程序总数"
+        },
+        "type": "number",
+        "role": "value",
+        "read": true,
+        "write": false,
+        "def": 0,
+        "desc": {
+          "en": "Number of configured and enabled download programs.",
+          "de": "Anzahl der eingerichteten und eingeschalteten Download-Programme.",
+          "ru": "Количество настроенных и включённых программ загрузки.",
+          "pt": "Número de programas de download configurados e ativados.",
+          "nl": "Aantal ingestelde en ingeschakelde downloadprogramma's.",
+          "fr": "Nombre de programmes de téléchargement configurés et activés.",
+          "it": "Numero di programmi di download configurati e attivati.",
+          "es": "Número de programas de descarga configurados y activados.",
+          "pl": "Liczba skonfigurowanych i włączonych programów do pobierania.",
+          "uk": "Кількість налаштованих і ввімкнених програм завантаження.",
+          "zh-cn": "已配置并启用的下载程序数量。"
+        }
+      },
+      "native": {}
+    },
+    {
+      "_id": "info.programsOnline",
+      "type": "state",
+      "common": {
+        "name": {
+          "en": "Programs online",
+          "de": "Programme erreichbar",
+          "ru": "Программ доступно",
+          "pt": "Programas acessíveis",
+          "nl": "Programma's bereikbaar",
+          "fr": "Programmes joignables",
+          "it": "Programmi raggiungibili",
+          "es": "Programas accesibles",
+          "pl": "Programy osiągalne",
+          "uk": "Програм доступно",
+          "zh-cn": "可访问的程序"
+        },
+        "type": "number",
+        "role": "value",
+        "read": true,
+        "write": false,
+        "def": 0,
+        "desc": {
+          "en": "Number of download programs that answered the last query.",
+          "de": "Anzahl der Download-Programme, die auf die letzte Abfrage geantwortet haben.",
+          "ru": "Количество программ загрузки, ответивших на последний запрос.",
+          "pt": "Número de programas de download que responderam à última consulta.",
+          "nl": "Aantal downloadprogramma's dat op de laatste opvraging heeft geantwoord.",
+          "fr": "Nombre de programmes de téléchargement ayant répondu à la dernière requête.",
+          "it": "Numero di programmi di download che hanno risposto all'ultima interrogazione.",
+          "es": "Número de programas de descarga que respondieron a la última consulta.",
+          "pl": "Liczba programów do pobierania, które odpowiedziały na ostatnie zapytanie.",
+          "uk": "Кількість програм завантаження, що відповіли на останній запит.",
+          "zh-cn": "响应了上次查询的下载程序数量。"
+        }
+      },
+      "native": {}
+    },
+    {
+      "_id": "info.programsAllOnline",
+      "type": "state",
+      "common": {
+        "name": {
+          "en": "All programs online",
+          "de": "Alle Programme erreichbar",
+          "ru": "Все программы доступны",
+          "pt": "Todos os programas acessíveis",
+          "nl": "Alle programma's bereikbaar",
+          "fr": "Tous les programmes joignables",
+          "it": "Tutti i programmi raggiungibili",
+          "es": "Todos los programas accesibles",
+          "pl": "Wszystkie programy osiągalne",
+          "uk": "Усі програми доступні",
+          "zh-cn": "所有程序均可访问"
+        },
+        "type": "boolean",
+        "role": "indicator",
+        "read": true,
+        "write": false,
+        "def": false,
+        "desc": {
+          "en": "True when every configured download program answered the last query.",
+          "de": "Wahr, wenn jedes eingerichtete Download-Programm auf die letzte Abfrage geantwortet hat.",
+          "ru": "Истина, если каждая настроенная программа загрузки ответила на последний запрос.",
+          "pt": "Verdadeiro quando todos os programas de download configurados responderam à última consulta.",
+          "nl": "Waar wanneer elk ingesteld downloadprogramma op de laatste opvraging heeft geantwoord.",
+          "fr": "Vrai lorsque chaque programme de téléchargement configuré a répondu à la dernière requête.",
+          "it": "Vero quando ogni programma di download configurato ha risposto all'ultima interrogazione.",
+          "es": "Verdadero cuando todos los programas de descarga configurados respondieron a la última consulta.",
+          "pl": "Prawda, gdy każdy skonfigurowany program do pobierania odpowiedział na ostatnie zapytanie.",
+          "uk": "Істина, коли кожна налаштована програма завантаження відповіла на останній запит.",
+          "zh-cn": "当每个已配置的下载程序都响应了上次查询时为真。"
+        }
+      },
+      "native": {}
+    },
+    {
+      "_id": "summary",
+      "type": "channel",
+      "common": {
+        "name": {
+          "en": "Summary",
+          "de": "Übersicht",
+          "ru": "Сводка",
+          "pt": "Resumo",
+          "nl": "Overzicht",
+          "fr": "Résumé",
+          "it": "Riepilogo",
+          "es": "Resumen",
+          "pl": "Podsumowanie",
+          "uk": "Зведення",
+          "zh-cn": "概览"
+        }
+      },
+      "native": {}
+    },
+    {
+      "_id": "summary.downloading",
+      "type": "state",
+      "common": {
+        "name": {
+          "en": "Any download active",
+          "de": "Irgendein Download aktiv",
+          "ru": "Есть активная загрузка",
+          "pt": "Algum download ativo",
+          "nl": "Een download actief",
+          "fr": "Un téléchargement actif",
+          "it": "Un download attivo",
+          "es": "Alguna descarga activa",
+          "pl": "Jakieś pobieranie aktywne",
+          "uk": "Є активне завантаження",
+          "zh-cn": "有下载正在进行"
+        },
+        "type": "boolean",
+        "role": "indicator.working",
+        "read": true,
+        "write": false,
+        "def": false,
+        "desc": {
+          "en": "True while any download of any program is loading or being post-processed.",
+          "de": "Wahr, solange irgendein Download eines Programms lädt oder nachbearbeitet wird.",
+          "ru": "Истина, пока какая-либо загрузка любой программы идёт или проходит постобработку.",
+          "pt": "Verdadeiro enquanto algum download de qualquer programa está a descarregar ou em pós-processamento.",
+          "nl": "Waar zolang een download van een programma bezig is of wordt nabewerkt.",
+          "fr": "Vrai tant qu'un téléchargement d'un programme est en cours ou en post-traitement.",
+          "it": "Vero finché un download di qualsiasi programma è in corso o in post-elaborazione.",
+          "es": "Verdadero mientras alguna descarga de cualquier programa se esté descargando o posprocesando.",
+          "pl": "Prawda, dopóki jakiekolwiek pobieranie dowolnego programu trwa lub jest przetwarzane końcowo.",
+          "uk": "Істина, поки будь-яке завантаження будь-якої програми триває або проходить постобробку.",
+          "zh-cn": "只要任一程序的下载正在进行或正在后处理即为真。"
+        }
+      },
+      "native": {}
+    },
+    {
+      "_id": "summary.active",
+      "type": "state",
+      "common": {
+        "name": {
+          "en": "Active downloads",
+          "de": "Aktive Downloads",
+          "ru": "Активные загрузки",
+          "pt": "Downloads ativos",
+          "nl": "Actieve downloads",
+          "fr": "Téléchargements actifs",
+          "it": "Download attivi",
+          "es": "Descargas activas",
+          "pl": "Aktywne pobierania",
+          "uk": "Активні завантаження",
+          "zh-cn": "活动下载"
+        },
+        "type": "number",
+        "role": "value",
+        "read": true,
+        "write": false,
+        "def": 0,
+        "desc": {
+          "en": "Downloads loading or being post-processed, over all programs.",
+          "de": "Downloads, die laden oder nachbearbeitet werden, über alle Programme.",
+          "ru": "Загрузки, которые идут или проходят постобработку, по всем программам.",
+          "pt": "Downloads a descarregar ou em pós-processamento, em todos os programas.",
+          "nl": "Downloads die bezig zijn of worden nabewerkt, over alle programma's.",
+          "fr": "Téléchargements en cours ou en post-traitement, tous programmes confondus.",
+          "it": "Download in corso o in post-elaborazione, su tutti i programmi.",
+          "es": "Descargas en curso o en posprocesamiento, en todos los programas.",
+          "pl": "Pobierania w toku lub przetwarzane końcowo, we wszystkich programach.",
+          "uk": "Завантаження, що тривають або проходять постобробку, у всіх програмах.",
+          "zh-cn": "所有程序中正在下载或后处理的下载。"
+        }
+      },
+      "native": {}
+    },
+    {
+      "_id": "summary.queued",
+      "type": "state",
+      "common": {
+        "name": {
+          "en": "Queued downloads",
+          "de": "Wartende Downloads",
+          "ru": "Загрузки в очереди",
+          "pt": "Downloads em fila",
+          "nl": "Downloads in wachtrij",
+          "fr": "Téléchargements en attente",
+          "it": "Download in coda",
+          "es": "Descargas en cola",
+          "pl": "Pobierania w kolejce",
+          "uk": "Завантаження в черзі",
+          "zh-cn": "排队中的下载"
+        },
+        "type": "number",
+        "role": "value",
+        "read": true,
+        "write": false,
+        "def": 0,
+        "desc": {
+          "en": "Downloads waiting in a queue, over all programs.",
+          "de": "Downloads, die in einer Warteschlange stehen, über alle Programme.",
+          "ru": "Загрузки, ожидающие в очереди, по всем программам.",
+          "pt": "Downloads à espera numa fila, em todos os programas.",
+          "nl": "Downloads die in een wachtrij staan, over alle programma's.",
+          "fr": "Téléchargements en file d'attente, tous programmes confondus.",
+          "it": "Download in attesa in una coda, su tutti i programmi.",
+          "es": "Descargas esperando en una cola, en todos los programas.",
+          "pl": "Pobierania czekające w kolejce, we wszystkich programach.",
+          "uk": "Завантаження, що чекають у черзі, у всіх програмах.",
+          "zh-cn": "所有程序中在队列里等待的下载。"
+        }
+      },
+      "native": {}
+    },
+    {
+      "_id": "summary.downloadSpeed",
+      "type": "state",
+      "common": {
+        "name": {
+          "en": "Total download speed",
+          "de": "Download-Geschwindigkeit gesamt",
+          "ru": "Общая скорость загрузки",
+          "pt": "Velocidade total de download",
+          "nl": "Totale downloadsnelheid",
+          "fr": "Vitesse de téléchargement totale",
+          "it": "Velocità di download totale",
+          "es": "Velocidad de descarga total",
+          "pl": "Łączna prędkość pobierania",
+          "uk": "Загальна швидкість завантаження",
+          "zh-cn": "总下载速度"
+        },
+        "type": "number",
+        "role": "value",
+        "read": true,
+        "write": false,
+        "unit": "MB/s",
+        "def": 0,
+        "desc": {
+          "en": "Download speed of all reachable programs together.",
+          "de": "Download-Geschwindigkeit aller erreichbaren Programme zusammen.",
+          "ru": "Скорость загрузки всех доступных программ вместе.",
+          "pt": "Velocidade de download de todos os programas acessíveis em conjunto.",
+          "nl": "Downloadsnelheid van alle bereikbare programma's samen.",
+          "fr": "Vitesse de téléchargement de tous les programmes joignables réunis.",
+          "it": "Velocità di download di tutti i programmi raggiungibili insieme.",
+          "es": "Velocidad de descarga de todos los programas accesibles juntos.",
+          "pl": "Prędkość pobierania wszystkich osiągalnych programów razem.",
+          "uk": "Швидкість завантаження всіх доступних програм разом.",
+          "zh-cn": "所有可访问程序的下载速度总和。"
+        }
+      },
+      "native": {}
+    },
+    {
+      "_id": "summary.uploadSpeed",
+      "type": "state",
+      "common": {
+        "name": {
+          "en": "Total upload speed",
+          "de": "Upload-Geschwindigkeit gesamt",
+          "ru": "Общая скорость отдачи",
+          "pt": "Velocidade total de upload",
+          "nl": "Totale uploadsnelheid",
+          "fr": "Vitesse d'envoi totale",
+          "it": "Velocità di upload totale",
+          "es": "Velocidad de subida total",
+          "pl": "Łączna prędkość wysyłania",
+          "uk": "Загальна швидкість віддачі",
+          "zh-cn": "总上传速度"
+        },
+        "type": "number",
+        "role": "value",
+        "read": true,
+        "write": false,
+        "unit": "MB/s",
+        "def": 0,
+        "desc": {
+          "en": "Upload speed of all reachable torrent programs together.",
+          "de": "Upload-Geschwindigkeit aller erreichbaren Torrent-Programme zusammen.",
+          "ru": "Скорость отдачи всех доступных торрент-программ вместе.",
+          "pt": "Velocidade de upload de todos os programas de torrent acessíveis em conjunto.",
+          "nl": "Uploadsnelheid van alle bereikbare torrentprogramma's samen.",
+          "fr": "Vitesse d'envoi de tous les programmes torrent joignables réunis.",
+          "it": "Velocità di upload di tutti i programmi torrent raggiungibili insieme.",
+          "es": "Velocidad de subida de todos los programas de torrent accesibles juntos.",
+          "pl": "Prędkość wysyłania wszystkich osiągalnych programów torrent razem.",
+          "uk": "Швидкість віддачі всіх доступних торрент-програм разом.",
+          "zh-cn": "所有可访问种子程序的上传速度总和。"
+        }
+      },
+      "native": {}
+    },
+    {
+      "_id": "summary.pauseAll",
+      "type": "state",
+      "common": {
+        "name": {
+          "en": "Pause all programs",
+          "de": "Alle Programme pausieren",
+          "ru": "Приостановить все программы",
+          "pt": "Pausar todos os programas",
+          "nl": "Alle programma's pauzeren",
+          "fr": "Mettre tous les programmes en pause",
+          "it": "Metti in pausa tutti i programmi",
+          "es": "Pausar todos los programas",
+          "pl": "Wstrzymaj wszystkie programy",
+          "uk": "Призупинити всі програми",
+          "zh-cn": "暂停所有程序"
+        },
+        "type": "boolean",
+        "role": "switch",
+        "read": true,
+        "write": true,
+        "def": false,
+        "desc": {
+          "en": "True pauses every reachable program, false resumes them.",
+          "de": "Wahr pausiert jedes erreichbare Programm, falsch setzt sie fort.",
+          "ru": "Истина приостанавливает все доступные программы, ложь возобновляет их.",
+          "pt": "Verdadeiro pausa todos os programas acessíveis, falso retoma-os.",
+          "nl": "Waar pauzeert elk bereikbaar programma, onwaar hervat ze.",
+          "fr": "Vrai met en pause chaque programme joignable, faux les relance.",
+          "it": "Vero mette in pausa ogni programma raggiungibile, falso li riprende.",
+          "es": "Verdadero pausa todos los programas accesibles, falso los reanuda.",
+          "pl": "Prawda wstrzymuje każdy osiągalny program, fałsz je wznawia.",
+          "uk": "Істина призупиняє кожну доступну програму, хиба відновлює їх.",
+          "zh-cn": "真表示暂停所有可访问的程序，假表示恢复。"
+        }
+      },
+      "native": {}
+    },
+    {
+      "_id": "summary.lastFinished",
+      "type": "state",
+      "common": {
+        "name": {
+          "en": "Last finished",
+          "de": "Zuletzt fertig",
+          "ru": "Последняя завершённая",
+          "pt": "Último concluído",
+          "nl": "Laatst voltooid",
+          "fr": "Dernier terminé",
+          "it": "Ultimo completato",
+          "es": "Último completado",
+          "pl": "Ostatnio ukończone",
+          "uk": "Останнє завершене",
+          "zh-cn": "最近完成"
+        },
+        "type": "string",
+        "role": "text",
+        "read": true,
+        "write": false,
+        "def": "",
+        "desc": {
+          "en": "Name of the download that finished last; written on every finish, also when the name repeats.",
+          "de": "Name des zuletzt fertigen Downloads; bei jedem Abschluss geschrieben, auch wenn der Name gleich bleibt.",
+          "ru": "Имя последней завершённой загрузки; записывается при каждом завершении, даже если имя повторяется.",
+          "pt": "Nome do último download concluído; escrito em cada conclusão, mesmo quando o nome se repete.",
+          "nl": "Naam van de laatst voltooide download; bij elke voltooiing geschreven, ook als de naam gelijk blijft.",
+          "fr": "Nom du dernier téléchargement terminé ; écrit à chaque fin, même si le nom se répète.",
+          "it": "Nome dell'ultimo download completato; scritto a ogni completamento, anche se il nome si ripete.",
+          "es": "Nombre de la última descarga completada; se escribe en cada finalización, aunque el nombre se repita.",
+          "pl": "Nazwa ostatnio ukończonego pobierania; zapisywana przy każdym ukończeniu, także gdy nazwa się powtarza.",
+          "uk": "Назва останнього завершеного завантаження; записується при кожному завершенні, навіть якщо назва повторюється.",
+          "zh-cn": "最近完成的下载名称；每次完成时写入，即使名称重复。"
+        }
+      },
+      "native": {}
+    },
+    {
+      "_id": "summary.lastFinishedTime",
+      "type": "state",
+      "common": {
+        "name": {
+          "en": "Last finished at",
+          "de": "Zuletzt fertig um",
+          "ru": "Время последнего завершения",
+          "pt": "Último concluído em",
+          "nl": "Laatst voltooid om",
+          "fr": "Dernier terminé à",
+          "it": "Ultimo completato alle",
+          "es": "Último completado a las",
+          "pl": "Ostatnio ukończone o",
+          "uk": "Останнє завершене о",
+          "zh-cn": "最近完成时间"
+        },
+        "type": "number",
+        "role": "date",
+        "read": true,
+        "write": false
+      },
+      "native": {}
+    },
+    {
+      "_id": "summary.lastFailed",
+      "type": "state",
+      "common": {
+        "name": {
+          "en": "Last failed",
+          "de": "Zuletzt fehlgeschlagen",
+          "ru": "Последняя неудачная",
+          "pt": "Último falhado",
+          "nl": "Laatst mislukt",
+          "fr": "Dernier échoué",
+          "it": "Ultimo fallito",
+          "es": "Último fallido",
+          "pl": "Ostatnio nieudane",
+          "uk": "Останнє невдале",
+          "zh-cn": "最近失败"
+        },
+        "type": "string",
+        "role": "text",
+        "read": true,
+        "write": false,
+        "def": "",
+        "desc": {
+          "en": "Name of the download that failed last.",
+          "de": "Name des zuletzt fehlgeschlagenen Downloads.",
+          "ru": "Имя последней неудачной загрузки.",
+          "pt": "Nome do último download falhado.",
+          "nl": "Naam van de laatst mislukte download.",
+          "fr": "Nom du dernier téléchargement échoué.",
+          "it": "Nome dell'ultimo download fallito.",
+          "es": "Nombre de la última descarga fallida.",
+          "pl": "Nazwa ostatnio nieudanego pobierania.",
+          "uk": "Назва останнього невдалого завантаження.",
+          "zh-cn": "最近失败的下载名称。"
+        }
+      },
+      "native": {}
+    },
+    {
+      "_id": "summary.lastFailedTime",
+      "type": "state",
+      "common": {
+        "name": {
+          "en": "Last failed at",
+          "de": "Zuletzt fehlgeschlagen um",
+          "ru": "Время последней неудачи",
+          "pt": "Último falhado em",
+          "nl": "Laatst mislukt om",
+          "fr": "Dernier échec à",
+          "it": "Ultimo fallito alle",
+          "es": "Último fallido a las",
+          "pl": "Ostatnio nieudane o",
+          "uk": "Останнє невдале о",
+          "zh-cn": "最近失败时间"
+        },
+        "type": "number",
+        "role": "date",
+        "read": true,
+        "write": false
+      },
+      "native": {}
+    }
+  ]
+}

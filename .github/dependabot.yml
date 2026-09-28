@@ -1,0 +1,38 @@
+# Dependabot configuration
+# Cooldown delays version updates by 7 days (npm AND github-actions — GitHub supports `default-days` for Actions,
+# dependabot-options-reference 2026-08); security updates are processed immediately.
+# Reference: https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference
+version: 2
+updates:
+
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      timezone: 'Europe/Berlin'
+    open-pull-requests-limit: 15
+    assignees:
+      - 'krobipd'
+    versioning-strategy: 'increase'
+    cooldown:
+      default-days: 7
+    ignore:
+      - dependency-name: '@types/node'
+        update-types:
+          - 'version-update:semver-major'
+      - dependency-name: 'typescript'
+        update-types:
+          - 'version-update:semver-major'
+
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      timezone: 'Europe/Berlin'
+    open-pull-requests-limit: 15
+    assignees:
+      - 'krobipd'
+    cooldown:
+      default-days: 7
