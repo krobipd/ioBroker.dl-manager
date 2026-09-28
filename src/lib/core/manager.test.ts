@@ -213,6 +213,45 @@ describe("ProgramManager — start", () => {
   });
 });
 
+describe("ProgramManager — poll interval", () => {
+  it("never polls a program faster than its driver allows (My.JDownloader: 30 s)", async () => {
+    const a = new FakeAdapter(NS);
+    const delays: number[] = [];
+    const m = new ProgramManager(
+      {
+        adapter: a,
+        timers: {
+          setTimeout: (_cb, ms) => {
+            delays.push(ms);
+            return undefined;
+          },
+          clearTimeout: () => undefined,
+        },
+        find: () => ({
+          type: "jdownloader-cloud",
+          needs: ["host"],
+          create: (): ProgramDriver => ({
+            type: "jdownloader-cloud",
+            minIntervalMs: 30_000,
+            capabilities: new Set(),
+            extras: [],
+            poll: () => Promise.resolve(snap(0)),
+            command: () => Promise.resolve(),
+            close: () => Promise.resolve(),
+          }),
+        }),
+        decrypt: v => v,
+        problems: { report: () => undefined, resolve: () => undefined },
+      },
+      { intervalMs: 10_000, removeFinished: false },
+    );
+    await m.start([row("jdownloader-cloud", "c", "h")]);
+    await flush();
+    expect(delays).toContain(30_000);
+    expect(delays).not.toContain(10_000);
+  });
+});
+
 describe("ProgramManager — user writes", () => {
   it("pause all reaches only reachable programs and says how many", async () => {
     const w = world({ h1: { snapshot: snap(0) }, h2: { snapshot: snap(0) }, h3: { error: new UnreachableError("x") } });

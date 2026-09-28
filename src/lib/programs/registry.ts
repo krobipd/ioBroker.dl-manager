@@ -63,6 +63,11 @@ export interface ProgramEntry {
 /** THE program list — one line per driver. */
 export const PROGRAMS: readonly ProgramEntry[] = [
   { type: "jdownloader", needs: ["host"], create: (cfg, deps) => new JdDriver(cfg, deps) },
+  {
+    type: "jdownloader-cloud",
+    needs: ["username", "password", "device"],
+    create: (cfg, deps) => new JdDriver(cfg, deps),
+  },
   { type: "qbittorrent", needs: ["host"], create: (cfg, deps) => new QbDriver(cfg, deps) },
   { type: "transmission", needs: ["host"], create: (cfg, deps) => new TrDriver(cfg, deps) },
   { type: "deluge", needs: ["host", "password"], create: (cfg, deps) => new DlDriver(cfg, deps) },

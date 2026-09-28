@@ -60,6 +60,10 @@ describe("registry", () => {
     expect(findProgram("pyload")?.needs).toEqual(["host"]);
   });
 
+  it("knows JDownloader through My.JDownloader: e-mail, password and device name, no host", () => {
+    expect(findProgram("jdownloader-cloud")?.needs).toEqual(["username", "password", "device"]);
+  });
+
   it("returns nothing for an unknown type", () => {
     expect(findProgram("emule")).toBeUndefined();
   });

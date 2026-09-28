@@ -40,6 +40,26 @@ const CONFIG_KEYS = new Set(["DownloadSpeedLimit", "DownloadSpeedLimitEnabled"])
 const GENERAL_SETTINGS = "org.jdownloader.settings.GeneralSettings";
 
 /**
+ * Keeps both transports to the fixed method list and the two speed-limit settings.
+ *
+ * @param path `/<namespace>/<method>`
+ * @param params positional parameters
+ */
+export function checkJdCall(path: string, params: readonly unknown[]): void {
+  if (!JD_METHODS.has(path)) {
+    throw new ProtocolError(`jdownloader: ${path} is not a method the adapter uses`);
+  }
+  if (
+    (path === "/config/set" || path === "/config/get") &&
+    (params[0] !== GENERAL_SETTINGS || !CONFIG_KEYS.has(String(params[2])))
+  ) {
+    throw new ProtocolError(
+      "jdownloader: config access is limited to DownloadSpeedLimit and DownloadSpeedLimitEnabled",
+    );
+  }
+}
+
+/**
  * @param cfg host, port (0 = 3128), https, path of the settings row
  * @returns the base URL of JD's local API
  */
@@ -72,17 +92,7 @@ export class JdLocalTransport implements JdTransport {
    * @returns the answer's `data`
    */
   public async call(path: string, params: unknown[] = []): Promise<unknown> {
-    if (!JD_METHODS.has(path)) {
-      throw new ProtocolError(`jdownloader: ${path} is not a method the adapter uses`);
-    }
-    if (
-      (path === "/config/set" || path === "/config/get") &&
-      (params[0] !== GENERAL_SETTINGS || !CONFIG_KEYS.has(String(params[2])))
-    ) {
-      throw new ProtocolError(
-        "jdownloader: config access is limited to DownloadSpeedLimit and DownloadSpeedLimitEnabled",
-      );
-    }
+    checkJdCall(path, params);
     const res = await this.http.request({
       method: "POST",
       url: `${this.base}${path}`,

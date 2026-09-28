@@ -157,6 +157,8 @@ export interface ProgramDriver {
    * in the program on a wrong key); without it the test polls once.
    */
   test?(): Promise<string>;
+  /** Shortest poll interval the program tolerates (My.JDownloader: 30 s); the adapter never polls faster. */
+  readonly minIntervalMs?: number;
   /** Optional push channel; it only triggers an immediate poll, it never carries values. */
   subscribe?(onChange: () => void): () => void;
 }

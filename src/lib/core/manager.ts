@@ -164,7 +164,7 @@ export class ProgramManager {
         driver,
         tree,
         { ...this.deps.timers, log: this.a.log, problems: this.deps.problems },
-        this.opts.intervalMs,
+        Math.max(this.opts.intervalMs, driver.minIntervalMs ?? 0),
         events => void this.changed(events),
       );
       this.running.set(row.id, { driver, tree, runner });

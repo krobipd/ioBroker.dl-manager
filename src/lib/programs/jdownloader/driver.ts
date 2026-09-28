@@ -3,6 +3,7 @@ import { ProtocolError } from "../../core/errors";
 import type { Capability, Command, ProgramDriver, ProgramSnapshot } from "../../core/model";
 import type { DriverDeps, ProgramConfig } from "../registry";
 import { jdBaseUrl, JdLocalTransport, type JdTransport } from "./client";
+import { JdCloudTransport } from "./cloud";
 import { toSnapshot } from "./map";
 
 const GS = "org.jdownloader.settings.GeneralSettings";
@@ -44,7 +45,8 @@ const RESUBSCRIBE_MS = 30_000;
 
 /** JDownloader 2: a download is a package; the transport is local (Deprecated API) or My.JDownloader (Task 17). */
 export class JdDriver implements ProgramDriver {
-  public readonly type = "jdownloader";
+  public readonly type: "jdownloader" | "jdownloader-cloud";
+  public readonly minIntervalMs?: number;
   public readonly capabilities: ReadonlySet<Capability> = new Set<Capability>([
     "globalPause",
     "itemPause",
@@ -59,23 +61,30 @@ export class JdDriver implements ProgramDriver {
   ]);
   public readonly extras = [];
   private readonly api: JdTransport;
-  private readonly events: JdTransport;
+  private readonly events: JdTransport | null;
   private version: string | null = null;
 
   /**
    * @param cfg the settings row
    * @param deps adapter services
    * @param api transport for the calls (default: local API)
-   * @param events transport for the event long poll (default: local API with a long deadline)
+   * @param events transport for the event long poll (default: local API with a long deadline; null = no push)
    */
   public constructor(
     cfg: ProgramConfig,
     private readonly deps: DriverDeps,
     api?: JdTransport,
-    events?: JdTransport,
+    events?: JdTransport | null,
   ) {
-    this.api = api ?? new JdLocalTransport(jdBaseUrl(cfg), deps);
-    this.events = events ?? new JdLocalTransport(jdBaseUrl(cfg), deps, LISTEN_TIMEOUT_MS);
+    const viaCloud = cfg.type === "jdownloader-cloud";
+    this.type = viaCloud ? "jdownloader-cloud" : "jdownloader";
+    if (viaCloud) {
+      // My.JDownloader's limits are not documented — Home Assistant asks every 60 s, the adapter at most every 30 s
+      this.minIntervalMs = 30_000;
+    }
+    this.api = api ?? (viaCloud ? new JdCloudTransport(cfg, deps) : new JdLocalTransport(jdBaseUrl(cfg), deps));
+    this.events =
+      events !== undefined ? events : viaCloud ? null : new JdLocalTransport(jdBaseUrl(cfg), deps, LISTEN_TIMEOUT_MS);
   }
 
   /** @returns one complete query */
@@ -134,7 +143,7 @@ export class JdDriver implements ProgramDriver {
   /** Aborts a waiting long poll. */
   public close(): Promise<void> {
     this.api.close();
-    this.events.close();
+    this.events?.close();
     return Promise.resolve();
   }
 
@@ -145,6 +154,11 @@ export class JdDriver implements ProgramDriver {
    * @returns stops listening
    */
   public subscribe(onChange: () => void): () => void {
+    const events = this.events;
+    if (!events) {
+      // no push through the cloud — every event would be one more request against undocumented limits
+      return () => undefined;
+    }
     let stopped = false;
     let id: number | undefined;
     const pause = (): Promise<void> =>
@@ -157,15 +171,15 @@ export class JdDriver implements ProgramDriver {
       while (!stopped) {
         try {
           if (id === undefined) {
-            const sub = await this.events.call("/events/subscribe", [["downloads\\..*", "downloadwatchdog\\..*"], []]);
+            const sub = await events.call("/events/subscribe", [["downloads\\..*", "downloadwatchdog\\..*"], []]);
             const sid = (sub as { subscriptionid?: unknown } | null)?.subscriptionid;
             if (typeof sid !== "number") {
               throw new ProtocolError("jdownloader: event subscription without id");
             }
             id = sid;
           }
-          const events = await this.events.call("/events/listen", [id]);
-          if (!stopped && Array.isArray(events) && events.length > 0) {
+          const got = await events.call("/events/listen", [id]);
+          if (!stopped && Array.isArray(got) && got.length > 0) {
             onChange();
           }
         } catch (err: unknown) {
@@ -181,7 +195,7 @@ export class JdDriver implements ProgramDriver {
     return () => {
       stopped = true;
       if (id !== undefined) {
-        this.events.call("/events/unsubscribe", [id]).catch(() => undefined);
+        events.call("/events/unsubscribe", [id]).catch(() => undefined);
       }
     };
   }
