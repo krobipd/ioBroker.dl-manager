@@ -375,3 +375,25 @@ export function prepareUsenet(work) {
 export function nzbOf(work, name) {
   return readFileSync(join(work, "nzb", `${name}.nzb`), "utf8");
 }
+
+/** The files the HTTP programs (aria2, pyLoad, JDownloader) load from the throttled seed server. */
+export const HTTP_FILES = {
+  big: 32 * MiB,
+  queued: 4 * MiB,
+  stopped: 4 * MiB,
+  small: 2 * MiB,
+};
+
+/**
+ * Runner side: the files in the seed folder (`http://seed:8080/<name>.bin`; any other path answers 404).
+ *
+ * @param {string} work work directory
+ */
+export function prepareHttpFiles(work) {
+  mkdirSync(join(work, "seed"), { recursive: true });
+  mkdirSync(join(work, "downloads"), { recursive: true, mode: 0o777 });
+  let seed = 70;
+  for (const [name, size] of Object.entries(HTTP_FILES)) {
+    writeFileSync(join(work, "seed", `${name}.bin`), payload(size, seed++));
+  }
+}

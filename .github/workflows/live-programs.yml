@@ -50,6 +50,10 @@ jobs:
             tag: v24.8
           - program: nzbget
             tag: v26.3
+          - program: aria2
+            tag: "3.22"
+          - program: pyload
+            tag: 0.5.0b3.dev101-ls255
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7

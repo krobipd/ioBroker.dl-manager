@@ -1,8 +1,8 @@
 // NZBGet in the container recorder: JSON-RPC with basic auth, NServ as news server (missing articles for the failed
 // job), a 404 URL for the failed fetch, the rate limit to keep a download running. api-usenet-aria2-pyload.md § 2.
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { Http, nzbOf, prepareUsenet, Recorder, waitFor } from "../lib.mjs";
+import { Http, nzbOf, prepareUsenet, Recorder, sh, waitFor } from "../lib.mjs";
 
 const USER = "admin";
 const PASS = "testpass1";
@@ -17,8 +17,30 @@ const PASS = "testpass1";
 export function prepare(work, tag) {
   const nserv = prepareUsenet(work);
   mkdirSync(join(work, "nzbget"), { recursive: true });
+  // The image copies its default configuration only when /config/nzbget.conf is missing — so the default is read
+  // from the image, its first news server pointed at NServ, and the file laid in before the start.
+  const image = `nzbgetcom/nzbget:${tag}`;
+  const defaults = sh("docker", ["run", "--rm", "--entrypoint", "cat", image, "/app/nzbget/share/nzbget/nzbget.conf"]);
+  const server = {
+    Active: "yes",
+    Host: "nserv",
+    Port: "6791",
+    Encryption: "no",
+    Connections: "2",
+    Level: "0",
+    Username: "",
+    Password: "",
+  };
+  const conf = defaults.replace(/^Server1\.(\w+)=.*$/gm, (line, key) =>
+    key in server ? `Server1.${key}=${server[key]}` : line,
+  );
+  const missingKeys = Object.keys(server).filter(k => !new RegExp(`^Server1\\.${k}=`, "m").test(conf));
+  writeFileSync(
+    join(work, "nzbget", "nzbget.conf"),
+    conf + missingKeys.map(k => `Server1.${k}=${server[k]}\n`).join(""),
+  );
   return {
-    image: `nzbgetcom/nzbget:${tag}`,
+    image,
     name: "nzbget",
     env: { NZBGET_USER: USER, NZBGET_PASS: PASS, PUID: "1000", PGID: "1000", TZ: "Etc/UTC" },
     volumes: [`${join(work, "nzbget")}:/config`, `${join(work, "downloads")}:/downloads`],
@@ -57,22 +79,6 @@ export async function record(ctx) {
   const w = (state, name, res) => rec.write(state, name, `POST /jsonrpc ${res.sent}`, res);
   w("auth", "login-wrong", wrong);
   w("auth", "version", versionRes);
-
-  // news server: NServ — change only the Server1 options of the full configuration, then reload
-  const config = await result("config");
-  const set = { "Server1.Active": "yes", "Server1.Host": "nserv", "Server1.Port": "6791", "Server1.Encryption": "no" };
-  Object.assign(set, {
-    "Server1.Connections": "2",
-    "Server1.Level": "0",
-    "Server1.Username": "",
-    "Server1.Password": "",
-  });
-  const options = config
-    .filter(o => !(o.Name in set))
-    .concat(Object.entries(set).map(([Name, Value]) => ({ Name, Value })));
-  await rpc("saveconfig", [options]);
-  await rpc("reload");
-  await waitFor("NZBGet after reload", async () => (await rpc("version")).status === 200, 120_000);
 
   const snapshot = async state => {
     w(state, "listgroups", await rpc("listgroups", [0]));
