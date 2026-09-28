@@ -103,6 +103,16 @@ export class FakeAdapter {
   }
 
   /**
+   * Reads a copy of an object by its full id (no namespace added).
+   *
+   * @param id full id
+   */
+  public getForeignObjectAsync(id: string): Promise<ioBroker.Object | null> {
+    const obj = this.objects.get(id);
+    return Promise.resolve(obj ? structuredClone(obj) : null);
+  }
+
+  /**
    * Reads a copy of a state.
    *
    * @param id own or full id

@@ -1,15 +1,42 @@
 import * as utils from "@iobroker/adapter-core";
 import { I18n } from "@iobroker/adapter-core";
 import { join } from "node:path";
+import { ActionableProblems } from "./lib/actionable-problems";
+import { parsePollInterval } from "./lib/core/config";
+import { ProgramManager } from "./lib/core/manager";
 import { errText } from "./lib/err-text";
 import { tDesc, tName } from "./lib/i18n";
+import { migrateNativeKeys, type NativeKeyMigration } from "./lib/native-key-migration";
+import { findProgram, type ProgramEntry } from "./lib/programs/registry";
+
+/** Native keys earlier versions declared and this one dropped (fleet helper `native-key-migration`). */
+const NATIVE_KEY_MIGRATIONS: NativeKeyMigration[] = [];
 
 /** ioBroker adapter that mirrors download programs into the object tree. */
 export class DownloadManagerAdapter extends utils.Adapter {
-  /** @param options Adapter options */
-  public constructor(options: Partial<utils.AdapterOptions> = {}) {
+  private manager: ProgramManager | null = null;
+  private readonly problems: ActionableProblems;
+
+  /**
+   * @param options Adapter options
+   * @param find registry lookup — a seam for the tests
+   */
+  public constructor(
+    options: Partial<utils.AdapterOptions> = {},
+    private readonly find: (type: string) => ProgramEntry | undefined = findProgram,
+  ) {
     super({ ...options, name: "download-manager" });
+    this.problems = new ActionableProblems({
+      logWarn: m => this.log.warn(m),
+      logInfo: m => this.log.info(m),
+      notify: m =>
+        void this.registerNotification("download-manager", "userActionRequired", m).catch((err: unknown) =>
+          this.log.debug(`Could not raise a notification: ${errText(err)}`),
+        ),
+    });
     this.on("ready", this.onReady.bind(this));
+    this.on("stateChange", this.onStateChange.bind(this));
+    this.on("message", this.onMessage.bind(this));
     this.on("unload", this.onUnload.bind(this));
   }
 
@@ -88,23 +115,94 @@ export class DownloadManagerAdapter extends utils.Adapter {
     });
   }
 
+  private makeManager(): ProgramManager {
+    return new ProgramManager(
+      {
+        adapter: {
+          namespace: this.namespace,
+          log: this.log,
+          extendObject: (id, obj) => this.extendObject(id, obj),
+          setForeignObject: (id, obj) => this.setForeignObject(id, obj),
+          delObject: (id, opts) => this.delObjectAsync(id, opts),
+          getObject: id => this.getObjectAsync(id),
+          getForeignObjects: (pattern, type) =>
+            this.getForeignObjectsAsync(pattern, type) as Promise<Record<string, ioBroker.Object>>,
+          getForeignObjectAsync: id => this.getForeignObjectAsync(id),
+          getState: id => this.getStateAsync(id),
+          setState: (id, state) => this.setState(id, state),
+          setStateChanged: (id, state) => this.setStateChangedAsync(id, state),
+        },
+        timers: {
+          setTimeout: (cb, ms) => this.setTimeout(cb, ms),
+          clearTimeout: t => this.clearTimeout(t),
+        },
+        find: this.find,
+        decrypt: v => this.decrypt(v),
+        problems: {
+          report: (key, title, action) => this.problems.report({ key, title, action }),
+          resolve: (key, msg) => this.problems.resolve(key, msg),
+        },
+      },
+      { intervalMs: parsePollInterval(this.config.pollInterval), removeFinished: this.config.removeFinished === true },
+    );
+  }
+
   private async onReady(): Promise<void> {
     try {
       if (await this.correctInstanceObject()) {
         return;
       }
+      if (await migrateNativeKeys(this, NATIVE_KEY_MIGRATIONS, errText)) {
+        return;
+      }
       await I18n.init(join(this.adapterDir, "admin"), this);
       await this.refreshManifestObjects();
-      await this.setState("info.connection", { val: false, ack: true });
+      this.manager = this.makeManager();
+      await this.manager.start(this.config.programs);
+      await this.subscribeStatesAsync("*");
     } catch (err: unknown) {
       this.log.error(`onReady failed: ${errText(err)}`);
     }
   }
 
+  private async onStateChange(id: string, state: ioBroker.State | null | undefined): Promise<void> {
+    try {
+      if (!state || state.ack || !this.manager) {
+        return;
+      }
+      await this.manager.onUserWrite(id.slice(this.namespace.length + 1), state.val);
+    } catch (err: unknown) {
+      this.log.error(`onStateChange failed: ${errText(err)}`);
+    }
+  }
+
+  private async onMessage(obj: ioBroker.Message): Promise<void> {
+    try {
+      if (!obj?.callback) {
+        return;
+      }
+      if (obj.command !== "testConnections") {
+        this.sendTo(obj.from, obj.command, { error: `Unknown command: ${obj.command}` }, obj.callback);
+        return;
+      }
+      const message = obj.message as { programs?: unknown } | null | undefined;
+      const programs = typeof message === "object" && message ? message.programs : undefined;
+      const result = await (this.manager ?? this.makeManager()).testConnections(programs);
+      this.sendTo(obj.from, obj.command, { result }, obj.callback);
+    } catch (err: unknown) {
+      this.log.error(`onMessage failed: ${errText(err)}`);
+      if (obj?.callback) {
+        this.sendTo(obj.from, obj.command, { error: errText(err) }, obj.callback);
+      }
+    }
+  }
+
   private onUnload(callback: () => void): void {
     try {
-      void this.setState("info.connection", { val: false, ack: true })
-        .catch((err: unknown) => this.log.debug(`onUnload: final state rejected: ${errText(err)}`))
+      const manager = this.manager;
+      this.manager = null;
+      void (manager ? manager.stop() : this.setState("info.connection", { val: false, ack: true }))
+        .catch((err: unknown) => this.log.debug(`onUnload: final writes rejected: ${errText(err)}`))
         .finally(callback);
     } catch {
       callback();

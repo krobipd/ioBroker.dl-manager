@@ -2,6 +2,7 @@ import { tDesc, tName, tState, type I18nKey } from "../i18n";
 import { forCapabilities, ITEM_DATAPOINTS, PROGRAM_DATAPOINTS, type DatapointDef } from "./datapoints";
 import { ItemIds } from "./ids";
 import {
+  ACTIVE,
   STATUSES,
   type Capability,
   type DownloadItem,
@@ -56,7 +57,6 @@ export interface TreeDriver {
 }
 
 const DONE: ReadonlySet<Status> = new Set<Status>(["completed", "seeding"]);
-const ACTIVE: ReadonlySet<Status> = new Set<Status>(["downloading", "postprocessing"]);
 const STATUS_LABEL: Readonly<Record<Status, I18nKey>> = {
   queued: "statusQueued",
   downloading: "statusDownloading",
@@ -113,6 +113,19 @@ export class ProgramTree {
     return `${this.dev}.online`;
   }
 
+  /**
+   * @param channel the id segment of a download channel below `downloads`
+   * @returns the program's raw key of that download, undefined for an unknown channel
+   */
+  public itemKey(channel: string): string | undefined {
+    for (const [key, id] of this.ids.entries()) {
+      if (id === channel) {
+        return key;
+      }
+    }
+    return undefined;
+  }
+
   /** Reads the stored channels, the "removed" list and the last recorded finish. Runs before the first sync. */
   public async load(): Promise<void> {
     const channels = await this.adapter.getForeignObjects(`${this.dev}.downloads.*`, "channel");
@@ -139,8 +152,9 @@ export class ProgramTree {
    * Creates the device, the downloads folder and every program datapoint; marks the program offline.
    *
    * @param icon inline data URI of the program's pictogram
+   * @param address what identifies the program besides its key (`addressOf`) — carries room assignments on a key change
    */
-  public async ensureDevice(icon: string | undefined): Promise<void> {
+  public async ensureDevice(icon: string | undefined, address = ""): Promise<void> {
     await this.adapter.extendObject(this.dev, {
       type: "device",
       common: {
@@ -148,7 +162,7 @@ export class ProgramTree {
         statusStates: { onlineId: this.onlineId() },
         ...(icon ? { icon } : {}),
       },
-      native: { type: this.driver.type, nameSource: "api" },
+      native: { type: this.driver.type, address, nameSource: "api" },
     });
     await this.adapter.extendObject(`${this.dev}.downloads`, {
       type: "folder",
@@ -162,6 +176,24 @@ export class ProgramTree {
       await this.adapter.extendObject(`${this.dev}.${e.id}`, this.extraObject(e));
     }
     await this.markOffline("Unknown");
+  }
+
+  /**
+   * A settings row that cannot run (unknown type, missing field): only the device, `online` and `error` — no
+   * datapoints of a program that is never asked.
+   *
+   * @param problem why the row cannot run
+   */
+  public async ensureBareDevice(problem: string): Promise<void> {
+    await this.adapter.extendObject(this.dev, {
+      type: "device",
+      common: { name: this.programName, statusStates: { onlineId: this.onlineId() } },
+      native: { type: this.driver.type, nameSource: "api" },
+    });
+    for (const d of PROGRAM_DATAPOINTS.filter(x => x.id === "online" || x.id === "error")) {
+      await this.adapter.extendObject(`${this.dev}.${d.id}`, this.stateObject(d));
+    }
+    await this.markOffline(problem);
   }
 
   /**

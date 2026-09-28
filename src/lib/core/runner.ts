@@ -12,7 +12,7 @@ export interface RunnerDeps {
   clearTimeout(t: ioBroker.Timeout | undefined): void;
   /** The adapter log. */
   log: { debug(msg: string): void; info(msg: string): void; warn(msg: string): void };
-  /** Actionable problems (fleet pattern): once as warn + notification, resolved when fixed. */
+  /** Actionable problems (fleet pattern, `actionable-problems.ts`): the one warn + notification for a rejected login. */
   problems: { report(key: string, title: string, action: string): void; resolve(key: string, msg: string): void };
 }
 
@@ -44,7 +44,7 @@ export class ProgramRunner {
    * @param tree the program's tree
    * @param deps adapter services
    * @param intervalMs time between two polls
-   * @param onChange called after every successful sync with its events
+   * @param onChange called after every poll — with the sync's events, or with no events when the poll failed
    */
   public constructor(
     public readonly id: string,
@@ -146,6 +146,9 @@ export class ProgramRunner {
       this.onChange(events);
     } catch (err: unknown) {
       await this.handle(err);
+      if (!this.stopped) {
+        this.onChange({ finished: [], failed: [], removedFromTree: 0 });
+      }
     }
   }
 
@@ -160,13 +163,10 @@ export class ProgramRunner {
     }
     if (kind === "auth") {
       this._lockedByAuth = true;
-      this.deps.log.warn(
-        `[${this.id}] login rejected (${text}) — check user/password or API key in the adapter settings; the program is not asked again until then`,
-      );
       this.deps.problems.report(
         `auth:${this.id}`,
-        `${this.id}: login rejected`,
-        "Check user/password or API key in the adapter settings.",
+        `${this.id}: login rejected (${text}), the program is not asked again until the settings change`,
+        "check user/password or API key in the adapter settings",
       );
       return;
     }

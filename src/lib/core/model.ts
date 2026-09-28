@@ -16,6 +16,9 @@ export const STATUSES = [
 /** A download's status, the same for every program. */
 export type Status = (typeof STATUSES)[number];
 
+/** Statuses that count as "active" (the program is working on the download). */
+export const ACTIVE: ReadonlySet<Status> = new Set<Status>(["downloading", "postprocessing"]);
+
 /** Which datapoints and commands exist for a program. A missing capability means: no datapoint. */
 export type Capability =
   | "globalPause"
@@ -111,7 +114,7 @@ export type Command =
   | { kind: "setSpeedLimit"; bps: number }
   | { kind: "setUploadLimit"; bps: number }
   | { kind: "setAltSpeed"; on: boolean }
-  | { kind: "extra"; name: string; key?: string };
+  | { kind: "extra"; name: string; key?: string; value?: ioBroker.StateValue };
 
 /** A program-specific datapoint or button, declared by its driver. */
 export interface ExtraDefinition {

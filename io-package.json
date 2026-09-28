@@ -113,6 +113,71 @@
   "protectedNative": [
     "programs"
   ],
+  "notifications": [
+    {
+      "scope": "download-manager",
+      "name": {
+        "en": "Download Manager",
+        "de": "Download Manager",
+        "ru": "Download Manager",
+        "pt": "Download Manager",
+        "nl": "Download Manager",
+        "fr": "Download Manager",
+        "it": "Download Manager",
+        "es": "Download Manager",
+        "pl": "Download Manager",
+        "uk": "Download Manager",
+        "zh-cn": "Download Manager"
+      },
+      "description": {
+        "en": "Download Manager adapter",
+        "de": "Download-Manager-Adapter",
+        "ru": "Адаптер Download Manager",
+        "pt": "Adaptador Download Manager",
+        "nl": "Download Manager-adapter",
+        "fr": "Adaptateur Download Manager",
+        "it": "Adattatore Download Manager",
+        "es": "Adaptador Download Manager",
+        "pl": "Adapter Download Manager",
+        "uk": "Адаптер Download Manager",
+        "zh-cn": "Download Manager 适配器"
+      },
+      "categories": [
+        {
+          "category": "userActionRequired",
+          "name": {
+            "en": "Action required",
+            "de": "Aktion erforderlich",
+            "ru": "Требуется действие",
+            "pt": "Ação necessária",
+            "nl": "Actie vereist",
+            "fr": "Action requise",
+            "it": "Azione richiesta",
+            "es": "Acción requerida",
+            "pl": "Wymagane działanie",
+            "uk": "Потрібна дія",
+            "zh-cn": "需要操作"
+          },
+          "description": {
+            "en": "A problem needs your attention, for example a download program refused the login.",
+            "de": "Ein Problem braucht deine Aufmerksamkeit, zum Beispiel hat ein Download-Programm die Anmeldung abgelehnt.",
+            "ru": "Проблема требует вашего внимания, например, программа загрузки отклонила вход.",
+            "pt": "Um problema precisa da sua atenção, por exemplo, um programa de download recusou o login.",
+            "nl": "Een probleem vraagt je aandacht, bijvoorbeeld een downloadprogramma heeft de aanmelding geweigerd.",
+            "fr": "Un problème nécessite votre attention, par exemple un programme de téléchargement a refusé la connexion.",
+            "it": "Un problema richiede la tua attenzione, ad esempio un programma di download ha rifiutato l'accesso.",
+            "es": "Un problema necesita tu atención, por ejemplo, un programa de descargas rechazó el inicio de sesión.",
+            "pl": "Problem wymaga Twojej uwagi, na przykład program do pobierania odrzucił logowanie.",
+            "uk": "Проблема потребує вашої уваги, наприклад, програма завантаження відхилила вхід.",
+            "zh-cn": "有问题需要您处理，例如某个下载程序拒绝了登录。"
+          },
+          "severity": "notify",
+          "regex": [],
+          "limit": 1
+        }
+      ]
+    }
+  ],
   "instanceObjects": [
     {
       "_id": "info",

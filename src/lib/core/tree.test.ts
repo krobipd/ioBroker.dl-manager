@@ -92,6 +92,42 @@ describe("ProgramTree — device", () => {
     expect(a.val("qbittorrent-nas.online")).toBe(false);
     expect(a.val("qbittorrent-nas.error")).toBe("fetch failed (ECONNREFUSED)");
   });
+
+  it("shows a row that cannot run as a bare device with its problem", async () => {
+    const a = new FakeAdapter(NS);
+    const t = new ProgramTree(
+      a,
+      "emule-x",
+      "eMule",
+      { type: "emule", capabilities: new Set(), extras: [] },
+      {
+        removeFinished: false,
+      },
+    );
+    await t.ensureBareDevice("unknown program type: emule");
+    const ids = [...a.objects.keys()].filter(k => k.startsWith(`${NS}.emule-x`)).sort();
+    expect(ids).toEqual([`${NS}.emule-x`, `${NS}.emule-x.error`, `${NS}.emule-x.online`]);
+    expect(a.val("emule-x.online")).toBe(false);
+    expect(a.val("emule-x.error")).toBe("unknown program type: emule");
+  });
+
+  it("stores the program address on the device", async () => {
+    const a = new FakeAdapter(NS);
+    const t = new ProgramTree(a, "qbittorrent-nas", "qBittorrent (NAS)", driver(), { removeFinished: false });
+    await t.load();
+    await t.ensureDevice(undefined, "http://10.0.0.2:8080");
+    expect(a.objects.get(DEV)?.native).toMatchObject({ type: "qbittorrent", address: "http://10.0.0.2:8080" });
+  });
+
+  it("finds the raw key of a download channel, also after a restart", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a);
+    await t.sync(snap([item("aaaa11112222")]));
+    expect(t.itemKey("11112222")).toBe("aaaa11112222");
+    expect(t.itemKey("nothing")).toBeUndefined();
+    const t2 = await makeTree(a);
+    expect(t2.itemKey("11112222")).toBe("aaaa11112222");
+  });
 });
 
 describe("ProgramTree — downloads", () => {

@@ -111,8 +111,18 @@ describe("ProgramRunner", () => {
     expect(driver.polls).toBe(1);
     expect(r.lockedByAuth).toBe(true);
     expect(deps.reported).toEqual(["auth:fake-a"]);
-    expect(deps.lines.filter(l => l.level === "warn")).toHaveLength(1);
+    expect(deps.lines.filter(l => l.level === "warn")).toHaveLength(0);
     expect(tree.markOffline).toHaveBeenCalledWith("401 Unauthorized");
+  });
+
+  it("reports an empty change after a failed poll, so the summary sees the program go offline", async () => {
+    const clock = new ManualClock();
+    const driver = makeDriver(() => Promise.reject(new UnreachableError("timeout")));
+    const onChange = vi.fn();
+    const r = new ProgramRunner("fake-a", driver, makeTree(), makeDeps(clock), 10_000, onChange);
+    r.start();
+    await flush();
+    expect(onChange).toHaveBeenCalledWith(NO_EVENTS);
   });
 
   it("refuses commands while the login is rejected", async () => {
