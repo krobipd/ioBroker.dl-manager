@@ -57,7 +57,7 @@ export async function record(_ctx) {
     json: { user: USER, password: PASS, name: "download-manager-ci", expires: 0 },
   });
   const generated = gen.json();
-  const key = typeof generated === "string" ? generated : (generated?.key ?? generated?.apikey);
+  const key = typeof generated === "string" ? generated : (generated?.data?.key ?? generated?.key);
   if (typeof key !== "string") {
     throw new Error(`generate_apikey answered ${gen.status}: ${gen.text.slice(0, 300)}`);
   }

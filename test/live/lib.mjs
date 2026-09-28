@@ -84,13 +84,18 @@ export class Http {
     if (this.cookies.size) {
       headers.cookie = [...this.cookies].map(([k, v]) => `${k}=${v}`).join("; ");
     }
-    const res = await fetch(this.base + path, {
-      method,
-      headers,
-      body,
-      redirect: "manual",
-      signal: AbortSignal.timeout(30_000),
-    });
+    const send = () =>
+      fetch(this.base + path, { method, headers, body, redirect: "manual", signal: AbortSignal.timeout(30_000) });
+    let res;
+    try {
+      res = await send();
+    } catch (err) {
+      // NZBGet closes the connection after each answer; fetch then reuses the dead socket once — send again
+      if (err?.cause?.code !== "UND_ERR_SOCKET") {
+        throw err;
+      }
+      res = await send();
+    }
     const text = await res.text();
     for (const line of res.headers.getSetCookie()) {
       const pair = line.split(";")[0];

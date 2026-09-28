@@ -24,7 +24,7 @@ export function prepare(work, tag) {
       "sh",
       "-c",
       [
-        "apk add --no-cache aria2 >/dev/null",
+        "apk add --no-cache aria2 >/dev/null &&",
         `exec aria2c --enable-rpc --rpc-listen-all=true --rpc-listen-port=6800 --rpc-secret=${SECRET}`,
         "--dir=/downloads --max-concurrent-downloads=1 --enable-dht=false --bt-enable-lpd=false",
         "--enable-peer-exchange=false --file-allocation=none",

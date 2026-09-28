@@ -54,6 +54,8 @@ jobs:
             tag: "3.22"
           - program: pyload
             tag: 0.5.0b3.dev101-ls255
+          - program: jdownloader
+            tag: v26.09.1
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
