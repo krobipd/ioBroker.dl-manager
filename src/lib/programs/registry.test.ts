@@ -52,6 +52,10 @@ describe("registry", () => {
     expect(findProgram("nzbget")?.needs).toEqual(["host"]);
   });
 
+  it("knows aria2 (the RPC secret is optional)", () => {
+    expect(findProgram("aria2")?.needs).toEqual(["host"]);
+  });
+
   it("returns nothing for an unknown type", () => {
     expect(findProgram("emule")).toBeUndefined();
   });
