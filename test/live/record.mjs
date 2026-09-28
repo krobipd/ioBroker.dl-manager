@@ -32,7 +32,8 @@ if (mode === "--inside") {
   const c = mod.prepare(work, tag);
   pull(NODE_IMAGE);
   pull(c.image);
-  sh("docker", ["network", "create", "--internal", "dm"]);
+  // `subnet`: a program that refuses private addresses (pyLoad) gets a public-looking range — still `--internal`
+  sh("docker", ["network", "create", "--internal", ...(c.subnet ? ["--subnet", c.subnet] : []), "dm"]);
   sh("docker", [
     "run",
     "-d",

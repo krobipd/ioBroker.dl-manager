@@ -19,6 +19,9 @@ export function prepare(work, tag) {
   return {
     image: `lscr.io/linuxserver/pyload-ng:${tag}`,
     name: "pyload",
+    // pyLoad refuses every address that is not globally routable (is_global_address, no setting to allow it) — the
+    // internal network gets a public range; `--internal` keeps it off the internet
+    subnet: "11.22.33.0/24",
     env: { PUID: "1000", PGID: "1000", TZ: "Etc/UTC" },
     volumes: [`${join(work, "pyload")}:/config`, `${join(work, "downloads")}:/downloads`],
   };
