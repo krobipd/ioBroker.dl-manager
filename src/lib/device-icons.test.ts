@@ -5,19 +5,24 @@ import { PROGRAMS } from "./programs/registry";
 
 const DIR = join(__dirname, "..", "..", "admin", "icons");
 const decode = (uri: string): string => Buffer.from(uri.slice(ICON_URI_PREFIX.length), "base64").toString("utf8");
+/**
+ * @param file pictogram file name in admin/icons
+ * @returns the file as the repository holds it (LF) — a Windows checkout has CRLF, which the URI must not carry
+ */
+const readLf = (file: string): string => readFileSync(join(DIR, file), "utf8").replace(/\r\n/g, "\n");
 
 describe("device pictograms (CLAUDE_PATTERNS.md § Geräte-Piktogramme)", () => {
   it("embeds the file's bytes as an inline data URI", () => {
     const uri = deviceIcon("qbittorrent");
     expect(uri?.startsWith(ICON_URI_PREFIX)).toBe(true);
-    expect(decode(String(uri))).toBe(readFileSync(join(DIR, "torrent.svg"), "utf8"));
+    expect(decode(String(uri))).toBe(readLf("torrent.svg"));
   });
 
   it("gives every program type its file and never a path", () => {
     for (const p of PROGRAMS) {
       const uri = deviceIcon(p.type);
       expect([p.type, uri?.startsWith(ICON_URI_PREFIX)]).toEqual([p.type, true]);
-      expect(decode(String(uri))).toBe(readFileSync(join(DIR, ICON_BY_TYPE[p.type]), "utf8"));
+      expect(decode(String(uri))).toBe(readLf(ICON_BY_TYPE[p.type]));
     }
   });
 
@@ -29,8 +34,8 @@ describe("device pictograms (CLAUDE_PATTERNS.md § Geräte-Piktogramme)", () => 
   });
 
   it("gives the same URI for a CRLF checkout (Windows runner)", () => {
-    const svg = readFileSync(join(DIR, "aria2.svg"), "utf8");
-    expect(normaliseLineEndings(svg.replace(/\n/g, "\r\n"))).toBe(svg.replace(/\r\n/g, "\n"));
+    const svg = readLf("aria2.svg");
+    expect(normaliseLineEndings(svg.replace(/\n/g, "\r\n"))).toBe(svg);
   });
 
   it("returns the same value every time", () => {
@@ -79,11 +84,11 @@ describe("device pictograms (CLAUDE_PATTERNS.md § Geräte-Piktogramme)", () => 
     const before = Object.fromEntries(files.map(f => [f, readFileSync(join(DIR, f), "utf8")]));
     try {
       for (const f of files) {
-        writeFileSync(join(DIR, f), before[f].replace(/\n/g, "\r\n"));
+        writeFileSync(join(DIR, f), readLf(f).replace(/\n/g, "\r\n"));
       }
       for (const f of files) {
         const svg = normaliseLineEndings(readFileSync(join(DIR, f), "utf8"));
-        expect(svg).toBe(before[f]);
+        expect(svg).toBe(before[f].replace(/\r\n/g, "\n"));
       }
     } finally {
       for (const f of files) {
