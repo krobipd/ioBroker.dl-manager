@@ -1,7 +1,7 @@
 // Shared helpers of the container recorder (live-programs.yml). Runs with plain Node 22, no dependencies.
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 /** Root of the recordings inside the workspace; the workflow uploads it as an artifact. */
@@ -108,6 +108,26 @@ export class Http {
   }
 }
 
+/** Response headers a driver reads; secrets in them are replaced. */
+const KEEP_HEADERS = ["content-type", "www-authenticate", "x-transmission-rpc-version", "x-transmission-session-id"];
+
+/**
+ * @param {Record<string, string>} headers response headers
+ * @returns {Record<string, string>} the headers a driver reads, session ids and cookies masked
+ */
+function keptHeaders(headers) {
+  const out = {};
+  for (const k of KEEP_HEADERS) {
+    if (headers[k] !== undefined) {
+      out[k] = k === "x-transmission-session-id" ? "<session-id>" : headers[k];
+    }
+  }
+  if (headers["set-cookie"] !== undefined) {
+    out["set-cookie"] = "<omitted>";
+  }
+  return out;
+}
+
 /**
  * Writes one recorded answer: `<OUT>/<program>/<version>/<state>/<name>.json`.
  */
@@ -140,7 +160,7 @@ export class Recorder {
     const doc = {
       _source: { program: this.program, version: this.version, request, recordedAt: new Date().toISOString() },
       status: res.status,
-      ...(res.headers?.["content-type"] ? { contentType: res.headers["content-type"] } : {}),
+      ...(res.headers ? { headers: keptHeaders(res.headers) } : {}),
       body,
     };
     writeFileSync(file, `${JSON.stringify(doc, null, 2)}\n`);
@@ -210,4 +230,68 @@ export function makeTorrent({ name, data, webseed, pieceLength = 256 * 1024 }) {
   const info = { length: data.length, name, "piece length": pieceLength, pieces: Buffer.concat(pieces) };
   const meta = { info, ...(webseed ? { "url-list": webseed } : {}) };
   return { torrent: bencode(meta), infoHash: createHash("sha1").update(bencode(info)).digest("hex") };
+}
+
+const MiB = 1024 * 1024;
+
+/** The torrents every torrent program gets: size, payload already in the download folder, web seed. */
+export const TORRENT_FILES = {
+  big: { size: 32 * MiB, present: false, webseed: true },
+  queued: { size: 4 * MiB, present: false, webseed: true },
+  stopped: { size: 4 * MiB, present: false, webseed: true },
+  done: { size: 2 * MiB, present: true, webseed: false },
+  gone: { size: 2 * MiB, present: true, webseed: false },
+  // 1 GiB of zeros: big enough that a recheck is still running when the next poll asks (256 MiB was too fast)
+  check: { size: 1024 * MiB, present: true, webseed: false, zeros: true },
+};
+
+/** Info hash of DEAD_MAGNET. */
+export const DEAD_MAGNET_HASH = "0123456789abcdef0123456789abcdef01234567";
+
+/** A magnet nobody seeds — stays in "loading metadata". */
+export const DEAD_MAGNET = `magnet:?xt=urn:btih:${DEAD_MAGNET_HASH}&dn=nobody-seeds-this`;
+
+/**
+ * Runner side: payloads (web seed folder, download folder) and a .torrent + info hash per file.
+ *
+ * @param {string} work work directory
+ */
+export function prepareTorrents(work) {
+  mkdirSync(join(work, "downloads"), { recursive: true, mode: 0o777 });
+  mkdirSync(join(work, "seed"), { recursive: true });
+  mkdirSync(join(work, "torrents"), { recursive: true });
+  let seed = 10;
+  for (const [name, f] of Object.entries(TORRENT_FILES)) {
+    const data = f.zeros ? Buffer.alloc(f.size) : payload(f.size, seed);
+    seed++;
+    const file = `${name}.bin`;
+    if (f.webseed) {
+      writeFileSync(join(work, "seed", file), data);
+    }
+    if (f.present) {
+      writeFileSync(join(work, "downloads", file), data);
+    }
+    const t = makeTorrent({
+      name: file,
+      data,
+      webseed: f.webseed ? `http://seed:8080/${file}` : undefined,
+      pieceLength: f.size > 64 * MiB ? 4 * MiB : 256 * 1024,
+    });
+    writeFileSync(join(work, "torrents", `${name}.torrent`), t.torrent);
+    writeFileSync(join(work, "torrents", `${name}.hash`), t.infoHash);
+  }
+}
+
+/**
+ * Recorder side: the prepared torrent.
+ *
+ * @param {string} work work directory
+ * @param {string} name key of TORRENT_FILES
+ * @returns {{ torrent: Buffer, hash: string }} file and v1 info hash
+ */
+export function torrentOf(work, name) {
+  return {
+    torrent: readFileSync(join(work, "torrents", `${name}.torrent`)),
+    hash: readFileSync(join(work, "torrents", `${name}.hash`), "utf8"),
+  };
 }

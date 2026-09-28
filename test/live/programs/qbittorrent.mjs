@@ -1,24 +1,13 @@
 // qBittorrent in the container recorder: config with a fixed PBKDF2 password, torrents in every reachable state,
 // then every read the driver makes, recorded per snapshot. api-torrent.md § 1.
 import { pbkdf2Sync } from "node:crypto";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { Http, makeTorrent, payload, Recorder, waitFor } from "../lib.mjs";
+import { DEAD_MAGNET, DEAD_MAGNET_HASH, Http, prepareTorrents, Recorder, torrentOf, waitFor } from "../lib.mjs";
 
 const USER = "admin";
 const PASS = "testpass1";
 const PORT = 8080;
-const MiB = 1024 * 1024;
-
-/** The torrents of the run: name, size, whether the payload lies in the download folder, web seed. */
-const FILES = {
-  big: { size: 32 * MiB, present: false, webseed: true },
-  queued: { size: 4 * MiB, present: false, webseed: true },
-  stopped: { size: 4 * MiB, present: false, webseed: true },
-  done: { size: 2 * MiB, present: true, webseed: false },
-  gone: { size: 2 * MiB, present: true, webseed: false },
-  check: { size: 256 * MiB, present: true, webseed: false },
-};
 
 /**
  * Runner side: config, payloads and the container definition.
@@ -59,28 +48,7 @@ export function prepare(work, tag) {
   const confDir = join(work, "qbt", "qBittorrent", "config");
   mkdirSync(confDir, { recursive: true });
   writeFileSync(join(confDir, "qBittorrent.conf"), conf);
-  mkdirSync(join(work, "downloads"), { recursive: true, mode: 0o777 });
-  mkdirSync(join(work, "seed"), { recursive: true });
-  mkdirSync(join(work, "torrents"), { recursive: true });
-  let seed = 10;
-  for (const [name, f] of Object.entries(FILES)) {
-    const data = payload(f.size, seed++);
-    const file = `${name}.bin`;
-    if (f.webseed) {
-      writeFileSync(join(work, "seed", file), data);
-    }
-    if (f.present) {
-      writeFileSync(join(work, "downloads", file), data);
-    }
-    const t = makeTorrent({
-      name: file,
-      data,
-      webseed: f.webseed ? `http://seed:8080/${file}` : undefined,
-      pieceLength: f.size > 64 * MiB ? 4 * MiB : 256 * 1024,
-    });
-    writeFileSync(join(work, "torrents", `${name}.torrent`), t.torrent);
-    writeFileSync(join(work, "torrents", `${name}.hash`), t.infoHash);
-  }
+  prepareTorrents(work);
   return {
     image: `qbittorrentofficial/qbittorrent-nox:${tag}`,
     name: "qbt",
@@ -122,7 +90,7 @@ export async function record(ctx) {
   const rec = new Recorder("qbittorrent", version);
   const v5 = Number(version.split(".")[0]) >= 5;
   rec.write("auth", "login-wrong", "POST /api/v2/auth/login", wrongRes);
-  rec.write("auth", "login-ok", "POST /api/v2/auth/login", { ...login, headers: { "set-cookie": "<omitted>" } });
+  rec.write("auth", "login-ok", "POST /api/v2/auth/login", login);
   rec.write("auth", "session-missing", "GET /api/v2/torrents/info", await anon.req("GET", "/api/v2/torrents/info"));
   rec.write("auth", "app-version", "GET /api/v2/app/version", versionRes);
   rec.write(
@@ -138,14 +106,14 @@ export async function record(ctx) {
     }
   };
   const torrents = async () => (await qb.req("GET", "/api/v2/torrents/info")).json();
-  const hash = name => readFileSync(join(ctx.work, "torrents", `${name}.hash`), "utf8");
+  const hash = name => torrentOf(ctx.work, name).hash;
   const stateOf = async name => (await torrents()).find(t => t.hash === hash(name))?.state;
 
   await snapshot("empty");
 
   const add = async (name, extra = {}) => {
     const form = new FormData();
-    form.append("torrents", new Blob([readFileSync(join(ctx.work, "torrents", `${name}.torrent`))]), `${name}.torrent`);
+    form.append("torrents", new Blob([torrentOf(ctx.work, name).torrent]), `${name}.torrent`);
     for (const [k, v] of Object.entries(extra)) {
       form.append(k, v);
     }
@@ -158,9 +126,8 @@ export async function record(ctx) {
   await add("done");
   await add("gone");
   await add("check");
-  const magnetHash = "0123456789abcdef0123456789abcdef01234567";
   const magnetForm = new FormData();
-  magnetForm.append("urls", `magnet:?xt=urn:btih:${magnetHash}&dn=nobody-seeds-this`);
+  magnetForm.append("urls", DEAD_MAGNET);
   rec.write(
     "commands",
     "add-url",
@@ -176,6 +143,20 @@ export async function record(ctx) {
   });
   await snapshot("running");
 
+  // loading metadata: the queue (1 active download) holds the magnet back — force-start it
+  rec.write(
+    "commands",
+    "set-force-start",
+    "POST /api/v2/torrents/setForceStart",
+    await qb.req("POST", "/api/v2/torrents/setForceStart", { form: { hashes: DEAD_MAGNET_HASH, value: "true" } }),
+  );
+  await waitFor("magnet loading metadata", async () => {
+    const t = (await torrents()).find(x => x.hash === DEAD_MAGNET_HASH);
+    return /MetaDL$/.test(t?.state ?? "");
+  });
+  await snapshot("metadata");
+  await qb.req("POST", "/api/v2/torrents/setForceStart", { form: { hashes: DEAD_MAGNET_HASH, value: "false" } });
+
   // checking: recheck the big present payload and catch the check while it runs
   rec.write(
     "commands",
@@ -183,7 +164,19 @@ export async function record(ctx) {
     "POST /api/v2/torrents/recheck",
     await qb.req("POST", "/api/v2/torrents/recheck", { form: { hashes: hash("check") } }),
   );
-  await waitFor("check checking", async () => /^checking/.test((await stateOf("check")) ?? ""), 30_000, 50);
+  const seen = new Set();
+  await waitFor(
+    "check checking",
+    async () => {
+      const st = (await stateOf("check")) ?? "";
+      seen.add(st);
+      return /^checking/.test(st);
+    },
+    30_000,
+    20,
+  ).catch(err => {
+    throw new Error(`${err.message} — states seen: ${[...seen].join(", ")}`);
+  });
   await snapshot("checking");
 
   // failed: take the payload away and recheck
