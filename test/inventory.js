@@ -93,18 +93,25 @@ async function feedFixtures(harness) {
  * @param {import("@iobroker/testing").IntegrationTestHarness} harness
  */
 async function waitForAdapterWork(harness) {
-  // Scaffold stage: the adapter writes info.connection on every start; Task 21 widens this to every
-  // program device and its downloads.
-  const wanted = [`${NS}info.connection`];
-  const deadline = Date.now() + 60000;
+  // A tree, not a count: every program is online and every one lists its downloads, and the summary the
+  // adapter writes after each poll says all are reachable (written last in the cycle).
+  const deadline = Date.now() + 90000;
   for (;;) {
     const missing = [];
-    for (const id of wanted) {
-      const state = await harness.states.getState(id);
-      if (!state || state.val === undefined) {
-        missing.push(id);
+    for (const dev of DEVICES) {
+      const online = await harness.states.getState(`${NS}${dev}.online`);
+      if (online?.val !== true) {
+        missing.push(`${NS}${dev}.online`);
+        continue;
       }
+      const channels = await harness.objects.getObjectList({
+        startkey: `${NS}${dev}.downloads.`,
+        endkey: `${NS}${dev}.downloads.香`,
+      });
+      if (!channels.rows.some(r => r.value?.type === "channel")) missing.push(`${NS}${dev}.downloads.*`);
     }
+    const all = await harness.states.getState(`${NS}info.programsAllOnline`);
+    if (all?.val !== true) missing.push(`${NS}info.programsAllOnline`);
     if (missing.length === 0) return;
     if (Date.now() > deadline) {
       throw new Error(
@@ -115,8 +122,57 @@ async function waitForAdapterWork(harness) {
   }
 }
 
+/**
+ * Every program type once — each host name is answered by test/fixture-hook.js from the recordings in
+ * test/fixtures/ (JDownloader through My.JDownloader by the hook's own api.jdownloader.org with real AES).
+ */
+const PROGRAM_ROWS = [
+  ["jdownloader", "JDownloader", { host: "jdownloader.fixture", port: 3128 }],
+  [
+    "jdownloader-cloud",
+    "JDownloader (My.JDownloader)",
+    { username: "fixture@example.com", password: "fixture", device: "JD Fixture" },
+  ],
+  ["qbittorrent", "qBittorrent", { host: "qbittorrent.fixture", port: 8080, username: "admin", password: "fixture" }],
+  [
+    "transmission",
+    "Transmission",
+    { host: "transmission.fixture", port: 9091, username: "admin", password: "fixture" },
+  ],
+  ["deluge", "Deluge", { host: "deluge.fixture", port: 8112, password: "fixture" }],
+  ["sabnzbd", "SABnzbd", { host: "sabnzbd.fixture", port: 8080, apiKey: "fixture" }],
+  ["nzbget", "NZBGet", { host: "nzbget.fixture", port: 6789, username: "admin", password: "fixture" }],
+  ["aria2", "aria2", { host: "aria2.fixture", port: 6800, apiKey: "fixture" }],
+  ["pyload", "pyLoad", { host: "pyload.fixture", port: 8000, apiKey: "fixture" }],
+];
+/** Device id of each row (`<type>-<key>`). */
+const DEVICES = PROGRAM_ROWS.map(([type]) => `${type}-fixture`);
+
 /** Adapter-specific config the fixtures need (fake endpoint address, credentials, ...). */
-const FIXTURE_NATIVE = { programs: [], pollInterval: 10, removeFinished: false };
+const FIXTURE_NATIVE = {
+  // secrets go in as they are: the throwaway system has no key the adapter could decrypt with, and its decrypt()
+  // of a plain value is what a settings page without encryptedAttributes would hand it too
+  programs: PROGRAM_ROWS.map(([type, name, cfg]) => ({
+    enabled: true,
+    type,
+    key: "fixture",
+    name,
+    host: "",
+    port: 0,
+    https: false,
+    path: "",
+    username: "",
+    password: "",
+    apiKey: "",
+    device: "",
+    ...cfg,
+  })),
+  pollInterval: 10,
+  removeFinished: false,
+};
+
+/** The adapter process gets the fetch hook — the test process keeps the real fetch. */
+const ADAPTER_ENV = { NODE_OPTIONS: `--require ${path.join(__dirname, "fixture-hook.js")}` };
 
 async function dumpObjects(harness) {
   // The range starts at "<adapter>.0." — the instance root object itself is not part of the tree.
@@ -172,7 +228,17 @@ async function resetInstanceNative(harness) {
   for (const key of Object.keys(instance?.native ?? {})) {
     if (!Object.hasOwn(FIXTURE_NATIVE, key)) stale[key] = null;
   }
-  await harness.changeAdapterConfig(ADAPTER, { native: { ...stale, ...FIXTURE_NATIVE } });
+  // The settings table encrypts password and API key with the system secret (legacy XOR, json-config
+  // ConfigTable encrypt()) and the adapter decrypts them — the fixture rows go in the same way.
+  const secret = String((await harness.objects.getObjectAsync("system.config"))?.native?.secret ?? "");
+  const encrypt = value =>
+    [...value].map((c, i) => String.fromCharCode(secret.charCodeAt(i % secret.length) ^ c.charCodeAt(0))).join("");
+  const programs = FIXTURE_NATIVE.programs.map(row => ({
+    ...row,
+    password: row.password ? encrypt(row.password) : "",
+    apiKey: row.apiKey ? encrypt(row.apiKey) : "",
+  }));
+  await harness.changeAdapterConfig(ADAPTER, { native: { ...stale, ...FIXTURE_NATIVE, programs } });
 }
 
 tests.integration(ADAPTER_DIR, {
@@ -185,7 +251,7 @@ tests.integration(ADAPTER_DIR, {
         harness = getHarness();
         await resetInstanceNative(harness);
         await setSystemLanguage(harness, FIRST_LANGUAGE);
-        await harness.startAdapterAndWait();
+        await harness.startAdapterAndWait(false, ADAPTER_ENV);
         await feedFixtures(harness);
       });
 
@@ -194,6 +260,22 @@ tests.integration(ADAPTER_DIR, {
         const objects = await dumpObjects(harness);
         assert.ok(Object.keys(objects).length > 0, "no objects created — fixtures did not reach the adapter");
         fs.writeFileSync(INVENTORY, `${JSON.stringify(objects, null, 2)}\n`);
+      });
+
+      it("gives every device a pictogram that decodes to one of admin/icons/*.svg", async function () {
+        const objects = JSON.parse(fs.readFileSync(INVENTORY, "utf8"));
+        const iconDir = path.join(ADAPTER_DIR, "admin", "icons");
+        const files = new Set(
+          fs.readdirSync(iconDir).map(f => fs.readFileSync(path.join(iconDir, f), "utf8").replace(/\r\n/g, "\n")),
+        );
+        const devices = Object.entries(objects).filter(([, o]) => o.type === "device");
+        assert.ok(devices.length > 0, "no device in the inventory");
+        for (const [id, o] of devices) {
+          const icon = String(o.common?.icon ?? "");
+          assert.ok(icon.startsWith("data:image/svg+xml;base64,"), `${id}: icon is not an inline data URI`);
+          const svg = Buffer.from(icon.slice("data:image/svg+xml;base64,".length), "base64").toString("utf8");
+          assert.ok(files.has(svg), `${id}: icon is none of the pictogram files`);
+        }
       });
 
       it("writes test/states.inventory.json", async function () {
@@ -214,7 +296,7 @@ tests.integration(ADAPTER_DIR, {
         harness = getHarness();
         await resetInstanceNative(harness);
         await setSystemLanguage(harness, SECOND_LANGUAGE);
-        await harness.startAdapterAndWait();
+        await harness.startAdapterAndWait(false, ADAPTER_ENV);
         await feedFixtures(harness);
       });
 
@@ -240,7 +322,7 @@ tests.integration(ADAPTER_DIR, {
             await harness.objects.setObjectAsync(id, obj);
           }
           await resetInstanceNative(harness);
-          await harness.startAdapterAndWait();
+          await harness.startAdapterAndWait(false, ADAPTER_ENV);
           await feedFixtures(harness);
           // The seeded set makes feedFixtures a no-op here — this is the real wait.
           await waitForAdapterWork(harness);

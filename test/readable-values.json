@@ -1,1 +1,5 @@
-{}
+{
+  "*.downloads.*.category": {
+    "enum-without-list": "The category or label the user gave the download in the program itself — handed over verbatim, there is no fixed list to label."
+  }
+}

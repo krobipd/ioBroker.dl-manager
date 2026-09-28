@@ -26,6 +26,14 @@ describe("pyLoad status of a package", () => {
     expect(lines.join()).toContain("99");
   });
 
+  it("turns pyLoad's bare status word into a sentence, keeps a real error text", () => {
+    expect(packageStatus([{ status: 1, error: "offline" }], () => undefined).error).toBe(
+      "offline — the file is not available",
+    );
+    expect(packageStatus([{ status: 8, error: "" }], () => undefined).error).toBe("failed");
+    expect(packageStatus([{ status: 8, error: "Disk full" }], () => undefined).error).toBe("Disk full");
+  });
+
   it("is downloading while one file loads, failed only when nothing runs any more", () => {
     const f = (status: number): { status: number; error?: string } => ({ status });
     expect(packageStatus([f(0), f(12)], () => undefined).status).toBe("downloading");
@@ -43,7 +51,7 @@ describe("pyLoad snapshot from the recorded answers (0.5.0b3.dev101)", () => {
     const s = snap("running");
     const byName = Object.fromEntries(s.items.map(i => [i.name, i]));
     expect(byName.small).toMatchObject({ key: "1", status: "completed" });
-    expect(byName.missing).toMatchObject({ status: "failed", error: "offline" });
+    expect(byName.missing).toMatchObject({ status: "failed", error: "offline — the file is not available" });
     expect(byName.big).toMatchObject({ status: "downloading", sizeBytes: 33554432, speedBps: 1371952, etaSeconds: 21 });
     expect(byName.big.doneBytes).toBe(33554432 - 29294592);
     expect(s.status).toMatchObject({ version: "0.5.0", paused: false, downloadBps: 1371952 });

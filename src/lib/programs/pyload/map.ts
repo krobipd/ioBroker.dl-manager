@@ -34,6 +34,24 @@ export const statusTable = [
 
 const KNOWN = new Set<number>(statusTable.map(([code]) => code));
 
+/** pyLoad's own words for its file states — as an error they need a sentence. */
+const STATUS_TEXT: Readonly<Record<number, string>> = {
+  1: "offline — the file is not available",
+  6: "temporarily offline — pyLoad tries again later",
+  8: "failed",
+};
+const STATUS_WORDS = new Set(["offline", "temp. offline", "failed", ""]);
+
+/**
+ * @param code the file's status code
+ * @param error pyLoad's error field
+ * @returns the error as a sentence: pyLoad's own text, or for its bare status word the meaning of the code
+ */
+function errorText(code: number, error: unknown): string {
+  const e = typeof error === "string" ? error.trim() : "";
+  return STATUS_WORDS.has(e.toLowerCase()) ? (STATUS_TEXT[code] ?? e) : e;
+}
+
 /**
  * The status of a package from its files' codes (`core/datatypes/enums.py`).
  *
@@ -63,7 +81,7 @@ export function packageStatus(
   }
   const failed = files.find(f => [8, 1].includes(num(f.status) ?? -1));
   if (failed) {
-    return { status: "failed", error: typeof failed.error === "string" ? failed.error : "" };
+    return { status: "failed", error: errorText(num(failed.status) ?? 8, failed.error) };
   }
   if (has(9)) {
     return { status: "paused", error: "" };
