@@ -30,6 +30,16 @@
       "lg": 12,
       "xl": 12
     },
+    "_helpCredentials": {
+      "type": "staticText",
+      "text": "help_credentials",
+      "newLine": true,
+      "xs": 12,
+      "sm": 12,
+      "md": 12,
+      "lg": 12,
+      "xl": 12
+    },
     "programs": {
       "type": "table",
       "newLine": true,

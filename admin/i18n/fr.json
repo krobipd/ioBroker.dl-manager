@@ -63,6 +63,7 @@
   "freeSpace": "Espace libre",
   "header_general": "Général",
   "header_programs": "Programmes de téléchargement",
+  "help_credentials": "Colonne Clé API : clé API de SABnzbd, clé API de pyLoad, secret RPC d'aria2, clé API de qBittorrent (à partir de 5.2, au lieu de l'utilisateur et du mot de passe). Deluge n'a besoin que du mot de passe de l'interface web, NZBGet de son utilisateur de contrôle et de son mot de passe. SABnzbd refuse les noms d'hôte qu'il ne connaît pas — saisissez une adresse IP ou ajoutez le nom à host_whitelist. Transmission ne répond qu'aux adresses de sa rpc-whitelist. Un port vide utilise le port par défaut du programme.",
   "help_jdownloader": "JDownloader local : hôte et port de l'API locale (Paramètres avancés, DeprecatedApi), sans mot de passe — uniquement sur le même ordinateur ou réseau Docker. My.JDownloader : utilisateur = e-mail, mot de passe = mot de passe My.JDownloader, appareil = nom de l'appareil.",
   "help_pollInterval": "Fréquence d'interrogation de chaque programme. My.JDownloader est interrogé au plus toutes les 30 secondes.",
   "help_programs": "Une ligne par programme. L'ID fait partie du chemin de l'objet, p. ex. qbittorrent-nas ; le modifier crée un nouvel appareil.",

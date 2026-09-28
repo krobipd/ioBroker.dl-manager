@@ -63,6 +63,7 @@
   "freeSpace": "Vrije ruimte",
   "header_general": "Algemeen",
   "header_programs": "Downloadprogramma's",
+  "help_credentials": "Kolom API-sleutel: SABnzbd-API-sleutel, pyLoad-API-sleutel, aria2-RPC-geheim, qBittorrent-API-sleutel (vanaf 5.2, in plaats van gebruiker en wachtwoord). Deluge heeft alleen het wachtwoord van de webinterface nodig, NZBGet zijn beheergebruiker en wachtwoord. SABnzbd weigert hostnamen die het niet kent — vul een IP-adres in of zet de naam in host_whitelist. Transmission antwoordt alleen adressen uit zijn rpc-whitelist. Een lege poort gebruikt de standaard van het programma.",
   "help_jdownloader": "JDownloader lokaal: host en poort van de lokale API (Geavanceerde instellingen, DeprecatedApi), zonder wachtwoord — alleen op dezelfde computer of hetzelfde Docker-netwerk. My.JDownloader: gebruiker = e-mail, wachtwoord = My.JDownloader-wachtwoord, apparaat = apparaatnaam.",
   "help_pollInterval": "Hoe vaak elk programma wordt gevraagd. My.JDownloader wordt hooguit elke 30 seconden gevraagd.",
   "help_programs": "Eén regel per programma. De ID wordt deel van het objectpad, bv. qbittorrent-nas; wie hem wijzigt, krijgt een nieuw apparaat.",

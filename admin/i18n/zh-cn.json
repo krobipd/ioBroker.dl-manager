@@ -63,6 +63,7 @@
   "freeSpace": "可用空间",
   "header_general": "常规",
   "header_programs": "下载程序",
+  "help_credentials": "“API 密钥”列：SABnzbd API 密钥、pyLoad API 密钥、aria2 RPC 密钥、qBittorrent API 密钥（5.2 起，可替代用户和密码）。Deluge 只需要 Web 界面密码，NZBGet 需要其控制用户和密码。SABnzbd 会拒绝它不认识的主机名——请填写 IP 地址或将该名称加入 host_whitelist。Transmission 只响应其 rpc-whitelist 中的地址。端口留空则使用程序的默认端口。",
   "help_jdownloader": "JDownloader 本地：本地 API 的主机和端口（高级设置，DeprecatedApi），无需密码——仅限同一台电脑或同一 Docker 网络。My.JDownloader：用户 = 邮箱，密码 = My.JDownloader 密码，设备 = 设备名称。",
   "help_pollInterval": "每个程序的查询频率。My.JDownloader 最多每 30 秒查询一次。",
   "help_programs": "每个程序一行。ID 会成为对象路径的一部分，例如 qbittorrent-nas；更改它会创建新设备。",
