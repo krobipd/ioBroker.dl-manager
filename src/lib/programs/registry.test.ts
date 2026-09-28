@@ -36,6 +36,10 @@ describe("registry", () => {
     expect(findProgram("qbittorrent")?.needs).toEqual(["host"]);
   });
 
+  it("knows Transmission (user and password optional)", () => {
+    expect(findProgram("transmission")?.needs).toEqual(["host"]);
+  });
+
   it("returns nothing for an unknown type", () => {
     expect(findProgram("emule")).toBeUndefined();
   });
