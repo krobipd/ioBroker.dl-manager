@@ -1,6 +1,7 @@
 import type { PauseStore } from "../core/emulated-pause";
 import type { ProgramDriver } from "../core/model";
 import { JdDriver } from "./jdownloader/driver";
+import { QbDriver } from "./qbittorrent/driver";
 
 /** One row of the settings table, cleaned and with its secrets decrypted. */
 export interface ProgramConfig {
@@ -56,6 +57,7 @@ export interface ProgramEntry {
 /** THE program list — one line per driver. */
 export const PROGRAMS: readonly ProgramEntry[] = [
   { type: "jdownloader", needs: ["host"], create: (cfg, deps) => new JdDriver(cfg, deps) },
+  { type: "qbittorrent", needs: ["host"], create: (cfg, deps) => new QbDriver(cfg, deps) },
 ];
 
 /**

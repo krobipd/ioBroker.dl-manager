@@ -32,6 +32,10 @@ describe("registry", () => {
     expect(findProgram("jdownloader")?.needs).toEqual(["host"]);
   });
 
+  it("knows qBittorrent (login or API key, so only the host is required)", () => {
+    expect(findProgram("qbittorrent")?.needs).toEqual(["host"]);
+  });
+
   it("returns nothing for an unknown type", () => {
     expect(findProgram("emule")).toBeUndefined();
   });

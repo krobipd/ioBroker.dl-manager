@@ -29,6 +29,25 @@ afterEach(async () => {
 });
 
 describe("HttpClient", () => {
+  it("sends a multipart body with its own boundary", async () => {
+    let type = "";
+    let body = "";
+    const s = await serve((req, b, res) => {
+      type = req.headers["content-type"] ?? "";
+      body = b;
+      res.end("Ok.");
+    });
+    server = s.server;
+    await new HttpClient(timers).request({
+      method: "POST",
+      url: s.url,
+      multipart: { urls: "magnet:?xt=1", stopped: "true" },
+    });
+    expect(type).toMatch(/^multipart\/form-data; boundary=/);
+    expect(body).toContain('name="urls"');
+    expect(body).toContain("magnet:?xt=1");
+  });
+
   it("sends JSON and form bodies and parses a JSON answer", async () => {
     const seen: { type?: string; body: string }[] = [];
     const s = await serve((req, body, res) => {

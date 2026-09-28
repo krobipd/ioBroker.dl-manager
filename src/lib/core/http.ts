@@ -21,6 +21,8 @@ export interface HttpRequest {
   json?: unknown;
   /** Form body (`application/x-www-form-urlencoded`). */
   form?: Record<string, string>;
+  /** Multipart form body (`multipart/form-data`, fetch sets the boundary). */
+  multipart?: Record<string, string>;
   /** Raw body with its own content type in `headers`. */
   body?: string;
 }
@@ -81,10 +83,16 @@ export class HttpClient {
    */
   public async request(req: HttpRequest): Promise<HttpResponse> {
     const headers: Record<string, string> = { ...req.headers };
-    let body: string | undefined = req.body;
+    let body: string | FormData | undefined = req.body;
     if (req.json !== undefined) {
       headers["content-type"] = "application/json";
       body = JSON.stringify(req.json);
+    } else if (req.multipart) {
+      const form = new FormData();
+      for (const [k, v] of Object.entries(req.multipart)) {
+        form.append(k, v);
+      }
+      body = form;
     } else if (req.form) {
       headers["content-type"] = "application/x-www-form-urlencoded";
       body = new URLSearchParams(req.form).toString();
