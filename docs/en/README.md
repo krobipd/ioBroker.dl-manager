@@ -50,6 +50,11 @@ from ioBroker** if you prefer a short list: completed downloads then disappear f
 keeps them. Seeding and failed downloads stay. `remove` on a download takes it off the program's list; the files
 always stay on disk.
 
+## More
+
+- [Every datapoint, per program](datapoints.md)
+- [Frequently asked questions](faq.md)
+
 ## Error reporting
 
 Error reporting via Sentry is active by default; what it sends and how to switch it off is described in the [Sentry section of the main README](../../README.md#sentry--error-reporting).

@@ -50,10 +50,14 @@
     },
     "docs": {
       "en": [
-        "docs/en/README.md"
+        "docs/en/README.md",
+        "docs/en/datapoints.md",
+        "docs/en/faq.md"
       ],
       "de": [
-        "docs/de/README.md"
+        "docs/de/README.md",
+        "docs/de/datapoints.md",
+        "docs/de/faq.md"
       ]
     },
     "authors": [

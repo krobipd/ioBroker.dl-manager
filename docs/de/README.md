@@ -52,6 +52,11 @@ entfernen** ein, wenn du eine kurze Liste willst: Fertige Downloads verschwinden
 behält sie. Weiterverteilte und fehlgeschlagene bleiben. `remove` an einem Download nimmt ihn aus der Liste des
 Programms; die Dateien bleiben immer erhalten.
 
+## Mehr
+
+- [Alle Datenpunkte, je Programm](datapoints.md)
+- [Häufige Fragen](faq.md)
+
 ## Fehlermeldung
 
 Die Fehlermeldung über Sentry ist ab Werk aktiv; was sie sendet und wie man sie abschaltet, steht im [Abschnitt Sentry der Haupt-README](../../README.md#sentry--error-reporting).
