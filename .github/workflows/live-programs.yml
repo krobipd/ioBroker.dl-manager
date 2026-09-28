@@ -1,0 +1,50 @@
+name: Live programs
+
+# Starts every supported download program in a container, puts it into every status it can reach and records the
+# answers the drivers read. The recordings (artifact `fixtures-<program>-<tag>`) are the drivers' test fixtures
+# under test/fixtures/ — nothing here gates a release, it measures the real programs.
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/lib/programs/**"
+      - "test/live/**"
+      - ".github/workflows/live-programs.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-programs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  live-programs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - program: qbittorrent
+            tag: 4.6.7-1
+          - program: qbittorrent
+            tag: 5.1.4-2
+          - program: qbittorrent
+            tag: 5.2.3-1
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.x
+      - name: Record ${{ matrix.program }} ${{ matrix.tag }}
+        run: node test/live/record.mjs "${{ matrix.program }}" "${{ matrix.tag }}"
+      - name: Upload the recordings
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fixtures-${{ matrix.program }}-${{ matrix.tag }}
+          path: ${{ runner.temp }}/fixtures-out/
+          if-no-files-found: warn
