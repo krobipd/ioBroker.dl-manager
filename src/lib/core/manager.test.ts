@@ -152,6 +152,12 @@ describe("ProgramManager — start", () => {
     expect(w.a.val("info.programsTotal")).toBe(2);
   });
 
+  it("gives each program's device its pictogram as an inline data URI", async () => {
+    const w = world({ h1: { snapshot: snap(0) } });
+    await w.manager().start([row("qbittorrent", "nas", "h1")]);
+    expect(String(w.a.objects.get(`${NS}.qbittorrent-nas`)?.common.icon)).toMatch(/^data:image\/svg\+xml;base64,/);
+  });
+
   it("deletes the device of a program that is no longer configured", async () => {
     const w = world({ h1: { snapshot: snap(0) } });
     await seedDevice(w.a, "sabnzbd-old");

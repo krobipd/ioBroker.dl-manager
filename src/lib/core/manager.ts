@@ -1,3 +1,4 @@
+import { deviceIcon } from "../device-icons";
 import { moveWithEnums, type EnumCarryAdapter } from "../enum-carry";
 import { errText } from "../err-text";
 import type { DriverDeps, ProgramEntry } from "../programs/registry";
@@ -154,7 +155,7 @@ export class ProgramManager {
       const driver = entry.create(row.cfg, this.driverDeps(row.id));
       const tree = new ProgramTree(this.a, row.id, name, driver, this.opts);
       await tree.load();
-      await tree.ensureDevice(undefined, addressOf(row.cfg));
+      await tree.ensureDevice(deviceIcon(row.cfg.type), addressOf(row.cfg));
       const oldId = carries.get(row.id);
       if (oldId) {
         await this.carry(oldId, row.id);
