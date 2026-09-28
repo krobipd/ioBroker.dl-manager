@@ -1,3 +1,5 @@
+import type { I18nKey } from "../i18n";
+
 /** The one status list every program maps onto, in display order. */
 export const STATUSES = [
   "queued",
@@ -128,9 +130,9 @@ export interface ExtraDefinition {
   /** Readable. */
   read: boolean;
   /** i18n key of the name in admin/i18n/en.json. */
-  nameKey: string;
+  nameKey: I18nKey;
   /** i18n key of the explanation. */
-  descKey?: string;
+  descKey?: I18nKey;
 }
 
 /** What every program implements. The core never names a program. */
