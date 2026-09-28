@@ -2,7 +2,7 @@
   "_source": {
     "program": "aria2",
     "version": "1.37.0",
-    "request": "POST /jsonrpc {\"jsonrpc\":\"2.0\",\"id\":\"58\",\"method\":\"aria2.addUri\",\"params\":[\"token:<secret>\",[\"magnet:?xt=urn:btih:<secret>01234567&dn=nobody-seeds-this\"]]}",
+    "request": "POST /jsonrpc {\"jsonrpc\":\"2.0\",\"id\":\"58\",\"method\":\"aria2.addUri\",\"params\":[\"token:<secret>\",[\"magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567&dn=nobody-seeds-this\"]]}",
     "recordedAt": "2026-09-28T22:10:51.504Z"
   },
   "status": 200,

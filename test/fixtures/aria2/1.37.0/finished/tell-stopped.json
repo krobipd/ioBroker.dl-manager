@@ -99,7 +99,7 @@
           }
         ],
         "gid": "e78d67576d183baa",
-        "infoHash": "<secret>01234567",
+        "infoHash": "0123456789abcdef0123456789abcdef01234567",
         "numPieces": "0",
         "numSeeders": "0",
         "pieceLength": "16384",

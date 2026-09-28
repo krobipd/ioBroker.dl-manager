@@ -2,7 +2,7 @@
   "_source": {
     "program": "transmission",
     "version": "4.0.6",
-    "request": "POST /transmission/rpc {\"method\":\"torrent-add\",\"arguments\":{\"filename\":\"magnet:?xt=urn:btih:<secret>01234567&dn=nobody-seeds-this\",\"download-dir\":\"/downloads\"},\"tag\":14}",
+    "request": "POST /transmission/rpc {\"method\":\"torrent-add\",\"arguments\":{\"filename\":\"magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567&dn=nobody-seeds-this\",\"download-dir\":\"/downloads\"},\"tag\":14}",
     "recordedAt": "2026-09-28T22:10:58.072Z"
   },
   "status": 200,
@@ -12,7 +12,7 @@
   "body": {
     "arguments": {
       "torrent-added": {
-        "hashString": "<secret>01234567",
+        "hashString": "0123456789abcdef0123456789abcdef01234567",
         "id": 7,
         "name": "nobody-seeds-this"
       }

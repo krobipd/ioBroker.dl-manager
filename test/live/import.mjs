@@ -58,7 +58,8 @@ for (const artifact of readdirSync(src)) {
   for (const file of walk(root).filter(f => f.endsWith(".json"))) {
     let text = readFileSync(file, "utf8");
     for (const s of SECRETS) {
-      text = text.split(s).join("<secret>");
+      // whole tokens only: the dead magnet's info hash contains the SABnzbd test key as a substring
+      text = text.replace(new RegExp(`(?<![0-9A-Za-z])${s}(?![0-9A-Za-z])`, "g"), "<secret>");
     }
     text = text.replace(/\b(\d{1,3}(?:\.\d{1,3}){3})\b/g, (m, ip) =>
       ip.split(".").every(n => Number(n) <= 255) ? docIp(ip) : m,

@@ -42,7 +42,7 @@
       "write_cache_overload": "0"
     },
     "torrents": {
-      "<secret>01234567": {
+      "0123456789abcdef0123456789abcdef01234567": {
         "added_on": 1790633456,
         "amount_left": 0,
         "auto_tmm": false,
@@ -62,10 +62,10 @@
         "force_start": true,
         "has_metadata": false,
         "inactive_seeding_time_limit": -2,
-        "infohash_v1": "<secret>01234567",
+        "infohash_v1": "0123456789abcdef0123456789abcdef01234567",
         "infohash_v2": "",
         "last_activity": 1790633456,
-        "magnet_uri": "magnet:?xt=urn:btih:<secret>01234567&dn=nobody-seeds-this",
+        "magnet_uri": "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567&dn=nobody-seeds-this",
         "max_inactive_seeding_time": -1,
         "max_ratio": -1,
         "max_seeding_time": -1,

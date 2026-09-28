@@ -2,7 +2,7 @@
   "_source": {
     "program": "transmission",
     "version": "4.0.6",
-    "request": "POST /transmission/rpc {\"method\":\"torrent-start-now\",\"arguments\":{\"ids\":[\"<secret>01234567\"]},\"tag\":36}",
+    "request": "POST /transmission/rpc {\"method\":\"torrent-start-now\",\"arguments\":{\"ids\":[\"0123456789abcdef0123456789abcdef01234567\"]},\"tag\":36}",
     "recordedAt": "2026-09-28T22:10:59.599Z"
   },
   "status": 200,

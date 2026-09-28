@@ -184,7 +184,7 @@
           "error": 0,
           "error_string": "",
           "eta": -1,
-          "hash_string": "<secret>01234567",
+          "hash_string": "0123456789abcdef0123456789abcdef01234567",
           "id": 7,
           "is_finished": false,
           "is_stalled": false,

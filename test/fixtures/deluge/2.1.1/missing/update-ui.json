@@ -164,11 +164,11 @@
           "name": "check.bin",
           "label": ""
         },
-        "<secret>01234567": {
+        "0123456789abcdef0123456789abcdef01234567": {
           "state": "Paused",
           "all_time_download": 0,
           "download_payload_rate": 0,
-          "hash": "<secret>01234567",
+          "hash": "0123456789abcdef0123456789abcdef01234567",
           "is_finished": false,
           "message": "OK",
           "paused": true,

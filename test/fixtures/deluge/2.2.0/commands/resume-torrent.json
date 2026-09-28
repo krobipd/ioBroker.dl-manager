@@ -2,7 +2,7 @@
   "_source": {
     "program": "deluge",
     "version": "2.2.0",
-    "request": "POST /json {\"method\":\"core.resume_torrent\",\"params\":[[\"<secret>01234567\"]],\"id\":35}",
+    "request": "POST /json {\"method\":\"core.resume_torrent\",\"params\":[[\"0123456789abcdef0123456789abcdef01234567\"]],\"id\":35}",
     "recordedAt": "2026-09-28T22:10:54.732Z"
   },
   "status": 200,

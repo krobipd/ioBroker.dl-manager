@@ -10,7 +10,7 @@
     "content-type": "application/json"
   },
   "body": {
-    "added_torrent_ids": ["<secret>01234567"],
+    "added_torrent_ids": ["0123456789abcdef0123456789abcdef01234567"],
     "failure_count": 0,
     "pending_count": 0,
     "success_count": 1
