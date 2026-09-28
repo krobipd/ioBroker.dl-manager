@@ -2,7 +2,7 @@
 // job), a 404 URL for the failed fetch, the rate limit to keep a download running. api-usenet-aria2-pyload.md § 2.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { Http, nzbOf, prepareUsenet, Recorder, sh, waitFor } from "../lib.mjs";
+import { Http, nzbOf, prepareUsenet, pull, Recorder, sh, waitFor } from "../lib.mjs";
 
 const USER = "admin";
 const PASS = "testpass1";
@@ -20,6 +20,7 @@ export function prepare(work, tag) {
   // The image copies its default configuration only when /config/nzbget.conf is missing — so the default is read
   // from the image, its first news server pointed at NServ, and the file laid in before the start.
   const image = `nzbgetcom/nzbget:${tag}`;
+  pull(image);
   const defaults = sh("docker", ["run", "--rm", "--entrypoint", "cat", image, "/app/nzbget/share/nzbget/nzbget.conf"]);
   const server = {
     Active: "yes",

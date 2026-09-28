@@ -7,7 +7,7 @@
 // only ever see the seed server and each other.
 import { mkdirSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { OUT, sh } from "./lib.mjs";
+import { OUT, pull, sh } from "./lib.mjs";
 
 const [program, tag, mode] = process.argv.slice(2);
 if (!program || !tag) {
@@ -30,8 +30,8 @@ if (mode === "--inside") {
   const out = resolve(process.env.RUNNER_TEMP ?? "/tmp", OUT);
   mkdirSync(out, { recursive: true });
   const c = mod.prepare(work, tag);
-  sh("docker", ["pull", "-q", NODE_IMAGE]);
-  sh("docker", ["pull", "-q", c.image]);
+  pull(NODE_IMAGE);
+  pull(c.image);
   sh("docker", ["network", "create", "--internal", "dm"]);
   sh("docker", [
     "run",
@@ -50,7 +50,7 @@ if (mode === "--inside") {
     "/seed",
   ]);
   for (const side of c.sidecars ?? []) {
-    sh("docker", ["pull", "-q", side.image]);
+    pull(side.image);
     sh("docker", [
       "run",
       "-d",

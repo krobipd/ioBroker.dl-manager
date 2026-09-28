@@ -126,7 +126,16 @@ export async function record(_ctx) {
   // unpauseAll released the paused one too — remove a freshly added paused download
   const doomed = (await add("stopped", { pause: "true" })).json().result;
   w("commands", "remove", await rpc("aria2.remove", [doomed]));
-  await waitFor("doomed removed", async () => (await status(doomed)) === "removed");
+  // run 36489750113: after remove, tellStatus never said "removed" — record what it does say, accept both
+  await waitFor("doomed gone", async () => {
+    const st = await rpc("aria2.tellStatus", [doomed, ["status"]]);
+    const s = st.json().result?.status;
+    if (s === "removed" || st.json().error) {
+      w("commands", "tell-status-after-remove", st);
+      return true;
+    }
+    return false;
+  });
   await snapshot("finished");
   w("commands", "remove-download-result", await rpc("aria2.removeDownloadResult", [missing]));
   return rec;

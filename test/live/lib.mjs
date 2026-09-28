@@ -27,6 +27,26 @@ export function sh(cmd, args, opts = {}) {
 }
 
 /**
+ * Pulls an image; the registries fail now and then (lscr.io, run 36489750113), so three tries 20 s apart.
+ *
+ * @param {string} image image reference
+ */
+export function pull(image) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      sh("docker", ["pull", "-q", image]);
+      return;
+    } catch (err) {
+      if (attempt === 3) {
+        throw err;
+      }
+      console.log(`pull of ${image} failed (attempt ${attempt}) — again in 20 s`);
+      execFileSync("sleep", ["20"]);
+    }
+  }
+}
+
+/**
  * Waits until `probe` returns a truthy value — a loop with a deadline, never a fixed sleep.
  *
  * @template T

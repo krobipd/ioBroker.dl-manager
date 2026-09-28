@@ -5,7 +5,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { Http, payload, prepareHttpFiles, Recorder, sh, waitFor } from "../lib.mjs";
+import { Http, payload, prepareHttpFiles, pull, Recorder, sh, waitFor } from "../lib.mjs";
 
 const MiB = 1024 * 1024;
 
@@ -32,7 +32,7 @@ export function prepare(work, tag) {
   const image = `jlesage/jdownloader-2:${tag}`;
   const cfg = join(work, "jd", "cfg");
   mkdirSync(join(work, "jd"), { recursive: true });
-  sh("docker", ["pull", "-q", image]);
+  pull(image);
   sh("docker", ["create", "--name", "jd-defaults", image]);
   sh("docker", ["cp", "jd-defaults:/defaults/cfg", cfg]);
   sh("docker", ["rm", "jd-defaults"]);
@@ -155,9 +155,21 @@ export async function record(_ctx) {
       { links: `http://seed:8080/${file}`, autostart: true, assignJobID: true, packageName: name, ...extra },
     ]);
     const job = res.json().data?.id;
-    const pkg = await waitFor(`${name} in the download list`, async () => {
-      const l = (await links()).find(x => x.jobUUID === job);
-      return l?.packageUUID;
+    const inList = async () => (await links()).find(x => x.jobUUID === job)?.packageUUID;
+    const pkg = await waitFor(`${name} in the download list`, inList, 30_000).catch(async () => {
+      // an offline link (404) stays in the link grabber despite autostart — move it over like a user would
+      const crawled = await call("/linkgrabberv2/queryLinks", [{ jobUUIDs: [job], availability: true, status: true }]);
+      w("open-points", `linkgrabber-${name}`, crawled);
+      const cl = crawled.json().data ?? [];
+      w(
+        "open-points",
+        `move-to-downloadlist-${name}`,
+        await call("/linkgrabberv2/moveToDownloadlist", [
+          cl.map(l => l.uuid),
+          [...new Set(cl.map(l => l.packageUUID))],
+        ]),
+      );
+      return waitFor(`${name} in the download list after moving`, inList, 30_000);
     });
     return { res, pkg };
   };
