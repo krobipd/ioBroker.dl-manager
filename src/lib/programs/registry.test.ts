@@ -56,6 +56,10 @@ describe("registry", () => {
     expect(findProgram("aria2")?.needs).toEqual(["host"]);
   });
 
+  it("knows pyLoad (API key, or user and password on builds before 0.5.0b3.dev97)", () => {
+    expect(findProgram("pyload")?.needs).toEqual(["host"]);
+  });
+
   it("returns nothing for an unknown type", () => {
     expect(findProgram("emule")).toBeUndefined();
   });

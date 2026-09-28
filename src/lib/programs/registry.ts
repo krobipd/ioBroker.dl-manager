@@ -4,6 +4,7 @@ import { AriaDriver } from "./aria2/driver";
 import { DlDriver } from "./deluge/driver";
 import { JdDriver } from "./jdownloader/driver";
 import { NzbDriver } from "./nzbget/driver";
+import { PyDriver } from "./pyload/driver";
 import { QbDriver } from "./qbittorrent/driver";
 import { SabDriver } from "./sabnzbd/driver";
 import { TrDriver } from "./transmission/driver";
@@ -68,6 +69,7 @@ export const PROGRAMS: readonly ProgramEntry[] = [
   { type: "sabnzbd", needs: ["host", "apiKey"], create: (cfg, deps) => new SabDriver(cfg, deps) },
   { type: "nzbget", needs: ["host"], create: (cfg, deps) => new NzbDriver(cfg, deps) },
   { type: "aria2", needs: ["host"], create: (cfg, deps) => new AriaDriver(cfg, deps) },
+  { type: "pyload", needs: ["host"], create: (cfg, deps) => new PyDriver(cfg, deps) },
 ];
 
 /**
