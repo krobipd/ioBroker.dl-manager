@@ -109,6 +109,8 @@ export async function record(ctx) {
   const hash = name => torrentOf(ctx.work, name).hash;
   const stateOf = async name => (await torrents()).find(t => t.hash === hash(name))?.state;
 
+  // qBittorrent refreshes torrent states every 1.5 s by default — a recheck of 1 GiB ends between two refreshes
+  await qb.req("POST", "/api/v2/app/setPreferences", { form: { json: JSON.stringify({ refresh_interval: 50 }) } });
   await snapshot("empty");
 
   const add = async (name, extra = {}) => {

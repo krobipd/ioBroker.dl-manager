@@ -34,6 +34,14 @@ jobs:
             tag: 5.1.4-2
           - program: qbittorrent
             tag: 5.2.3-1
+          - program: transmission
+            tag: 4.0.6-r6-ls326
+          - program: transmission
+            tag: 4.1.3-r0-ls362
+          - program: deluge
+            tag: 2.1.1-r10-ls324
+          - program: deluge
+            tag: 2.2.0-ls383
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
