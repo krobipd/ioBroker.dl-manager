@@ -1,3 +1,4 @@
+import type { PauseStore } from "../core/emulated-pause";
 import type { ProgramDriver } from "../core/model";
 import { JdDriver } from "./jdownloader/driver";
 
@@ -38,6 +39,8 @@ export interface DriverDeps {
   clearTimeout(t: ioBroker.Timeout | undefined): void;
   /** The adapter log. */
   log: { debug(msg: string): void; info(msg: string): void; warn(msg: string): void };
+  /** Where an emulated global pause keeps its state (absent in the connection test — then kept in memory). */
+  pauseStore?: PauseStore;
 }
 
 /** A program the adapter can talk to. */

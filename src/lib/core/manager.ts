@@ -3,6 +3,7 @@ import { errText } from "../err-text";
 import type { DriverDeps, ProgramEntry } from "../programs/registry";
 import { routeState, type RouteTarget } from "./commands";
 import { addressOf, parsePrograms, type ProgramRow } from "./config";
+import { type PauseState, type PauseStore } from "./emulated-pause";
 import { classify } from "./errors";
 import type { Command, ProgramDriver } from "./model";
 import { redact } from "./redact";
@@ -15,6 +16,35 @@ import { toMBps } from "./units";
 export interface ManagerAdapter extends TreeAdapter {
   /** Reads an object by its full id (enums). */
   getForeignObjectAsync(id: string): Promise<ioBroker.Object | null | undefined>;
+}
+
+/**
+ * The emulated pause of one program keeps its state in the `native` of that program's `paused` datapoint — written
+ * only on a change, read back after a restart (plan § 5.3). Nothing is stored while the object does not exist.
+ *
+ * @param adapter object access
+ * @param id full id of the `paused` datapoint
+ * @returns the store
+ */
+export function objectPauseStore(adapter: ManagerAdapter, id: string): PauseStore {
+  return {
+    load: async () => {
+      const saved: unknown = (await adapter.getForeignObjectAsync(id))?.native?.emulatedPause;
+      const s = saved && typeof saved === "object" ? (saved as Partial<PauseState>) : {};
+      return {
+        paused: s.paused === true,
+        keys: Array.isArray(s.keys) ? s.keys.filter((k): k is string => typeof k === "string") : [],
+      };
+    },
+    save: async state => {
+      const obj = await adapter.getForeignObjectAsync(id);
+      if (!obj) {
+        return;
+      }
+      obj.native = { ...obj.native, emulatedPause: { paused: state.paused, keys: [...state.keys] } };
+      await adapter.setForeignObject(id, obj);
+    },
+  };
 }
 
 /** Everything the manager needs from outside. */
@@ -121,7 +151,7 @@ export class ProgramManager {
       if (!entry) {
         continue;
       }
-      const driver = entry.create(row.cfg, this.driverDeps());
+      const driver = entry.create(row.cfg, this.driverDeps(row.id));
       const tree = new ProgramTree(this.a, row.id, name, driver, this.opts);
       await tree.load();
       await tree.ensureDevice(undefined, addressOf(row.cfg));
@@ -219,8 +249,12 @@ export class ProgramManager {
     }
   }
 
-  private driverDeps(): DriverDeps {
-    return { ...this.deps.timers, log: this.a.log };
+  private driverDeps(programId?: string): DriverDeps {
+    return {
+      ...this.deps.timers,
+      log: this.a.log,
+      ...(programId ? { pauseStore: objectPauseStore(this.a, `${this.a.namespace}.${programId}.paused`) } : {}),
+    };
   }
 
   private target(id: string): RouteTarget | undefined {

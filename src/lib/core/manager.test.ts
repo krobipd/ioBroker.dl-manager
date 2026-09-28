@@ -8,7 +8,7 @@ vi.mock("@iobroker/adapter-core", () => ({
 import { FakeAdapter } from "../../../test/helpers/fake-adapter";
 import type { DriverDeps, ProgramConfig, ProgramEntry } from "../programs/registry";
 import { AuthError, UnreachableError } from "./errors";
-import { ProgramManager } from "./manager";
+import { objectPauseStore, ProgramManager } from "./manager";
 import type { Capability, Command, DownloadItem, ProgramDriver, ProgramSnapshot } from "./model";
 
 const NS = "download-manager.0";
@@ -259,6 +259,30 @@ describe("ProgramManager — user writes", () => {
     const before = w.a.logs.length;
     await m.onUserWrite("qbittorrent-a.paused", true);
     expect(w.a.logs.slice(before)).toEqual([]);
+  });
+});
+
+describe("objectPauseStore", () => {
+  it("keeps the pause state in the native of the paused datapoint, and nothing while that object is missing", async () => {
+    const a = new FakeAdapter(NS);
+    const store = objectPauseStore(a, `${NS}.qbittorrent-nas.paused`);
+    expect(await store.load()).toEqual({ paused: false, keys: [] });
+    await store.save({ paused: true, keys: ["h1"] });
+    expect(a.objects.has(`${NS}.qbittorrent-nas.paused`)).toBe(false);
+    await a.setForeignObject(`${NS}.qbittorrent-nas.paused`, {
+      type: "state",
+      common: { name: "paused", type: "boolean", role: "switch", read: true, write: true },
+      native: { other: 1 },
+    });
+    await store.save({ paused: true, keys: ["h1", "h2"] });
+    expect(a.objects.get(`${NS}.qbittorrent-nas.paused`)?.native).toEqual({
+      other: 1,
+      emulatedPause: { paused: true, keys: ["h1", "h2"] },
+    });
+    expect(await objectPauseStore(a, `${NS}.qbittorrent-nas.paused`).load()).toEqual({
+      paused: true,
+      keys: ["h1", "h2"],
+    });
   });
 });
 
