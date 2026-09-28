@@ -1,0 +1,18 @@
+{
+  "_source": {
+    "program": "deluge",
+    "version": "2.2.0",
+    "request": "POST /json {\"method\":\"core.set_config\",\"params\":[{\"max_download_speed\":2000,\"max_upload_speed\":500}],\"id\":76}",
+    "recordedAt": "2026-09-28T22:10:55.979Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "set-cookie": "<omitted>"
+  },
+  "body": {
+    "result": null,
+    "error": null,
+    "id": 76
+  }
+}

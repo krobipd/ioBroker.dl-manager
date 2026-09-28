@@ -1,0 +1,20 @@
+{
+  "_source": {
+    "program": "deluge",
+    "version": "2.1.1",
+    "request": "POST /json {\"method\":\"web.update_ui\",\"params\":[[\"hash\",\"name\",\"state\",\"progress\",\"total_wanted\",\"total_done\",\"total_size\",\"total_remaining\",\"download_payload_rate\",\"upload_payload_rate\",\"eta\",\"ratio\",\"time_added\",\"completed_time\",\"message\",\"is_finished\",\"paused\",\"total_uploaded\",\"all_time_download\",\"download_location\",\"tracker_status\",\"queue\",\"label\"],{}],\"id\":6}",
+    "recordedAt": "2026-09-28T22:10:54.597Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "result": null,
+    "error": {
+      "message": "Not authenticated",
+      "code": 1
+    },
+    "id": 6
+  }
+}

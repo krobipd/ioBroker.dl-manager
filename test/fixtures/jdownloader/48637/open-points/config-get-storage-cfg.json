@@ -1,0 +1,13 @@
+{
+  "_source": {
+    "program": "jdownloader",
+    "version": "48637",
+    "request": "POST {\"apiVer\":1,\"url\":\"/config/get\",\"params\":[\"org.jdownloader.settings.GeneralSettings\",\"cfg\",\"DownloadSpeedLimit\"],\"rid\":13}",
+    "recordedAt": "2026-09-28T22:11:25.790Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {}
+}

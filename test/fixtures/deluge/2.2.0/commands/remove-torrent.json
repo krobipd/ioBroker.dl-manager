@@ -1,0 +1,18 @@
+{
+  "_source": {
+    "program": "deluge",
+    "version": "2.2.0",
+    "request": "POST /json {\"method\":\"core.remove_torrent\",\"params\":[\"38b12b1a4fffb255161b45e772882bebe94d3b30\",false],\"id\":137}",
+    "recordedAt": "2026-09-28T22:11:48.385Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "set-cookie": "<omitted>"
+  },
+  "body": {
+    "result": true,
+    "error": null,
+    "id": 137
+  }
+}

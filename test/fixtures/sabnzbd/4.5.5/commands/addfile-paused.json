@@ -1,0 +1,16 @@
+{
+  "_source": {
+    "program": "sabnzbd",
+    "version": "4.5.5",
+    "request": "POST /api?mode=addfile&priority=-2 (multipart name)",
+    "recordedAt": "2026-09-28T22:10:59.490Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json;charset=UTF-8"
+  },
+  "body": {
+    "status": true,
+    "nzo_ids": ["SABnzbd_nzo_8lc27k4h"]
+  }
+}

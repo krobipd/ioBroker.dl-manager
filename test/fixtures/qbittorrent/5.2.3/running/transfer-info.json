@@ -1,0 +1,24 @@
+{
+  "_source": {
+    "program": "qbittorrent",
+    "version": "5.2.3",
+    "request": "GET /api/v2/transfer/info",
+    "recordedAt": "2026-09-28T22:10:59.156Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "connection_status": "firewalled",
+    "dht_nodes": 0,
+    "dl_info_data": 4849664,
+    "dl_info_speed": 1306669,
+    "dl_rate_limit": 0,
+    "last_external_address_v4": "",
+    "last_external_address_v6": "",
+    "up_info_data": 0,
+    "up_info_speed": 0,
+    "up_rate_limit": 0
+  }
+}

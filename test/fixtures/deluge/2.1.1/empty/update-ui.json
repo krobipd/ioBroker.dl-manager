@@ -1,0 +1,55 @@
+{
+  "_source": {
+    "program": "deluge",
+    "version": "2.1.1",
+    "request": "POST /json {\"method\":\"web.update_ui\",\"params\":[[\"hash\",\"name\",\"state\",\"progress\",\"total_wanted\",\"total_done\",\"total_size\",\"total_remaining\",\"download_payload_rate\",\"upload_payload_rate\",\"eta\",\"ratio\",\"time_added\",\"completed_time\",\"message\",\"is_finished\",\"paused\",\"total_uploaded\",\"all_time_download\",\"download_location\",\"tracker_status\",\"queue\",\"label\"],{}],\"id\":14}",
+    "recordedAt": "2026-09-28T22:10:54.626Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "set-cookie": "<omitted>"
+  },
+  "body": {
+    "result": {
+      "connected": true,
+      "torrents": {},
+      "filters": {
+        "state": [
+          ["All", 0],
+          ["Active", 0],
+          ["Allocating", 0],
+          ["Checking", 0],
+          ["Downloading", 0],
+          ["Seeding", 0],
+          ["Paused", 0],
+          ["Error", 0],
+          ["Queued", 0],
+          ["Moving", 0]
+        ],
+        "tracker_host": [
+          ["All", 0],
+          ["Error", 0]
+        ],
+        "owner": [["", 0]],
+        "label": [["All", 0]]
+      },
+      "stats": {
+        "max_download": -1,
+        "max_upload": -1,
+        "max_num_connections": 200,
+        "num_connections": 0,
+        "upload_rate": 0,
+        "download_rate": 0,
+        "download_protocol_rate": 0,
+        "upload_protocol_rate": 0,
+        "dht_nodes": 0,
+        "has_incoming_connections": 0,
+        "free_space": 90856005632,
+        "external_ip": null
+      }
+    },
+    "error": null,
+    "id": 14
+  }
+}

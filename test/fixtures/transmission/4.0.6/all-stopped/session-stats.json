@@ -1,0 +1,37 @@
+{
+  "_source": {
+    "program": "transmission",
+    "version": "4.0.6",
+    "request": "POST /transmission/rpc {\"method\":\"session-stats\",\"arguments\":{},\"tag\":89}",
+    "recordedAt": "2026-09-28T22:11:10.172Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=UTF-8"
+  },
+  "body": {
+    "arguments": {
+      "activeTorrentCount": 4,
+      "cumulative-stats": {
+        "downloadedBytes": 33554432,
+        "filesAdded": 1,
+        "secondsActive": 13,
+        "sessionCount": 1,
+        "uploadedBytes": 0
+      },
+      "current-stats": {
+        "downloadedBytes": 33554432,
+        "filesAdded": 1,
+        "secondsActive": 13,
+        "sessionCount": 1,
+        "uploadedBytes": 0
+      },
+      "downloadSpeed": 917504,
+      "pausedTorrentCount": 3,
+      "torrentCount": 7,
+      "uploadSpeed": 0
+    },
+    "result": "success",
+    "tag": 89
+  }
+}

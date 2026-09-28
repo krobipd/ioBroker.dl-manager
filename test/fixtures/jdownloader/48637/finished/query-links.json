@@ -1,0 +1,184 @@
+{
+  "_source": {
+    "program": "jdownloader",
+    "version": "48637",
+    "request": "POST {\"apiVer\":1,\"url\":\"/downloadsV2/queryLinks\",\"params\":[{\"addedDate\":true,\"advancedStatus\":true,\"bytesLoaded\":true,\"bytesTotal\":true,\"comment\":true,\"enabled\":true,\"eta\":true,\"extractionStatus\":true,\"finished\":true,\"finishedDate\":true,\"host\":true,\"jobUUID\":true,\"priority\":true,\"running\":true,\"skipped\":true,\"speed\":true,\"status\":true,\"url\":true,\"maxResults\":-1,\"startAt\":0}],\"rid\":424}",
+    "recordedAt": "2026-09-28T22:13:38.566Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "data": [
+      {
+        "addedDate": 1790633485827,
+        "statusIconKey": "true",
+        "finished": true,
+        "packageUUID": 1790633501919,
+        "uuid": 1790633486909,
+        "speed": 0,
+        "url": "http://seed:8080/small.bin",
+        "enabled": true,
+        "bytesLoaded": 2097152,
+        "jobUUID": 1790633485818,
+        "advancedStatus": {
+          "FinalLinkState": {
+            "iconKey": "true",
+            "label": "Finished",
+            "id": "FINISHED"
+          },
+          "AvailableStatus": {
+            "iconKey": "true",
+            "label": "Online",
+            "id": "TRUE"
+          }
+        },
+        "host": "http links",
+        "name": "small.bin",
+        "bytesTotal": 2097152,
+        "finishedDate": 1790633503998,
+        "status": "Finished"
+      },
+      {
+        "addedDate": 1790633502045,
+        "statusIconKey": "false",
+        "packageUUID": 1790633532205,
+        "uuid": 1790633502093,
+        "speed": 0,
+        "url": "http://seed:8080/missing.bin",
+        "enabled": true,
+        "bytesLoaded": 0,
+        "jobUUID": 1790633502045,
+        "advancedStatus": {
+          "FinalLinkState": {
+            "iconKey": "false",
+            "label": "File not found",
+            "id": "OFFLINE"
+          },
+          "AvailableStatus": {
+            "iconKey": "error",
+            "label": "Offline",
+            "id": "FALSE"
+          }
+        },
+        "host": "http links",
+        "name": "missing.bin",
+        "bytesTotal": 0,
+        "status": "File not found"
+      },
+      {
+        "addedDate": 1790633532235,
+        "statusIconKey": "true",
+        "finished": true,
+        "packageUUID": 1790633547449,
+        "uuid": 1790633532446,
+        "speed": 0,
+        "url": "http://seed:8080/big.bin",
+        "enabled": true,
+        "bytesLoaded": 33554432,
+        "jobUUID": 1790633532234,
+        "advancedStatus": {
+          "FinalLinkState": {
+            "iconKey": "true",
+            "label": "Finished",
+            "id": "FINISHED"
+          },
+          "AvailableStatus": {
+            "iconKey": "true",
+            "label": "Online",
+            "id": "TRUE"
+          }
+        },
+        "host": "http links",
+        "name": "big.bin",
+        "bytesTotal": 33554432,
+        "finishedDate": 1790633580546,
+        "status": "Finished"
+      },
+      {
+        "addedDate": 1790633547818,
+        "statusIconKey": "true",
+        "finished": true,
+        "packageUUID": 1790633562849,
+        "uuid": 1790633547845,
+        "speed": 0,
+        "url": "http://seed:8080/queued.bin",
+        "enabled": true,
+        "bytesLoaded": 4194304,
+        "jobUUID": 1790633547817,
+        "advancedStatus": {
+          "FinalLinkState": {
+            "iconKey": "true",
+            "label": "Finished",
+            "id": "FINISHED"
+          },
+          "AvailableStatus": {
+            "iconKey": "true",
+            "label": "Online",
+            "id": "TRUE"
+          }
+        },
+        "host": "http links",
+        "name": "queued.bin",
+        "bytesTotal": 4194304,
+        "finishedDate": 1790633584581,
+        "status": "Finished"
+      },
+      {
+        "bytesLoaded": 0,
+        "addedDate": 1790633562924,
+        "jobUUID": 1790633562924,
+        "advancedStatus": {
+          "AvailableStatus": {
+            "iconKey": "true",
+            "label": "Online",
+            "id": "TRUE"
+          }
+        },
+        "host": "http links",
+        "name": "stopped.bin",
+        "packageUUID": 1790633577953,
+        "uuid": 1790633562947,
+        "bytesTotal": 4194304,
+        "speed": 0,
+        "url": "http://seed:8080/stopped.bin"
+      },
+      {
+        "extractionStatus": "SUCCESSFUL",
+        "addedDate": 1790633579148,
+        "statusIconKey": "extract_ok",
+        "finished": true,
+        "packageUUID": 1790633594188,
+        "uuid": 1790633579174,
+        "speed": 0,
+        "url": "http://seed:8080/archive.zip",
+        "enabled": true,
+        "bytesLoaded": 25165944,
+        "jobUUID": 1790633579147,
+        "advancedStatus": {
+          "FinalLinkState": {
+            "iconKey": "true",
+            "label": "Finished",
+            "id": "FINISHED"
+          },
+          "ExtractionStatus": {
+            "label": "Extraction OK",
+            "id": "SUCCESSFUL",
+            "iconKey": "extract_ok"
+          },
+          "AvailableStatus": {
+            "iconKey": "true",
+            "label": "Online",
+            "id": "TRUE"
+          }
+        },
+        "host": "http links",
+        "name": "archive.zip",
+        "bytesTotal": 25165944,
+        "finishedDate": 1790633618336,
+        "status": "Extraction OK"
+      }
+    ]
+  }
+}

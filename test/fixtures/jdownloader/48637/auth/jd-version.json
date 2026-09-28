@@ -1,0 +1,15 @@
+{
+  "_source": {
+    "program": "jdownloader",
+    "version": "48637",
+    "request": "POST {\"apiVer\":1,\"url\":\"/jd/version\",\"params\":[],\"rid\":9}",
+    "recordedAt": "2026-09-28T22:11:25.767Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "data": 48637
+  }
+}

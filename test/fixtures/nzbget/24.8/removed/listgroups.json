@@ -1,0 +1,95 @@
+{
+  "_source": {
+    "program": "nzbget",
+    "version": "24.8",
+    "request": "POST /jsonrpc {\"method\":\"listgroups\",\"params\":[0],\"id\":73}",
+    "recordedAt": "2026-09-28T22:10:54.294Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "set-cookie": "<omitted>"
+  },
+  "body": {
+    "version": "1.1",
+    "id": 73,
+    "result": [
+      {
+        "FirstID": 5,
+        "LastID": 5,
+        "RemainingSizeLo": 0,
+        "RemainingSizeHi": 0,
+        "RemainingSizeMB": 0,
+        "PausedSizeLo": 0,
+        "PausedSizeHi": 0,
+        "PausedSizeMB": 0,
+        "RemainingFileCount": 0,
+        "RemainingParCount": 0,
+        "MinPriority": 0,
+        "MaxPriority": 0,
+        "ActiveDownloads": 0,
+        "Status": "UNPACKING",
+        "NZBID": 5,
+        "NZBName": "queued",
+        "NZBNicename": "queued",
+        "Kind": "NZB",
+        "URL": "",
+        "NZBFilename": "queued.nzb",
+        "DestDir": "/downloads/intermediate/queued.#5",
+        "FinalDir": "",
+        "Category": "",
+        "ParStatus": "NONE",
+        "ExParStatus": "NONE",
+        "UnpackStatus": "NONE",
+        "MoveStatus": "NONE",
+        "ScriptStatus": "NONE",
+        "DeleteStatus": "NONE",
+        "MarkStatus": "NONE",
+        "UrlStatus": "NONE",
+        "FileSizeLo": 8388608,
+        "FileSizeHi": 0,
+        "FileSizeMB": 8,
+        "FileCount": 1,
+        "MinPostTime": 1700000000,
+        "MaxPostTime": 1700000000,
+        "TotalArticles": 17,
+        "SuccessArticles": 17,
+        "FailedArticles": 0,
+        "Health": 1000,
+        "CriticalHealth": 1000,
+        "DupeKey": "",
+        "DupeScore": 0,
+        "DupeMode": "SCORE",
+        "Deleted": false,
+        "DownloadedSizeLo": 8722850,
+        "DownloadedSizeHi": 0,
+        "DownloadedSizeMB": 8,
+        "DownloadTimeSec": 0,
+        "PostTotalTimeSec": 1,
+        "ParTimeSec": 0,
+        "RepairTimeSec": 0,
+        "UnpackTimeSec": 0,
+        "MessageCount": 10,
+        "ExtraParBlocks": 0,
+        "Parameters": [
+          {
+            "Name": "*Unpack:",
+            "Value": "yes"
+          }
+        ],
+        "ScriptStatuses": [],
+        "ServerStats": [
+          {
+            "ServerID": 1,
+            "SuccessArticles": 17,
+            "FailedArticles": 0
+          }
+        ],
+        "PostInfoText": "",
+        "PostStageProgress": 0,
+        "PostStageTimeSec": 0,
+        "Log": []
+      }
+    ]
+  }
+}

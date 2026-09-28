@@ -1,0 +1,15 @@
+{
+  "_source": {
+    "program": "jdownloader",
+    "version": "48637",
+    "request": "POST {\"apiVer\":1,\"url\":\"/config/set\",\"params\":[\"org.jdownloader.settings.GeneralSettings\",null,\"DownloadSpeedLimitEnabled\",true],\"rid\":241}",
+    "recordedAt": "2026-09-28T22:12:58.081Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "data": true
+  }
+}

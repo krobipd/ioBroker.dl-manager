@@ -1,0 +1,17 @@
+{
+  "_source": {
+    "program": "aria2",
+    "version": "1.37.0",
+    "request": "POST /jsonrpc {\"jsonrpc\":\"2.0\",\"id\":\"107\",\"method\":\"aria2.removeDownloadResult\",\"params\":[\"token:<secret>\",\"3fa7579e428726b8\"]}",
+    "recordedAt": "2026-09-28T22:11:23.588Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json-rpc"
+  },
+  "body": {
+    "id": "107",
+    "jsonrpc": "2.0",
+    "result": "OK"
+  }
+}

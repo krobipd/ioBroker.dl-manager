@@ -1,0 +1,18 @@
+{
+  "_source": {
+    "program": "nzbget",
+    "version": "24.8",
+    "request": "POST /jsonrpc {\"method\":\"editqueue\",\"params\":[\"GroupPause\",\"\",[5]],\"id\":52}",
+    "recordedAt": "2026-09-28T22:10:51.731Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "set-cookie": "<omitted>"
+  },
+  "body": {
+    "version": "1.1",
+    "id": 52,
+    "result": true
+  }
+}

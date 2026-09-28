@@ -1,0 +1,33 @@
+{
+  "_source": {
+    "program": "pyload",
+    "version": "0.5.0",
+    "request": "GET /api/status_downloads",
+    "recordedAt": "2026-09-28T22:11:04.711Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": [
+    {
+      "fid": 4,
+      "name": "queued.bin",
+      "speed": 0,
+      "eta": 0,
+      "format_eta": "00:00:00",
+      "bleft": 2686976,
+      "size": 4194304,
+      "format_size": "4.00 MiB",
+      "percent": 35,
+      "status": 12,
+      "statusmsg": "downloading",
+      "format_wait": "00:00:00",
+      "wait_until": 0,
+      "package_id": 4,
+      "package_name": "queued",
+      "plugin": "DefaultPlugin",
+      "info": ""
+    }
+  ]
+}

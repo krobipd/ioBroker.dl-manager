@@ -1,0 +1,222 @@
+{
+  "_source": {
+    "program": "aria2",
+    "version": "1.37.0",
+    "request": "POST /jsonrpc {\"jsonrpc\":\"2.0\",\"id\":\"104\",\"method\":\"aria2.tellStopped\",\"params\":[\"token:<secret>\",0,1000]}",
+    "recordedAt": "2026-09-28T22:11:23.584Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json-rpc"
+  },
+  "body": {
+    "id": "104",
+    "jsonrpc": "2.0",
+    "result": [
+      {
+        "bitfield": "c0",
+        "completedLength": "2097152",
+        "connections": "0",
+        "dir": "/downloads",
+        "downloadSpeed": "0",
+        "errorCode": "0",
+        "errorMessage": "",
+        "files": [
+          {
+            "completedLength": "2097152",
+            "index": "1",
+            "length": "2097152",
+            "path": "/downloads/small.bin",
+            "selected": "true",
+            "uris": [
+              {
+                "status": "used",
+                "uri": "http://seed:8080/small.bin"
+              },
+              {
+                "status": "waiting",
+                "uri": "http://seed:8080/small.bin"
+              }
+            ]
+          }
+        ],
+        "gid": "523bcf9781d13660",
+        "numPieces": "2",
+        "pieceLength": "1048576",
+        "status": "complete",
+        "totalLength": "2097152",
+        "uploadLength": "0",
+        "uploadSpeed": "0"
+      },
+      {
+        "completedLength": "0",
+        "connections": "0",
+        "dir": "/downloads",
+        "downloadSpeed": "0",
+        "errorCode": "3",
+        "errorMessage": "Resource not found",
+        "files": [
+          {
+            "completedLength": "0",
+            "index": "1",
+            "length": "0",
+            "path": "",
+            "selected": "true",
+            "uris": [
+              {
+                "status": "used",
+                "uri": "http://seed:8080/missing.bin"
+              }
+            ]
+          }
+        ],
+        "gid": "3fa7579e428726b8",
+        "numPieces": "0",
+        "pieceLength": "1048576",
+        "status": "error",
+        "totalLength": "0",
+        "uploadLength": "0",
+        "uploadSpeed": "0"
+      },
+      {
+        "bittorrent": {
+          "announceList": []
+        },
+        "completedLength": "0",
+        "connections": "0",
+        "dir": "/downloads",
+        "downloadSpeed": "0",
+        "errorCode": "31",
+        "errorMessage": "",
+        "files": [
+          {
+            "completedLength": "0",
+            "index": "1",
+            "length": "0",
+            "path": "[METADATA]nobody-seeds-this",
+            "selected": "true",
+            "uris": []
+          }
+        ],
+        "gid": "e78d67576d183baa",
+        "infoHash": "<secret>01234567",
+        "numPieces": "0",
+        "numSeeders": "0",
+        "pieceLength": "16384",
+        "status": "removed",
+        "totalLength": "0",
+        "uploadLength": "0",
+        "uploadSpeed": "0"
+      },
+      {
+        "bitfield": "f0",
+        "completedLength": "4194304",
+        "connections": "0",
+        "dir": "/downloads",
+        "downloadSpeed": "0",
+        "errorCode": "0",
+        "errorMessage": "",
+        "files": [
+          {
+            "completedLength": "4194304",
+            "index": "1",
+            "length": "4194304",
+            "path": "/downloads/queued.bin",
+            "selected": "true",
+            "uris": [
+              {
+                "status": "used",
+                "uri": "http://seed:8080/queued.bin"
+              },
+              {
+                "status": "waiting",
+                "uri": "http://seed:8080/queued.bin"
+              }
+            ]
+          }
+        ],
+        "gid": "3a47673ef3c50c25",
+        "numPieces": "4",
+        "pieceLength": "1048576",
+        "status": "complete",
+        "totalLength": "4194304",
+        "uploadLength": "0",
+        "uploadSpeed": "0"
+      },
+      {
+        "bitfield": "f0",
+        "completedLength": "4194304",
+        "connections": "0",
+        "dir": "/downloads",
+        "downloadSpeed": "0",
+        "errorCode": "0",
+        "errorMessage": "",
+        "files": [
+          {
+            "completedLength": "4194304",
+            "index": "1",
+            "length": "4194304",
+            "path": "/downloads/stopped.bin",
+            "selected": "true",
+            "uris": [
+              {
+                "status": "used",
+                "uri": "http://seed:8080/stopped.bin"
+              },
+              {
+                "status": "waiting",
+                "uri": "http://seed:8080/stopped.bin"
+              }
+            ]
+          }
+        ],
+        "gid": "be9dfb74c2a51b30",
+        "numPieces": "4",
+        "pieceLength": "1048576",
+        "status": "complete",
+        "totalLength": "4194304",
+        "uploadLength": "0",
+        "uploadSpeed": "0"
+      },
+      {
+        "bitfield": "ffffffff",
+        "completedLength": "33554432",
+        "connections": "0",
+        "dir": "/downloads",
+        "downloadSpeed": "0",
+        "errorCode": "0",
+        "errorMessage": "",
+        "files": [
+          {
+            "completedLength": "33554432",
+            "index": "1",
+            "length": "33554432",
+            "path": "/downloads/big.bin",
+            "selected": "true",
+            "uris": [
+              {
+                "status": "used",
+                "uri": "http://seed:8080/big.bin"
+              },
+              {
+                "status": "used",
+                "uri": "http://seed:8080/big.bin"
+              },
+              {
+                "status": "waiting",
+                "uri": "http://seed:8080/big.bin"
+              }
+            ]
+          }
+        ],
+        "gid": "b77325f58fefdf10",
+        "numPieces": "32",
+        "pieceLength": "1048576",
+        "status": "complete",
+        "totalLength": "33554432",
+        "uploadLength": "0",
+        "uploadSpeed": "0"
+      }
+    ]
+  }
+}

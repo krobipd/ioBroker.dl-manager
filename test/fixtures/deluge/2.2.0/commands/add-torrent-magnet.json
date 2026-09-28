@@ -1,0 +1,18 @@
+{
+  "_source": {
+    "program": "deluge",
+    "version": "2.2.0",
+    "request": "POST /json {\"method\":\"core.add_torrent_magnet\",\"params\":[\"magnet:?xt=urn:btih:<secret>01234567&dn=nobody-seeds-this\",{\"download_location\":\"/downloads\"}],\"id\":24}",
+    "recordedAt": "2026-09-28T22:10:53.174Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "set-cookie": "<omitted>"
+  },
+  "body": {
+    "result": "<secret>01234567",
+    "error": null,
+    "id": 24
+  }
+}

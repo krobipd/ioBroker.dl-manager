@@ -1,0 +1,49 @@
+{
+  "_source": {
+    "program": "sabnzbd",
+    "version": "4.5.5",
+    "request": "GET /api?mode=queue&apikey=<api-key>",
+    "recordedAt": "2026-09-28T22:11:01.554Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json;charset=UTF-8"
+  },
+  "body": {
+    "queue": {
+      "version": "4.5.5",
+      "paused": false,
+      "pause_int": "0",
+      "paused_all": false,
+      "diskspace1": "85.50",
+      "diskspace2": "85.50",
+      "diskspace1_norm": "85.5 G",
+      "diskspace2_norm": "85.5 G",
+      "diskspacetotal1": "144.26",
+      "diskspacetotal2": "144.26",
+      "speedlimit": "100",
+      "speedlimit_abs": "0",
+      "have_warnings": "2",
+      "finishaction": null,
+      "quota": "0 B",
+      "have_quota": false,
+      "left_quota": "0 B",
+      "cache_art": "0",
+      "cache_size": "0 B",
+      "kbpersec": "0.00",
+      "speed": "0",
+      "mbleft": "0.00",
+      "mb": "0.00",
+      "sizeleft": "0 B",
+      "size": "0 B",
+      "noofslots_total": 0,
+      "noofslots": 0,
+      "start": 0,
+      "limit": 0,
+      "finish": 0,
+      "status": "Idle",
+      "timeleft": "0:00:00",
+      "slots": []
+    }
+  }
+}

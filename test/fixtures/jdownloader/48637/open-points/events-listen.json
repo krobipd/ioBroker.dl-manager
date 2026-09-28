@@ -1,0 +1,112 @@
+{
+  "_source": {
+    "program": "jdownloader",
+    "version": "48637",
+    "request": "POST {\"apiVer\":1,\"url\":\"/events/listen\",\"params\":[1790633578101],\"rid\":249}",
+    "recordedAt": "2026-09-28T22:12:58.106Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "data": [
+      {
+        "eventdata": {
+          "bytesLoaded": 32047104,
+          "uuid": 1790633532446
+        },
+        "eventid": "LINK_UPDATE.bytesLoaded",
+        "publisher": "downloads"
+      },
+      {
+        "eventdata": {
+          "eta": 1,
+          "uuid": 1790633532446
+        },
+        "eventid": "LINK_UPDATE.eta",
+        "publisher": "downloads"
+      },
+      {
+        "eventdata": {
+          "statusIconKey": "kc.d2cc9c369f0bb28a7788a38cecd898c5",
+          "uuid": 1790633532446
+        },
+        "eventid": "LINK_UPDATE.statusIconKey",
+        "publisher": "downloads"
+      },
+      {
+        "eventdata": {
+          "uuid": 1790633532446,
+          "bytesTotal": 33554432
+        },
+        "eventid": "LINK_UPDATE.bytesTotal",
+        "publisher": "downloads"
+      },
+      {
+        "eventdata": {
+          "uuid": 1790633532446,
+          "speed": 1060143
+        },
+        "eventid": "LINK_UPDATE.speed",
+        "publisher": "downloads"
+      },
+      {
+        "eventdata": {
+          "uuid": 1790633532446,
+          "status": "Download"
+        },
+        "eventid": "LINK_UPDATE.status",
+        "publisher": "downloads"
+      },
+      {
+        "eventdata": {
+          "bytesLoaded": 32047104,
+          "uuid": 1790633547449
+        },
+        "eventid": "PACKAGE_UPDATE.bytesLoaded",
+        "publisher": "downloads"
+      },
+      {
+        "eventdata": {
+          "eta": 1,
+          "uuid": 1790633547449
+        },
+        "eventid": "PACKAGE_UPDATE.eta",
+        "publisher": "downloads"
+      },
+      {
+        "eventdata": {
+          "statusIconKey": "kc.161ebcd2843084ad13c4608fd08329b9",
+          "uuid": 1790633547449
+        },
+        "eventid": "PACKAGE_UPDATE.statusIconKey",
+        "publisher": "downloads"
+      },
+      {
+        "eventdata": {
+          "uuid": 1790633547449,
+          "bytesTotal": 33554432
+        },
+        "eventid": "PACKAGE_UPDATE.bytesTotal",
+        "publisher": "downloads"
+      },
+      {
+        "eventdata": {
+          "uuid": 1790633547449,
+          "speed": 1060142
+        },
+        "eventid": "PACKAGE_UPDATE.speed",
+        "publisher": "downloads"
+      },
+      {
+        "eventdata": {
+          "uuid": 1790633547449,
+          "status": "Download (seed)"
+        },
+        "eventid": "PACKAGE_UPDATE.status",
+        "publisher": "downloads"
+      }
+    ]
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "_source": {
+    "program": "jdownloader",
+    "version": "48637",
+    "request": "POST {\"apiVer\":1,\"url\":\"/downloadsV2/queryPackages\",\"params\":[{\"bytesLoaded\":true,\"bytesTotal\":true,\"childCount\":true,\"comment\":true,\"enabled\":true,\"eta\":true,\"finished\":true,\"hosts\":true,\"priority\":true,\"running\":true,\"saveTo\":true,\"speed\":true,\"status\":true,\"maxResults\":-1,\"startAt\":0}],\"rid\":245}",
+    "recordedAt": "2026-09-28T22:12:58.092Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "data": [
+      {
+        "bytesLoaded": 2097152,
+        "saveTo": "/output/small",
+        "hosts": ["seed"],
+        "name": "small",
+        "statusIconKey": "true",
+        "finished": true,
+        "childCount": 1,
+        "uuid": 1790633501919,
+        "bytesTotal": 2097152,
+        "enabled": true,
+        "status": "Finished"
+      },
+      {
+        "bytesLoaded": 0,
+        "saveTo": "/output/missing",
+        "hosts": ["seed"],
+        "name": "missing",
+        "statusIconKey": "kc.6543f14e19138cb47a66f04da188d30a",
+        "finished": true,
+        "childCount": 1,
+        "uuid": 1790633532205,
+        "bytesTotal": 0,
+        "enabled": true,
+        "status": "An Error occurred!  (seed)"
+      },
+      {
+        "hosts": ["seed"],
+        "statusIconKey": "kc.161ebcd2843084ad13c4608fd08329b9",
+        "childCount": 1,
+        "uuid": 1790633547449,
+        "speed": 1060142,
+        "enabled": true,
+        "running": true,
+        "bytesLoaded": 32047104,
+        "eta": 1,
+        "saveTo": "/output/big",
+        "name": "big",
+        "bytesTotal": 33554432,
+        "status": "Download (seed)"
+      },
+      {
+        "bytesLoaded": 0,
+        "saveTo": "/output/queued",
+        "hosts": ["seed"],
+        "name": "queued",
+        "childCount": 1,
+        "uuid": 1790633562849,
+        "bytesTotal": 4194304,
+        "enabled": true
+      },
+      {
+        "bytesLoaded": 0,
+        "saveTo": "/output/stopped",
+        "hosts": ["seed"],
+        "name": "stopped",
+        "childCount": 1,
+        "uuid": 1790633577953,
+        "bytesTotal": 4194304
+      }
+    ]
+  }
+}

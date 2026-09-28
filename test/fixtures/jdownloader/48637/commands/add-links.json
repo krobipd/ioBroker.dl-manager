@@ -1,0 +1,17 @@
+{
+  "_source": {
+    "program": "jdownloader",
+    "version": "48637",
+    "request": "POST {\"apiVer\":1,\"url\":\"/linkgrabberv2/addLinks\",\"params\":[{\"links\":\"http://seed:8080/small.bin\",\"autostart\":true,\"assignJobID\":true,\"packageName\":\"small\"}],\"rid\":19}",
+    "recordedAt": "2026-09-28T22:11:42.043Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "data": {
+      "id": 1790633485818
+    }
+  }
+}

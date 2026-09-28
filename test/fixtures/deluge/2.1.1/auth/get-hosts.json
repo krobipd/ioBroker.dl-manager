@@ -1,0 +1,18 @@
+{
+  "_source": {
+    "program": "deluge",
+    "version": "2.1.1",
+    "request": "POST /json {\"method\":\"web.get_hosts\",\"params\":[],\"id\":8}",
+    "recordedAt": "2026-09-28T22:10:54.598Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "set-cookie": "<omitted>"
+  },
+  "body": {
+    "result": [["ee4298436a0c4f87b1d453813fc0d257", "127.0.0.1", 58846, "localclient"]],
+    "error": null,
+    "id": 8
+  }
+}

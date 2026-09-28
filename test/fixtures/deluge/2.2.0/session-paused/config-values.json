@@ -1,0 +1,22 @@
+{
+  "_source": {
+    "program": "deluge",
+    "version": "2.2.0",
+    "request": "POST /json {\"method\":\"core.get_config_values\",\"params\":[[\"max_download_speed\",\"max_upload_speed\",\"download_location\"]],\"id\":73}",
+    "recordedAt": "2026-09-28T22:10:55.925Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "set-cookie": "<omitted>"
+  },
+  "body": {
+    "result": {
+      "max_download_speed": -1,
+      "max_upload_speed": -1,
+      "download_location": "/downloads"
+    },
+    "error": null,
+    "id": 73
+  }
+}

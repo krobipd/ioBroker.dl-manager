@@ -1,0 +1,17 @@
+{
+  "_source": {
+    "program": "jdownloader",
+    "version": "48637",
+    "request": "POST {\"apiVer\":1,\"url\":\"/downloadsV2/noSuchMethod\",\"params\":[],\"rid\":11}",
+    "recordedAt": "2026-09-28T22:11:25.781Z"
+  },
+  "status": 404,
+  "headers": {
+    "content-type": "application/json; charset=UTF-8"
+  },
+  "body": {
+    "src": "DEVICE",
+    "data": null,
+    "type": "API_COMMAND_NOT_FOUND"
+  }
+}

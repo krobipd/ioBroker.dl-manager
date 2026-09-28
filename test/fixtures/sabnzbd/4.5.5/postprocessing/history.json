@@ -1,0 +1,73 @@
+{
+  "_source": {
+    "program": "sabnzbd",
+    "version": "4.5.5",
+    "request": "GET /api?mode=history&limit=50&apikey=<api-key>",
+    "recordedAt": "2026-09-28T22:10:53.920Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json;charset=UTF-8"
+  },
+  "body": {
+    "history": {
+      "total_size": "0",
+      "month_size": "0",
+      "week_size": "0",
+      "day_size": "0",
+      "slots": [
+        {
+          "completed": 1790633453,
+          "name": "small",
+          "nzb_name": "small.nzb",
+          "category": "*",
+          "pp": "D",
+          "script": "None",
+          "report": "",
+          "url": null,
+          "status": "Queued",
+          "nzo_id": "SABnzbd_nzo_e561vuf7",
+          "storage": "",
+          "path": "/downloads/incomplete/small",
+          "script_line": "",
+          "download_time": 0,
+          "postproc_time": 0,
+          "stage_log": [
+            {
+              "name": "Source",
+              "actions": ["small.nzb"]
+            },
+            {
+              "name": "Download",
+              "actions": [""]
+            },
+            {
+              "name": "Servers",
+              "actions": ["nserv=2.1 MB"]
+            }
+          ],
+          "downloaded": 2097152,
+          "completeness": null,
+          "fail_message": "",
+          "url_info": "",
+          "bytes": 2097152,
+          "size": "2.0 MB",
+          "meta": null,
+          "series": "",
+          "duplicate_key": null,
+          "md5sum": "",
+          "password": null,
+          "action_line": "",
+          "loaded": false,
+          "retry": false,
+          "archive": false,
+          "time_added": 1790633453
+        }
+      ],
+      "ppslots": 1,
+      "noofslots": 1,
+      "last_history_update": 2,
+      "version": "4.5.5"
+    }
+  }
+}

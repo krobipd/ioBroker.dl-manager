@@ -1,0 +1,13 @@
+{
+  "_source": {
+    "program": "sabnzbd",
+    "version": "4.5.5",
+    "request": "GET /api?mode=queue",
+    "recordedAt": "2026-09-28T22:10:53.724Z"
+  },
+  "status": 403,
+  "headers": {
+    "content-type": "text/html;charset=utf-8"
+  },
+  "body": "API Key Required"
+}

@@ -1,0 +1,15 @@
+{
+  "_source": {
+    "program": "sabnzbd",
+    "version": "5.1.3",
+    "request": "GET /api?mode=config&name=speedlimit&value=1M",
+    "recordedAt": "2026-09-28T22:10:54.444Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json;charset=UTF-8"
+  },
+  "body": {
+    "status": true
+  }
+}

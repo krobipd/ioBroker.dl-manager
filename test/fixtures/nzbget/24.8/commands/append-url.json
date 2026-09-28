@@ -1,0 +1,18 @@
+{
+  "_source": {
+    "program": "nzbget",
+    "version": "24.8",
+    "request": "POST /jsonrpc {\"method\":\"append\",\"params\":[\"missing.nzb\",\"http://seed:8080/missing.nzb\",\"\",0,false,false,\"\",0,\"SCORE\",false,[]],\"id\":38}",
+    "recordedAt": "2026-09-28T22:10:50.584Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "set-cookie": "<omitted>"
+  },
+  "body": {
+    "version": "1.1",
+    "id": 38,
+    "result": 3
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "_source": {
+    "program": "deluge",
+    "version": "2.1.1",
+    "request": "POST /json {\"method\":\"label.set_torrent\",\"params\":[\"e2a552aaf122722a7eb9c5ab7558b13533df2b16\",\"linux\"],\"id\":31}",
+    "recordedAt": "2026-09-28T22:10:57.371Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "set-cookie": "<omitted>"
+  },
+  "body": {
+    "result": null,
+    "error": null,
+    "id": 31
+  }
+}

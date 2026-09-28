@@ -1,0 +1,17 @@
+{
+  "_source": {
+    "program": "aria2",
+    "version": "1.37.0",
+    "request": "POST /jsonrpc {\"jsonrpc\":\"2.0\",\"id\":\"10\",\"method\":\"aria2.addUri\",\"params\":[\"token:<secret>\",[\"http://seed:8080/small.bin\"],{}]}",
+    "recordedAt": "2026-09-28T22:10:48.940Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json-rpc"
+  },
+  "body": {
+    "id": "10",
+    "jsonrpc": "2.0",
+    "result": "523bcf9781d13660"
+  }
+}

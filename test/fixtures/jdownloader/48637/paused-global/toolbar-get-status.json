@@ -1,0 +1,28 @@
+{
+  "_source": {
+    "program": "jdownloader",
+    "version": "48637",
+    "request": "POST {\"apiVer\":1,\"url\":\"/toolbar/getStatus\",\"params\":[],\"rid\":234}",
+    "recordedAt": "2026-09-28T22:12:58.053Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "data": {
+      "running": true,
+      "reconnect": true,
+      "premium": true,
+      "download_complete": 39845888,
+      "stopafter": false,
+      "limit": true,
+      "limitspeed": 10240,
+      "state": "PAUSE",
+      "download_current": 34144256,
+      "clipboard": true,
+      "speed": 1023051,
+      "pause": true
+    }
+  }
+}

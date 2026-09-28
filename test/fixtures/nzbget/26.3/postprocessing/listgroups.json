@@ -1,0 +1,95 @@
+{
+  "_source": {
+    "program": "nzbget",
+    "version": "26.3",
+    "request": "POST /jsonrpc {\"method\":\"listgroups\",\"params\":[0],\"id\":9}",
+    "recordedAt": "2026-09-28T22:10:48.544Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "set-cookie": "<omitted>"
+  },
+  "body": {
+    "version": "1.1",
+    "id": 9,
+    "result": [
+      {
+        "FirstID": 1,
+        "LastID": 1,
+        "RemainingSizeLo": 0,
+        "RemainingSizeHi": 0,
+        "RemainingSizeMB": 0,
+        "PausedSizeLo": 0,
+        "PausedSizeHi": 0,
+        "PausedSizeMB": 0,
+        "RemainingFileCount": 0,
+        "RemainingParCount": 0,
+        "MinPriority": 0,
+        "MaxPriority": 0,
+        "ActiveDownloads": 0,
+        "Status": "RENAMING",
+        "NZBID": 1,
+        "NZBName": "small",
+        "NZBNicename": "small",
+        "Kind": "NZB",
+        "URL": "",
+        "NZBFilename": "small.nzb",
+        "DestDir": "/downloads/intermediate/small.#1",
+        "FinalDir": "",
+        "Category": "",
+        "ParStatus": "NONE",
+        "ExParStatus": "NONE",
+        "UnpackStatus": "NONE",
+        "MoveStatus": "NONE",
+        "ScriptStatus": "NONE",
+        "DeleteStatus": "NONE",
+        "MarkStatus": "NONE",
+        "UrlStatus": "NONE",
+        "FileSizeLo": 2097152,
+        "FileSizeHi": 0,
+        "FileSizeMB": 2,
+        "FileCount": 1,
+        "MinPostTime": 1700000000,
+        "MaxPostTime": 1700000000,
+        "TotalArticles": 5,
+        "SuccessArticles": 5,
+        "FailedArticles": 0,
+        "Health": 1000,
+        "CriticalHealth": 1000,
+        "DupeKey": "",
+        "DupeScore": 0,
+        "DupeMode": "SCORE",
+        "Deleted": false,
+        "DownloadedSizeLo": 2180227,
+        "DownloadedSizeHi": 0,
+        "DownloadedSizeMB": 2,
+        "DownloadTimeSec": 0,
+        "PostTotalTimeSec": 0,
+        "ParTimeSec": 0,
+        "RepairTimeSec": 0,
+        "UnpackTimeSec": 0,
+        "MessageCount": 7,
+        "ExtraParBlocks": 0,
+        "Parameters": [
+          {
+            "Name": "*Unpack:",
+            "Value": "yes"
+          }
+        ],
+        "ScriptStatuses": [],
+        "ServerStats": [
+          {
+            "ServerID": 1,
+            "SuccessArticles": 5,
+            "FailedArticles": 0
+          }
+        ],
+        "PostInfoText": "Checking file small.bin",
+        "PostStageProgress": 500,
+        "PostStageTimeSec": 0,
+        "Log": []
+      }
+    ]
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "_source": {
+    "program": "aria2",
+    "version": "1.37.0",
+    "request": "POST /jsonrpc {\"jsonrpc\":\"2.0\",\"id\":\"62\",\"method\":\"aria2.tellStopped\",\"params\":[\"token:<secret>\",0,1000]}",
+    "recordedAt": "2026-09-28T22:10:51.509Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json-rpc"
+  },
+  "body": {
+    "id": "62",
+    "jsonrpc": "2.0",
+    "result": [
+      {
+        "bitfield": "c0",
+        "completedLength": "2097152",
+        "connections": "0",
+        "dir": "/downloads",
+        "downloadSpeed": "0",
+        "errorCode": "0",
+        "errorMessage": "",
+        "files": [
+          {
+            "completedLength": "2097152",
+            "index": "1",
+            "length": "2097152",
+            "path": "/downloads/small.bin",
+            "selected": "true",
+            "uris": [
+              {
+                "status": "used",
+                "uri": "http://seed:8080/small.bin"
+              },
+              {
+                "status": "waiting",
+                "uri": "http://seed:8080/small.bin"
+              }
+            ]
+          }
+        ],
+        "gid": "523bcf9781d13660",
+        "numPieces": "2",
+        "pieceLength": "1048576",
+        "status": "complete",
+        "totalLength": "2097152",
+        "uploadLength": "0",
+        "uploadSpeed": "0"
+      },
+      {
+        "completedLength": "0",
+        "connections": "0",
+        "dir": "/downloads",
+        "downloadSpeed": "0",
+        "errorCode": "3",
+        "errorMessage": "Resource not found",
+        "files": [
+          {
+            "completedLength": "0",
+            "index": "1",
+            "length": "0",
+            "path": "",
+            "selected": "true",
+            "uris": [
+              {
+                "status": "used",
+                "uri": "http://seed:8080/missing.bin"
+              }
+            ]
+          }
+        ],
+        "gid": "3fa7579e428726b8",
+        "numPieces": "0",
+        "pieceLength": "1048576",
+        "status": "error",
+        "totalLength": "0",
+        "uploadLength": "0",
+        "uploadSpeed": "0"
+      }
+    ]
+  }
+}

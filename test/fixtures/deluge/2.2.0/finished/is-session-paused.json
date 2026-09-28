@@ -1,0 +1,18 @@
+{
+  "_source": {
+    "program": "deluge",
+    "version": "2.2.0",
+    "request": "POST /json {\"method\":\"core.is_session_paused\",\"params\":[],\"id\":136}",
+    "recordedAt": "2026-09-28T22:11:48.380Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "set-cookie": "<omitted>"
+  },
+  "body": {
+    "result": false,
+    "error": null,
+    "id": 136
+  }
+}

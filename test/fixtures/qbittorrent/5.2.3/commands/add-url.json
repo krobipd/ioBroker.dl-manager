@@ -1,0 +1,18 @@
+{
+  "_source": {
+    "program": "qbittorrent",
+    "version": "5.2.3",
+    "request": "POST /api/v2/torrents/add (multipart urls)",
+    "recordedAt": "2026-09-28T22:10:55.568Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "added_torrent_ids": ["<secret>01234567"],
+    "failure_count": 0,
+    "pending_count": 0,
+    "success_count": 1
+  }
+}

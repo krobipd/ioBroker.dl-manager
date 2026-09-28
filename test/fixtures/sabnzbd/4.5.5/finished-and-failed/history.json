@@ -1,0 +1,166 @@
+{
+  "_source": {
+    "program": "sabnzbd",
+    "version": "4.5.5",
+    "request": "GET /api?mode=history&limit=50&apikey=<api-key>",
+    "recordedAt": "2026-09-28T22:10:59.466Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json;charset=UTF-8"
+  },
+  "body": {
+    "history": {
+      "total_size": "2.1 M",
+      "month_size": "2.1 M",
+      "week_size": "2.1 M",
+      "day_size": "2.1 M",
+      "slots": [
+        {
+          "completed": 1790633459,
+          "name": "http://seed:8080/missing.nzb",
+          "nzb_name": "http://seed:8080/missing.nzb",
+          "category": "*",
+          "pp": "",
+          "script": "None",
+          "report": "future",
+          "url": "http://seed:8080/missing.nzb",
+          "status": "Failed",
+          "nzo_id": "SABnzbd_nzo_2m5px0vc",
+          "storage": "",
+          "path": "",
+          "script_line": "",
+          "download_time": 0,
+          "postproc_time": 0,
+          "stage_log": [
+            {
+              "name": "Source",
+              "actions": ["http://seed:8080/missing.nzb", "URL Fetching failed", " File not on server"]
+            }
+          ],
+          "downloaded": 0,
+          "completeness": null,
+          "fail_message": "URL Fetching failed; File not on server",
+          "url_info": "",
+          "bytes": 0,
+          "meta": null,
+          "series": null,
+          "md5sum": null,
+          "password": null,
+          "duplicate_key": "seed/80/80",
+          "archive": false,
+          "time_added": 1790633455,
+          "size": "0 B",
+          "action_line": "",
+          "loaded": false,
+          "retry": true
+        },
+        {
+          "completed": 1790633457,
+          "name": "broken",
+          "nzb_name": "broken.nzb",
+          "category": "*",
+          "pp": "D",
+          "script": "None",
+          "report": "",
+          "url": null,
+          "status": "Failed",
+          "nzo_id": "SABnzbd_nzo_wwfnkzvz",
+          "storage": "/downloads/incomplete/broken",
+          "path": "/downloads/incomplete/broken",
+          "script_line": "",
+          "download_time": 0,
+          "postproc_time": 0,
+          "stage_log": [
+            {
+              "name": "Source",
+              "actions": ["broken.nzb"]
+            },
+            {
+              "name": "Download",
+              "actions": [
+                "5 articles were missing",
+                "Download failed - Not on your server(s) - https://sabnzbd.org/not-complete"
+              ]
+            }
+          ],
+          "downloaded": 0,
+          "completeness": null,
+          "fail_message": "Download failed - Not on your server(s) - https://sabnzbd.org/not-complete",
+          "url_info": "",
+          "bytes": 0,
+          "meta": null,
+          "series": null,
+          "md5sum": "1c870a1b9d093b3baceff7130eeafaaf",
+          "password": null,
+          "duplicate_key": null,
+          "archive": false,
+          "time_added": 1790633455,
+          "size": "0 B",
+          "action_line": "",
+          "loaded": false,
+          "retry": true
+        },
+        {
+          "completed": 1790633455,
+          "name": "small",
+          "nzb_name": "small.nzb",
+          "category": "*",
+          "pp": "D",
+          "script": "None",
+          "report": "",
+          "url": null,
+          "status": "Completed",
+          "nzo_id": "SABnzbd_nzo_e561vuf7",
+          "storage": "/downloads/complete/small/small.1.1.bin",
+          "path": "/downloads/incomplete/small",
+          "script_line": "",
+          "download_time": 0,
+          "postproc_time": 0,
+          "stage_log": [
+            {
+              "name": "Source",
+              "actions": ["small.nzb"]
+            },
+            {
+              "name": "Download",
+              "actions": [""]
+            },
+            {
+              "name": "Servers",
+              "actions": ["nserv=2.1 MB"]
+            },
+            {
+              "name": "Repair",
+              "actions": ["Trying RAR renamer", "[small] No par2 sets"]
+            },
+            {
+              "name": "Deobfuscate",
+              "actions": ["Deobfuscate renamed 2 file(s)"]
+            }
+          ],
+          "downloaded": 2097152,
+          "completeness": null,
+          "fail_message": "",
+          "url_info": "",
+          "bytes": 2097152,
+          "meta": null,
+          "series": null,
+          "md5sum": "6dbd58feb14ee2c26ff4287b10ea0272",
+          "password": null,
+          "duplicate_key": null,
+          "archive": false,
+          "time_added": 1790633453,
+          "size": "2.0 MB",
+          "action_line": "",
+          "loaded": false,
+          "retry": false
+        }
+      ],
+      "ppslots": 0,
+      "noofslots": 3,
+      "last_history_update": 13,
+      "version": "4.5.5"
+    }
+  }
+}

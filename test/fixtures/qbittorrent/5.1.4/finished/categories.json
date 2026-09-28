@@ -1,0 +1,13 @@
+{
+  "_source": {
+    "program": "qbittorrent",
+    "version": "5.1.4",
+    "request": "GET /api/v2/torrents/categories",
+    "recordedAt": "2026-09-28T22:11:21.701Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {}
+}

@@ -1,0 +1,23 @@
+{
+  "_source": {
+    "program": "transmission",
+    "version": "4.0.6",
+    "request": "POST /transmission/rpc {\"method\":\"torrent-add\",\"arguments\":{\"filename\":\"magnet:?xt=urn:btih:<secret>01234567&dn=nobody-seeds-this\",\"download-dir\":\"/downloads\"},\"tag\":14}",
+    "recordedAt": "2026-09-28T22:10:58.072Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=UTF-8"
+  },
+  "body": {
+    "arguments": {
+      "torrent-added": {
+        "hashString": "<secret>01234567",
+        "id": 7,
+        "name": "nobody-seeds-this"
+      }
+    },
+    "result": "success",
+    "tag": 14
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "_source": {
+    "program": "aria2",
+    "version": "1.37.0",
+    "request": "POST /jsonrpc {\"jsonrpc\":\"2.0\",\"id\":\"101\",\"method\":\"aria2.tellStatus\",\"params\":[\"token:<secret>\",\"089e42da7248d3db\",[\"status\"]]}",
+    "recordedAt": "2026-09-28T22:11:23.580Z"
+  },
+  "status": 400,
+  "headers": {
+    "content-type": "application/json-rpc"
+  },
+  "body": {
+    "id": "101",
+    "jsonrpc": "2.0",
+    "error": {
+      "code": 1,
+      "message": "GID 089e42da7248d3db is not found"
+    }
+  }
+}

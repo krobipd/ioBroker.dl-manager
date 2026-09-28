@@ -1,0 +1,17 @@
+{
+  "_source": {
+    "program": "transmission",
+    "version": "4.0.6",
+    "request": "POST /transmission/rpc {\"method\":\"torrent-remove\",\"arguments\":{\"ids\":[\"38b12b1a4fffb255161b45e772882bebe94d3b30\"],\"delete-local-data\":false},\"tag\":91}",
+    "recordedAt": "2026-09-28T22:11:10.174Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=UTF-8"
+  },
+  "body": {
+    "arguments": {},
+    "result": "success",
+    "tag": 91
+  }
+}

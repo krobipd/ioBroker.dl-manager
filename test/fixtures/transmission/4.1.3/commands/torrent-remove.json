@@ -1,0 +1,17 @@
+{
+  "_source": {
+    "program": "transmission",
+    "version": "4.1.3",
+    "request": "POST /transmission/rpc {\"jsonrpc\":\"2.0\",\"method\":\"torrent_remove\",\"params\":{\"ids\":[\"38b12b1a4fffb255161b45e772882bebe94d3b30\"],\"delete_local_data\":false},\"id\":87}",
+    "recordedAt": "2026-09-28T22:11:06.566Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=UTF-8"
+  },
+  "body": {
+    "id": 87,
+    "jsonrpc": "2.0",
+    "result": {}
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "_source": {
+    "program": "nzbget",
+    "version": "24.8",
+    "request": "POST /jsonrpc {\"method\":\"status\",\"params\":[],\"id\":11}",
+    "recordedAt": "2026-09-28T22:10:49.179Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "set-cookie": "<omitted>"
+  },
+  "body": {
+    "version": "1.1",
+    "id": 11,
+    "result": {
+      "RemainingSizeLo": 0,
+      "RemainingSizeHi": 0,
+      "RemainingSizeMB": 0,
+      "ForcedSizeLo": 0,
+      "ForcedSizeHi": 0,
+      "ForcedSizeMB": 0,
+      "DownloadedSizeLo": 2180008,
+      "DownloadedSizeHi": 0,
+      "DownloadedSizeMB": 2,
+      "MonthSizeLo": 2180227,
+      "MonthSizeHi": 0,
+      "MonthSizeMB": 2,
+      "DaySizeLo": 2180227,
+      "DaySizeHi": 0,
+      "DaySizeMB": 2,
+      "ArticleCacheLo": 0,
+      "ArticleCacheHi": 0,
+      "ArticleCacheMB": 0,
+      "DownloadRate": 0,
+      "DownloadRateLo": 0,
+      "DownloadRateHi": 0,
+      "AverageDownloadRate": 0,
+      "AverageDownloadRateLo": 0,
+      "AverageDownloadRateHi": 0,
+      "DownloadLimit": 0,
+      "ThreadCount": 9,
+      "ParJobCount": 1,
+      "PostJobCount": 1,
+      "UrlCount": 0,
+      "UpTimeSec": 1,
+      "DownloadTimeSec": 0,
+      "ServerPaused": false,
+      "DownloadPaused": false,
+      "Download2Paused": false,
+      "ServerStandBy": true,
+      "PostPaused": false,
+      "ScanPaused": false,
+      "QuotaReached": false,
+      "FreeDiskSpaceLo": 0,
+      "FreeDiskSpaceHi": 0,
+      "FreeDiskSpaceMB": 0,
+      "TotalDiskSpaceLo": 0,
+      "TotalDiskSpaceHi": 0,
+      "TotalDiskSpaceMB": 0,
+      "FreeInterDiskSpaceLo": 1714745344,
+      "FreeInterDiskSpaceHi": 21,
+      "FreeInterDiskSpaceMB": 87651,
+      "TotalInterDiskSpaceLo": 275365888,
+      "TotalInterDiskSpaceHi": 36,
+      "TotalInterDiskSpaceMB": 147718,
+      "ServerTime": 1790633449,
+      "ResumeTime": 0,
+      "FeedActive": false,
+      "QueueScriptCount": 0,
+      "NewsServers": [
+        {
+          "ID": 1,
+          "Active": true
+        }
+      ]
+    }
+  }
+}

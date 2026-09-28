@@ -1,0 +1,15 @@
+{
+  "_source": {
+    "program": "jdownloader",
+    "version": "48637",
+    "request": "POST {\"apiVer\":1,\"url\":\"/downloadsV2/queryPackages\",\"params\":[{\"bytesLoaded\":true,\"bytesTotal\":true,\"childCount\":true,\"comment\":true,\"enabled\":true,\"eta\":true,\"finished\":true,\"hosts\":true,\"priority\":true,\"running\":true,\"saveTo\":true,\"speed\":true,\"status\":true,\"maxResults\":-1,\"startAt\":0}],\"rid\":17}",
+    "recordedAt": "2026-09-28T22:11:25.808Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "data": []
+  }
+}

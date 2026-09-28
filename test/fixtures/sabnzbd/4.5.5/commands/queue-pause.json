@@ -1,0 +1,16 @@
+{
+  "_source": {
+    "program": "sabnzbd",
+    "version": "4.5.5",
+    "request": "GET /api?mode=queue&name=pause&value=<id>",
+    "recordedAt": "2026-09-28T22:10:59.507Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json;charset=UTF-8"
+  },
+  "body": {
+    "status": true,
+    "nzo_ids": ["SABnzbd_nzo_egfmdw0k"]
+  }
+}

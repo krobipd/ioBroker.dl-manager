@@ -1,0 +1,23 @@
+{
+  "_source": {
+    "program": "pyload",
+    "version": "0.5.0",
+    "request": "GET /api/status_server",
+    "recordedAt": "2026-09-28T22:11:16.778Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "pause": false,
+    "active": 0,
+    "queue": 1,
+    "total": 4,
+    "speed": 0,
+    "download": true,
+    "reconnect": false,
+    "captcha": false,
+    "proxy": false
+  }
+}

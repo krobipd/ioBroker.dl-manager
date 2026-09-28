@@ -1,0 +1,24 @@
+{
+  "_source": {
+    "program": "aria2",
+    "version": "1.37.0",
+    "request": "POST /jsonrpc {\"jsonrpc\":\"2.0\",\"id\":\"105\",\"method\":\"aria2.getGlobalStat\",\"params\":[\"token:<secret>\"]}",
+    "recordedAt": "2026-09-28T22:11:23.586Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json-rpc"
+  },
+  "body": {
+    "id": "105",
+    "jsonrpc": "2.0",
+    "result": {
+      "downloadSpeed": "1045298",
+      "numActive": "0",
+      "numStopped": "6",
+      "numStoppedTotal": "6",
+      "numWaiting": "0",
+      "uploadSpeed": "0"
+    }
+  }
+}

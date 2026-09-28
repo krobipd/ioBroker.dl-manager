@@ -1,0 +1,18 @@
+{
+  "_source": {
+    "program": "deluge",
+    "version": "2.2.0",
+    "request": "POST /json {\"method\":\"core.enable_plugin\",\"params\":[\"Label\"],\"id\":13}",
+    "recordedAt": "2026-09-28T22:10:52.989Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "set-cookie": "<omitted>"
+  },
+  "body": {
+    "result": true,
+    "error": null,
+    "id": 13
+  }
+}

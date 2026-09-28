@@ -7,6 +7,7 @@
 // IPv4 addresses of the container network become documentation addresses (RFC 5737), the runner's host name
 // disappears. The run fails when anything that looks like a secret or a foreign address is left.
 import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { dirname, join, relative } from "node:path";
 
 const SECRETS = ["testpass1", "testsecret1", "0123456789abcdef0123456789abcdef", "fedcba9876543210fedcba9876543210"];
@@ -88,6 +89,8 @@ for (const program of readdirSync(staging)) {
   }
 }
 rmSync(staging, { recursive: true, force: true });
+// the repository formats JSON with prettier — the recordings come out in the same style
+execFileSync("npx", ["prettier", "--write", dest], { stdio: "ignore" });
 console.log(
   `imported ${files} recordings; addresses replaced: ${[...ipMap].map(([a, b]) => `${a}→${b}`).join(", ") || "none"}`,
 );

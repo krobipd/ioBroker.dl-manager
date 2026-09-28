@@ -1,0 +1,14 @@
+{
+  "_source": {
+    "program": "nzbget",
+    "version": "24.8",
+    "request": "POST /jsonrpc {\"method\":\"version\",\"params\":[],\"id\":2}",
+    "recordedAt": "2026-09-28T22:10:48.850Z"
+  },
+  "status": 401,
+  "headers": {
+    "content-type": "text/plain",
+    "www-authenticate": "Basic realm=\"NZBGet\""
+  },
+  "body": ""
+}

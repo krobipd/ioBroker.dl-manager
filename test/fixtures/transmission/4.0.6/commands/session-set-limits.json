@@ -1,0 +1,17 @@
+{
+  "_source": {
+    "program": "transmission",
+    "version": "4.0.6",
+    "request": "POST /transmission/rpc {\"method\":\"session-set\",\"arguments\":{\"speed-limit-down\":2000,\"speed-limit-down-enabled\":true,\"speed-limit-up\":500,\"speed-limit-up-enabled\":true},\"tag\":64}",
+    "recordedAt": "2026-09-28T22:11:00.133Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=UTF-8"
+  },
+  "body": {
+    "arguments": {},
+    "result": "success",
+    "tag": 64
+  }
+}

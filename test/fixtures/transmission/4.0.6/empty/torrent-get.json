@@ -1,0 +1,19 @@
+{
+  "_source": {
+    "program": "transmission",
+    "version": "4.0.6",
+    "request": "POST /transmission/rpc {\"method\":\"torrent-get\",\"arguments\":{\"fields\":[\"id\",\"hashString\",\"name\",\"status\",\"percentDone\",\"sizeWhenDone\",\"totalSize\",\"leftUntilDone\",\"downloadedEver\",\"uploadedEver\",\"rateDownload\",\"rateUpload\",\"eta\",\"uploadRatio\",\"addedDate\",\"doneDate\",\"error\",\"errorString\",\"labels\",\"downloadDir\",\"isFinished\",\"isStalled\",\"metadataPercentComplete\",\"recheckProgress\",\"queuePosition\"]},\"tag\":2}",
+    "recordedAt": "2026-09-28T22:10:57.544Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=UTF-8"
+  },
+  "body": {
+    "arguments": {
+      "torrents": []
+    },
+    "result": "success",
+    "tag": 2
+  }
+}

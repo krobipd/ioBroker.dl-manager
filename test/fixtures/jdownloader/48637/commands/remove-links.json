@@ -1,0 +1,15 @@
+{
+  "_source": {
+    "program": "jdownloader",
+    "version": "48637",
+    "request": "POST {\"apiVer\":1,\"url\":\"/downloadsV2/removeLinks\",\"params\":[[],[1790633532205]],\"rid\":425}",
+    "recordedAt": "2026-09-28T22:13:38.569Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "data": ""
+  }
+}

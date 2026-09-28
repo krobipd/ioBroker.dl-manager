@@ -1,0 +1,13 @@
+{
+  "_source": {
+    "program": "qbittorrent",
+    "version": "4.6.7",
+    "request": "POST /api/v2/torrents/add (multipart torrents)",
+    "recordedAt": "2026-09-28T22:10:47.823Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "text/plain; charset=UTF-8"
+  },
+  "body": "Ok."
+}

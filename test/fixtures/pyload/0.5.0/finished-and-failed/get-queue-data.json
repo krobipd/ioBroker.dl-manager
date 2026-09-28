@@ -1,0 +1,72 @@
+{
+  "_source": {
+    "program": "pyload",
+    "version": "0.5.0",
+    "request": "GET /api/get_queue_data",
+    "recordedAt": "2026-09-28T22:11:02.552Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": [
+    {
+      "pid": 1,
+      "name": "small",
+      "folder": "small",
+      "site": "",
+      "password": "",
+      "dest": 1,
+      "order": 0,
+      "linksdone": 1,
+      "sizedone": 2102614,
+      "sizetotal": 2102614,
+      "linkstotal": null,
+      "links": [
+        {
+          "fid": 1,
+          "url": "http://seed:8080/small.bin",
+          "name": "small.bin",
+          "plugin": "DefaultPlugin",
+          "size": 2102614,
+          "format_size": "2.01 MiB",
+          "status": 0,
+          "statusmsg": "finished",
+          "package_id": 1,
+          "error": "",
+          "order": 0
+        }
+      ],
+      "fids": null
+    },
+    {
+      "pid": 2,
+      "name": "missing",
+      "folder": "missing",
+      "site": "",
+      "password": "",
+      "dest": 1,
+      "order": 1,
+      "linksdone": 0,
+      "sizedone": 0,
+      "sizetotal": 9,
+      "linkstotal": null,
+      "links": [
+        {
+          "fid": 2,
+          "url": "http://seed:8080/missing.bin",
+          "name": "missing.bin",
+          "plugin": "DefaultPlugin",
+          "size": 9,
+          "format_size": "9.00 Byte",
+          "status": 1,
+          "statusmsg": "offline",
+          "package_id": 2,
+          "error": "offline",
+          "order": 0
+        }
+      ],
+      "fids": null
+    }
+  ]
+}

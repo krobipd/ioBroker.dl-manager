@@ -1,0 +1,15 @@
+{
+  "_source": {
+    "program": "sabnzbd",
+    "version": "5.1.3",
+    "request": "GET /api?mode=auth&key=wrong",
+    "recordedAt": "2026-09-28T22:10:53.664Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json;charset=UTF-8"
+  },
+  "body": {
+    "auth": "badkey"
+  }
+}

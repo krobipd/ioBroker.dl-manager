@@ -1,0 +1,37 @@
+{
+  "_source": {
+    "program": "transmission",
+    "version": "4.1.3",
+    "request": "POST /transmission/rpc {\"jsonrpc\":\"2.0\",\"method\":\"session_stats\",\"params\":{},\"id\":42}",
+    "recordedAt": "2026-09-28T22:10:54.983Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=UTF-8"
+  },
+  "body": {
+    "id": 42,
+    "jsonrpc": "2.0",
+    "result": {
+      "active_torrent_count": 4,
+      "cumulative_stats": {
+        "downloaded_bytes": 0,
+        "files_added": 0,
+        "seconds_active": 1,
+        "session_count": 1,
+        "uploaded_bytes": 0
+      },
+      "current_stats": {
+        "downloaded_bytes": 0,
+        "files_added": 0,
+        "seconds_active": 1,
+        "session_count": 1,
+        "uploaded_bytes": 0
+      },
+      "download_speed": 0,
+      "paused_torrent_count": 3,
+      "torrent_count": 7,
+      "upload_speed": 0
+    }
+  }
+}

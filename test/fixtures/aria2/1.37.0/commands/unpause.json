@@ -1,0 +1,17 @@
+{
+  "_source": {
+    "program": "aria2",
+    "version": "1.37.0",
+    "request": "POST /jsonrpc {\"jsonrpc\":\"2.0\",\"id\":\"40\",\"method\":\"aria2.unpause\",\"params\":[\"token:<secret>\",\"3a47673ef3c50c25\"]}",
+    "recordedAt": "2026-09-28T22:10:50.982Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json-rpc"
+  },
+  "body": {
+    "id": "40",
+    "jsonrpc": "2.0",
+    "result": "3a47673ef3c50c25"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "_source": {
+    "program": "jdownloader",
+    "version": "48637",
+    "request": "POST {\"apiVer\":1,\"url\":\"/linkgrabberv2/queryLinks\",\"params\":[{\"jobUUIDs\":[1790633502045],\"availability\":true,\"status\":true}],\"rid\":115}",
+    "recordedAt": "2026-09-28T22:12:12.198Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "data": [
+      {
+        "name": "missing.bin",
+        "availability": "OFFLINE",
+        "packageUUID": 1790633502092,
+        "uuid": 1790633502093
+      }
+    ]
+  }
+}

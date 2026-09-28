@@ -1,0 +1,18 @@
+{
+  "_source": {
+    "program": "nzbget",
+    "version": "26.3",
+    "request": "POST /jsonrpc {\"method\":\"append\",\"params\":[\"small.nzb\",\"PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPCFET0NUWVBFIG56YiBQVUJMSUMgIi0vL25ld3pCaW4vL0RURCBOWkIgMS4wLy9FTiIgImh0dHA6Ly93d3cubmV3emJpbi5jb20vRFREL256Yi9uemItMS4wLmR0ZCI+CjxuemIgeG1sbnM9Imh0dHA6Ly93d3cubmV3emJpbi5jb20vRFRELzIwMDMvbnpiIj4KPGZpbGUgcG9zdGVyPSJuc2VydiIgZGF0ZT0iMTcwMDAwMDAwMCIgc3ViamVjdD0iJnF1b3Q7c21hbGwuYmluJnF1b3Q7IHlFbmMgKDEvNSkiPgo8Z3JvdXBzPgo8Z3JvdXA+YWx0LmJpbmFyaWVzLnRlc3Q8L2dyb3VwPgo8L2dyb3Vwcz4KPHNlZ21lbnRzPgo8c2VnbWVudCBieXRlcz0iNTAwMDAwIiBudW1iZXI9IjEiPnNtYWxsLmJpbj8xPTA6NTAwMDAwPC9zZWdtZW50Pgo8c2VnbWVudCBieXRlcz0iNTAwMDAwIiBudW1iZXI9IjIiPnNtYWxsLmJpbj8yPTUwMDAwMDo1MDAwMDA8L3NlZ21lbnQ+CjxzZWdtZW50IGJ5dGVzPSI1MDAwMDAiIG51bWJlcj0iMyI+c21hbGwuYmluPzM9MTAwMDAwMDo1MDAwMDA8L3NlZ21lbnQ+CjxzZWdtZW50IGJ5dGVzPSI1MDAwMDAiIG51bWJlcj0iNCI+c21hbGwuYmluPzQ9MTUwMDAwMDo1MDAwMDA8L3NlZ21lbnQ+CjxzZWdtZW50IGJ5dGVzPSI5NzE1MiIgbnVtYmVyPSI1Ij5zbWFsbC5iaW4/NT0yMDAwMDAwOjk3MTUyPC9zZWdtZW50Pgo8L3NlZ21lbnRzPgo8L2ZpbGU+CjwvbnpiPgo=\",\"\",0,false,false,\"\",0,\"SCORE\",false,[]],\"id\":7}",
+    "recordedAt": "2026-09-28T22:10:48.495Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "set-cookie": "<omitted>"
+  },
+  "body": {
+    "version": "1.1",
+    "id": 7,
+    "result": 1
+  }
+}

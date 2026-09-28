@@ -1,0 +1,22 @@
+{
+  "_source": {
+    "program": "qbittorrent",
+    "version": "4.6.7",
+    "request": "GET /api/v2/transfer/info",
+    "recordedAt": "2026-09-28T22:10:55.970Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "connection_status": "firewalled",
+    "dht_nodes": 0,
+    "dl_info_data": 7340032,
+    "dl_info_speed": 0,
+    "dl_rate_limit": 0,
+    "up_info_data": 0,
+    "up_info_speed": 0,
+    "up_rate_limit": 0
+  }
+}

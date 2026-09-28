@@ -1,0 +1,17 @@
+{
+  "_source": {
+    "program": "aria2",
+    "version": "1.37.0",
+    "request": "POST /jsonrpc {\"jsonrpc\":\"2.0\",\"id\":\"6\",\"method\":\"aria2.tellWaiting\",\"params\":[\"token:<secret>\",0,1000]}",
+    "recordedAt": "2026-09-28T22:10:48.928Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json-rpc"
+  },
+  "body": {
+    "id": "6",
+    "jsonrpc": "2.0",
+    "result": []
+  }
+}

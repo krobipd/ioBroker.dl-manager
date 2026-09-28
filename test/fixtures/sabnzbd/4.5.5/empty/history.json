@@ -1,0 +1,25 @@
+{
+  "_source": {
+    "program": "sabnzbd",
+    "version": "4.5.5",
+    "request": "GET /api?mode=history&limit=50&apikey=<api-key>",
+    "recordedAt": "2026-09-28T22:10:53.744Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json;charset=UTF-8"
+  },
+  "body": {
+    "history": {
+      "total_size": "0",
+      "month_size": "0",
+      "week_size": "0",
+      "day_size": "0",
+      "slots": [],
+      "ppslots": 0,
+      "noofslots": 0,
+      "last_history_update": 1,
+      "version": "4.5.5"
+    }
+  }
+}

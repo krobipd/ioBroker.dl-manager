@@ -1,0 +1,15 @@
+{
+  "_source": {
+    "program": "jdownloader",
+    "version": "48637",
+    "request": "POST {\"apiVer\":1,\"url\":\"/linkgrabberv2/moveToDownloadlist\",\"params\":[[1790633502093],[1790633502092]],\"rid\":116}",
+    "recordedAt": "2026-09-28T22:12:12.206Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "data": ""
+  }
+}

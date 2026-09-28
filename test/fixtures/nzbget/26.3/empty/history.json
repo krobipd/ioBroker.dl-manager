@@ -1,0 +1,18 @@
+{
+  "_source": {
+    "program": "nzbget",
+    "version": "26.3",
+    "request": "POST /jsonrpc {\"method\":\"history\",\"params\":[false],\"id\":5}",
+    "recordedAt": "2026-09-28T22:10:48.307Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "set-cookie": "<omitted>"
+  },
+  "body": {
+    "version": "1.1",
+    "id": 5,
+    "result": []
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "_source": {
+    "program": "jdownloader",
+    "version": "48637",
+    "request": "POST {\"apiVer\":1,\"url\":\"/downloadsV2/queryPackages\",\"params\":[{\"bytesLoaded\":true,\"bytesTotal\":true,\"childCount\":true,\"comment\":true,\"enabled\":true,\"eta\":true,\"finished\":true,\"hosts\":true,\"priority\":true,\"running\":true,\"saveTo\":true,\"speed\":true,\"status\":true,\"maxResults\":-1,\"startAt\":0}],\"rid\":258}",
+    "recordedAt": "2026-09-28T22:12:59.138Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "data": [
+      {
+        "bytesLoaded": 2097152,
+        "saveTo": "/output/small",
+        "hosts": ["seed"],
+        "name": "small",
+        "statusIconKey": "true",
+        "finished": true,
+        "childCount": 1,
+        "uuid": 1790633501919,
+        "bytesTotal": 2097152,
+        "enabled": true,
+        "status": "Finished"
+      },
+      {
+        "bytesLoaded": 0,
+        "saveTo": "/output/missing",
+        "hosts": ["seed"],
+        "name": "missing",
+        "statusIconKey": "kc.6543f14e19138cb47a66f04da188d30a",
+        "finished": true,
+        "childCount": 1,
+        "uuid": 1790633532205,
+        "bytesTotal": 0,
+        "enabled": true,
+        "status": "An Error occurred!  (seed)"
+      },
+      {
+        "bytesLoaded": 32112640,
+        "saveTo": "/output/big",
+        "hosts": ["seed"],
+        "name": "big",
+        "childCount": 1,
+        "uuid": 1790633547449,
+        "bytesTotal": 33554432,
+        "enabled": true
+      },
+      {
+        "bytesLoaded": 0,
+        "saveTo": "/output/queued",
+        "hosts": ["seed"],
+        "name": "queued",
+        "childCount": 1,
+        "uuid": 1790633562849,
+        "bytesTotal": 4194304,
+        "enabled": true
+      },
+      {
+        "bytesLoaded": 0,
+        "saveTo": "/output/stopped",
+        "hosts": ["seed"],
+        "name": "stopped",
+        "childCount": 1,
+        "uuid": 1790633577953,
+        "bytesTotal": 4194304
+      }
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "_source": {
+    "program": "jdownloader",
+    "version": "48637",
+    "request": "POST {\"apiVer\":1,\"url\":\"/downloadcontroller/getSpeedInBps\",\"params\":[],\"rid\":257}",
+    "recordedAt": "2026-09-28T22:12:59.134Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "data": 1048576
+  }
+}

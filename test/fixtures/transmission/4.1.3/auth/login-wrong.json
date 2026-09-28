@@ -1,0 +1,14 @@
+{
+  "_source": {
+    "program": "transmission",
+    "version": "4.1.3",
+    "request": "POST /transmission/rpc (basic auth, wrong password)",
+    "recordedAt": "2026-09-28T22:10:53.867Z"
+  },
+  "status": 401,
+  "headers": {
+    "content-type": "text/html; charset=ISO-8859-1",
+    "www-authenticate": "Basic realm=\"Transmission\""
+  },
+  "body": "<h1>401: Unauthorized</h1>"
+}

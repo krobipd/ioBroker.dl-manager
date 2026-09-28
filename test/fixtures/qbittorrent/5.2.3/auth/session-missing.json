@@ -1,0 +1,13 @@
+{
+  "_source": {
+    "program": "qbittorrent",
+    "version": "5.2.3",
+    "request": "GET /api/v2/torrents/info",
+    "recordedAt": "2026-09-28T22:10:53.517Z"
+  },
+  "status": 403,
+  "headers": {
+    "content-type": "text/plain; charset=UTF-8"
+  },
+  "body": "Forbidden"
+}

@@ -1,0 +1,17 @@
+{
+  "_source": {
+    "program": "transmission",
+    "version": "4.0.6",
+    "request": "POST /transmission/rpc {\"method\":\"torrent-stop\",\"arguments\":{},\"tag\":86}",
+    "recordedAt": "2026-09-28T22:11:10.168Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=UTF-8"
+  },
+  "body": {
+    "arguments": {},
+    "result": "success",
+    "tag": 86
+  }
+}

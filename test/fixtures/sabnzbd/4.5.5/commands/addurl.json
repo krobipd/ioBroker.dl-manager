@@ -1,0 +1,16 @@
+{
+  "_source": {
+    "program": "sabnzbd",
+    "version": "4.5.5",
+    "request": "GET /api?mode=addurl&name=http://seed:8080/missing.nzb",
+    "recordedAt": "2026-09-28T22:10:55.429Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json;charset=UTF-8"
+  },
+  "body": {
+    "status": true,
+    "nzo_ids": ["SABnzbd_nzo_2m5px0vc"]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "_source": {
+    "program": "nzbget",
+    "version": "24.8",
+    "request": "POST /jsonrpc {\"method\":\"editqueue\",\"params\":[\"HistoryDelete\",\"\",[2]],\"id\":72}",
+    "recordedAt": "2026-09-28T22:10:54.253Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "set-cookie": "<omitted>"
+  },
+  "body": {
+    "version": "1.1",
+    "id": 72,
+    "result": true
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "_source": {
+    "program": "sabnzbd",
+    "version": "4.5.5",
+    "request": "GET /api?mode=auth&key=<api-key>",
+    "recordedAt": "2026-09-28T22:10:53.733Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json;charset=UTF-8"
+  },
+  "body": {
+    "auth": "apikey"
+  }
+}
