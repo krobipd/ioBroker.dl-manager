@@ -44,6 +44,10 @@ describe("registry", () => {
     expect(findProgram("deluge")?.needs).toEqual(["host", "password"]);
   });
 
+  it("knows SABnzbd, which needs the API key", () => {
+    expect(findProgram("sabnzbd")?.needs).toEqual(["host", "apiKey"]);
+  });
+
   it("returns nothing for an unknown type", () => {
     expect(findProgram("emule")).toBeUndefined();
   });

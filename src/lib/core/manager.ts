@@ -225,8 +225,12 @@ export class ProgramManager {
       }
       const driver = entry.create(row.cfg, this.driverDeps());
       try {
-        const snap = await driver.poll();
-        lines.push(`${row.id}: OK — version ${snap.status.version}, ${snap.items.length} download(s)`);
+        if (driver.test) {
+          lines.push(`${row.id}: OK — version ${await driver.test()}`);
+        } else {
+          const snap = await driver.poll();
+          lines.push(`${row.id}: OK — version ${snap.status.version}, ${snap.items.length} download(s)`);
+        }
       } catch (err: unknown) {
         const text = redact(errText(err));
         const kind = classify(err);

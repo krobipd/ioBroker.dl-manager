@@ -3,6 +3,7 @@ import type { ProgramDriver } from "../core/model";
 import { DlDriver } from "./deluge/driver";
 import { JdDriver } from "./jdownloader/driver";
 import { QbDriver } from "./qbittorrent/driver";
+import { SabDriver } from "./sabnzbd/driver";
 import { TrDriver } from "./transmission/driver";
 
 /** One row of the settings table, cleaned and with its secrets decrypted. */
@@ -62,6 +63,7 @@ export const PROGRAMS: readonly ProgramEntry[] = [
   { type: "qbittorrent", needs: ["host"], create: (cfg, deps) => new QbDriver(cfg, deps) },
   { type: "transmission", needs: ["host"], create: (cfg, deps) => new TrDriver(cfg, deps) },
   { type: "deluge", needs: ["host", "password"], create: (cfg, deps) => new DlDriver(cfg, deps) },
+  { type: "sabnzbd", needs: ["host", "apiKey"], create: (cfg, deps) => new SabDriver(cfg, deps) },
 ];
 
 /**

@@ -152,6 +152,11 @@ export interface ProgramDriver {
   command(cmd: Command): Promise<void>;
   /** Releases connections and timers. */
   close(): Promise<void>;
+  /**
+   * Optional quiet check for the settings page's connection test (e.g. SABnzbd `mode=auth`, which leaves no warning
+   * in the program on a wrong key); without it the test polls once.
+   */
+  test?(): Promise<string>;
   /** Optional push channel; it only triggers an immediate poll, it never carries values. */
   subscribe?(onChange: () => void): () => void;
 }

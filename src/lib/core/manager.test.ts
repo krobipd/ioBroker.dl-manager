@@ -309,6 +309,33 @@ describe("ProgramManager — connection test and stop", () => {
     ]);
   });
 
+  it("uses a driver's own quiet check instead of a poll when it has one", async () => {
+    const w = world({ h1: { snapshot: snap(0) } });
+    const m = new ProgramManager(
+      {
+        adapter: w.a,
+        timers: { setTimeout: () => undefined, clearTimeout: () => undefined },
+        find: () => ({
+          type: "sabnzbd",
+          needs: ["host"],
+          create: (): ProgramDriver => ({
+            type: "sabnzbd",
+            capabilities: new Set(),
+            extras: [],
+            poll: () => Promise.reject(new Error("must not poll")),
+            test: () => Promise.resolve("5.1.3"),
+            command: () => Promise.resolve(),
+            close: () => Promise.resolve(),
+          }),
+        }),
+        decrypt: v => v,
+        problems: { report: () => undefined, resolve: () => undefined },
+      },
+      { intervalMs: 10_000, removeFinished: false },
+    );
+    expect(await m.testConnections([row("sabnzbd", "b", "h1")])).toBe("sabnzbd-b: OK — version 5.1.3");
+  });
+
   it("stop closes every driver, marks every program Unknown and the adapter disconnected", async () => {
     const w = world({ h1: { snapshot: snap(0) }, h2: { snapshot: snap(0) } });
     const m = w.manager();
