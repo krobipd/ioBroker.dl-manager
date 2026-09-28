@@ -88,7 +88,6 @@ export async function record(_ctx) {
   const queued = (await add("queued")).json().result;
   const stoppedRes = await add("stopped", { pause: "true" });
   w("commands", "add-uri-paused", stoppedRes);
-  const stopped = stoppedRes.json().result;
   await waitFor("big active", async () => (await status(big)) === "active" && (await status(queued)) === "waiting");
   await snapshot("running");
 
@@ -124,8 +123,10 @@ export async function record(_ctx) {
 
   // finish, then remove (status "removed") and drop the result
   await waitFor("big complete", async () => (await status(big)) === "complete", 180_000, 1000);
-  w("commands", "remove", await rpc("aria2.remove", [stopped]));
-  await waitFor("stopped removed", async () => (await status(stopped)) === "removed");
+  // unpauseAll released the paused one too — remove a freshly added paused download
+  const doomed = (await add("stopped", { pause: "true" })).json().result;
+  w("commands", "remove", await rpc("aria2.remove", [doomed]));
+  await waitFor("doomed removed", async () => (await status(doomed)) === "removed");
   await snapshot("finished");
   w("commands", "remove-download-result", await rpc("aria2.removeDownloadResult", [missing]));
   return rec;

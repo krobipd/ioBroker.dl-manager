@@ -89,16 +89,22 @@ export async function record(_ctx) {
   w("commands", "add-package", "POST /api/add_package", smallRes);
   const small = smallRes.json();
   const failed = (await add("missing", ["http://seed:8080/missing.bin"])).json();
+  const linkSeen = new Set();
   await waitFor(
     "small finished + missing failed",
     async () => {
       const s = await pkg(small);
       const f = await pkg(failed);
+      for (const l of [...(s?.links ?? []), ...(f?.links ?? [])]) {
+        linkSeen.add(`${l.name}: ${l.status} ${l.statusmsg ?? ""} ${l.error ?? ""}`.trim());
+      }
       return s?.links?.every(l => l.status === 0) && f?.links?.every(l => [1, 6, 8].includes(l.status));
     },
     120_000,
     2000,
-  );
+  ).catch(err => {
+    throw new Error(`${err.message} — link states seen: ${[...linkSeen].join(" | ")}`);
+  });
   await snapshot("finished-and-failed");
 
   // running: pyLoad loads one file at a time only if configured — record what the default does

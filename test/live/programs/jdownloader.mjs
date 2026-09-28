@@ -3,9 +3,9 @@
 // internet, so the container starts in the default network and joins the internal one after. A download is a JD
 // package (design decision 3); links are read for the status. api-jdownloader.md § 1.2, § 2, § 5.
 import { execFileSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { Http, payload, prepareHttpFiles, Recorder, waitFor } from "../lib.mjs";
+import { Http, payload, prepareHttpFiles, Recorder, sh, waitFor } from "../lib.mjs";
 
 const MiB = 1024 * 1024;
 
@@ -27,8 +27,15 @@ export function prepare(work, tag) {
     join(work, "seed", "archive.zip"),
     inner,
   ]);
+  // The image copies /defaults/cfg only when /config/cfg is missing, and its init script edits files of it — so the
+  // defaults are taken out of the image and the settings below are laid over them.
+  const image = `jlesage/jdownloader-2:${tag}`;
   const cfg = join(work, "jd", "cfg");
-  mkdirSync(cfg, { recursive: true });
+  mkdirSync(join(work, "jd"), { recursive: true });
+  sh("docker", ["pull", "-q", image]);
+  sh("docker", ["create", "--name", "jd-defaults", image]);
+  sh("docker", ["cp", "jd-defaults:/defaults/cfg", cfg]);
+  sh("docker", ["rm", "jd-defaults"]);
   const files = {
     "org.jdownloader.api.RemoteAPIConfig.json": {
       deprecatedapienabled: true,
@@ -48,11 +55,13 @@ export function prepare(work, tag) {
     },
   };
   for (const [name, content] of Object.entries(files)) {
-    writeFileSync(join(cfg, name), JSON.stringify(content, null, 2));
+    const file = join(cfg, name);
+    const base = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : {};
+    writeFileSync(file, JSON.stringify({ ...base, ...content }, null, 2));
   }
   mkdirSync(join(work, "output"), { recursive: true, mode: 0o777 });
   return {
-    image: `jlesage/jdownloader-2:${tag}`,
+    image,
     name: "jd",
     internet: true,
     env: { USER_ID: "1000", GROUP_ID: "1000", TZ: "Etc/UTC" },
