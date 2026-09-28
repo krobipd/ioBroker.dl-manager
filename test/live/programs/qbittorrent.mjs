@@ -1,7 +1,7 @@
 // qBittorrent in the container recorder: config with a fixed PBKDF2 password, torrents in every reachable state,
 // then every read the driver makes, recorded per snapshot. api-torrent.md § 1.
 import { pbkdf2Sync } from "node:crypto";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DEAD_MAGNET, DEAD_MAGNET_HASH, Http, prepareTorrents, Recorder, torrentOf, waitFor } from "../lib.mjs";
 
@@ -181,10 +181,22 @@ export async function record(ctx) {
   });
   await snapshot("checking");
 
-  // failed: take the payload away and recheck
-  rmSync(join(ctx.work, "downloads", "gone.bin"));
+  // failed: a deleted payload only drops to 0 % on a recheck — an unreadable one is a file error
+  chmodSync(join(ctx.work, "downloads", "gone.bin"), 0o000);
   await qb.req("POST", "/api/v2/torrents/recheck", { form: { hashes: hash("gone") } });
-  await waitFor("gone missing", async () => /^(missingFiles|error)$/.test((await stateOf("gone")) ?? ""), 60_000);
+  const goneSeen = new Set();
+  await waitFor(
+    "gone failing",
+    async () => {
+      const st = (await stateOf("gone")) ?? "";
+      goneSeen.add(st);
+      return /^(missingFiles|error)$/.test(st);
+    },
+    60_000,
+    100,
+  ).catch(err => {
+    throw new Error(`${err.message} — states seen: ${[...goneSeen].join(", ")}`);
+  });
   await snapshot("missing");
 
   // completed: stop the finished one

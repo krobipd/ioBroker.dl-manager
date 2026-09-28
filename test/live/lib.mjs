@@ -295,3 +295,83 @@ export function torrentOf(work, name) {
     hash: readFileSync(join(work, "torrents", `${name}.hash`), "utf8"),
   };
 }
+
+/** The NZB jobs every usenet program gets. `missing`: articles only on server instance 2 → 430 on NServ. */
+export const NZB_FILES = {
+  big: { size: 32 * MiB, missing: false },
+  queued: { size: 8 * MiB, missing: false },
+  stopped: { size: 8 * MiB, missing: false },
+  small: { size: 2 * MiB, missing: false },
+  broken: { size: 2 * MiB, missing: true },
+};
+
+/** Segment size NServ serves. */
+const SEGMENT = 500_000;
+
+/**
+ * An NZB in NServ's own format (`<file>?<segment>=<offset>:<size>[!<instances>]`, NServ NzbGenerator.cpp).
+ *
+ * @param {string} file file name in the NServ data folder
+ * @param {number} size file size
+ * @param {boolean} missing articles missing on server instance 1
+ * @returns {string} the NZB document
+ */
+export function makeNzb(file, size, missing) {
+  const count = Math.ceil(size / SEGMENT);
+  const segs = [];
+  for (let n = 1, off = 0; n <= count; n++, off += SEGMENT) {
+    const len = Math.min(SEGMENT, size - off);
+    segs.push(`<segment bytes="${len}" number="${n}">${file}?${n}=${off}:${len}${missing ? "!2" : ""}</segment>`);
+  }
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<!DOCTYPE nzb PUBLIC "-//newzBin//DTD NZB 1.0//EN" "http://www.newzbin.com/DTD/nzb/nzb-1.0.dtd">',
+    '<nzb xmlns="http://www.newzbin.com/DTD/2003/nzb">',
+    `<file poster="nserv" date="1700000000" subject="&quot;${file}&quot; yEnc (1/${count})">`,
+    "<groups>",
+    "<group>alt.binaries.test</group>",
+    "</groups>",
+    "<segments>",
+    ...segs,
+    "</segments>",
+    "</file>",
+    "</nzb>",
+    "",
+  ].join("\n");
+}
+
+/**
+ * Runner side: NServ data folder with the payloads, one NZB per job in `nzb/`, and the NServ sidecar.
+ *
+ * @param {string} work work directory
+ * @returns {{ name: string, image: string, entrypoint: string, args: string[], volumes: string[] }} NServ sidecar
+ */
+export function prepareUsenet(work) {
+  mkdirSync(join(work, "nserv"), { recursive: true });
+  mkdirSync(join(work, "nzb"), { recursive: true });
+  mkdirSync(join(work, "downloads"), { recursive: true, mode: 0o777 });
+  let seed = 40;
+  for (const [name, f] of Object.entries(NZB_FILES)) {
+    const file = `${name}.bin`;
+    writeFileSync(join(work, "nserv", file), payload(f.size, seed++));
+    writeFileSync(join(work, "nzb", `${name}.nzb`), makeNzb(file, f.size, f.missing));
+  }
+  return {
+    name: "nserv",
+    image: "nzbgetcom/nzbget:v26.3",
+    entrypoint: "/app/nzbget/nzbget",
+    args: ["--nserv", "-d", "/data", "-p", "6791"],
+    volumes: [`${join(work, "nserv")}:/data:ro`],
+  };
+}
+
+/**
+ * Recorder side: one prepared NZB.
+ *
+ * @param {string} work work directory
+ * @param {string} name key of NZB_FILES
+ * @returns {string} the NZB document
+ */
+export function nzbOf(work, name) {
+  return readFileSync(join(work, "nzb", `${name}.nzb`), "utf8");
+}

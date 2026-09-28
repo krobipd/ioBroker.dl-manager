@@ -42,6 +42,14 @@ jobs:
             tag: 2.1.1-r10-ls324
           - program: deluge
             tag: 2.2.0-ls383
+          - program: sabnzbd
+            tag: 4.5.5-ls250
+          - program: sabnzbd
+            tag: 5.1.3-ls274
+          - program: nzbget
+            tag: v24.8
+          - program: nzbget
+            tag: v26.3
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7

@@ -49,6 +49,21 @@ if (mode === "--inside") {
     "/live/throttle-server.mjs",
     "/seed",
   ]);
+  for (const side of c.sidecars ?? []) {
+    sh("docker", ["pull", "-q", side.image]);
+    sh("docker", [
+      "run",
+      "-d",
+      "--name",
+      side.name,
+      "--network",
+      "dm",
+      ...(side.entrypoint ? ["--entrypoint", side.entrypoint] : []),
+      ...(side.volumes ?? []).flatMap(v => ["-v", v]),
+      side.image,
+      ...(side.args ?? []),
+    ]);
+  }
   const envArgs = Object.entries(c.env ?? {}).flatMap(([k, v]) => ["-e", `${k}=${v}`]);
   const volArgs = (c.volumes ?? []).flatMap(v => ["-v", v]);
   // A program that loads parts of itself on its first start begins in the default network and joins `dm` after.
@@ -87,6 +102,14 @@ if (mode === "--inside") {
     );
   } catch {
     failed = true;
+  }
+  for (const side of c.sidecars ?? []) {
+    console.log(`---- ${side.name} log ----`);
+    try {
+      console.log(sh("docker", ["logs", "--tail", "50", side.name], { quiet: true }));
+    } catch {
+      // the log is a diagnosis aid only
+    }
   }
   console.log(`---- ${c.name} log ----`);
   try {
