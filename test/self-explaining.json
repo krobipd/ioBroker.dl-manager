@@ -1,0 +1,19 @@
+{
+  "*.version": "The program's version as it reports it — the string is the whole content.",
+  "*.downloadSpeed": "A speed in MB/s whose name and unit say everything; null means the program did not report it.",
+  "*.uploadSpeed": "A speed in MB/s whose name and unit say everything; null means the program did not report it.",
+  "*.active": "A plain count of the downloads the program is working on right now.",
+  "*.queued": "A plain count of the downloads waiting in the program's queue.",
+  "*.total": "A plain count of every download the program lists.",
+  "*.lastFinishedTime": "The time stamp that belongs to the last finished download next to it.",
+  "*.lastFailedTime": "The time stamp that belongs to the last failed download next to it.",
+  "*.downloads.*.status": "One word from the fixed status list; the value labels spell it out in the system language.",
+  "*.downloads.*.progress": "Percent done — the name and the unit % say everything.",
+  "*.downloads.*.size": "The download's size in GB — the name and the unit say everything.",
+  "*.downloads.*.downloaded": "The part already loaded, in GB — the name and the unit say everything.",
+  "*.downloads.*.speed": "The download's current speed in MB/s — the name and the unit say everything.",
+  "*.downloads.*.uploadSpeed": "The torrent's current upload speed in MB/s — the name and the unit say everything.",
+  "*.downloads.*.added": "The time the download was added — a plain date.",
+  "*.downloads.*.finished": "The time the download finished — a plain date, empty while it runs.",
+  "*.downloads.*.category": "The program's own category or label, handed over verbatim."
+}
