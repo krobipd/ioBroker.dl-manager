@@ -48,6 +48,10 @@ describe("registry", () => {
     expect(findProgram("sabnzbd")?.needs).toEqual(["host", "apiKey"]);
   });
 
+  it("knows NZBGet (user and password optional — NZBGet can run without)", () => {
+    expect(findProgram("nzbget")?.needs).toEqual(["host"]);
+  });
+
   it("returns nothing for an unknown type", () => {
     expect(findProgram("emule")).toBeUndefined();
   });

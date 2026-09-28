@@ -45,6 +45,11 @@ export interface HttpOptions {
   timeoutMs?: number;
   /** HTTP basic auth on every request. */
   basicAuth?: { user: string; pass: string };
+  /**
+   * Send once more when fetch reused a kept-alive socket the server had closed (`UND_ERR_SOCKET`) — NZBGet closes
+   * the connection after every answer (live-programs runs 36486882766, 36487216805).
+   */
+  resendOnClosedSocket?: boolean;
 }
 
 /**
@@ -111,7 +116,16 @@ export class HttpClient {
     let res: Response;
     let text: string;
     try {
-      res = await fetch(req.url, { method: req.method, headers, body, redirect: "manual", signal: abort.signal });
+      const send = (): Promise<Response> =>
+        fetch(req.url, { method: req.method, headers, body, redirect: "manual", signal: abort.signal });
+      try {
+        res = await send();
+      } catch (err: unknown) {
+        if (!this.opts.resendOnClosedSocket || !closedSocket(err)) {
+          throw err;
+        }
+        res = await send();
+      }
       text = await res.text();
     } catch (err: unknown) {
       if (abort.signal.aborted) {
@@ -145,4 +159,13 @@ export class HttpClient {
       },
     };
   }
+}
+
+/**
+ * @param err what fetch threw
+ * @returns whether it failed on a socket the server had already closed
+ */
+function closedSocket(err: unknown): boolean {
+  const cause = err instanceof Error ? (err.cause as { code?: unknown } | undefined) : undefined;
+  return cause?.code === "UND_ERR_SOCKET";
 }

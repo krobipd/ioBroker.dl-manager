@@ -29,6 +29,27 @@ afterEach(async () => {
 });
 
 describe("HttpClient", () => {
+  it("sends once more when a server closed the kept-alive socket (NZBGet) — only with the option", async () => {
+    const closed = (): TypeError => new TypeError("fetch failed", { cause: { code: "UND_ERR_SOCKET" } });
+    const ok = new Response("{}", { status: 200 });
+    const spy = vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(closed()).mockResolvedValueOnce(ok);
+    try {
+      const r = await new HttpClient(timers, { resendOnClosedSocket: true }).request({
+        method: "POST",
+        url: "http://x/",
+      });
+      expect(r.status).toBe(200);
+      expect(spy).toHaveBeenCalledTimes(2);
+      spy.mockReset().mockRejectedValueOnce(closed());
+      await expect(new HttpClient(timers).request({ method: "POST", url: "http://x/" })).rejects.toThrow(
+        UnreachableError,
+      );
+      expect(spy).toHaveBeenCalledTimes(1);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it("sends a multipart body with its own boundary", async () => {
     let type = "";
     let body = "";
