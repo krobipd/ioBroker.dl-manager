@@ -28,6 +28,8 @@ export interface ContractCase {
   commandCalls: Partial<Record<CommandKind, { method: string; path: string; bodyContains?: string }>>;
   /** Tells a login request from the rest. */
   isLoginCall: (call: RecordedCall) => boolean;
+  /** The program has no login at all (JDownloader's local API) — the rejected-login test does not apply. */
+  noLogin?: boolean;
 }
 
 type CommandKind = Exclude<Command["kind"], "extra">;
@@ -139,7 +141,10 @@ export function runDriverContract(c: ContractCase): void {
       await d.close();
     });
 
-    it("gives up after ONE rejected login with an AuthError", async () => {
+    it("gives up after ONE rejected login with an AuthError", async ({ skip }) => {
+      if (c.noLogin) {
+        skip();
+      }
       const d = c.makeDriver(server.baseUrl, { good: false });
       await expect(d.poll()).rejects.toThrow(AuthError);
       expect(server.calls.filter(c.isLoginCall)).toHaveLength(1);

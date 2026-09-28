@@ -101,6 +101,17 @@ describe("HttpClient", () => {
     await expect(new HttpClient(timers).request({ method: "GET", url })).rejects.toThrow(UnreachableError);
   });
 
+  it("close() aborts a request that is still waiting (long poll at shutdown)", async () => {
+    const s = await serve(() => undefined);
+    server = s.server;
+    const c = new HttpClient(timers, { timeoutMs: 60_000 });
+    const pending = c.request({ method: "GET", url: s.url });
+    await new Promise(resolve => setTimeout(resolve, 50));
+    c.close();
+    await expect(pending).rejects.toThrow(UnreachableError);
+    server.closeAllConnections();
+  });
+
   it("calls a body that is not JSON a protocol error", async () => {
     const s = await serve((_req, _b, res) => res.end("<html>"));
     server = s.server;

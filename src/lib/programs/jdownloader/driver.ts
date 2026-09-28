@@ -1,0 +1,188 @@
+import { errText } from "../../err-text";
+import { ProtocolError } from "../../core/errors";
+import type { Capability, Command, ProgramDriver, ProgramSnapshot } from "../../core/model";
+import type { DriverDeps, ProgramConfig } from "../registry";
+import { jdBaseUrl, JdLocalTransport, type JdTransport } from "./client";
+import { toSnapshot } from "./map";
+
+const GS = "org.jdownloader.settings.GeneralSettings";
+const PACKAGE_QUERY = {
+  bytesLoaded: true,
+  bytesTotal: true,
+  childCount: true,
+  enabled: true,
+  eta: true,
+  finished: true,
+  running: true,
+  saveTo: true,
+  speed: true,
+  status: true,
+  maxResults: -1,
+  startAt: 0,
+};
+const LINK_QUERY = {
+  addedDate: true,
+  advancedStatus: true,
+  bytesLoaded: true,
+  bytesTotal: true,
+  enabled: true,
+  eta: true,
+  extractionStatus: true,
+  finished: true,
+  finishedDate: true,
+  running: true,
+  skipped: true,
+  speed: true,
+  status: true,
+  maxResults: -1,
+  startAt: 0,
+};
+/** Seconds JD holds an event long poll open (`pollTimeout` 25 s) plus room. */
+const LISTEN_TIMEOUT_MS = 35_000;
+/** Pause before the next subscription after a failed one. */
+const RESUBSCRIBE_MS = 30_000;
+
+/** JDownloader 2: a download is a package; the transport is local (Deprecated API) or My.JDownloader (Task 17). */
+export class JdDriver implements ProgramDriver {
+  public readonly type = "jdownloader";
+  public readonly capabilities: ReadonlySet<Capability> = new Set<Capability>([
+    "globalPause",
+    "itemPause",
+    "itemRemove",
+    "add",
+    "speedLimit",
+    "itemSpeed",
+    "itemEta",
+    "itemAdded",
+    "itemFinished",
+    "itemError",
+  ]);
+  public readonly extras = [];
+  private readonly api: JdTransport;
+  private readonly events: JdTransport;
+  private version: string | null = null;
+
+  /**
+   * @param cfg the settings row
+   * @param deps adapter services
+   * @param api transport for the calls (default: local API)
+   * @param events transport for the event long poll (default: local API with a long deadline)
+   */
+  public constructor(
+    cfg: ProgramConfig,
+    private readonly deps: DriverDeps,
+    api?: JdTransport,
+    events?: JdTransport,
+  ) {
+    this.api = api ?? new JdLocalTransport(jdBaseUrl(cfg), deps);
+    this.events = events ?? new JdLocalTransport(jdBaseUrl(cfg), deps, LISTEN_TIMEOUT_MS);
+  }
+
+  /** @returns one complete query */
+  public async poll(): Promise<ProgramSnapshot> {
+    if (this.version === null) {
+      this.version = String(await this.api.call("/jd/version"));
+    }
+    const toolbar = await this.api.call("/toolbar/getStatus");
+    const packages = await this.api.call("/downloadsV2/queryPackages", [PACKAGE_QUERY]);
+    let links: unknown = null;
+    try {
+      links = await this.api.call("/downloadsV2/queryLinks", [LINK_QUERY]);
+    } catch (err: unknown) {
+      this.deps.log.debug(`jdownloader: link list failed, packages only: ${errText(err)}`);
+    }
+    return toSnapshot(this.version, toolbar, packages, links, m => this.deps.log.debug(m));
+  }
+
+  /** @param cmd the command */
+  public async command(cmd: Command): Promise<void> {
+    const pkg = (key: string): number[] => [Number(key)];
+    switch (cmd.kind) {
+      case "pauseAll":
+        await this.api.call("/downloadcontroller/stop");
+        return;
+      case "resumeAll":
+        if ((await this.api.call("/downloadcontroller/getCurrentState")) === "PAUSE") {
+          await this.api.call("/downloadcontroller/pause", [false]);
+        }
+        await this.api.call("/downloadcontroller/start");
+        return;
+      case "pause":
+        await this.api.call("/downloadsV2/setEnabled", [false, [], pkg(cmd.key)]);
+        return;
+      case "resume":
+        await this.api.call("/downloadsV2/setEnabled", [true, [], pkg(cmd.key)]);
+        await this.api.call("/downloadsV2/resumeLinks", [[], pkg(cmd.key)]);
+        return;
+      case "remove":
+        await this.api.call("/downloadsV2/removeLinks", [[], pkg(cmd.key)]);
+        return;
+      case "add":
+        await this.api.call("/linkgrabberv2/addLinks", [{ links: cmd.url, autostart: true, assignJobID: true }]);
+        return;
+      case "setSpeedLimit":
+        if (cmd.bps > 0) {
+          await this.api.call("/config/set", [GS, null, "DownloadSpeedLimit", cmd.bps]);
+        }
+        await this.api.call("/config/set", [GS, null, "DownloadSpeedLimitEnabled", cmd.bps > 0]);
+        return;
+      default:
+        throw new ProtocolError(`jdownloader: ${cmd.kind} is not supported`);
+    }
+  }
+
+  /** Aborts a waiting long poll. */
+  public close(): Promise<void> {
+    this.api.close();
+    this.events.close();
+    return Promise.resolve();
+  }
+
+  /**
+   * JD's event long poll as a push channel: any event only triggers a poll.
+   *
+   * @param onChange called when JD reports a change
+   * @returns stops listening
+   */
+  public subscribe(onChange: () => void): () => void {
+    let stopped = false;
+    let id: number | undefined;
+    const pause = (): Promise<void> =>
+      new Promise(resolve => {
+        if (!this.deps.setTimeout(resolve, RESUBSCRIBE_MS)) {
+          resolve();
+        }
+      });
+    const loop = async (): Promise<void> => {
+      while (!stopped) {
+        try {
+          if (id === undefined) {
+            const sub = await this.events.call("/events/subscribe", [["downloads\\..*", "downloadwatchdog\\..*"], []]);
+            const sid = (sub as { subscriptionid?: unknown } | null)?.subscriptionid;
+            if (typeof sid !== "number") {
+              throw new ProtocolError("jdownloader: event subscription without id");
+            }
+            id = sid;
+          }
+          const events = await this.events.call("/events/listen", [id]);
+          if (!stopped && Array.isArray(events) && events.length > 0) {
+            onChange();
+          }
+        } catch (err: unknown) {
+          id = undefined;
+          if (!stopped) {
+            this.deps.log.debug(`jdownloader: event channel interrupted: ${errText(err)}`);
+            await pause();
+          }
+        }
+      }
+    };
+    void loop();
+    return () => {
+      stopped = true;
+      if (id !== undefined) {
+        this.events.call("/events/unsubscribe", [id]).catch(() => undefined);
+      }
+    };
+  }
+}

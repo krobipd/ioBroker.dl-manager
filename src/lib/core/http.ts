@@ -51,6 +51,7 @@ export interface HttpOptions {
  */
 export class HttpClient {
   private readonly cookies = new Map<string, string>();
+  private readonly inFlight = new Set<AbortController>();
 
   /**
    * @param timers the adapter's timers
@@ -60,6 +61,14 @@ export class HttpClient {
     private readonly timers: HttpTimers,
     private readonly opts: HttpOptions = {},
   ) {}
+
+  /** Aborts every request still waiting — at shutdown, so no long poll outlives the adapter. */
+  public close(): void {
+    for (const a of this.inFlight) {
+      a.abort();
+    }
+    this.inFlight.clear();
+  }
 
   /** Forgets every cookie (before a fresh login). */
   public clearCookies(): void {
@@ -89,6 +98,7 @@ export class HttpClient {
     }
     const timeoutMs = this.opts.timeoutMs ?? 10_000;
     const abort = new AbortController();
+    this.inFlight.add(abort);
     const timer = this.timers.setTimeout(() => abort.abort(), timeoutMs);
     let res: Response;
     let text: string;
@@ -102,6 +112,7 @@ export class HttpClient {
       throw new UnreachableError(errText(err));
     } finally {
       this.timers.clearTimeout(timer);
+      this.inFlight.delete(abort);
     }
     if (res.status >= 300 && res.status < 400) {
       throw new ProtocolError(`redirected (${res.status}) — check host, port and path`);
