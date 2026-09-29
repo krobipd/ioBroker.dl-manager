@@ -1,7 +1,8 @@
 import { AuthError, ProtocolError } from "../../core/errors";
 import { HttpClient, type HttpResponse, type HttpTimers } from "../../core/http";
-import type { ProgramConfig } from "../registry";
+import type { ProgramConfig } from "../../core/model";
 import { snakeKeys } from "./map";
+import { baseUrl, catalogEntry } from "../catalog";
 
 /** Legacy (≤ 4.0) method names. */
 const LEGACY: Readonly<Record<string, string>> = {
@@ -36,8 +37,7 @@ export class TrClient {
    */
   public constructor(cfg: ProgramConfig, timers: HttpTimers) {
     this.http = new HttpClient(timers, cfg.username ? { basicAuth: { user: cfg.username, pass: cfg.password } } : {});
-    const path = cfg.path.replace(/\/+$/, "") || "/transmission/rpc";
-    this.url = `${cfg.https ? "https" : "http"}://${cfg.host}:${cfg.port || 9091}${path.startsWith("/") ? path : `/${path}`}`;
+    this.url = baseUrl(cfg, catalogEntry("transmission"));
   }
 
   /**

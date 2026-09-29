@@ -1,6 +1,7 @@
 import { AuthError, ProtocolError, UnreachableError } from "../../core/errors";
 import { HttpClient, type HttpTimers } from "../../core/http";
-import type { ProgramConfig } from "../registry";
+import type { ProgramConfig } from "../../core/model";
+import { baseUrl, catalogEntry } from "../catalog";
 
 /**
  * pyLoad-ng REST API (api-usenet-aria2-pyload.md § 4): `/api/<function>`, reads GET, changes POST with a JSON body.
@@ -22,8 +23,7 @@ export class PyClient {
       !cfg.apiKey && cfg.username ? { basicAuth: { user: cfg.username, pass: cfg.password } } : {},
     );
     this.headers = cfg.apiKey ? { "x-api-key": cfg.apiKey } : {};
-    const path = cfg.path.replace(/\/+$/, "");
-    this.base = `${cfg.https ? "https" : "http"}://${cfg.host}:${cfg.port || 8000}${path && !path.startsWith("/") ? `/${path}` : path}/api`;
+    this.base = `${baseUrl(cfg, catalogEntry("pyload"))}/api`;
   }
 
   /**

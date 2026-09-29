@@ -1,4 +1,5 @@
-import { findProgram, PROGRAMS, type ProgramConfig } from "./registry";
+import type { ProgramConfig } from "../core/model";
+import { findProgram, PROGRAMS } from "./registry";
 
 const deps = {
   setTimeout: (): undefined => undefined,

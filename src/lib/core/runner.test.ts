@@ -75,7 +75,7 @@ function makeDeps(clock: ManualClock): RunnerDeps & {
       info: m => void lines.push({ level: "info", msg: m }),
       warn: m => void lines.push({ level: "warn", msg: m }),
     },
-    problems: { report: key => void reported.push(key), resolve: () => undefined },
+    problems: { report: key => void reported.push(key) },
     lines,
     reported,
   };
@@ -109,7 +109,6 @@ describe("ProgramRunner", () => {
     await clock.tick();
     await clock.tick();
     expect(driver.polls).toBe(1);
-    expect(r.lockedByAuth).toBe(true);
     expect(deps.reported).toEqual(["auth:fake-a"]);
     expect(deps.lines.filter(l => l.level === "warn")).toHaveLength(0);
     expect(tree.markOffline).toHaveBeenCalledWith("401 Unauthorized");

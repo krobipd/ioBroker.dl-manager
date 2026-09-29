@@ -58,7 +58,12 @@ describe("ItemIds", () => {
     const first = new ItemIds(new Map());
     const id = first.idFor("3c7e1f0a9b");
     first.idFor("other-key-0001");
-    expect(new ItemIds(first.entries()).idFor("3c7e1f0a9b")).toBe(id);
+    const stored = new Map([
+      ["3c7e1f0a9b", id],
+      ["other-key-0001", first.idFor("other-key-0001")],
+    ]);
+    expect(new ItemIds(stored).idFor("3c7e1f0a9b")).toBe(id);
+    expect(new ItemIds(stored).keyOf(id)).toBe("3c7e1f0a9b");
   });
 
   it("frees an id when the key disappears", () => {
@@ -66,7 +71,8 @@ describe("ItemIds", () => {
     ids.idFor("aaaa12345678");
     ids.release("aaaa12345678");
     expect(ids.idFor("cccc12345678")).toBe("12345678");
-    expect(ids.entries().has("aaaa12345678")).toBe(false);
+    expect(ids.keyOf("12345678")).toBe("cccc12345678");
+    expect(ids.keyOf("nothing")).toBeUndefined();
   });
 
   it("gives a key that cleans to nothing a usable id", () => {

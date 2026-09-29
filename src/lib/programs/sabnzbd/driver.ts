@@ -1,6 +1,14 @@
 import { AuthError, ProtocolError } from "../../core/errors";
-import type { Capability, Command, ExtraDefinition, ProgramDriver, ProgramSnapshot } from "../../core/model";
-import type { DriverDeps, ProgramConfig } from "../registry";
+import type {
+  Capability,
+  Command,
+  ExtraDefinition,
+  ProgramDriver,
+  ProgramSnapshot,
+  DriverDeps,
+  ProgramConfig,
+} from "../../core/model";
+import { RETRY_EXTRA } from "../retry-extra";
 import { SabClient } from "./client";
 import { toSnapshot } from "./map";
 
@@ -8,18 +16,7 @@ import { toSnapshot } from "./map";
 const HISTORY_LIMIT = "1000";
 
 /** Retry of a failed job (a new nzo_id: the old channel goes, a new one comes). */
-const EXTRAS: readonly ExtraDefinition[] = [
-  {
-    id: "retry",
-    level: "item",
-    type: "boolean",
-    role: "button",
-    write: true,
-    read: false,
-    nameKey: "retry",
-    descKey: "descRetry",
-  },
-];
+const EXTRAS: readonly ExtraDefinition[] = [RETRY_EXTRA];
 
 /** SABnzbd 4.x / 5.x. Real global pause; no speed or ETA per job (SABnzbd reports neither). */
 export class SabDriver implements ProgramDriver {

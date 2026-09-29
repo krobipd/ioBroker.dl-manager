@@ -1,7 +1,6 @@
 import { EmulatedPause, memoryPauseStore } from "../../core/emulated-pause";
 import { ProtocolError } from "../../core/errors";
-import type { Capability, Command, ProgramDriver, ProgramSnapshot } from "../../core/model";
-import type { DriverDeps, ProgramConfig } from "../registry";
+import type { Capability, Command, ProgramDriver, ProgramSnapshot, DriverDeps, ProgramConfig } from "../../core/model";
 import { TrClient } from "./client";
 import { speedUnit, toSnapshot } from "./map";
 

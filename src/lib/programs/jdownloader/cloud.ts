@@ -1,7 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, createHmac } from "node:crypto";
 import { AuthError, ProtocolError, UnreachableError } from "../../core/errors";
 import { HttpClient, type HttpResponse, type HttpTimers } from "../../core/http";
-import type { ProgramConfig } from "../registry";
+import type { ProgramConfig } from "../../core/model";
 import { checkJdCall, type JdTransport } from "./client";
 
 /** The adapter's own app key — the web interface's prefix would trigger special behaviour in `config/set`. */
@@ -111,7 +111,7 @@ export class JdCloudTransport implements JdTransport {
   private readonly http: HttpClient;
   private readonly login: Buffer;
   private readonly device: Buffer;
-  private session: { token: string; regain: string; server: Buffer; device: Buffer } | null = null;
+  private session: Session | null = null;
   private deviceId = "";
   private rid = 0;
 
@@ -156,11 +156,6 @@ export class JdCloudTransport implements JdTransport {
     this.http.close();
   }
 
-  /** @returns the session as it is now (adopt() replaces it) */
-  private current(): { token: string; regain: string; server: Buffer; device: Buffer } | null {
-    return this.session;
-  }
-
   private nextRid(): number {
     this.rid = Math.max(this.rid + 1, Date.now());
     return this.rid;
@@ -189,17 +184,29 @@ export class JdCloudTransport implements JdTransport {
     return JSON.parse(jdDecrypt(key, res.text)) as Record<string, unknown>;
   }
 
-  private adopt(answer: Record<string, unknown>, serverBase: Buffer): void {
+  private adopt(answer: Record<string, unknown>, serverBase: Buffer): Session {
     if (typeof answer.sessiontoken !== "string" || typeof answer.regaintoken !== "string") {
       throw new ProtocolError("jdownloader-cloud: login answer without session token");
     }
     const t = jdTokens(serverBase, this.device, answer.sessiontoken);
     this.session = { token: answer.sessiontoken, regain: answer.regaintoken, server: t.server, device: t.device };
+    return this.session;
   }
 
-  private async connect(): Promise<void> {
+  /**
+   * Logs in and names the JDownloader instances of the account — the settings dialog offers them to choose from.
+   * The session stays open for calls to the instance named in the settings row.
+   *
+   * @returns the instance names, as the account lists them
+   */
+  public async listDevices(): Promise<string[]> {
+    return (await this.devices()).map(d => (typeof d.name === "string" ? d.name : "")).filter(n => n !== "");
+  }
+
+  /** @returns the account's device list, after a fresh login */
+  private async devices(): Promise<{ id?: unknown; name?: unknown }[]> {
     this.session = null;
-    this.adopt(
+    const s = this.adopt(
       await this.server(
         "/my/connect",
         [
@@ -210,15 +217,15 @@ export class JdCloudTransport implements JdTransport {
       ),
       this.login,
     );
-    const s = this.current();
-    if (!s) {
-      throw new ProtocolError("jdownloader-cloud: no session after the login");
-    }
     const list = await this.server("/my/listdevices", [["sessiontoken", s.token]], s.server).catch((err: unknown) => {
       this.session = null;
       throw err;
     });
-    const devices = Array.isArray(list.list) ? (list.list as { id?: unknown; name?: unknown }[]) : [];
+    return Array.isArray(list.list) ? (list.list as { id?: unknown; name?: unknown }[]) : [];
+  }
+
+  private async connect(): Promise<void> {
+    const devices = await this.devices();
     const found = devices.find(d => d.name === this.cfg.device);
     if (!found || typeof found.id !== "string") {
       // no device, no session: the next call logs in and looks again (a PC that boots later)
@@ -291,3 +298,54 @@ export class JdCloudTransport implements JdTransport {
 
 /** The session is gone — one reconnect, one repeat. */
 class TokenInvalid extends Error {}
+
+/** One My.JDownloader session: its tokens and the keys derived from them. */
+interface Session {
+  /** Session token (hex). */
+  token: string;
+  /** Regain token for `/my/reconnect`. */
+  regain: string;
+  /** Server key of this session. */
+  server: Buffer;
+  /** Device key of this session. */
+  device: Buffer;
+}
+
+/**
+ * The settings dialog's My.JDownloader step: log in with the typed account and name its JDownloader instances.
+ *
+ * @param email account e-mail
+ * @param password account password
+ * @param timers the adapter's timers
+ * @param base the API address (tests point it at a local server)
+ * @returns the instance names
+ */
+export async function listMyJdDevices(
+  email: string,
+  password: string,
+  timers: HttpTimers,
+  base = API,
+): Promise<string[]> {
+  const transport = new JdCloudTransport(
+    {
+      type: "jdownloader-cloud",
+      key: "",
+      name: "",
+      host: "",
+      port: 0,
+      https: false,
+      path: "",
+      username: email,
+      password,
+      apiKey: "",
+      device: "",
+    },
+    timers,
+    base,
+  );
+  try {
+    return await transport.listDevices();
+  } finally {
+    transport.close();
+  }
+}

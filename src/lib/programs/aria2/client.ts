@@ -1,6 +1,7 @@
 import { AuthError, ProtocolError } from "../../core/errors";
 import { HttpClient, type HttpTimers } from "../../core/http";
-import type { ProgramConfig } from "../registry";
+import type { ProgramConfig } from "../../core/model";
+import { baseUrl, catalogEntry } from "../catalog";
 
 /** The part of a WebSocket the push channel uses (Node 22 has one built in). */
 export interface MiniSocket {
@@ -30,7 +31,9 @@ const fault = (v: unknown): { code?: unknown; message?: unknown } | null =>
  */
 export class AriaClient {
   private readonly http: HttpClient;
-  private readonly base: string;
+  private readonly url: string;
+  /** The WebSocket address of the same RPC endpoint. */
+  public readonly wsUrl: string;
   private readonly token: string;
   private seq = 0;
 
@@ -40,17 +43,9 @@ export class AriaClient {
    */
   public constructor(cfg: ProgramConfig, timers: HttpTimers) {
     this.http = new HttpClient(timers);
-    const path = cfg.path.replace(/\/+$/, "") || "/jsonrpc";
-    this.base = `${cfg.host}:${cfg.port || 6800}${path.startsWith("/") ? path : `/${path}`}`;
+    this.url = baseUrl(cfg, catalogEntry("aria2"));
+    this.wsUrl = baseUrl(cfg, catalogEntry("aria2"), "ws");
     this.token = `token:${cfg.apiKey}`;
-    this.https = cfg.https;
-  }
-
-  private readonly https: boolean;
-
-  /** @returns the WebSocket address of the same RPC endpoint */
-  public get wsUrl(): string {
-    return `${this.https ? "wss" : "ws"}://${this.base}`;
   }
 
   /**
@@ -92,7 +87,7 @@ export class AriaClient {
   private async send(method: string, params: unknown[]): Promise<unknown> {
     const res = await this.http.request({
       method: "POST",
-      url: `${this.https ? "https" : "http"}://${this.base}`,
+      url: this.url,
       json: { jsonrpc: "2.0", id: String(++this.seq), method, params },
     });
     const body = res.json() as { result?: unknown; error?: unknown } | null;

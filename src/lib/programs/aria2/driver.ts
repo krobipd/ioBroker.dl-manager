@@ -1,10 +1,10 @@
 import { errText } from "../../err-text";
 import { EmulatedPause, memoryPauseStore } from "../../core/emulated-pause";
 import { ProtocolError } from "../../core/errors";
-import type { Capability, Command, ProgramDriver, ProgramSnapshot } from "../../core/model";
-import type { DriverDeps, ProgramConfig } from "../registry";
+import type { Capability, Command, ProgramDriver, ProgramSnapshot, DriverDeps, ProgramConfig } from "../../core/model";
 import { AriaClient, nodeSocket, type SocketFactory } from "./client";
 import { toSnapshot } from "./map";
+import { asRecords } from "../../core/units";
 
 /** Pause before reconnecting the push channel. */
 const RECONNECT_MS = 30_000;
@@ -58,11 +58,10 @@ export class AriaDriver implements ProgramDriver {
       ["aria2.getGlobalStat", []],
       ["aria2.getGlobalOption", []],
     ]);
-    const list = (v: unknown): Record<string, unknown>[] => (Array.isArray(v) ? (v as Record<string, unknown>[]) : []);
     const gids = (l: Record<string, unknown>[]): string[] => l.map(e => String(e.gid));
-    this.running = [...gids(list(active)), ...gids(list(waiting).filter(e => e.status !== "paused"))];
-    this.stopped = new Set(gids(list(stopped)));
-    const all = [...list(active), ...list(waiting), ...list(stopped)];
+    this.running = [...gids(asRecords(active)), ...gids(asRecords(waiting).filter(e => e.status !== "paused"))];
+    this.stopped = new Set(gids(asRecords(stopped)));
+    const all = [...asRecords(active), ...asRecords(waiting), ...asRecords(stopped)];
     const paused = await this.pause.observe(new Set(this.running), new Set(gids(all)));
     return toSnapshot(this.version, all, stat, option, paused, m => this.deps.log.debug(m));
   }

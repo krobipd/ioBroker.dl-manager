@@ -1,7 +1,11 @@
 const MB = 1_000_000;
 const GB = 1_000_000_000;
 
-const round2 = (v: number): number => Math.round(v * 100) / 100;
+/**
+ * @param v a number
+ * @returns it rounded to two decimals
+ */
+export const round2 = (v: number): number => Math.round(v * 100) / 100;
 const isNonNegative = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v) && v >= 0;
 
 /**
@@ -92,4 +96,50 @@ export function hiLo(hi: unknown, lo: unknown): number | null {
   const h = num(hi);
   const l = num(lo);
   return h === null || l === null ? null : h * 2 ** 32 + l;
+}
+
+/**
+ * @param v a part of a program's answer
+ * @returns it as an object, {} when it is none (API boundary)
+ */
+export const asRecord = (v: unknown): Record<string, unknown> =>
+  v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+
+/**
+ * @param v a list in a program's answer
+ * @returns its entries as objects, [] when it is none
+ */
+export const asRecords = (v: unknown): Record<string, unknown>[] => (Array.isArray(v) ? v.map(asRecord) : []);
+
+/**
+ * @param v a text in a program's answer
+ * @returns it, "" when it is none
+ */
+export const asText = (v: unknown): string => (typeof v === "string" ? v : "");
+
+/**
+ * @param v a count, size or rate in a program's answer (a string of digits too)
+ * @returns the number, null when it is none or negative (a program's "unknown")
+ */
+export function nonNegative(v: unknown): number | null {
+  const n = num(v);
+  return n !== null && n >= 0 ? n : null;
+}
+
+/**
+ * @param v a point in time in seconds since 1970, as the programs send it
+ * @returns milliseconds, null for none or 0 (the programs' "not yet")
+ */
+export function epochMs(v: unknown): number | null {
+  const n = num(v);
+  return n !== null && n > 0 ? n * 1000 : null;
+}
+
+/**
+ * @param size the download's size in bytes
+ * @param left the bytes still to load
+ * @returns the bytes loaded, null when either is unknown
+ */
+export function doneOf(size: number | null, left: number | null): number | null {
+  return size !== null && left !== null ? Math.max(0, size - left) : null;
 }

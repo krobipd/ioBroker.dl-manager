@@ -12,188 +12,14 @@
       "lg": 12,
       "xl": 12
     },
-    "_helpPrograms": {
-      "type": "staticText",
-      "text": "help_programs",
-      "xs": 12,
-      "sm": 12,
-      "md": 12,
-      "lg": 12,
-      "xl": 12
-    },
-    "_helpJdownloader": {
-      "type": "staticText",
-      "text": "help_jdownloader",
-      "xs": 12,
-      "sm": 12,
-      "md": 12,
-      "lg": 12,
-      "xl": 12
-    },
-    "_helpCredentials": {
-      "type": "staticText",
-      "text": "help_credentials",
+    "_deviceManager": {
+      "type": "deviceManager",
       "newLine": true,
       "xs": 12,
       "sm": 12,
       "md": 12,
       "lg": 12,
       "xl": 12
-    },
-    "programs": {
-      "type": "table",
-      "newLine": true,
-      "xs": 12,
-      "sm": 12,
-      "md": 12,
-      "lg": 12,
-      "xl": 12,
-      "noDelete": false,
-      "uniqueColumns": ["key"],
-      "useCardFor": ["xs", "sm"],
-      "titleAttribute": "name",
-      "showSecondAddAt": 5,
-      "items": [
-        {
-          "type": "checkbox",
-          "attr": "enabled",
-          "title": "col_enabled",
-          "width": "5%",
-          "default": true
-        },
-        {
-          "type": "select",
-          "attr": "type",
-          "title": "col_type",
-          "width": "13%",
-          "default": "qbittorrent",
-          "options": [
-            {
-              "label": "typeJdownloader",
-              "value": "jdownloader"
-            },
-            {
-              "label": "typeJdownloaderCloud",
-              "value": "jdownloader-cloud"
-            },
-            {
-              "label": "typeQbittorrent",
-              "value": "qbittorrent"
-            },
-            {
-              "label": "typeTransmission",
-              "value": "transmission"
-            },
-            {
-              "label": "typeDeluge",
-              "value": "deluge"
-            },
-            {
-              "label": "typeSabnzbd",
-              "value": "sabnzbd"
-            },
-            {
-              "label": "typeNzbget",
-              "value": "nzbget"
-            },
-            {
-              "label": "typeAria2",
-              "value": "aria2"
-            },
-            {
-              "label": "typePyload",
-              "value": "pyload"
-            }
-          ]
-        },
-        {
-          "type": "text",
-          "attr": "key",
-          "title": "col_key",
-          "width": "8%",
-          "default": "",
-          "validator": "/^[a-z0-9-]{1,20}$/.test(data.key)",
-          "validatorErrorText": "help_programs",
-          "validatorNoSaveOnError": true
-        },
-        {
-          "type": "text",
-          "attr": "name",
-          "title": "col_name",
-          "width": "12%",
-          "default": ""
-        },
-        {
-          "type": "text",
-          "attr": "host",
-          "title": "col_host",
-          "width": "11%",
-          "default": ""
-        },
-        {
-          "type": "number",
-          "attr": "port",
-          "title": "col_port",
-          "width": "6%",
-          "min": 1,
-          "max": 65535
-        },
-        {
-          "type": "checkbox",
-          "attr": "https",
-          "title": "col_https",
-          "width": "4%",
-          "default": false
-        },
-        {
-          "type": "text",
-          "attr": "path",
-          "title": "col_path",
-          "width": "7%",
-          "default": ""
-        },
-        {
-          "type": "text",
-          "attr": "username",
-          "title": "col_username",
-          "width": "9%",
-          "default": ""
-        },
-        {
-          "type": "password",
-          "attr": "password",
-          "title": "col_password",
-          "width": "9%",
-          "default": ""
-        },
-        {
-          "type": "password",
-          "attr": "apiKey",
-          "title": "col_apiKey",
-          "width": "9%",
-          "default": ""
-        },
-        {
-          "type": "text",
-          "attr": "device",
-          "title": "col_device",
-          "width": "7%",
-          "default": ""
-        }
-      ]
-    },
-    "testConnections": {
-      "type": "sendTo",
-      "command": "testConnections",
-      "label": "btn_testConnections",
-      "useNative": false,
-      "jsonData": "{\"programs\": ${JSON.stringify(data.programs)}}",
-      "newLine": true,
-      "xs": 12,
-      "sm": 12,
-      "md": 4,
-      "lg": 4,
-      "xl": 4
     },
     "_headerGeneral": {
       "newLine": true,
@@ -224,9 +50,18 @@
       "label": "label_treeScope",
       "help": "help_treeScope",
       "options": [
-        { "label": "treeScope_all", "value": "all" },
-        { "label": "treeScope_withoutCompleted", "value": "withoutCompleted" },
-        { "label": "treeScope_unfinished", "value": "unfinished" }
+        {
+          "label": "treeScope_all",
+          "value": "all"
+        },
+        {
+          "label": "treeScope_withoutCompleted",
+          "value": "withoutCompleted"
+        },
+        {
+          "label": "treeScope_unfinished",
+          "value": "unfinished"
+        }
       ],
       "default": "all",
       "xs": 12,

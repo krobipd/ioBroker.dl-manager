@@ -1,7 +1,6 @@
 import { errText } from "../../err-text";
 import { ProtocolError } from "../../core/errors";
-import type { Capability, Command, ProgramDriver, ProgramSnapshot } from "../../core/model";
-import type { DriverDeps, ProgramConfig } from "../registry";
+import type { Capability, Command, ProgramDriver, ProgramSnapshot, DriverDeps, ProgramConfig } from "../../core/model";
 import { PyClient } from "./client";
 import { toSnapshot } from "./map";
 

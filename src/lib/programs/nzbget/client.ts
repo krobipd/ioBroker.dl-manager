@@ -1,6 +1,7 @@
 import { AuthError, ProtocolError } from "../../core/errors";
 import { HttpClient, type HttpTimers } from "../../core/http";
-import type { ProgramConfig } from "../registry";
+import type { ProgramConfig } from "../../core/model";
+import { baseUrl, catalogEntry } from "../catalog";
 
 /**
  * NZBGet JSON-RPC (api-usenet-aria2-pyload.md § 2): `POST /jsonrpc`, basic auth, positional parameters. NZBGet closes
@@ -20,8 +21,7 @@ export class NzbClient {
       resendOnClosedSocket: true,
       ...(cfg.username ? { basicAuth: { user: cfg.username, pass: cfg.password } } : {}),
     });
-    const path = cfg.path.replace(/\/+$/, "");
-    this.url = `${cfg.https ? "https" : "http"}://${cfg.host}:${cfg.port || 6789}${path && !path.startsWith("/") ? `/${path}` : path}/jsonrpc`;
+    this.url = `${baseUrl(cfg, catalogEntry("nzbget"))}/jsonrpc`;
   }
 
   /**

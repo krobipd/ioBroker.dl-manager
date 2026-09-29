@@ -1,27 +1,25 @@
 import { tDesc, tName, tState, type I18nKey } from "../i18n";
 import { forCapabilities, ITEM_DATAPOINTS, PROGRAM_DATAPOINTS, type DatapointDef } from "./datapoints";
 import { ItemIds } from "./ids";
+import { DONE, shownKeys, type TreeOptions } from "./visibility";
 import {
-  ACTIVE,
   STATUSES,
+  type AdapterLog,
   type Capability,
   type DownloadItem,
   type ExtraDefinition,
   type ProgramSnapshot,
   type Status,
 } from "./model";
-import { percent, toGB, toMBps } from "./units";
 
 /** The adapter methods the tree uses — a seam, so the tests run against an in-memory store. */
 export interface TreeAdapter {
   /** e.g. "dl-manager.0" */
   namespace: string;
   /** The adapter log. */
-  log: { debug(msg: string): void; info(msg: string): void; warn(msg: string): void };
+  log: AdapterLog;
   /** Merges into an object (own namespace or full id). */
   extendObject(id: string, obj: ioBroker.PartialObject): Promise<unknown>;
-  /** Replaces an object completely — needed where a merge would keep stale list entries. */
-  setForeignObject(id: string, obj: ioBroker.SettableObject): Promise<unknown>;
   /** Deletes an object (and with `recursive` its children and their values). */
   delObject(id: string, opts: { recursive: boolean }): Promise<unknown>;
   /** Reads an object (own namespace or full id). */
@@ -46,16 +44,7 @@ export interface ProgramEvents {
   removedFromTree: number;
 }
 
-/** Which downloads the object tree shows (adapter setting `treeScope`). */
-export type TreeScope = "all" | "withoutCompleted" | "unfinished";
-
-/** The adapter settings that shape the object tree. */
-export interface TreeOptions {
-  /** Which downloads get a channel. */
-  scope: TreeScope;
-  /** At most this many download channels per program, 0 = no limit. */
-  limit: number;
-}
+export type { TreeOptions, TreeScope } from "./visibility";
 
 /** The driver facts the tree needs. */
 export interface TreeDriver {
@@ -67,19 +56,6 @@ export interface TreeDriver {
   readonly extras: readonly ExtraDefinition[];
 }
 
-const DONE: ReadonlySet<Status> = new Set<Status>(["completed", "seeding"]);
-/** Who keeps a channel when a program has more downloads than the limit — lower first. */
-const RANK: Readonly<Record<Status, number>> = {
-  downloading: 0,
-  checking: 0,
-  postprocessing: 0,
-  failed: 1,
-  paused: 2,
-  waiting: 2,
-  queued: 3,
-  seeding: 4,
-  completed: 5,
-};
 /** More download channels than this per program get a warning — unless the limit keeps them at or below it. */
 const WARN_ABOVE = 200;
 const STATUS_LABEL: Readonly<Record<Status, I18nKey>> = {
@@ -93,7 +69,31 @@ const STATUS_LABEL: Readonly<Record<Status, I18nKey>> = {
   completed: "statusCompleted",
   failed: "statusFailed",
 };
-const round2 = (v: number): number => Math.round(v * 100) / 100;
+
+/**
+ * The newest finished and the newest failed download of a poll into `<prefix>.lastFinished*` / `.lastFailed*` — below
+ * a program's device and in the adapter's summary alike.
+ *
+ * @param setState writes a state
+ * @param prefix the id the four states sit below
+ * @param events what the poll found
+ */
+export async function writeLastEvents(
+  setState: (id: string, state: ioBroker.SettableState) => Promise<unknown>,
+  prefix: string,
+  events: Pick<ProgramEvents, "finished" | "failed">,
+): Promise<void> {
+  const last = events.finished.at(-1);
+  if (last) {
+    await setState(`${prefix}.lastFinished`, { val: last.name, ack: true });
+    await setState(`${prefix}.lastFinishedTime`, { val: last.finishedMs ?? Date.now(), ack: true });
+  }
+  const failed = events.failed.at(-1);
+  if (failed) {
+    await setState(`${prefix}.lastFailed`, { val: failed.name, ack: true });
+    await setState(`${prefix}.lastFailedTime`, { val: Date.now(), ack: true });
+  }
+}
 
 /**
  * Mirrors ONE program into the object tree: its device, its datapoints and one channel per download. Every object is
@@ -115,8 +115,6 @@ export class ProgramTree {
   private warned = false;
   private prev: Map<string, Status> | null = null;
   private baselineFinished: number | null = null;
-  /** The value last written per state id — a poll that changes nothing reads nothing from the database. */
-  private readonly written = new Map<string, ioBroker.StateValue>();
 
   /**
    * @param adapter the adapter seam
@@ -147,12 +145,7 @@ export class ProgramTree {
    * @returns the program's raw key of that download, undefined for an unknown channel
    */
   public itemKey(channel: string): string | undefined {
-    for (const [key, id] of this.ids.entries()) {
-      if (id === channel) {
-        return key;
-      }
-    }
-    return undefined;
+    return this.ids.keyOf(channel);
   }
 
   /** Reads the stored channels and the last recorded finish. Runs before the first sync. */
@@ -187,15 +180,7 @@ export class ProgramTree {
    * @param address what identifies the program besides its key (`addressOf`) — carries room assignments on a key change
    */
   public async ensureDevice(icon: string | undefined, address = ""): Promise<void> {
-    await this.adapter.extendObject(this.dev, {
-      type: "device",
-      common: {
-        name: this.programName,
-        statusStates: { onlineId: this.onlineId() },
-        ...(icon ? { icon } : {}),
-      },
-      native: { type: this.driver.type, address, nameSource: "api", ...(this.leftRemoved ? { removed: null } : {}) },
-    });
+    await this.writeDevice(icon, address);
     await this.adapter.extendObject(`${this.dev}.downloads`, {
       type: "folder",
       common: { name: tName("folderDownloads") },
@@ -205,9 +190,30 @@ export class ProgramTree {
       await this.adapter.extendObject(`${this.dev}.${d.id}`, this.stateObject(d));
     }
     for (const e of this.driver.extras.filter(x => x.level === "program")) {
-      await this.adapter.extendObject(`${this.dev}.${e.id}`, this.extraObject(e));
+      await this.adapter.extendObject(`${this.dev}.${e.id}`, this.stateObject(e));
     }
     await this.markOffline("Unknown");
+  }
+
+  /**
+   * @param icon the pictogram, none for a row that cannot run
+   * @param address what identifies the program besides its key, none for a row that cannot run
+   */
+  private async writeDevice(icon?: string, address?: string): Promise<void> {
+    await this.adapter.extendObject(this.dev, {
+      type: "device",
+      common: {
+        name: this.programName,
+        statusStates: { onlineId: this.onlineId() },
+        ...(icon ? { icon } : {}),
+      },
+      native: {
+        type: this.driver.type,
+        nameSource: "api",
+        ...(address !== undefined ? { address } : {}),
+        ...(this.leftRemoved ? { removed: null } : {}),
+      },
+    });
   }
 
   /**
@@ -217,11 +223,7 @@ export class ProgramTree {
    * @param problem why the row cannot run
    */
   public async ensureBareDevice(problem: string): Promise<void> {
-    await this.adapter.extendObject(this.dev, {
-      type: "device",
-      common: { name: this.programName, statusStates: { onlineId: this.onlineId() } },
-      native: { type: this.driver.type, nameSource: "api" },
-    });
+    await this.writeDevice();
     for (const d of PROGRAM_DATAPOINTS.filter(x => x.id === "online" || x.id === "error")) {
       await this.adapter.extendObject(`${this.dev}.${d.id}`, this.stateObject(d));
     }
@@ -239,15 +241,6 @@ export class ProgramTree {
   }
 
   /**
-   * A user wrote this state: the next poll writes the program's value again, even when it did not change.
-   *
-   * @param id full state id
-   */
-  public forget(id: string): void {
-    this.written.delete(id);
-  }
-
-  /**
    * One poll result into the tree.
    *
    * @param snapshot what the driver read
@@ -259,7 +252,7 @@ export class ProgramTree {
     const prev = this.prev ?? new Map<string, Status>();
     const next = new Map<string, Status>();
     const present = new Set<string>();
-    const shown = this.shown(snapshot.items);
+    const shown = shownKeys(snapshot.items, this.opts);
 
     for (const item of snapshot.items) {
       present.add(item.key);
@@ -295,45 +288,6 @@ export class ProgramTree {
     return events;
   }
 
-  /**
-   * The downloads that get a channel: those the scope admits, and of them — when there are more than the limit — the
-   * best ranked ones, the newest first within a rank (finished downloads by their finish, the others by when they were
-   * added; without a time in the program's own order).
-   *
-   * @param items all downloads of the poll
-   * @returns the keys of the downloads to show
-   */
-  private shown(items: readonly DownloadItem[]): Set<string> {
-    const admitted = items.filter(i => this.admits(i.status));
-    const limit = this.opts.limit;
-    if (limit <= 0 || admitted.length <= limit) {
-      return new Set(admitted.map(i => i.key));
-    }
-    const time = (i: DownloadItem): number =>
-      (DONE.has(i.status) ? (i.finishedMs ?? i.addedMs) : i.addedMs) ?? Number.NEGATIVE_INFINITY;
-    const ranked = [...admitted].sort((a, b) => {
-      const byRank = RANK[a.status] - RANK[b.status];
-      if (byRank !== 0) {
-        return byRank;
-      }
-      const ta = time(a);
-      const tb = time(b);
-      return ta === tb ? 0 : tb > ta ? 1 : -1;
-    });
-    return new Set(ranked.slice(0, limit).map(i => i.key));
-  }
-
-  private admits(status: Status): boolean {
-    switch (this.opts.scope) {
-      case "withoutCompleted":
-        return status !== "completed";
-      case "unfinished":
-        return !DONE.has(status);
-      default:
-        return true;
-    }
-  }
-
   private warnAboutMany(shown: number): void {
     if (this.warned || shown <= WARN_ABOVE) {
       return;
@@ -367,44 +321,18 @@ export class ProgramTree {
         await this.adapter.extendObject(`${ch}.${d.id}`, this.stateObject(d));
       }
       for (const e of this.itemExtras) {
-        await this.adapter.extendObject(`${ch}.${e.id}`, this.extraObject(e));
+        await this.adapter.extendObject(`${ch}.${e.id}`, this.stateObject(e));
       }
       this.known.set(item.key, { name: item.name, fresh: true, leftSig: false });
     } else if (known.name !== item.name) {
       await this.adapter.extendObject(ch, { common: { name: item.name } });
       known.name = item.name;
     }
-    const caps = this.driver.capabilities;
-    const values: [string, ioBroker.StateValue][] = [
-      ["status", item.status],
-      ["progress", percent(item.doneBytes, item.sizeBytes)],
-      ["size", toGB(item.sizeBytes)],
-      ["downloaded", toGB(item.doneBytes)],
-    ];
-    if (caps.has("itemSpeed")) {
-      values.push(["speed", toMBps(item.speedBps)]);
-    }
-    if (caps.has("upload")) {
-      values.push(["uploadSpeed", toMBps(item.uploadBps)]);
-      values.push(["ratio", typeof item.ratio === "number" ? round2(item.ratio) : null]);
-    }
-    if (caps.has("itemEta")) {
-      values.push(["eta", item.etaSeconds]);
-    }
-    if (caps.has("itemAdded")) {
-      values.push(["added", item.addedMs ?? null]);
-    }
-    if (caps.has("itemFinished")) {
-      values.push(["finished", item.finishedMs ?? null]);
-    }
-    if (caps.has("category")) {
-      values.push(["category", item.category ?? ""]);
-    }
-    if (caps.has("itemError")) {
-      values.push(["error", item.error]);
-    }
-    if (caps.has("itemPause")) {
-      values.push(["paused", item.status === "paused"]);
+    const values: [string, ioBroker.StateValue][] = [];
+    for (const d of this.itemDefs) {
+      if (d.value) {
+        values.push([d.id, d.value(item)]);
+      }
     }
     for (const e of this.itemExtras) {
       const v = item.extra?.[e.id];
@@ -419,35 +347,11 @@ export class ProgramTree {
 
   private async writeProgram(snapshot: ProgramSnapshot): Promise<void> {
     const s = snapshot.status;
-    const caps = this.driver.capabilities;
-    const items = snapshot.items;
-    const values: [string, ioBroker.StateValue][] = [
-      ["online", true],
-      ["error", ""],
-      ["version", s.version],
-      ["downloading", items.some(i => ACTIVE.has(i.status))],
-      ["downloadSpeed", toMBps(s.downloadBps)],
-      ["active", items.filter(i => ACTIVE.has(i.status)).length],
-      ["queued", items.filter(i => i.status === "queued").length],
-      ["total", items.length],
-    ];
-    if (caps.has("globalPause")) {
-      values.push(["paused", s.paused]);
-    }
-    if (caps.has("upload")) {
-      values.push(["uploadSpeed", toMBps(s.uploadBps)]);
-    }
-    if (caps.has("speedLimit")) {
-      values.push(["speedLimit", toMBps(s.speedLimitBps)]);
-    }
-    if (caps.has("uploadLimit")) {
-      values.push(["uploadLimit", toMBps(s.uploadLimitBps)]);
-    }
-    if (caps.has("altSpeed")) {
-      values.push(["altSpeed", s.altSpeed === true]);
-    }
-    if (caps.has("freeSpace")) {
-      values.push(["freeSpace", toGB(s.freeSpaceBytes)]);
+    const values: [string, ioBroker.StateValue][] = [];
+    for (const d of forCapabilities(PROGRAM_DATAPOINTS, this.driver.capabilities)) {
+      if (d.value) {
+        values.push([d.id, d.value(snapshot)]);
+      }
     }
     for (const e of this.driver.extras.filter(x => x.level === "program")) {
       const v = s.extra?.[e.id];
@@ -461,39 +365,27 @@ export class ProgramTree {
   }
 
   private async writeEvents(events: ProgramEvents): Promise<void> {
-    const last = events.finished.at(-1);
-    if (last) {
-      await this.adapter.setState(`${this.dev}.lastFinished`, { val: last.name, ack: true });
-      await this.adapter.setState(`${this.dev}.lastFinishedTime`, { val: last.finishedMs ?? Date.now(), ack: true });
-    }
-    const failed = events.failed.at(-1);
-    if (failed) {
-      await this.adapter.setState(`${this.dev}.lastFailed`, { val: failed.name, ack: true });
-      await this.adapter.setState(`${this.dev}.lastFailedTime`, { val: Date.now(), ack: true });
-    }
+    await writeLastEvents((id, st) => this.adapter.setState(id, st), this.dev, events);
   }
 
   private async put(id: string, val: ioBroker.StateValue): Promise<void> {
-    if (this.written.has(id) && this.written.get(id) === val) {
-      return;
-    }
     await this.adapter.setStateChanged(id, { val, ack: true });
-    this.written.set(id, val);
   }
 
   private async removeChannel(key: string): Promise<void> {
     const id = this.ids.idFor(key);
     await this.adapter.delObject(`${this.dev}.downloads.${id}`, { recursive: true });
-    for (const k of [...this.written.keys()]) {
-      if (k.startsWith(`${this.dev}.downloads.${id}.`)) {
-        this.written.delete(k);
-      }
-    }
     this.ids.release(key);
     this.known.delete(key);
   }
 
-  private stateObject(d: DatapointDef): ioBroker.PartialObject {
+  /**
+   * @param d a core datapoint or a driver's extra — both describe a state the same way
+   * @returns its object
+   */
+  private stateObject(
+    d: Pick<DatapointDef, "id" | "type" | "role" | "unit" | "read" | "write" | "nameKey" | "descKey">,
+  ): ioBroker.PartialObject {
     const common: Partial<ioBroker.StateCommon> = {
       name: tName(d.nameKey),
       type: d.type,
@@ -511,26 +403,6 @@ export class ProgramTree {
       common.states = Object.fromEntries(STATUSES.map(s => [s, tState(STATUS_LABEL[s])]));
     }
     if (d.role === "button") {
-      common.def = false;
-    }
-    return { type: "state", common, native: {} };
-  }
-
-  private extraObject(e: ExtraDefinition): ioBroker.PartialObject {
-    const common: Partial<ioBroker.StateCommon> = {
-      name: tName(e.nameKey),
-      type: e.type,
-      role: e.role,
-      read: e.read,
-      write: e.write,
-    };
-    if (e.unit) {
-      common.unit = e.unit;
-    }
-    if (e.descKey) {
-      common.desc = tDesc(e.descKey);
-    }
-    if (e.role === "button") {
       common.def = false;
     }
     return { type: "state", common, native: {} };

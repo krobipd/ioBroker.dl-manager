@@ -2,7 +2,7 @@ import { runDriverContract, type ContractServer } from "../../../../test/helpers
 import { startFixtureServer } from "../../../../test/helpers/fixture-server";
 import { firstUrl } from "../../../../test/helpers/first-url";
 import { loadFixture } from "../../../../test/helpers/fixtures";
-import type { ProgramConfig } from "../registry";
+import type { ProgramConfig } from "../../core/model";
 import { SabDriver } from "./driver";
 import { mapSabStatus, statusTable } from "./map";
 

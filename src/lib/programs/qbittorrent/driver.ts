@@ -1,7 +1,14 @@
 import { EmulatedPause, memoryPauseStore } from "../../core/emulated-pause";
 import { ProtocolError } from "../../core/errors";
-import type { Capability, Command, ExtraDefinition, ProgramDriver, ProgramSnapshot } from "../../core/model";
-import type { DriverDeps, ProgramConfig } from "../registry";
+import type {
+  Capability,
+  Command,
+  ExtraDefinition,
+  ProgramDriver,
+  ProgramSnapshot,
+  DriverDeps,
+  ProgramConfig,
+} from "../../core/model";
 import { QbClient } from "./client";
 import { MaindataState, parseQbVersion, qbRunning, toSnapshot } from "./map";
 

@@ -1,19 +1,16 @@
 import { errText } from "../err-text";
 import { classify } from "./errors";
-import type { Command, ProgramDriver, ProgramSnapshot } from "./model";
+import type { HttpTimers } from "./http";
+import type { AdapterLog, Command, ProgramDriver, ProgramSnapshot } from "./model";
 import { redact } from "./redact";
 import type { ProgramEvents } from "./tree";
 
 /** Adapter services the runner needs — a seam for the tests. */
-export interface RunnerDeps {
-  /** The adapter's timer (never a bare setTimeout). */
-  setTimeout: (cb: () => void, ms: number) => ioBroker.Timeout | undefined;
-  /** Clears an adapter timer. */
-  clearTimeout: (t: ioBroker.Timeout | undefined) => void;
+export interface RunnerDeps extends HttpTimers {
   /** The adapter log. */
-  log: { debug(msg: string): void; info(msg: string): void; warn(msg: string): void };
+  log: AdapterLog;
   /** Actionable problems (fleet pattern, `actionable-problems.ts`): the one warn + notification for a rejected login. */
-  problems: { report(key: string, title: string, action: string): void; resolve(key: string, msg: string): void };
+  problems: { report(key: string, title: string, action: string): void };
 }
 
 /** The tree methods the runner calls. */
@@ -58,11 +55,6 @@ export class ProgramRunner {
   /** @returns whether the last poll succeeded */
   public get online(): boolean {
     return this._online;
-  }
-
-  /** @returns whether the program refused the login (no more calls until the configuration changes) */
-  public get lockedByAuth(): boolean {
-    return this._lockedByAuth;
   }
 
   /** @returns the last successful poll result */

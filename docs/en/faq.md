@@ -3,8 +3,8 @@
 ## A program stays `online` = false
 
 `error` on the program's device says why. A network text (refused, timeout, no route) means the ioBroker host cannot
-reach the program: check host, port, the HTTPS switch and a firewall between the two. Press **Test connections** on
-the settings page to try the table before you save it. Some programs refuse callers they do not know:
+reach the program: check host, port, the HTTPS switch and a firewall between the two. The test button on the
+program's card asks it once and shows its answer. Some programs refuse callers they do not know:
 
 - **SABnzbd** answers only host names on its `host_whitelist` — enter the IP address, or add the name there.
 - **Transmission** answers only addresses on its `rpc-whitelist` — add the ioBroker host, or switch the whitelist off.
@@ -21,8 +21,9 @@ program is asked again.
 
 The local API has no password: anyone who reaches its port can change JDownloader's settings or shut it down. Use it
 only when JDownloader runs on the ioBroker host or in the same Docker network. In every other case choose
-_JDownloader 2 (My.JDownloader)_ and enter your My.JDownloader e-mail, password and the device name. My.JDownloader is
-asked at most every 30 seconds, whatever the query interval says.
+_Through My.JDownloader_ in the JDownloader dialog, log in and pick your JDownloader from the list. My.JDownloader is
+asked at most every 30 seconds, whatever the query interval says. Switching an existing JDownloader between the two keeps
+its rooms and functions.
 
 ## How often are the programs asked?
 

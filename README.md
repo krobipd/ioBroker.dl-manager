@@ -35,16 +35,16 @@ For details and how to disable it, see the [Sentry plugin documentation](https:/
 - **ioBroker Admin >= 8.0.14**
 - At least one of the supported download programs, reachable from the ioBroker host
 
-| Program       | Tested with                             | Access                                                                         |
-| ------------- | --------------------------------------- | ------------------------------------------------------------------------------ |
-| JDownloader 2 | build 48637 (local API), My.JDownloader | local API without password, or My.JDownloader e-mail, password and device name |
-| qBittorrent   | 4.6.7, 5.1.4, 5.2.3                     | user and password, or API key (5.2 and later)                                  |
-| Transmission  | 4.0.6, 4.1.3                            | user and password (if set in Transmission)                                     |
-| Deluge        | 2.1.1, 2.2.0                            | web UI password                                                                |
-| SABnzbd       | 4.5.5, 5.1.3                            | API key                                                                        |
-| NZBGet        | 24.8, 26.3                              | control user and password                                                      |
-| aria2         | 1.37.0                                  | RPC secret                                                                     |
-| pyLoad-ng     | 0.5.0b3.dev101                          | API key, or user and password                                                  |
+| Program       | Tested with                             | Access                                                                 |
+| ------------- | --------------------------------------- | ---------------------------------------------------------------------- |
+| JDownloader 2 | build 48637 (local API), My.JDownloader | local API without password, or your My.JDownloader e-mail and password |
+| qBittorrent   | 4.6.7, 5.1.4, 5.2.3                     | user and password, or API key (5.2 and later)                          |
+| Transmission  | 4.0.6, 4.1.3                            | user and password (if set in Transmission)                             |
+| Deluge        | 2.1.1, 2.2.0                            | web UI password                                                        |
+| SABnzbd       | 4.5.5, 5.1.3                            | API key                                                                |
+| NZBGet        | 24.8, 26.3                              | control user and password                                              |
+| aria2         | 1.37.0                                  | RPC secret                                                             |
+| pyLoad-ng     | 0.5.0b3.dev101                          | API key, or user and password                                          |
 
 Every version in this table was started in a container and put into each status it can reach; the adapter's tests run
 against those recorded answers.
@@ -55,16 +55,21 @@ against those recorded answers.
 
 ## Configuration
 
-| Setting                                     | Meaning                                                                                                                                                                                                                                                      |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Programs**                                | One line per program: program, ID (becomes part of the object path, e.g. `qbittorrent-nas`), name, host, port (empty = the program's default), HTTPS, path (only behind a reverse proxy), user, password, API key and — for My.JDownloader — the device name |
-| **Query interval**                          | How often every program is asked (seconds, default 10). My.JDownloader is asked at most every 30 seconds, pyLoad at most every 5 seconds                                                                                                                     |
-| **Downloads in the object tree**            | _All_ (default), _Without completed_ or _Only unfinished_ (no completed, no seeding). Failed downloads always stay. The program keeps every download, and the totals count all of them                                                                     |
-| **At most this many downloads per program** | Default 100, 0 = all. Above the limit, running and failed downloads keep their channel first, completed and seeding ones give it up first. More than 200 per program slow ioBroker down — the settings page and the log warn about it                     |
+| Setting                                     | Meaning                                                                                                                                                                                                                               |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Programs**                                | One card per program. **+** adds one: choose the program, and its dialog asks only for what that program needs — address, port (empty = its default), its login and, under _Advanced_, HTTPS, path and ID                             |
+| **Query interval**                          | How often every program is asked (seconds, default 10). My.JDownloader is asked at most every 30 seconds, pyLoad at most every 5 seconds                                                                                              |
+| **Downloads in the object tree**            | _All_ (default), _Without completed_ or _Only unfinished_ (no completed, no seeding). Failed downloads always stay. The program keeps every download, and the totals count all of them                                                |
+| **At most this many downloads per program** | Default 100, 0 = all. Above the limit, running and failed downloads keep their channel first, completed and seeding ones give it up first. More than 200 per program slow ioBroker down — the settings page and the log warn about it |
 
-**JDownloader:** the local API (JDownloader → Settings → Advanced settings → `DeprecatedApi`) has no password. Use it only when JDownloader runs on the ioBroker host or in the same Docker network; otherwise choose _JDownloader 2 (My.JDownloader)_ and log in with your My.JDownloader account.
+Every program can be added as often as you like — two qBittorrent servers, a local JDownloader and one at a friend's.
+A second entry for the same program (the same address, or the same JDownloader of a My.JDownloader account) is refused.
+Each card shows whether the program answers, its speed and running downloads, and has a pause switch, an on/off switch,
+a connection test, edit and delete. The cards appear while the instance runs; every change restarts it.
 
-**API key column:** SABnzbd API key, pyLoad API key, aria2 RPC secret, qBittorrent API key (instead of user and password, 5.2 and later).
+**JDownloader:** the dialog switches between _Local network_ and _Through My.JDownloader_. The local API (JDownloader →
+Settings → Advanced settings → `DeprecatedApi`) has no password — use it only when JDownloader runs on the ioBroker host
+or in the same Docker network. Through My.JDownloader you log in with your account and pick the JDownloader from a list.
 
 **SABnzbd** refuses host names it does not know — enter an IP address or add the name to `host_whitelist` in SABnzbd.
 **Transmission** answers only addresses in its `rpc-whitelist` — add the ioBroker host or switch the whitelist off.
@@ -98,10 +103,10 @@ Only the datapoints a program really supports are created — pyLoad has no paus
 | `online` is false, `error` shows a network text         | The program is not reachable from the ioBroker host — host, port, HTTPS, firewall                                                                       |
 | A warning "login rejected" and an ioBroker notification | The program refused the login. The adapter asks it no more (qBittorrent and Transmission lock an address after failed logins) until the settings change |
 | `error` is `Unknown`                                    | The program has not been asked yet, or the adapter is stopped                                                                                           |
-| A download disappears                                   | The program removed it, or the tree settings leave it out — its status is not shown, or the program has more downloads than the limit                  |
+| A download disappears                                   | The program removed it, or the tree settings leave it out — its status is not shown, or the program has more downloads than the limit                   |
 | pyLoad reports "too many requests"                      | pyLoad allows 100 calls a minute — raise the query interval                                                                                             |
 
-The _Test connections_ button on the settings page asks every program of the (unsaved) table once and shows the answer.
+The test button on a program's card asks the program once and shows its answer.
 
 ---
 
@@ -111,6 +116,14 @@ The _Test connections_ button on the settings page asks every program of the (un
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
+
+### **WORK IN PROGRESS**
+
+- New: programs are set up as cards — a dialog with only the program's fields, and test, pause and on/off on every card
+- New: for My.JDownloader you pick the JDownloader from a list of your account after logging in
+- New: a second entry for the same program (same address, or same My.JDownloader device) is refused
+- Changed: switching a JDownloader between local and My.JDownloader keeps its rooms and functions
+- Fixed: a download that came back into the object tree could keep empty datapoints until its values changed
 
 ### 0.1.0 (2026-09-29)
 

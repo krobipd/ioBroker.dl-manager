@@ -4,7 +4,7 @@ import { firstUrl } from "../../../../test/helpers/first-url";
 import { loadFixture } from "../../../../test/helpers/fixtures";
 import { memoryPauseStore } from "../../core/emulated-pause";
 import { AuthError, ProtocolError } from "../../core/errors";
-import type { ProgramConfig } from "../registry";
+import type { ProgramConfig } from "../../core/model";
 import { TrDriver } from "./driver";
 import { mapTrStatus, statusTable } from "./map";
 

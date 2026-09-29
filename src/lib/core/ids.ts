@@ -17,6 +17,15 @@ export function sanitize(raw: string): string {
 }
 
 /**
+ * @param namespace the instance, e.g. `dl-manager.0`
+ * @param id an id below it or already full
+ * @returns the full id
+ */
+export function ownId(namespace: string, id: string): string {
+  return id.startsWith(`${namespace}.`) ? id : `${namespace}.${id}`;
+}
+
+/**
  * Device id of a program: `<type>-<user key>`. The user key comes from the settings table.
  *
  * @param type program type from the registry
@@ -35,12 +44,13 @@ export function programId(type: string, userKey: string): string {
  */
 export class ItemIds {
   private readonly byKey: Map<string, string>;
-  private readonly used: Set<string>;
+  /** The other direction: id → raw key (the ids in use). */
+  private readonly byId: Map<string, string>;
 
   /** @param stored raw key → id, read back from the channels' `native.key` */
   public constructor(stored: ReadonlyMap<string, string>) {
     this.byKey = new Map(stored);
-    this.used = new Set(stored.values());
+    this.byId = new Map([...stored].map(([key, id]) => [id, key]));
   }
 
   /**
@@ -56,14 +66,14 @@ export class ItemIds {
     }
     const full = sanitize(rawKey) || "item";
     const short = full.slice(-8).replace(/^-+/, "") || full;
-    let id = [short, full].find(c => !this.used.has(c));
+    let id = [short, full].find(c => !this.byId.has(c));
     for (let n = 2; id === undefined; n++) {
-      if (!this.used.has(`${full}-${n}`)) {
+      if (!this.byId.has(`${full}-${n}`)) {
         id = `${full}-${n}`;
       }
     }
     this.byKey.set(rawKey, id);
-    this.used.add(id);
+    this.byId.set(id, rawKey);
     return id;
   }
 
@@ -75,13 +85,16 @@ export class ItemIds {
   public release(rawKey: string): void {
     const id = this.byKey.get(rawKey);
     if (id !== undefined) {
-      this.used.delete(id);
+      this.byId.delete(id);
     }
     this.byKey.delete(rawKey);
   }
 
-  /** @returns a copy of raw key → id */
-  public entries(): Map<string, string> {
-    return new Map(this.byKey);
+  /**
+   * @param id the id segment of a download channel
+   * @returns the program's raw key it belongs to, undefined for an id not in use
+   */
+  public keyOf(id: string): string | undefined {
+    return this.byId.get(id);
   }
 }

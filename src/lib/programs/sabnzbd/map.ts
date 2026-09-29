@@ -1,5 +1,5 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
-import { num } from "../../core/units";
+import { asRecord, asText, doneOf, epochMs, num } from "../../core/units";
 
 const MiB = 1024 * 1024;
 const GiB = 1024 * MiB;
@@ -27,28 +27,8 @@ export const statusTable = [
   ["q:Idle", "queued"],
 ] as const satisfies readonly (readonly [string, Status])[];
 
-const QUEUE: Readonly<Record<string, Status>> = {
-  Downloading: "downloading",
-  Fetching: "downloading",
-  Grabbing: "downloading",
-  Propagating: "waiting",
-  Checking: "checking",
-  Queued: "queued",
-  Paused: "paused",
-  Idle: "queued",
-};
-const HISTORY: Readonly<Record<string, Status>> = {
-  Queued: "postprocessing",
-  QuickCheck: "postprocessing",
-  Verifying: "postprocessing",
-  Repairing: "postprocessing",
-  Fetching: "postprocessing",
-  Extracting: "postprocessing",
-  Moving: "postprocessing",
-  Running: "postprocessing",
-  Completed: "completed",
-  Failed: "failed",
-};
+/** The table as a lookup — a Map, so an inherited name like `constructor` is no status. */
+const BY_RAW = new Map<string, Status>(statusTable);
 
 /**
  * @param raw a key of the status table
@@ -60,7 +40,7 @@ export function mapSabStatus(raw: string | number, debug: (msg: string) => void)
   if (list === "q" && flag === "globalPause") {
     return "paused";
   }
-  const s = (list === "h" ? HISTORY : QUEUE)[status];
+  const s = BY_RAW.get(`${list}:${status}`);
   if (s === undefined) {
     debug(`sabnzbd: unknown slot status ${String(raw)} — shown as queued`);
     return "queued";
@@ -68,19 +48,12 @@ export function mapSabStatus(raw: string | number, debug: (msg: string) => void)
   return s;
 }
 
-const text = (v: unknown): string => (typeof v === "string" ? v : "");
-const obj = (v: unknown): Record<string, unknown> =>
-  v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
 const scaled = (v: unknown, unit: number): number | null => {
   const n = num(v);
   return n !== null && n >= 0 ? Math.round(n * unit) : null;
 };
-const seconds = (v: unknown): number | null => {
-  const n = num(v);
-  return n !== null && n > 0 ? n * 1000 : null;
-};
 const category = (v: unknown): string => {
-  const c = text(v);
+  const c = asText(v);
   return c === "*" ? "" : c;
 };
 
@@ -106,12 +79,12 @@ export function toSnapshot(
   const byKey = new Map<string, DownloadItem>();
   let firstDownloading = true;
   for (const raw of Array.isArray(queue.slots) ? queue.slots : []) {
-    const s = obj(raw);
-    const key = text(s.nzo_id);
+    const s = asRecord(raw);
+    const key = asText(s.nzo_id);
     if (!key) {
       continue;
     }
-    const rawStatus = text(s.status);
+    const rawStatus = asText(s.status);
     let status = mapSabStatus(`q:${rawStatus}`, debug);
     if (held) {
       status = paused ? "paused" : "queued";
@@ -124,46 +97,44 @@ export function toSnapshot(
     const left = scaled(s.mbleft, MiB);
     byKey.set(key, {
       key,
-      name: text(s.filename) || key,
+      name: asText(s.filename) || key,
       status,
-      rawStatus,
       sizeBytes: size,
-      doneBytes: size !== null && left !== null ? Math.max(0, size - left) : null,
+      doneBytes: doneOf(size, left),
       speedBps: null,
       etaSeconds: null,
-      addedMs: seconds(s.time_added),
+      addedMs: epochMs(s.time_added),
       finishedMs: null,
       category: category(s.cat),
       error: "",
     });
   }
   for (const raw of history) {
-    const h = obj(raw);
-    const key = text(h.nzo_id);
+    const h = asRecord(raw);
+    const key = asText(h.nzo_id);
     if (!key) {
       continue;
     }
-    const rawStatus = text(h.status);
+    const rawStatus = asText(h.status);
     const status = mapSabStatus(`h:${rawStatus}`, debug);
     const bytes = scaled(h.bytes, 1);
     byKey.set(key, {
       key,
-      name: text(h.name) || key,
+      name: asText(h.name) || key,
       status,
-      rawStatus,
       sizeBytes: bytes,
       doneBytes: scaled(h.downloaded, 1) ?? bytes,
       speedBps: null,
       etaSeconds: null,
       addedMs: null,
-      finishedMs: status === "completed" || status === "failed" ? seconds(h.completed) : null,
+      finishedMs: status === "completed" || status === "failed" ? epochMs(h.completed) : null,
       category: category(h.category),
-      error: status === "failed" ? text(h.fail_message) : "",
+      error: status === "failed" ? asText(h.fail_message) : "",
     });
   }
   return {
     status: {
-      version: text(queue.version),
+      version: asText(queue.version),
       paused,
       downloadBps: scaled(queue.kbpersec, 1024),
       speedLimitBps: scaled(queue.speedlimit_abs, 1) ?? 0,

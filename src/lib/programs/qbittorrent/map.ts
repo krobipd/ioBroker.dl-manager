@@ -1,5 +1,5 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
-import { eta, num } from "../../core/units";
+import { asRecord, epochMs, eta, nonNegative, num } from "../../core/units";
 
 /** A torrent of `sync/maindata` — only the fields the adapter reads. */
 export interface QbTorrent {
@@ -83,9 +83,6 @@ export function parseQbVersion(text: unknown): [number, number, number] {
   return m ? [Number(m[1]), Number(m[2]), Number(m[3] ?? 0)] : [0, 0, 0];
 }
 
-const obj = (v: unknown): Record<string, unknown> =>
-  v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
-
 /** The merged picture of `sync/maindata`: a full update replaces, a partial one changes fields. */
 export class MaindataState {
   /** Response id to send with the next request. */
@@ -97,7 +94,7 @@ export class MaindataState {
 
   /** @param raw one answer of `sync/maindata` */
   public apply(raw: unknown): void {
-    const r = obj(raw);
+    const r = asRecord(raw);
     if (typeof r.rid === "number") {
       this.rid = r.rid;
     }
@@ -105,15 +102,15 @@ export class MaindataState {
       this.torrents = {};
       this.serverState = {};
     }
-    for (const [hash, fields] of Object.entries(obj(r.torrents))) {
-      this.torrents[hash] = { ...this.torrents[hash], ...obj(fields) };
+    for (const [hash, fields] of Object.entries(asRecord(r.torrents))) {
+      this.torrents[hash] = { ...this.torrents[hash], ...asRecord(fields) };
     }
     if (Array.isArray(r.torrents_removed)) {
       for (const hash of r.torrents_removed) {
         delete this.torrents[String(hash)];
       }
     }
-    this.serverState = { ...this.serverState, ...obj(r.server_state) };
+    this.serverState = { ...this.serverState, ...asRecord(r.server_state) };
   }
 
   /** Forgets everything — the next request asks for a full update. */
@@ -138,15 +135,6 @@ export function qbRunning(m: MaindataState): Set<string> {
       .map(([hash]) => hash),
   );
 }
-
-const nonNegative = (v: unknown): number | null => {
-  const n = num(v);
-  return n !== null && n >= 0 ? n : null;
-};
-const seconds = (v: unknown): number | null => {
-  const n = num(v);
-  return n !== null && n > 0 ? n * 1000 : null;
-};
 
 /**
  * One poll into the common model.
@@ -175,15 +163,14 @@ export function toSnapshot(
       key: hash,
       name: typeof t.name === "string" ? t.name : hash,
       status,
-      rawStatus: raw,
       sizeBytes: nonNegative(t.size),
       doneBytes: nonNegative(t.completed),
       speedBps: nonNegative(t.dlspeed),
       uploadBps: nonNegative(t.upspeed),
-      ratio: ratio !== null && ratio >= 0 ? ratio : null,
+      ratio: nonNegative(ratio),
       etaSeconds: eta(t.eta, [8640000]),
-      addedMs: seconds(t.added_on),
-      finishedMs: seconds(t.completion_on),
+      addedMs: epochMs(t.added_on),
+      finishedMs: epochMs(t.completion_on),
       category: typeof t.category === "string" ? t.category : "",
       error,
       extra: { forceStart: t.force_start === true },

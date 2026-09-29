@@ -1,4 +1,6 @@
 import type { I18nKey } from "../i18n";
+import type { PauseStore } from "./emulated-pause";
+import type { HttpTimers } from "./http";
 
 /** The one status list every program maps onto, in display order. */
 export const STATUSES = [
@@ -37,6 +39,20 @@ export type Capability =
   | "category"
   | "itemError";
 
+/**
+ * @param items the downloads of a poll
+ * @returns how many run right now (downloading, checking, post-processing …)
+ */
+export const countActive = (items: readonly { status: Status }[]): number =>
+  items.filter(i => ACTIVE.has(i.status)).length;
+
+/**
+ * @param items the downloads of a poll
+ * @returns how many wait in the queue
+ */
+export const countQueued = (items: readonly { status: Status }[]): number =>
+  items.filter(i => i.status === "queued").length;
+
 /** One download in the common model — the unit the user added (JD/pyLoad package, torrent, NZB job, aria2 GID). */
 export interface DownloadItem {
   /** Stable raw key of the program (hash, nzo_id, NZBID, GID, JD package uuid, pyLoad pid). */
@@ -45,8 +61,6 @@ export interface DownloadItem {
   name: string;
   /** Mapped status. */
   status: Status;
-  /** Raw status of the program, for the debug line when the mapping fell back. */
-  rawStatus?: string;
   /** Total size in bytes, null while unknown. */
   sizeBytes: number | null;
   /** Bytes done, null while unknown. */
@@ -161,4 +175,61 @@ export interface ProgramDriver {
   readonly minIntervalMs?: number;
   /** Optional push channel; it only triggers an immediate poll, it never carries values. */
   subscribe?(onChange: () => void): () => void;
+}
+
+/** The adapter log, as far as the core and the drivers write to it. */
+export interface AdapterLog {
+  /** Routine. */
+  debug(msg: string): void;
+  /** Relevant events. */
+  info(msg: string): void;
+  /** Something the user should look at. */
+  warn(msg: string): void;
+}
+
+/** A settings field a program cannot work without. */
+export type RequiredField = "host" | "username" | "password" | "apiKey" | "device";
+
+/** One row of the settings table, cleaned and with its secrets decrypted. */
+export interface ProgramConfig {
+  /** Program type, e.g. `qbittorrent`. */
+  type: string;
+  /** The user's ID column — part of the device id. */
+  key: string;
+  /** Display name of the device. */
+  name: string;
+  /** Host name or IP address. */
+  host: string;
+  /** Port, 0 = the program's default. */
+  port: number;
+  /** Use HTTPS. */
+  https: boolean;
+  /** URL path below the host (reverse proxy, NZBGet/SABnzbd base path). */
+  path: string;
+  /** Login user (My.JDownloader: e-mail address). */
+  username: string;
+  /** Login password, decrypted. */
+  password: string;
+  /** API key or RPC secret, decrypted. */
+  apiKey: string;
+  /** My.JDownloader device name. */
+  device: string;
+}
+
+/** Adapter services a driver may use — timers only through the adapter. */
+export interface DriverDeps extends HttpTimers {
+  /** The adapter log. */
+  log: AdapterLog;
+  /** Where an emulated global pause keeps its state (absent in the connection test — then kept in memory). */
+  pauseStore?: PauseStore;
+}
+
+/** A program the adapter can talk to. */
+export interface ProgramEntry {
+  /** Program type as stored in the settings table. */
+  readonly type: string;
+  /** Fields the row must fill. */
+  readonly needs: readonly RequiredField[];
+  /** Builds the driver for one configured program. */
+  create(cfg: ProgramConfig, deps: DriverDeps): ProgramDriver;
 }

@@ -1,6 +1,7 @@
 import { AuthError, ProtocolError, UnreachableError } from "../../core/errors";
 import { HttpClient, type HttpTimers } from "../../core/http";
-import type { ProgramConfig } from "../registry";
+import type { ProgramConfig } from "../../core/model";
+import { baseUrl, catalogEntry } from "../catalog";
 
 /**
  * deluge-web JSON-RPC (api-torrent.md § 3): password login (cookie `_session_id`), then the web UI must be connected
@@ -23,8 +24,7 @@ export class DlClient {
     timers: HttpTimers,
   ) {
     this.http = new HttpClient(timers);
-    const path = cfg.path.replace(/\/+$/, "");
-    this.url = `${cfg.https ? "https" : "http"}://${cfg.host}:${cfg.port || 8112}${path && !path.startsWith("/") ? `/${path}` : path}/json`;
+    this.url = `${baseUrl(cfg, catalogEntry("deluge"))}/json`;
   }
 
   /**

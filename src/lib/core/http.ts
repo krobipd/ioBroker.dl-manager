@@ -12,7 +12,7 @@ export interface HttpTimers {
 /** One request. */
 export interface HttpRequest {
   /** HTTP method. */
-  method: "GET" | "POST" | "PUT" | "DELETE";
+  method: "GET" | "POST";
   /** Full URL. */
   url: string;
   /** Extra headers. */

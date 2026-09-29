@@ -2,7 +2,7 @@ import { runDriverContract } from "../../../../test/helpers/contract";
 import { loadFixture } from "../../../../test/helpers/fixtures";
 import { startMyJdServer, type MyJdServer } from "../../../../test/helpers/myjd-server";
 import { AuthError, ProtocolError, UnreachableError } from "../../core/errors";
-import type { ProgramConfig } from "../registry";
+import type { ProgramConfig } from "../../core/model";
 import { adaptParams, JdCloudTransport, jdDecrypt, jdSecret, jdSign, jdTokens } from "./cloud";
 import { JdDriver } from "./driver";
 import { mapJdStatus, statusTable } from "./map";
@@ -116,6 +116,30 @@ describe("JDownloader over My.JDownloader", () => {
     try {
       await expect(cloud(s.baseUrl, PASSWORD, "Laptop").poll()).rejects.toThrow(/Laptop.*PC/);
       await expect(cloud(s.baseUrl, PASSWORD, "Laptop").poll()).rejects.toThrow(ProtocolError);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("names the account's JDownloader instances for the settings dialog", async () => {
+    const s = await serve();
+    try {
+      const t = new JdCloudTransport(cfg(s.baseUrl, PASSWORD, ""), timers, s.baseUrl);
+      expect(await t.listDevices()).toEqual(["PC"]);
+      t.close();
+      s.faults.devices = [
+        { id: "a", name: "Keller-NAS" },
+        { id: "b", name: "" },
+        { id: "c" },
+        { id: "d", name: "Tom-PC" },
+      ];
+      expect(await new JdCloudTransport(cfg(s.baseUrl, PASSWORD, ""), timers, s.baseUrl).listDevices()).toEqual([
+        "Keller-NAS",
+        "Tom-PC",
+      ]);
+      await expect(new JdCloudTransport(cfg(s.baseUrl, "wrong", ""), timers, s.baseUrl).listDevices()).rejects.toThrow(
+        AuthError,
+      );
     } finally {
       await s.close();
     }

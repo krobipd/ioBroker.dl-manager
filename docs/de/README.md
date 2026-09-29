@@ -9,7 +9,7 @@ Adapter lädt nie selbst etwas herunter und löscht nie Dateien.
 | Programm                       | Zugang                          | Was du brauchst                                                                                                                                                                            |
 | ------------------------------ | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | JDownloader 2 (lokal)          | lokale Schnittstelle, Port 3128 | In JDownloader: Einstellungen → Erweiterte Einstellungen → `DeprecatedApiEnabled` an; läuft ioBroker auf einem anderen Rechner oder Container, zusätzlich `DeprecatedApiLocalhostOnly` aus |
-| JDownloader 2 (My.JDownloader) | die My.JDownloader-Cloud        | deine My.JDownloader-E-Mail und dein Passwort sowie den Gerätenamen aus My.JDownloader                                                                                                     |
+| JDownloader 2 (My.JDownloader) | die My.JDownloader-Cloud        | deine My.JDownloader-E-Mail und dein Passwort — den JDownloader wählst du aus deinem Konto                                                                                                 |
 | qBittorrent                    | Weboberfläche, Port 8080        | Benutzer und Passwort der Weboberfläche oder einen API-Schlüssel (ab qBittorrent 5.2)                                                                                                      |
 | Transmission                   | RPC, Port 9091                  | Benutzer und Passwort, falls gesetzt; der ioBroker-Rechner muss in `rpc-whitelist` erlaubt sein                                                                                            |
 | Deluge                         | Weboberfläche, Port 8112        | das Passwort der Weboberfläche                                                                                                                                                             |
@@ -24,12 +24,20 @@ Docker-Netz läuft; sonst nimm My.JDownloader.
 
 ## Einrichtung
 
-1. Adapter installieren und die Instanz-Einstellungen öffnen.
-2. Je Programm eine Zeile anlegen: Programm wählen, eine kurze ID vergeben (Buchstaben, Ziffern und `-`, z. B. `nas`),
-   Host, Port und die Zugangsdaten aus der Tabelle oben eintragen. Die ID wird Teil des Objektpfads — `qbittorrent-nas`.
-3. **Verbindungen testen** drücken. Jedes Programm antwortet mit seiner Version oder mit dem Grund, warum es nicht
+1. Adapter installieren und die Instanz-Einstellungen öffnen. Die Programme sind Karten des Gerätemanagers; sie
+   erscheinen, solange die Instanz läuft.
+2. **+** drücken, Programm wählen. Sein Dialog fragt nur, was dieses Programm braucht: einen Namen, Adresse und Port
+   (leer = der Standard des Programms) und seine Anmeldung. Bei JDownloader _Lokal im Netz_ oder _Über My.JDownloader_
+   wählen; mit My.JDownloader meldest du dich an und wählst deinen JDownloader aus einer Liste.
+3. Übernehmen. Die Instanz startet neu, und das Programm erscheint als Karte und als Gerät unter `dl-manager.0`. Die
+   Kennung im Objektpfad — `qbittorrent-nas` — kommt aus dem Namen; unter _Erweitert_ legst du sie vor dem ersten
+   Speichern selbst fest. Danach bleibt sie, damit Räume, Funktionen und Skripte weiter passen.
+4. Der Test-Knopf auf der Karte fragt das Programm einmal und zeigt seine Version oder den Grund, warum es nicht
    erreichbar ist.
-4. Speichern. Die Geräte erscheinen unter `dl-manager.0`.
+
+Jedes Programm lässt sich beliebig oft hinzufügen. Ein zweiter Eintrag für dasselbe Programm — dieselbe Adresse oder
+derselbe JDownloader eines My.JDownloader-Kontos — wird abgewiesen. Der Schalter auf einer Karte schaltet ein Programm
+ab, ohne sein Gerät zu löschen; Löschen entfernt das Gerät, nie eine Datei.
 
 ## Was du im Objektbaum findest
 

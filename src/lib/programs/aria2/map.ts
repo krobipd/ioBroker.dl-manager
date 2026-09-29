@@ -1,5 +1,5 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
-import { num } from "../../core/units";
+import { asRecord, nonNegative } from "../../core/units";
 
 /** Raw key = status, `:0` = download speed 0. `removed` and entries followed by another are not shown. */
 export const statusTable = [
@@ -35,29 +35,23 @@ export function mapAriaStatus(raw: string | number, debug: (msg: string) => void
   }
 }
 
-const obj = (v: unknown): Record<string, unknown> =>
-  v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
 const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
-const nonNegative = (v: unknown): number | null => {
-  const n = num(v);
-  return n !== null && n >= 0 ? n : null;
-};
 
 /**
  * @param e a download of tellActive/tellWaiting/tellStopped
  * @returns the torrent's name, the first file's name, or its first URL
  */
 export function ariaName(e: Record<string, unknown>): string {
-  const bt = obj(obj(e.bittorrent).info).name;
+  const bt = asRecord(asRecord(e.bittorrent).info).name;
   if (typeof bt === "string" && bt) {
     return bt;
   }
-  const file = obj(arr(e.files)[0]);
+  const file = asRecord(arr(e.files)[0]);
   const path = typeof file.path === "string" ? file.path : "";
   if (path) {
     return path.split("/").pop() ?? path;
   }
-  const uri = obj(arr(file.uris)[0]).uri;
+  const uri = asRecord(arr(file.uris)[0]).uri;
   return typeof uri === "string" ? uri : typeof e.gid === "string" ? e.gid : "";
 }
 
@@ -82,7 +76,7 @@ export function toSnapshot(
 ): ProgramSnapshot {
   const items: DownloadItem[] = [];
   for (const raw of entries) {
-    const e = obj(raw);
+    const e = asRecord(raw);
     const gid = typeof e.gid === "string" ? e.gid : "";
     if (!gid || e.status === "removed" || arr(e.followedBy).length > 0) {
       continue;
@@ -95,7 +89,6 @@ export function toSnapshot(
       key: gid,
       name: ariaName(e),
       status,
-      rawStatus: String(e.status),
       sizeBytes: size !== null && size > 0 ? size : null,
       doneBytes: done,
       speedBps: speed,
@@ -109,8 +102,8 @@ export function toSnapshot(
           : "",
     });
   }
-  const s = obj(stat);
-  const o = obj(option);
+  const s = asRecord(stat);
+  const o = asRecord(option);
   return {
     status: {
       version,

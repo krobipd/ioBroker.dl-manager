@@ -1,3 +1,4 @@
+import { ownId } from "./ids";
 /**
  * True when every field of `patch` already sits in `stored` — extendObject would change nothing. Objects are
  * compared field by field (extendObject merges them), arrays and values as a whole.
@@ -62,7 +63,7 @@ export class KnownObjects {
   public constructor(private readonly a: KnownObjectsAdapter) {}
 
   private full(id: string): string {
-    return id.startsWith(`${this.a.namespace}.`) ? id : `${this.a.namespace}.${id}`;
+    return ownId(this.a.namespace, id);
   }
 
   /** Reads the whole own tree with one call. Before it only what this instance wrote itself is known. */

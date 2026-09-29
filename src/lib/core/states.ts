@@ -1,3 +1,4 @@
+import { ownId } from "./ids";
 /** The adapter methods the state store needs. */
 export interface KnownStatesAdapter {
   /** e.g. "dl-manager.0" */
@@ -6,8 +7,6 @@ export interface KnownStatesAdapter {
   getStates(pattern: string): Promise<Record<string, ioBroker.State | null | undefined>>;
   /** Writes a state. */
   setState(id: string, state: ioBroker.SettableState): Promise<unknown>;
-  /** Writes a state only when it differs from the database. */
-  setStateChanged(id: string, state: ioBroker.SettableState): Promise<unknown>;
 }
 
 interface Written {
@@ -17,25 +16,22 @@ interface Written {
 }
 
 /**
- * The adapter's own states, read once at start. A read-only state (`common.write === false`) is written only by the
- * adapter, so it is compared here in memory — `setStateChangedAsync` would read it from the database on every call. A
- * writable state stays with the database compare: a user write there makes the next equal echo a change, which
- * corrects a lost command.
+ * The adapter's own states, read once at start and then known from its own writes — the one place that decides
+ * whether a value has to be written. `setStateChangedAsync` would read the database on every call.
+ *
+ * What this instance did not write itself is forgotten the moment it happens: a user or script write
+ * ({@link KnownStates.forget}), so the next poll writes the program's value even when it is the one written before and
+ * a lost command gets corrected; and a deleted object ({@link KnownStates.remove}), whose value js-controller deletes
+ * with it, so a channel that comes back gets every value again.
  */
 export class KnownStates {
   private readonly last = new Map<string, Written>();
 
-  /**
-   * @param a the adapter
-   * @param readOnly whether a full state id is read-only (from its object)
-   */
-  public constructor(
-    private readonly a: KnownStatesAdapter,
-    private readonly readOnly: (id: string) => boolean,
-  ) {}
+  /** @param a the adapter */
+  public constructor(private readonly a: KnownStatesAdapter) {}
 
   private full(id: string): string {
-    return id.startsWith(`${this.a.namespace}.`) ? id : `${this.a.namespace}.${id}`;
+    return ownId(this.a.namespace, id);
   }
 
   /** Reads every own state with one call, so a restart writes nothing blindly. */
@@ -50,24 +46,18 @@ export class KnownStates {
   }
 
   /**
-   * Writes a state only when it changes: read-only ones compared in memory, writable ones against the database.
+   * Writes a state only when it differs from what this instance knows of it.
    *
    * @param id own or full id
    * @param state the state
    */
   public async put(id: string, state: ioBroker.SettableState): Promise<void> {
-    const key = this.full(id);
-    if (!this.readOnly(key)) {
-      await this.a.setStateChanged(id, state);
-      return;
-    }
-    const was = this.last.get(key);
+    const was = this.last.get(this.full(id));
     const now: Written = { val: state.val ?? null, ack: state.ack === true, q: state.q ?? 0 };
     if (was && was.val === now.val && was.ack === now.ack && was.q === now.q) {
       return;
     }
-    await this.a.setState(id, state);
-    this.last.set(key, now);
+    await this.set(id, state);
   }
 
   /**
@@ -79,5 +69,30 @@ export class KnownStates {
   public async set(id: string, state: ioBroker.SettableState): Promise<void> {
     await this.a.setState(id, state);
     this.last.set(this.full(id), { val: state.val ?? null, ack: state.ack === true, q: state.q ?? 0 });
+  }
+
+  /**
+   * Someone else wrote this state — its next put writes, whatever this instance wrote before.
+   *
+   * @param id own or full id
+   */
+  public forget(id: string): void {
+    this.last.delete(this.full(id));
+  }
+
+  /**
+   * The object is deleted, and js-controller deletes its value with it (with `recursive` the children's as well).
+   *
+   * @param id own or full id
+   * @param opts options of the delete
+   * @param opts.recursive whether the children went too
+   */
+  public remove(id: string, opts: { recursive: boolean }): void {
+    const key = this.full(id);
+    for (const k of [...this.last.keys()]) {
+      if (k === key || (opts.recursive && k.startsWith(`${key}.`))) {
+        this.last.delete(k);
+      }
+    }
   }
 }

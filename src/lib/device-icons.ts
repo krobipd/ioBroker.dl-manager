@@ -1,18 +1,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { CATALOG } from "./programs/catalog";
 
-/** Program type → pictogram file; the torrent programs share one, the usenet programs another. */
-export const ICON_BY_TYPE: Readonly<Record<string, string>> = {
-  jdownloader: "jdownloader.svg",
-  "jdownloader-cloud": "jdownloader.svg",
-  qbittorrent: "torrent.svg",
-  transmission: "torrent.svg",
-  deluge: "torrent.svg",
-  sabnzbd: "usenet.svg",
-  nzbget: "usenet.svg",
-  aria2: "aria2.svg",
-  pyload: "pyload.svg",
-};
+/** Program type → pictogram file: one per family (`catalog.ts`), so the torrent programs share one, the usenet programs another. */
+export const ICON_BY_TYPE: Readonly<Record<string, string>> = Object.fromEntries(
+  CATALOG.map(p => [p.type, `${p.family}.svg`]),
+);
 
 /** The admin inlines only a data URI — a path lands in a plain `<img>` and keeps its colour in every theme. */
 export const ICON_URI_PREFIX = "data:image/svg+xml;base64,";

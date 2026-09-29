@@ -101,7 +101,9 @@
     "tier": 3,
     "loglevel": "info",
     "mode": "daemon",
-    "messagebox": true,
+    "supportedMessages": {
+      "deviceManager": true
+    },
     "type": "infrastructure",
     "compact": true,
     "connectionType": "local",

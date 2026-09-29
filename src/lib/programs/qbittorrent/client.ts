@@ -1,6 +1,7 @@
 import { AuthError, ProtocolError } from "../../core/errors";
 import { HttpClient, type HttpResponse, type HttpTimers } from "../../core/http";
-import type { ProgramConfig } from "../registry";
+import type { ProgramConfig } from "../../core/model";
+import { baseUrl, catalogEntry } from "../catalog";
 
 /**
  * qBittorrent WebAPI v2 (api-torrent.md § 1.2): cookie login (the cookie name changes with the version, so it is
@@ -21,8 +22,7 @@ export class QbClient {
     timers: HttpTimers,
   ) {
     this.http = new HttpClient(timers);
-    const path = cfg.path.replace(/\/+$/, "");
-    this.base = `${cfg.https ? "https" : "http"}://${cfg.host}:${cfg.port || 8080}${path && !path.startsWith("/") ? `/${path}` : path}/api/v2`;
+    this.base = `${baseUrl(cfg, catalogEntry("qbittorrent"))}/api/v2`;
   }
 
   /** @returns whether the next call logs in first (a new session — the version is read again) */

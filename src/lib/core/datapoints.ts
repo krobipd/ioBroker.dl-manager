@@ -1,8 +1,21 @@
 import type { I18nKey } from "../i18n";
-import type { Capability } from "./model";
+import {
+  ACTIVE,
+  countActive,
+  countQueued,
+  type Capability,
+  type Command,
+  type DownloadItem,
+  type ProgramSnapshot,
+} from "./model";
+import { fromMBps, percent, round2, toGB, toMBps } from "./units";
 
-/** One datapoint the core creates for a program or a download. */
-export interface DatapointDef {
+/**
+ * One datapoint the core creates for a program or a download.
+ *
+ * @template S what the value is read from — the program's snapshot or one download
+ */
+export interface DatapointDef<S = unknown> {
   /** Id below the device or the download channel. */
   id: string;
   /** Value type. */
@@ -21,28 +34,47 @@ export interface DatapointDef {
   nameKey: I18nKey;
   /** i18n key of the explanation. */
   descKey?: I18nKey;
+  /** The value each poll writes; none for a button or a value written by an event (last finished, last failed). */
+  value?(src: S): ioBroker.StateValue;
+  /**
+   * What a user write means for the program (writable datapoints); null when the value asks for nothing (a button
+   * written false, an empty link). A datapoint that is only written is confirmed with ack right away — no poll ever
+   * reads it back.
+   *
+   * @param val the written value
+   * @param key the download's raw key (download datapoints only)
+   */
+  command?(val: ioBroker.StateValue, key: string): Command | null;
 }
 
-const r = (d: Omit<DatapointDef, "read" | "write"> & Partial<Pick<DatapointDef, "read" | "write">>): DatapointDef => ({
-  read: true,
-  write: false,
-  ...d,
-});
+type Spec<S> = Omit<DatapointDef<S>, "read" | "write"> & Partial<Pick<DatapointDef<S>, "read" | "write">>;
+const pr = (d: Spec<ProgramSnapshot>): DatapointDef<ProgramSnapshot> => ({ read: true, write: false, ...d });
+const ir = (d: Spec<DownloadItem>): DatapointDef<DownloadItem> => ({ read: true, write: false, ...d });
 
 /** Datapoints directly below a program's device. */
-export const PROGRAM_DATAPOINTS: readonly DatapointDef[] = [
-  r({ id: "online", type: "boolean", role: "indicator.reachable", nameKey: "online", descKey: "descOnline" }),
-  r({ id: "error", type: "string", role: "text", nameKey: "error", descKey: "descError" }),
-  r({ id: "version", type: "string", role: "text", nameKey: "version" }),
-  r({
+export const PROGRAM_DATAPOINTS: readonly DatapointDef<ProgramSnapshot>[] = [
+  pr({
+    id: "online",
+    value: () => true,
+    type: "boolean",
+    role: "indicator.reachable",
+    nameKey: "online",
+    descKey: "descOnline",
+  }),
+  pr({ id: "error", value: () => "", type: "string", role: "text", nameKey: "error", descKey: "descError" }),
+  pr({ id: "version", value: s => s.status.version, type: "string", role: "text", nameKey: "version" }),
+  pr({
     id: "downloading",
+    value: s => s.items.some(i => ACTIVE.has(i.status)),
     type: "boolean",
     role: "indicator.working",
     nameKey: "downloading",
     descKey: "descDownloading",
   }),
-  r({
+  pr({
     id: "paused",
+    command: val => ({ kind: val === true ? "pauseAll" : "resumeAll" }),
+    value: s => s.status.paused,
     type: "boolean",
     role: "switch",
     write: true,
@@ -50,10 +82,27 @@ export const PROGRAM_DATAPOINTS: readonly DatapointDef[] = [
     nameKey: "paused",
     descKey: "descPaused",
   }),
-  r({ id: "downloadSpeed", type: "number", role: "value", unit: "MB/s", nameKey: "downloadSpeed" }),
-  r({ id: "uploadSpeed", type: "number", role: "value", unit: "MB/s", capability: "upload", nameKey: "uploadSpeed" }),
-  r({
+  pr({
+    id: "downloadSpeed",
+    value: s => toMBps(s.status.downloadBps),
+    type: "number",
+    role: "value",
+    unit: "MB/s",
+    nameKey: "downloadSpeed",
+  }),
+  pr({
+    id: "uploadSpeed",
+    value: s => toMBps(s.status.uploadBps),
+    type: "number",
+    role: "value",
+    unit: "MB/s",
+    capability: "upload",
+    nameKey: "uploadSpeed",
+  }),
+  pr({
     id: "speedLimit",
+    command: val => ({ kind: "setSpeedLimit", bps: fromMBps(val) }),
+    value: s => toMBps(s.status.speedLimitBps),
     type: "number",
     role: "level",
     unit: "MB/s",
@@ -62,8 +111,10 @@ export const PROGRAM_DATAPOINTS: readonly DatapointDef[] = [
     nameKey: "speedLimit",
     descKey: "descSpeedLimit",
   }),
-  r({
+  pr({
     id: "uploadLimit",
+    command: val => ({ kind: "setUploadLimit", bps: fromMBps(val) }),
+    value: s => toMBps(s.status.uploadLimitBps),
     type: "number",
     role: "level",
     unit: "MB/s",
@@ -72,8 +123,10 @@ export const PROGRAM_DATAPOINTS: readonly DatapointDef[] = [
     nameKey: "uploadLimit",
     descKey: "descUploadLimit",
   }),
-  r({
+  pr({
     id: "altSpeed",
+    command: val => ({ kind: "setAltSpeed", on: val === true }),
+    value: s => s.status.altSpeed === true,
     type: "boolean",
     role: "switch",
     write: true,
@@ -81,8 +134,9 @@ export const PROGRAM_DATAPOINTS: readonly DatapointDef[] = [
     nameKey: "altSpeed",
     descKey: "descAltSpeed",
   }),
-  r({
+  pr({
     id: "freeSpace",
+    value: s => toGB(s.status.freeSpaceBytes),
     type: "number",
     role: "value",
     unit: "GB",
@@ -90,11 +144,27 @@ export const PROGRAM_DATAPOINTS: readonly DatapointDef[] = [
     nameKey: "freeSpace",
     descKey: "descFreeSpace",
   }),
-  r({ id: "active", type: "number", role: "value", nameKey: "active" }),
-  r({ id: "queued", type: "number", role: "value", nameKey: "queued" }),
-  r({ id: "total", type: "number", role: "value", nameKey: "total" }),
-  r({
+  pr({
+    id: "active",
+    value: s => countActive(s.items),
+    type: "number",
+    role: "value",
+    nameKey: "active",
+  }),
+  pr({
+    id: "queued",
+    value: s => countQueued(s.items),
+    type: "number",
+    role: "value",
+    nameKey: "queued",
+  }),
+  pr({ id: "total", value: s => s.items.length, type: "number", role: "value", nameKey: "total" }),
+  pr({
     id: "add",
+    command: val => {
+      const url = typeof val === "string" ? val.trim() : "";
+      return url ? { kind: "add", url } : null;
+    },
     type: "string",
     role: "text",
     read: false,
@@ -103,23 +173,62 @@ export const PROGRAM_DATAPOINTS: readonly DatapointDef[] = [
     nameKey: "add",
     descKey: "descAdd",
   }),
-  r({ id: "lastFinished", type: "string", role: "text", nameKey: "lastFinished", descKey: "descLastFinished" }),
-  r({ id: "lastFinishedTime", type: "number", role: "date", nameKey: "lastFinishedTime" }),
-  r({ id: "lastFailed", type: "string", role: "text", nameKey: "lastFailed", descKey: "descLastFailed" }),
-  r({ id: "lastFailedTime", type: "number", role: "date", nameKey: "lastFailedTime" }),
+  pr({ id: "lastFinished", type: "string", role: "text", nameKey: "lastFinished", descKey: "descLastFinished" }),
+  pr({ id: "lastFinishedTime", type: "number", role: "date", nameKey: "lastFinishedTime" }),
+  pr({ id: "lastFailed", type: "string", role: "text", nameKey: "lastFailed", descKey: "descLastFailed" }),
+  pr({ id: "lastFailedTime", type: "number", role: "date", nameKey: "lastFailedTime" }),
 ];
 
 /** Datapoints in each download's channel. */
-export const ITEM_DATAPOINTS: readonly DatapointDef[] = [
-  r({ id: "status", type: "string", role: "text", nameKey: "status" }),
-  r({ id: "progress", type: "number", role: "value", unit: "%", nameKey: "progress" }),
-  r({ id: "size", type: "number", role: "value", unit: "GB", nameKey: "size" }),
-  r({ id: "downloaded", type: "number", role: "value", unit: "GB", nameKey: "downloaded" }),
-  r({ id: "speed", type: "number", role: "value", unit: "MB/s", capability: "itemSpeed", nameKey: "speed" }),
-  r({ id: "uploadSpeed", type: "number", role: "value", unit: "MB/s", capability: "upload", nameKey: "uploadSpeed" }),
-  r({ id: "ratio", type: "number", role: "value", capability: "upload", nameKey: "ratio", descKey: "descRatio" }),
-  r({
+export const ITEM_DATAPOINTS: readonly DatapointDef<DownloadItem>[] = [
+  ir({ id: "status", value: i => i.status, type: "string", role: "text", nameKey: "status" }),
+  ir({
+    id: "progress",
+    value: i => percent(i.doneBytes, i.sizeBytes),
+    type: "number",
+    role: "value",
+    unit: "%",
+    nameKey: "progress",
+  }),
+  ir({ id: "size", value: i => toGB(i.sizeBytes), type: "number", role: "value", unit: "GB", nameKey: "size" }),
+  ir({
+    id: "downloaded",
+    value: i => toGB(i.doneBytes),
+    type: "number",
+    role: "value",
+    unit: "GB",
+    nameKey: "downloaded",
+  }),
+  ir({
+    id: "speed",
+    value: i => toMBps(i.speedBps),
+    type: "number",
+    role: "value",
+    unit: "MB/s",
+    capability: "itemSpeed",
+    nameKey: "speed",
+  }),
+  ir({
+    id: "uploadSpeed",
+    value: i => toMBps(i.uploadBps),
+    type: "number",
+    role: "value",
+    unit: "MB/s",
+    capability: "upload",
+    nameKey: "uploadSpeed",
+  }),
+  ir({
+    id: "ratio",
+    value: i => (typeof i.ratio === "number" ? round2(i.ratio) : null),
+    type: "number",
+    role: "value",
+    capability: "upload",
+    nameKey: "ratio",
+    descKey: "descRatio",
+  }),
+  ir({
     id: "eta",
+    value: i => i.etaSeconds,
     type: "number",
     role: "value.timer",
     unit: "s",
@@ -127,19 +236,43 @@ export const ITEM_DATAPOINTS: readonly DatapointDef[] = [
     nameKey: "eta",
     descKey: "descEta",
   }),
-  r({ id: "added", type: "number", role: "date", capability: "itemAdded", nameKey: "added" }),
-  r({ id: "finished", type: "number", role: "date", capability: "itemFinished", nameKey: "finished" }),
-  r({ id: "category", type: "string", role: "text", capability: "category", nameKey: "category" }),
-  r({
+  ir({
+    id: "added",
+    value: i => i.addedMs ?? null,
+    type: "number",
+    role: "date",
+    capability: "itemAdded",
+    nameKey: "added",
+  }),
+  ir({
+    id: "finished",
+    value: i => i.finishedMs ?? null,
+    type: "number",
+    role: "date",
+    capability: "itemFinished",
+    nameKey: "finished",
+  }),
+  ir({
+    id: "category",
+    value: i => i.category ?? "",
+    type: "string",
+    role: "text",
+    capability: "category",
+    nameKey: "category",
+  }),
+  ir({
     id: "error",
+    value: i => i.error,
     type: "string",
     role: "text",
     capability: "itemError",
     nameKey: "itemError",
     descKey: "descItemError",
   }),
-  r({
+  ir({
     id: "paused",
+    command: (val, key) => ({ kind: val === true ? "pause" : "resume", key }),
+    value: i => i.status === "paused",
     type: "boolean",
     role: "switch",
     write: true,
@@ -147,8 +280,9 @@ export const ITEM_DATAPOINTS: readonly DatapointDef[] = [
     nameKey: "itemPaused",
     descKey: "descItemPaused",
   }),
-  r({
+  ir({
     id: "remove",
+    command: (val, key) => (val === true ? { kind: "remove", key } : null),
     type: "boolean",
     role: "button",
     read: false,
@@ -166,6 +300,6 @@ export const ITEM_DATAPOINTS: readonly DatapointDef[] = [
  * @param caps the driver's capabilities
  * @returns the definitions without a capability or with one the driver has
  */
-export function forCapabilities(defs: readonly DatapointDef[], caps: ReadonlySet<Capability>): DatapointDef[] {
+export function forCapabilities<S>(defs: readonly DatapointDef<S>[], caps: ReadonlySet<Capability>): DatapointDef<S>[] {
   return defs.filter(d => d.capability === undefined || caps.has(d.capability));
 }

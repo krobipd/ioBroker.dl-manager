@@ -3,7 +3,7 @@ import { startFixtureServer } from "../../../../test/helpers/fixture-server";
 import { firstUrl } from "../../../../test/helpers/first-url";
 import { loadFixture } from "../../../../test/helpers/fixtures";
 import { memoryPauseStore } from "../../core/emulated-pause";
-import type { ProgramConfig } from "../registry";
+import type { ProgramConfig } from "../../core/model";
 import type { MiniSocket } from "./client";
 import { AriaDriver } from "./driver";
 import { mapAriaStatus, statusTable } from "./map";

@@ -16,7 +16,28 @@ export type I18nKey = keyof typeof translations;
  * @param args Values for the `%s` placeholders of that key, substituted in every language
  */
 export function tName(key: I18nKey, ...args: (string | number)[]): ioBroker.StringOrTranslated {
-  return I18n.getTranslatedObject(key, ...args);
+  if (!args.length) {
+    return I18n.getTranslatedObject(key);
+  }
+  // adapter-core 3.4.3 puts every argument into the first `%s` of the untouched text — only the last one survives and
+  // the other placeholders stay. So ask for the texts with their placeholders and fill them in order here.
+  const texts = I18n.getTranslatedObject(key, "%s");
+  if (typeof texts === "string") {
+    return fill(texts, args);
+  }
+  return Object.fromEntries(
+    Object.entries(texts).map(([lang, text]) => [lang, fill(text, args)]),
+  ) as ioBroker.Translated;
+}
+
+/**
+ * The text with its `%s` placeholders filled in order.
+ *
+ * @param text a text with placeholders
+ * @param args the values
+ */
+function fill(text: string, args: readonly (string | number)[]): string {
+  return args.reduce<string>((out, arg) => out.replace("%s", String(arg)), text);
 }
 
 /**
@@ -48,14 +69,12 @@ export function tState(key: I18nKey): string {
 }
 
 /**
- * Translated PLAIN STRING for a message that reaches the user as text — the response of
- * the connection test in the admin dialog. Same rule as {@link tState}: user-facing text
- * follows the system language, and a response field is a string, not a translation
- * object.
+ * Translated PLAIN STRING for a text the admin renders as it is — the labels of a radio group in a device-manager
+ * dialog (json-config's radio branch puts `label` straight into React, where a translation object crashes the
+ * dialog; admin 8.0.14 – 8.0.20 measured). Follows the system language like {@link tState}.
  *
- * @param key Translation key from admin/i18n/en.json (the `msg…` keys)
- * @param args Values for the `%s` placeholders of that key
+ * @param key Translation key from admin/i18n/en.json
  */
-export function tText(key: I18nKey, ...args: (string | number)[]): string {
-  return I18n.translate(key, ...args);
+export function tText(key: I18nKey): string {
+  return I18n.translate(key);
 }

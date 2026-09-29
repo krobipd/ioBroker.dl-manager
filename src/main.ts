@@ -6,15 +6,21 @@ import { parseMaxDownloads, parsePollInterval, parseTreeScope } from "./lib/core
 import { ProgramManager } from "./lib/core/manager";
 import { coveredBy, KnownObjects } from "./lib/core/objects";
 import { KnownStates } from "./lib/core/states";
+import { deviceIcon } from "./lib/device-icons";
+import { DlDeviceManagement } from "./lib/device-management";
 import { errText } from "./lib/err-text";
 import { tDesc, tName } from "./lib/i18n";
 import { migrateNativeKeys, type NativeKeyMigration } from "./lib/native-key-migration";
-import { findProgram, type ProgramEntry } from "./lib/programs/registry";
+import { listMyJdDevices } from "./lib/programs/jdownloader/cloud";
+import type { ProgramEntry } from "./lib/core/model";
+import { findProgram } from "./lib/programs/registry";
 
 /** Native keys earlier versions declared and this one dropped (fleet helper `native-key-migration`). */
 const NATIVE_KEY_MIGRATIONS: NativeKeyMigration[] = [
   // 0.0.1 (the npm placeholder) declared it; the tree settings treeScope and maxDownloads replace it
   { drop: "removeFinished" },
+  // up to 0.1.0 the settings table's connection test came in over the old messagebox; `supportedMessages` says it now
+  { commonDrop: "messagebox" },
 ];
 
 /** ioBroker adapter that mirrors download programs into the object tree. */
@@ -25,6 +31,8 @@ export class DownloadManagerAdapter extends utils.Adapter {
   private readonly known: KnownObjects;
   /** The own states, read once at start — read-only ones are compared in memory. */
   private readonly states: KnownStates;
+  /** The programs as cards in the admin (device manager) — it answers the `dm:*` messages itself. */
+  private readonly deviceManagement: DlDeviceManagement;
 
   /**
    * @param options Adapter options
@@ -45,17 +53,13 @@ export class DownloadManagerAdapter extends utils.Adapter {
       delObject: (id, opts) => this.delObjectAsync(id, opts),
       getObjectList: params => this.getObjectListAsync(params),
     });
-    this.states = new KnownStates(
-      {
-        get namespace(): string {
-          return namespace();
-        },
-        getStates: pattern => this.getStatesAsync(pattern),
-        setState: (id, state) => this.setState(id, state),
-        setStateChanged: (id, state) => this.setStateChangedAsync(id, state),
+    this.states = new KnownStates({
+      get namespace(): string {
+        return namespace();
       },
-      id => (this.known.get(id) as ioBroker.Object | undefined)?.common?.write === false,
-    );
+      getStates: pattern => this.getStatesAsync(pattern),
+      setState: (id, state) => this.setState(id, state),
+    });
     this.problems = new ActionableProblems({
       logWarn: m => this.log.warn(m),
       logInfo: m => this.log.info(m),
@@ -64,15 +68,33 @@ export class DownloadManagerAdapter extends utils.Adapter {
           this.log.debug(`Could not raise a notification: ${errText(err)}`),
         ),
     });
+    this.deviceManagement = new DlDeviceManagement(this, {
+      readRows: () => this.readProgramRows(),
+      writeRows: async rows => {
+        await this.extendForeignObjectAsync(`system.adapter.${this.namespace}`, { native: { programs: rows } });
+      },
+      hasObject: relId => Promise.resolve(this.known.get(relId) !== undefined),
+      readState: async relId => (await this.getStateAsync(relId))?.val ?? undefined,
+      writeState: async (relId, val) => {
+        await this.setState(relId, { val, ack: false });
+      },
+      test: row => (this.manager ?? this.makeManager()).testProgram(row),
+      listJdDevices: (email, password) =>
+        listMyJdDevices(email, password, {
+          setTimeout: (cb, ms) => this.setTimeout(cb, ms),
+          clearTimeout: t => this.clearTimeout(t),
+        }),
+      icon: deviceIcon,
+    });
     this.on("ready", this.onReady.bind(this));
     this.on("stateChange", this.onStateChange.bind(this));
-    this.on("message", this.onMessage.bind(this));
     this.on("unload", this.onUnload.bind(this));
   }
 
   /**
-   * Null `common.supportedMessages` on this instance's own object when the key exists at all — with
-   * `stopInstance` in it the host kills the process and `onUnload` never runs (fleet rule).
+   * Removes a leftover `stopInstance` from `common.supportedMessages` of this instance's own object — with it the host
+   * kills the process and `onUnload` never runs (fleet rule). The key itself stays: its `deviceManager` entry switches
+   * the message reception on.
    *
    * @returns true when the correction was written; the host restarts the instance, the caller stops.
    */
@@ -80,17 +102,26 @@ export class DownloadManagerAdapter extends utils.Adapter {
     const id = `system.adapter.${this.namespace}`;
     try {
       const obj = await this.getForeignObjectAsync(id);
-      const supported = obj?.common?.supportedMessages;
-      if (supported === undefined || supported === null) {
+      const supported = obj?.common?.supportedMessages as Record<string, unknown> | null | undefined;
+      if (supported?.stopInstance === undefined || supported.stopInstance === null) {
         return false;
       }
       this.log.info("Correcting a leftover setting from an earlier version — this instance restarts once");
-      await this.extendForeignObjectAsync(id, { common: { supportedMessages: null } });
+      await this.extendForeignObjectAsync(id, { common: { supportedMessages: { stopInstance: null } } });
       return true;
     } catch (err: unknown) {
       this.log.debug(`Could not check the instance object ${id}: ${errText(err)}`);
       return false;
     }
+  }
+
+  /** @returns the stored settings rows (`native.programs` of the instance object), read fresh */
+  private async readProgramRows(): Promise<Record<string, unknown>[]> {
+    const obj = await this.getForeignObjectAsync(`system.adapter.${this.namespace}`);
+    const programs: unknown = obj?.native?.programs;
+    return Array.isArray(programs)
+      ? programs.filter((r): r is Record<string, unknown> => !!r && typeof r === "object" && !Array.isArray(r))
+      : [];
   }
 
   /**
@@ -173,7 +204,10 @@ export class DownloadManagerAdapter extends utils.Adapter {
           log: this.log,
           extendObject: (id, obj) => this.known.extend(id, obj),
           setForeignObject: (id, obj) => this.known.replace(id, obj),
-          delObject: (id, opts) => this.known.remove(id, opts),
+          delObject: async (id, opts) => {
+            await this.known.remove(id, opts);
+            this.states.remove(id, opts);
+          },
           getObject: id => this.getObjectAsync(id),
           getForeignObjects: (pattern, type) =>
             this.getForeignObjectsAsync(pattern, type) as Promise<Record<string, ioBroker.Object>>,
@@ -192,7 +226,6 @@ export class DownloadManagerAdapter extends utils.Adapter {
         decrypt: v => v,
         problems: {
           report: (key, title, action) => this.problems.report({ key, title, action }),
-          resolve: (key, msg) => this.problems.resolve(key, msg),
         },
       },
       {
@@ -215,9 +248,10 @@ export class DownloadManagerAdapter extends utils.Adapter {
       await this.known.load();
       await this.states.load();
       await this.refreshManifestObjects();
+      // subscribed before the start: a write that arrives while the programs start is forgotten like any other
+      await this.subscribeStatesAsync("*");
       this.manager = this.makeManager();
       await this.manager.start(this.config.programs);
-      await this.subscribeStatesAsync("*");
     } catch (err: unknown) {
       this.log.error(`onReady failed: ${errText(err)}`);
     }
@@ -225,33 +259,17 @@ export class DownloadManagerAdapter extends utils.Adapter {
 
   private async onStateChange(id: string, state: ioBroker.State | null | undefined): Promise<void> {
     try {
-      if (!state || state.ack || !this.manager) {
+      if (!state || state.ack) {
+        return;
+      }
+      // a user or a script wrote it: the next poll writes the program's value, even the one written before
+      this.states.forget(id);
+      if (!this.manager) {
         return;
       }
       await this.manager.onUserWrite(id.slice(this.namespace.length + 1), state.val);
     } catch (err: unknown) {
       this.log.error(`onStateChange failed: ${errText(err)}`);
-    }
-  }
-
-  private async onMessage(obj: ioBroker.Message): Promise<void> {
-    try {
-      if (!obj?.callback) {
-        return;
-      }
-      if (obj.command !== "testConnections") {
-        this.sendTo(obj.from, obj.command, { error: `Unknown command: ${obj.command}` }, obj.callback);
-        return;
-      }
-      const message = obj.message as { programs?: unknown } | null | undefined;
-      const programs = typeof message === "object" && message ? message.programs : undefined;
-      const result = await (this.manager ?? this.makeManager()).testConnections(programs);
-      this.sendTo(obj.from, obj.command, { result }, obj.callback);
-    } catch (err: unknown) {
-      this.log.error(`onMessage failed: ${errText(err)}`);
-      if (obj?.callback) {
-        this.sendTo(obj.from, obj.command, { error: errText(err) }, obj.callback);
-      }
     }
   }
 

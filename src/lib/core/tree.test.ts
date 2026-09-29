@@ -9,6 +9,7 @@ import { FakeAdapter } from "../../../test/helpers/fake-adapter";
 import type { Capability, DownloadItem, ExtraDefinition, ProgramSnapshot } from "./model";
 import { KnownObjects } from "./objects";
 import { ProgramTree, type TreeOptions } from "./tree";
+import { KnownStates } from "./states";
 
 const NS = "dl-manager.0";
 const CAPS: Capability[] = ["itemPause", "itemRemove", "upload", "itemSpeed", "itemEta", "globalPause", "add"];
@@ -48,6 +49,26 @@ async function makeTree(
   await t.load();
   await t.ensureDevice(undefined);
   return t;
+}
+
+/**
+ * The tree the way the adapter wires it: state writes through the adapter's state store, which forgets what a
+ * delete removed.
+ *
+ * @param a the database stand-in
+ * @returns the tree's adapter and the store
+ */
+function storeBacked(a: FakeAdapter): { tree: FakeAdapter; states: KnownStates } {
+  const states = new KnownStates(a);
+  const tree = Object.assign(Object.create(a) as FakeAdapter, {
+    setState: (id: string, st: ioBroker.SettableState) => states.set(id, st),
+    setStateChanged: (id: string, st: ioBroker.SettableState) => states.put(id, st),
+    delObject: async (id: string, opts?: { recursive?: boolean }) => {
+      await a.delObject(id, opts);
+      states.remove(id, { recursive: opts?.recursive === true });
+    },
+  });
+  return { tree, states };
 }
 
 const ALL: TreeOptions = { scope: "all", limit: 0 };
@@ -170,28 +191,41 @@ describe("ProgramTree — downloads", () => {
     expect(a.objectWrites).toBe(0);
   });
 
-  it("reads nothing from the database on an identical second poll (final review M1)", async () => {
+  it("reads nothing from the database on an identical second poll — through the adapter's state store", async () => {
     const a = new FakeAdapter(NS);
-    const t = await makeTree(a);
+    const t = await makeTree(storeBacked(a).tree);
     const many = Array.from({ length: 2000 }, (_, i) => item(`k${String(i).padStart(12, "0")}`));
     await t.sync(snap(many));
-    a.changedChecks = 0;
+    a.stateWrites = 0;
     await t.sync(snap(many));
+    expect(a.stateWrites).toBe(0);
     expect(a.changedChecks).toBe(0);
   });
 
-  it("writes online again after markOffline, and a value the user wrote again after forget", async () => {
+  it("writes online again after markOffline, and a value the user wrote again", async () => {
     const a = new FakeAdapter(NS);
-    const t = await makeTree(a);
+    const { tree, states } = storeBacked(a);
+    const t = await makeTree(tree);
     await t.sync(snap([item("aaaa11112222")]));
     await t.markOffline("timeout");
     await t.sync(snap([item("aaaa11112222")]));
     expect(a.val("qbittorrent-nas.online")).toBe(true);
     expect(a.val("qbittorrent-nas.error")).toBe("");
     await a.setState("qbittorrent-nas.downloads.11112222.paused", { val: true, ack: false });
-    t.forget(`${CH}.paused`);
+    states.forget(`${CH}.paused`);
     await t.sync(snap([item("aaaa11112222")]));
     expect(a.states.get(`${CH}.paused`)).toMatchObject({ val: false, ack: true });
+  });
+
+  it("writes every value of a download that comes back — through the adapter's state store (review R1)", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(storeBacked(a).tree);
+    await t.sync(snap([item("aaaa11112222")]));
+    await t.sync(snap([]));
+    expect(a.states.has(`${CH}.status`)).toBe(false);
+    await t.sync(snap([item("aaaa11112222")]));
+    expect(a.states.get(`${CH}.status`)).toMatchObject({ val: "downloading", ack: true });
+    expect(a.states.get(`${CH}.size`)?.val).not.toBeUndefined();
   });
 
   it("writes every value of a download that comes back after it was removed", async () => {
@@ -740,5 +774,54 @@ describe("ProgramTree — the warning about many downloads", () => {
     const u = await makeTree(b, { scope: "all", limit: 200 }, []);
     await u.sync(many(400));
     expect([...a.logs, ...b.logs].filter(l => l.level === "warn")).toEqual([]);
+  });
+});
+
+describe("ProgramTree — datapoints follow the capabilities", () => {
+  const ITEM_BOUND = [
+    "speed",
+    "uploadSpeed",
+    "ratio",
+    "eta",
+    "added",
+    "finished",
+    "category",
+    "error",
+    "paused",
+    "remove",
+  ];
+  const PROGRAM_BOUND = ["paused", "uploadSpeed", "speedLimit", "uploadLimit", "altSpeed", "freeSpace", "add"];
+  const ALL_CAPS: Capability[] = [
+    "itemSpeed",
+    "upload",
+    "itemEta",
+    "itemAdded",
+    "itemFinished",
+    "category",
+    "itemError",
+    "itemPause",
+    "itemRemove",
+    "globalPause",
+    "speedLimit",
+    "uploadLimit",
+    "altSpeed",
+    "freeSpace",
+    "add",
+  ];
+
+  it("creates none of the capability-bound datapoints for a program without capabilities", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a, ALL, []);
+    await t.sync(snap([item("aaaa11112222")]));
+    expect(ITEM_BOUND.filter(dp => a.objects.has(`${CH}.${dp}`))).toEqual([]);
+    expect(PROGRAM_BOUND.filter(dp => a.objects.has(`${DEV}.${dp}`))).toEqual([]);
+  });
+
+  it("creates every one of them for a program that has them all", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a, ALL, ALL_CAPS);
+    await t.sync(snap([item("aaaa11112222")]));
+    expect(ITEM_BOUND.filter(dp => !a.objects.has(`${CH}.${dp}`))).toEqual([]);
+    expect(PROGRAM_BOUND.filter(dp => !a.objects.has(`${DEV}.${dp}`))).toEqual([]);
   });
 });

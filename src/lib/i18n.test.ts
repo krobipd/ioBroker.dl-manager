@@ -15,9 +15,9 @@ describe("i18n helpers", () => {
     expect(tName("channelInfo")).toEqual({ en: "channelInfo", de: "channelInfo_de" });
     expect(tDesc("descConnection")).toEqual({ en: "descConnection", de: "descConnection_de" });
   });
-  it("tState and tText return plain strings (common.states must never hold an object)", () => {
+  it("tState and tText return plain strings (common.states and radio labels must never hold an object)", () => {
     expect(tState("statusQueued")).toBe("statusQueued_plain");
-    expect(tText("msgNoPrograms")).toBe("msgNoPrograms_plain");
+    expect(tText("dmJdLocal")).toBe("dmJdLocal_plain");
   });
 });
 

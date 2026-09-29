@@ -9,7 +9,7 @@ never downloads anything on its own and never deletes files.
 | Program                        | Access                   | What you need                                                                                                                                                      |
 | ------------------------------ | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | JDownloader 2 (local)          | local API, port 3128     | In JDownloader: Settings → Advanced settings → `DeprecatedApiEnabled` on; if ioBroker runs on another computer or container, also `DeprecatedApiLocalhostOnly` off |
-| JDownloader 2 (My.JDownloader) | the My.JDownloader cloud | your My.JDownloader e-mail and password, and the device name shown in My.JDownloader                                                                               |
+| JDownloader 2 (My.JDownloader) | the My.JDownloader cloud | your My.JDownloader e-mail and password — the JDownloader is picked from your account                                                                              |
 | qBittorrent                    | Web UI, port 8080        | user and password of the Web UI, or an API key (qBittorrent 5.2 and newer)                                                                                         |
 | Transmission                   | RPC, port 9091           | user and password if you set one; the ioBroker host must be allowed in `rpc-whitelist`                                                                             |
 | Deluge                         | Web UI, port 8112        | the Web UI password                                                                                                                                                |
@@ -24,11 +24,19 @@ network; otherwise use My.JDownloader.
 
 ## Setup
 
-1. Install the adapter and open the instance settings.
-2. Add one line per program: choose the program, give it a short ID (letters, digits and `-`, e.g. `nas`), enter host,
-   port and the access data from the table above. The ID becomes part of the object path — `qbittorrent-nas`.
-3. Press **Test connections**. Every program answers with its version or with the reason it cannot be reached.
-4. Save. The devices appear under `dl-manager.0`.
+1. Install the adapter and open the instance settings. The programs are cards of the device manager; they appear while
+   the instance runs.
+2. Press **+**, choose the program. Its dialog asks only for what this program needs: a name, the address and port
+   (empty = the program's default) and its login. For JDownloader choose _Local network_ or _Through My.JDownloader_;
+   with My.JDownloader you log in and pick your JDownloader from a list.
+3. Apply. The instance restarts, and the program appears as a card and as a device under `dl-manager.0`. The ID in
+   the object path — `qbittorrent-nas` — comes from the name; under _Advanced_ you can set it yourself before the first
+   save. It stays the same from then on, so rooms, functions and scripts keep working.
+4. The test button on the card asks the program once and shows its version or the reason it cannot be reached.
+
+Every program can be added as often as you like. A second entry for the same program — the same address, or the same
+JDownloader of a My.JDownloader account — is refused. The switch on a card turns a program off without deleting its
+device; delete removes the device, never a file.
 
 ## What you find in the object tree
 

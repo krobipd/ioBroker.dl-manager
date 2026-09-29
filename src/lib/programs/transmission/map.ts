@@ -1,5 +1,5 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
-import { eta, num } from "../../core/units";
+import { asRecord, doneOf, epochMs, eta, nonNegative, num } from "../../core/units";
 
 /** A torrent of `torrent_get`, keys in snake_case (legacy answers are converted by snakeKeys). */
 export interface TrTorrent {
@@ -142,23 +142,12 @@ export function mapTrStatus(raw: string | number, debug: (msg: string) => void):
   return trStatus(trTorrentFromRaw(String(raw)), m => debug(`${m} (raw ${raw})`)).status;
 }
 
-const nonNegative = (v: unknown): number | null => {
-  const n = num(v);
-  return n !== null && n >= 0 ? n : null;
-};
-const seconds = (v: unknown): number | null => {
-  const n = num(v);
-  return n !== null && n > 0 ? n * 1000 : null;
-};
-const obj = (v: unknown): Record<string, unknown> =>
-  v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
-
 /**
  * @param session `session_get`
  * @returns bytes per "kB" of the speed limits (1000 or 1024)
  */
 export function speedUnit(session: Record<string, unknown>): number {
-  const u = num(obj(session.units).speed_bytes);
+  const u = num(asRecord(session.units).speed_bytes);
   return u === 1024 ? 1024 : 1000;
 }
 
@@ -187,7 +176,7 @@ export function toSnapshot(
   const limit = (value: unknown, enabled: unknown): number => (enabled === true ? (nonNegative(value) ?? 0) * unit : 0);
   const items: DownloadItem[] = [];
   for (const raw of torrents) {
-    const t = obj(raw) as TrTorrent;
+    const t = asRecord(raw) as TrTorrent;
     if (typeof t.hash_string !== "string") {
       continue;
     }
@@ -199,15 +188,14 @@ export function toSnapshot(
       key: t.hash_string,
       name: typeof t.name === "string" ? t.name : t.hash_string,
       status,
-      rawStatus: `${String(t.status)}:${String(t.error)}`,
       sizeBytes: size,
-      doneBytes: size !== null && left !== null ? Math.max(0, size - left) : null,
+      doneBytes: doneOf(size, left),
       speedBps: nonNegative(t.rate_download),
       uploadBps: nonNegative(t.rate_upload),
-      ratio: ratio !== null && ratio >= 0 ? ratio : null,
+      ratio: nonNegative(ratio),
       etaSeconds: eta(t.eta, []),
-      addedMs: seconds(t.added_date),
-      finishedMs: seconds(t.done_date),
+      addedMs: epochMs(t.added_date),
+      finishedMs: epochMs(t.done_date),
       category: Array.isArray(t.labels) ? t.labels.filter(l => typeof l === "string").join(", ") : "",
       error,
     });

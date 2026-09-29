@@ -3,9 +3,9 @@
 ## Ein Programm bleibt bei `online` = falsch
 
 `error` am Gerät des Programms sagt, warum. Ein Netzwerk-Text (abgewiesen, Zeitüberschreitung, keine Route) heißt, der
-ioBroker-Rechner erreicht das Programm nicht: Host, Port, den HTTPS-Schalter und eine Firewall dazwischen prüfen. Mit
-**Verbindungen testen** in den Einstellungen probierst du die Tabelle aus, bevor du speicherst. Manche Programme weisen
-Anfragen ab, die sie nicht kennen:
+ioBroker-Rechner erreicht das Programm nicht: Host, Port, den HTTPS-Schalter und eine Firewall dazwischen prüfen. Der
+Test-Knopf auf der Karte des Programms fragt es einmal und zeigt seine Antwort. Manche Programme weisen Anfragen ab, die
+sie nicht kennen:
 
 - **SABnzbd** antwortet nur Hostnamen aus seiner `host_whitelist` — die IP-Adresse eintragen oder den Namen dort
   hinzufügen.
@@ -25,8 +25,9 @@ Speichern startet die Instanz neu, und das Programm wird wieder gefragt.
 
 Die lokale Schnittstelle hat kein Passwort: Wer ihren Port erreicht, kann JDownloaders Einstellungen ändern oder ihn
 beenden. Nutze sie nur, wenn JDownloader auf dem ioBroker-Rechner oder im selben Docker-Netz läuft. In jedem anderen
-Fall wähle _JDownloader 2 (My.JDownloader)_ und trage deine My.JDownloader-E-Mail, dein Passwort und den Gerätenamen
-ein. My.JDownloader wird höchstens alle 30 Sekunden gefragt, egal was das Abfrage-Intervall sagt.
+Fall wähle im JDownloader-Dialog _Über My.JDownloader_, melde dich an und wähle deinen JDownloader aus der Liste.
+My.JDownloader wird höchstens alle 30 Sekunden gefragt, egal was das Abfrage-Intervall sagt. Schaltest du einen
+bestehenden JDownloader zwischen beiden um, behält er seine Räume und Funktionen.
 
 ## Wie oft werden die Programme gefragt?
 

@@ -1,4 +1,5 @@
-import type { ProgramConfig, ProgramEntry, RequiredField } from "../programs/registry";
+import { baseUrl, programInfo } from "../programs/catalog";
+import type { ProgramConfig, ProgramEntry, RequiredField } from "./model";
 import { programId, sanitize } from "./ids";
 import type { TreeScope } from "./tree";
 
@@ -12,6 +13,8 @@ export interface ProgramRow {
   cfg: ProgramConfig;
   /** Why the row cannot run, empty when it can (always empty for a disabled row). */
   problem: string;
+  /** The program's registry entry — present exactly when the row is enabled and can run. */
+  entry?: ProgramEntry;
 }
 
 const FIELD_TEXT: Readonly<Record<RequiredField, string>> = {
@@ -76,8 +79,9 @@ export function parsePrograms(
     const id = programId(sanitize(cfg.type) || "program", cfg.key);
     const enabled = o.enabled !== false;
     let problem = "";
+    let entry: ProgramEntry | undefined;
     if (enabled) {
-      const entry = cfg.type ? find(cfg.type) : undefined;
+      entry = cfg.type ? find(cfg.type) : undefined;
       if (!cfg.type) {
         problem = "program type missing";
       } else if (!entry) {
@@ -86,30 +90,57 @@ export function parsePrograms(
         problem = `device id ${id} is used twice`;
       } else {
         const missing = entry.needs.find(f => !cfg[f]);
-        problem = missing ? FIELD_TEXT[missing] : "";
+        const twin = missing ? undefined : rows.find(o => o.enabled && !o.problem && sameProgram(o.cfg, cfg));
+        problem = missing ? FIELD_TEXT[missing] : twin ? `same program as ${twin.id}` : "";
       }
     }
     seen.add(id);
-    rows.push({ id, enabled, cfg, problem });
+    rows.push({ id, enabled, cfg, problem, ...(entry && !problem ? { entry } : {}) });
   }
   return rows;
 }
 
 /**
- * What identifies a program independent of its ID column — used to carry room assignments when the user changes
- * the key.
+ * What identifies a program independent of its ID column — shown on its card, stored at its device (carries room
+ * assignments when the ID changes) and compared to find a program configured twice.
  *
  * @param cfg the row
- * @returns the program's URL, or `<account>/<device>` for a program reached through a cloud account
+ * @returns the URL the program is reached at (its default port and path filled in), or `<account>/<device>` for a
+ *   program reached through a cloud account
  */
 export function addressOf(
-  cfg: Pick<ProgramConfig, "host" | "port" | "https" | "path" | "username" | "device">,
+  cfg: Pick<ProgramConfig, "type" | "host" | "port" | "https" | "path" | "username" | "device">,
 ): string {
   if (!cfg.host) {
     return `${cfg.username}/${cfg.device}`;
   }
-  const port = cfg.port ? `:${cfg.port}` : "";
-  return `${cfg.https ? "https" : "http"}://${cfg.host}${port}${cfg.path}`;
+  return baseUrl(cfg, programInfo(cfg.type) ?? { port: 0, path: "" }).replace(/:0(?=\/|$)/, "");
+}
+
+/** The fields of a row that say which program it reaches. */
+type Target = Pick<ProgramConfig, "type" | "host" | "port" | "https" | "path" | "username" | "device">;
+
+/**
+ * @param cfg a row
+ * @returns what two rows share when they reach the same program: the address without its scheme (TLS or not, it is the
+ *   same program), lower case — the settings dialog embeds these to refuse a second entry for one program
+ */
+export function programKey(cfg: Target): string {
+  return addressOf(cfg)
+    .replace(/^[a-z]+:\/\//, "")
+    .toLowerCase();
+}
+
+/**
+ * Two rows that reach the same program — the same host, port and path or the same account and device. The adapter would
+ * ask it twice and build two devices for it.
+ *
+ * @param a one row
+ * @param b the other
+ * @returns whether both reach the same program
+ */
+export function sameProgram(a: Target, b: Target): boolean {
+  return programKey(a) === programKey(b);
 }
 
 /**

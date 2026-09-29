@@ -1,4 +1,4 @@
-import { ACTIVE, type ProgramSnapshot } from "./model";
+import { countActive, countQueued, type ProgramSnapshot } from "./model";
 import { toMBps } from "./units";
 
 /** What the summary needs from one configured program. */
@@ -26,7 +26,7 @@ const sum = (values: (number | null | undefined)[]): number | null => {
 export function computeSummary(programs: readonly SummaryInput[]): Record<string, ioBroker.StateValue> {
   const online = programs.filter(p => p.online && p.snapshot);
   const items = online.flatMap(p => p.snapshot?.items ?? []);
-  const active = items.filter(i => ACTIVE.has(i.status)).length;
+  const active = countActive(items);
   const pausable = online.filter(p => p.canPause);
   return {
     "info.connection": online.length > 0,
@@ -35,7 +35,7 @@ export function computeSummary(programs: readonly SummaryInput[]): Record<string
     "info.programsAllOnline": programs.length > 0 && online.length === programs.length,
     "summary.downloading": active > 0,
     "summary.active": active,
-    "summary.queued": items.filter(i => i.status === "queued").length,
+    "summary.queued": countQueued(items),
     "summary.downloadSpeed": toMBps(sum(online.map(p => p.snapshot?.status.downloadBps))),
     "summary.uploadSpeed": toMBps(sum(online.map(p => p.snapshot?.status.uploadBps))),
     "summary.pauseAll": pausable.length > 0 && pausable.every(p => p.snapshot?.status.paused === true),

@@ -1,6 +1,6 @@
 import { ProtocolError } from "../../core/errors";
 import { HttpClient, type HttpTimers } from "../../core/http";
-import type { ProgramConfig } from "../registry";
+import { baseUrl, catalogEntry, type Endpoint } from "../catalog";
 
 /** The one call JD's API knows: a namespace path and positional parameters; the answer's `data`. */
 export interface JdTransport {
@@ -36,7 +36,8 @@ export const JD_METHODS: ReadonlySet<string> = new Set([
 
 /** Settings the adapter may read or write through `config/get|set`. */
 const CONFIG_KEYS = new Set(["DownloadSpeedLimit", "DownloadSpeedLimitEnabled"]);
-const GENERAL_SETTINGS = "org.jdownloader.settings.GeneralSettings";
+/** The settings interface the adapter may touch (the speed limit only). */
+export const GENERAL_SETTINGS = "org.jdownloader.settings.GeneralSettings";
 
 /**
  * Keeps both transports to the fixed method list and the two speed-limit settings.
@@ -62,9 +63,8 @@ export function checkJdCall(path: string, params: readonly unknown[]): void {
  * @param cfg host, port (0 = 3128), https, path of the settings row
  * @returns the base URL of JD's local API
  */
-export function jdBaseUrl(cfg: Pick<ProgramConfig, "host" | "port" | "https" | "path">): string {
-  const path = cfg.path.replace(/\/+$/, "");
-  return `${cfg.https ? "https" : "http"}://${cfg.host}:${cfg.port || 3128}${path && !path.startsWith("/") ? `/${path}` : path}`;
+export function jdBaseUrl(cfg: Endpoint): string {
+  return baseUrl(cfg, catalogEntry("jdownloader"));
 }
 
 /** JD's local "Deprecated API": plain HTTP, no login, `{data}` around every answer. */

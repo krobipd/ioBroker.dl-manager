@@ -1,6 +1,7 @@
 import { AuthError, ProtocolError } from "../../core/errors";
 import { HttpClient, type HttpTimers } from "../../core/http";
-import type { ProgramConfig } from "../registry";
+import type { ProgramConfig } from "../../core/model";
+import { baseUrl, catalogEntry } from "../catalog";
 
 /**
  * SABnzbd API (api-usenet-aria2-pyload.md § 1): `GET /api?mode=…&apikey=…&output=json`. Every 403 — missing or wrong
@@ -20,8 +21,7 @@ export class SabClient {
     timers: HttpTimers,
   ) {
     this.http = new HttpClient(timers);
-    const path = cfg.path.replace(/\/+$/, "");
-    this.base = `${cfg.https ? "https" : "http"}://${cfg.host}:${cfg.port || 8080}${path && !path.startsWith("/") ? `/${path}` : path}/api`;
+    this.base = `${baseUrl(cfg, catalogEntry("sabnzbd"))}/api`;
   }
 
   /**

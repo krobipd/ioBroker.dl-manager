@@ -1,5 +1,5 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
-import { eta, num } from "../../core/units";
+import { asText, eta, nonNegative } from "../../core/units";
 
 /** One entry of `advancedStatus` — only the machine-readable id is read. */
 interface JdStatusEntry {
@@ -69,7 +69,6 @@ const idOf = (l: JdLink, key: string): string => {
   const id = l.advancedStatus?.[key]?.id;
   return typeof id === "string" ? id : "";
 };
-const text = (v: unknown): string => (typeof v === "string" ? v : "");
 
 /**
  * The status of a package from its links. The localized `status` text is only handed on as the error.
@@ -104,14 +103,14 @@ export function packageStatus(
   }
   const extractError = links.find(l => idOf(l, "ExtractionStatus").startsWith("ERR"));
   if (extractError && !running) {
-    return { status: "failed", error: text(extractError.status) };
+    return { status: "failed", error: asText(extractError.status) };
   }
   if (links.length > 0 && links.every(l => l.finished === true)) {
     return { status: "completed", error: "" };
   }
   const failed = links.find(l => FINAL_FAILED.test(idOf(l, "FinalLinkState")));
   if (failed && !running) {
-    return { status: "failed", error: text(failed.status) };
+    return { status: "failed", error: asText(failed.status) };
   }
   if (task(new Set(["DOWNLOAD"]))) {
     return { status: "downloading", error: "" };
@@ -222,11 +221,6 @@ function fromPackage(p: Record<string, unknown>): Status {
   return p.enabled === true ? "queued" : "paused";
 }
 
-const nonNegative = (v: unknown): number | null => {
-  const n = num(v);
-  return n !== null && n >= 0 ? n : null;
-};
-
 /**
  * One poll into the common model. A download is a JD package (design decision 3).
  *
@@ -245,7 +239,7 @@ export function toSnapshot(
   debug: (msg: string) => void,
 ): ProgramSnapshot {
   const t = toolbar && typeof toolbar === "object" ? (toolbar as Record<string, unknown>) : {};
-  const state = text(t.state);
+  const state = asText(t.state);
   const linkList = Array.isArray(links) ? (links as JdLink[]).filter(l => l && typeof l === "object") : null;
   const items: DownloadItem[] = [];
   for (const raw of Array.isArray(packages) ? (packages as unknown[]) : []) {
@@ -262,7 +256,7 @@ export function toSnapshot(
     const done = (own ?? []).map(l => l.finishedDate).filter((v): v is number => typeof v === "number" && v > 0);
     items.push({
       key: String(p.uuid),
-      name: text(p.name),
+      name: asText(p.name),
       status,
       sizeBytes: nonNegative(p.bytesTotal),
       doneBytes: nonNegative(p.bytesLoaded),

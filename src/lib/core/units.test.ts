@@ -1,4 +1,19 @@
-import { eta, fromMBps, hiLo, num, percent, toGB, toMBps } from "./units";
+import {
+  asRecord,
+  asRecords,
+  asText,
+  doneOf,
+  epochMs,
+  eta,
+  fromMBps,
+  hiLo,
+  nonNegative,
+  num,
+  percent,
+  round2,
+  toGB,
+  toMBps,
+} from "./units";
 
 describe("units", () => {
   it("converts speeds to MB/s with two decimals", () => {
@@ -54,5 +69,45 @@ describe("units", () => {
     expect(hiLo(1, 5)).toBe(4_294_967_301);
     expect(hiLo("0", "7")).toBe(7);
     expect(hiLo(undefined, 5)).toBeNull();
+  });
+});
+
+describe("reading a program's answer", () => {
+  it("takes an object as it is and anything else as none", () => {
+    const o = { a: 1 };
+    expect(asRecord(o)).toBe(o);
+    for (const v of [null, undefined, 3, "x", [1]]) {
+      expect(asRecord(v)).toEqual({});
+    }
+    expect(asRecords([o, 5, null])).toEqual([o, {}, {}]);
+    expect(asRecords({ a: 1 })).toEqual([]);
+    expect(asText("x")).toBe("x");
+    expect(asText(5)).toBe("");
+  });
+
+  it("takes counts, sizes and rates of zero and up, as numbers or digit strings", () => {
+    expect(nonNegative(0)).toBe(0);
+    expect(nonNegative("12")).toBe(12);
+    expect(nonNegative(-1)).toBeNull();
+    expect(nonNegative("x")).toBeNull();
+  });
+
+  it("turns a time in seconds since 1970 into milliseconds, 0 and below into none", () => {
+    expect(epochMs(1_700_000_000)).toBe(1_700_000_000_000);
+    expect(epochMs("2")).toBe(2000);
+    expect(epochMs(0)).toBeNull();
+    expect(epochMs(-5)).toBeNull();
+  });
+
+  it("works out the loaded bytes, never below zero, none while a part is unknown", () => {
+    expect(doneOf(100, 40)).toBe(60);
+    expect(doneOf(100, 140)).toBe(0);
+    expect(doneOf(null, 40)).toBeNull();
+    expect(doneOf(100, null)).toBeNull();
+  });
+
+  it("rounds to two decimals", () => {
+    expect(round2(1.23456)).toBe(1.23);
+    expect(round2(0.005)).toBe(0.01);
   });
 });

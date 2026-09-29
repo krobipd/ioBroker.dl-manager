@@ -10,8 +10,8 @@
     },
     "native": {
       "type": "aria2",
-      "address": "http://aria2.fixture:6800",
-      "nameSource": "api"
+      "nameSource": "api",
+      "address": "http://aria2.fixture:6800/jsonrpc"
     },
     "_id": "dl-manager.0.aria2-fixture"
   },
@@ -2365,8 +2365,8 @@
     },
     "native": {
       "type": "deluge",
-      "address": "http://deluge.fixture:8112",
-      "nameSource": "api"
+      "nameSource": "api",
+      "address": "http://deluge.fixture:8112"
     },
     "_id": "dl-manager.0.deluge-fixture"
   },
@@ -6150,8 +6150,8 @@
     },
     "native": {
       "type": "jdownloader-cloud",
-      "address": "fixture@example.com/JD Fixture",
-      "nameSource": "api"
+      "nameSource": "api",
+      "address": "fixture@example.com/JD Fixture"
     },
     "_id": "dl-manager.0.jdownloader-cloud-fixture"
   },
@@ -8372,8 +8372,8 @@
     },
     "native": {
       "type": "jdownloader",
-      "address": "http://jdownloader.fixture:3128",
-      "nameSource": "api"
+      "nameSource": "api",
+      "address": "http://jdownloader.fixture:3128"
     },
     "_id": "dl-manager.0.jdownloader-fixture"
   },
@@ -10594,8 +10594,8 @@
     },
     "native": {
       "type": "nzbget",
-      "address": "http://nzbget.fixture:6789",
-      "nameSource": "api"
+      "nameSource": "api",
+      "address": "http://nzbget.fixture:6789"
     },
     "_id": "dl-manager.0.nzbget-fixture"
   },
@@ -13048,8 +13048,8 @@
     },
     "native": {
       "type": "pyload",
-      "address": "http://pyload.fixture:8000",
-      "nameSource": "api"
+      "nameSource": "api",
+      "address": "http://pyload.fixture:8000"
     },
     "_id": "dl-manager.0.pyload-fixture"
   },
@@ -14624,8 +14624,8 @@
     },
     "native": {
       "type": "qbittorrent",
-      "address": "http://qbittorrent.fixture:8080",
-      "nameSource": "api"
+      "nameSource": "api",
+      "address": "http://qbittorrent.fixture:8080"
     },
     "_id": "dl-manager.0.qbittorrent-fixture"
   },
@@ -18540,8 +18540,8 @@
     },
     "native": {
       "type": "sabnzbd",
-      "address": "http://sabnzbd.fixture:8080",
-      "nameSource": "api"
+      "nameSource": "api",
+      "address": "http://sabnzbd.fixture:8080"
     },
     "_id": "dl-manager.0.sabnzbd-fixture"
   },
@@ -21512,8 +21512,8 @@
     },
     "native": {
       "type": "transmission",
-      "address": "http://transmission.fixture:9091",
-      "nameSource": "api"
+      "nameSource": "api",
+      "address": "http://transmission.fixture:9091/transmission/rpc"
     },
     "_id": "dl-manager.0.transmission-fixture"
   },

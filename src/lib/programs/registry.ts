@@ -1,5 +1,5 @@
-import type { PauseStore } from "../core/emulated-pause";
-import type { ProgramDriver } from "../core/model";
+import type { DriverDeps, ProgramConfig, ProgramDriver, ProgramEntry } from "../core/model";
+import { CATALOG, needsOf, type ProgramType } from "./catalog";
 import { AriaDriver } from "./aria2/driver";
 import { DlDriver } from "./deluge/driver";
 import { JdDriver } from "./jdownloader/driver";
@@ -9,73 +9,25 @@ import { QbDriver } from "./qbittorrent/driver";
 import { SabDriver } from "./sabnzbd/driver";
 import { TrDriver } from "./transmission/driver";
 
-/** One row of the settings table, cleaned and with its secrets decrypted. */
-export interface ProgramConfig {
-  /** Program type, e.g. `qbittorrent`. */
-  type: string;
-  /** The user's ID column — part of the device id. */
-  key: string;
-  /** Display name of the device. */
-  name: string;
-  /** Host name or IP address. */
-  host: string;
-  /** Port, 0 = the program's default. */
-  port: number;
-  /** Use HTTPS. */
-  https: boolean;
-  /** URL path below the host (reverse proxy, NZBGet/SABnzbd base path). */
-  path: string;
-  /** Login user (My.JDownloader: e-mail address). */
-  username: string;
-  /** Login password, decrypted. */
-  password: string;
-  /** API key or RPC secret, decrypted. */
-  apiKey: string;
-  /** My.JDownloader device name. */
-  device: string;
-}
+/** The driver of each program type — the catalog says what else there is to know about it. */
+const DRIVERS: Readonly<Record<ProgramType, (cfg: ProgramConfig, deps: DriverDeps) => ProgramDriver>> = {
+  jdownloader: (cfg, deps) => new JdDriver(cfg, deps),
+  "jdownloader-cloud": (cfg, deps) => new JdDriver(cfg, deps),
+  qbittorrent: (cfg, deps) => new QbDriver(cfg, deps),
+  transmission: (cfg, deps) => new TrDriver(cfg, deps),
+  deluge: (cfg, deps) => new DlDriver(cfg, deps),
+  sabnzbd: (cfg, deps) => new SabDriver(cfg, deps),
+  nzbget: (cfg, deps) => new NzbDriver(cfg, deps),
+  aria2: (cfg, deps) => new AriaDriver(cfg, deps),
+  pyload: (cfg, deps) => new PyDriver(cfg, deps),
+};
 
-/** A settings field a program cannot work without. */
-export type RequiredField = "host" | "username" | "password" | "apiKey" | "device";
-
-/** Adapter services a driver may use — timers only through the adapter. */
-export interface DriverDeps {
-  /** The adapter's timer. */
-  setTimeout: (cb: () => void, ms: number) => ioBroker.Timeout | undefined;
-  /** Clears an adapter timer. */
-  clearTimeout: (t: ioBroker.Timeout | undefined) => void;
-  /** The adapter log. */
-  log: { debug(msg: string): void; info(msg: string): void; warn(msg: string): void };
-  /** Where an emulated global pause keeps its state (absent in the connection test — then kept in memory). */
-  pauseStore?: PauseStore;
-}
-
-/** A program the adapter can talk to. */
-export interface ProgramEntry {
-  /** Program type as stored in the settings table. */
-  readonly type: string;
-  /** Fields the row must fill. */
-  readonly needs: readonly RequiredField[];
-  /** Builds the driver for one configured program. */
-  create(cfg: ProgramConfig, deps: DriverDeps): ProgramDriver;
-}
-
-/** THE program list — one line per driver. */
-export const PROGRAMS: readonly ProgramEntry[] = [
-  { type: "jdownloader", needs: ["host"], create: (cfg, deps) => new JdDriver(cfg, deps) },
-  {
-    type: "jdownloader-cloud",
-    needs: ["username", "password", "device"],
-    create: (cfg, deps) => new JdDriver(cfg, deps),
-  },
-  { type: "qbittorrent", needs: ["host"], create: (cfg, deps) => new QbDriver(cfg, deps) },
-  { type: "transmission", needs: ["host"], create: (cfg, deps) => new TrDriver(cfg, deps) },
-  { type: "deluge", needs: ["host", "password"], create: (cfg, deps) => new DlDriver(cfg, deps) },
-  { type: "sabnzbd", needs: ["host", "apiKey"], create: (cfg, deps) => new SabDriver(cfg, deps) },
-  { type: "nzbget", needs: ["host"], create: (cfg, deps) => new NzbDriver(cfg, deps) },
-  { type: "aria2", needs: ["host"], create: (cfg, deps) => new AriaDriver(cfg, deps) },
-  { type: "pyload", needs: ["host"], create: (cfg, deps) => new PyDriver(cfg, deps) },
-];
+/** THE program list — one entry per catalog type. */
+export const PROGRAMS: readonly ProgramEntry[] = CATALOG.map(info => ({
+  type: info.type,
+  needs: needsOf(info),
+  create: DRIVERS[info.type],
+}));
 
 /**
  * @param type program type from the settings table

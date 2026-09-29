@@ -115,3 +115,41 @@ describe("SABnzbd pause for post-processing (final review M5)", () => {
     expect(snap.items[0].status).toBe("queued");
   });
 });
+
+describe("mapSabStatus — API boundary", () => {
+  it("reads an inherited name like constructor as an unknown status, not as a table entry", () => {
+    const lines: string[] = [];
+    for (const raw of ["q:constructor", "h:toString", "q:__proto__"]) {
+      expect([raw, mapSabStatus(raw, m => lines.push(m))]).toEqual([raw, "queued"]);
+    }
+    expect(lines).toHaveLength(3);
+    expect(lines[0]).toContain("sabnzbd");
+  });
+});
+
+describe("mapSabStatus — every SABnzbd status", () => {
+  it("maps each queue and history status as documented (api-usenet-aria2-pyload.md)", () => {
+    const expected: [string, string][] = [
+      ["q:Downloading", "downloading"],
+      ["q:Fetching", "downloading"],
+      ["q:Grabbing", "downloading"],
+      ["q:Propagating", "waiting"],
+      ["q:Checking", "checking"],
+      ["q:Queued", "queued"],
+      ["q:Paused", "paused"],
+      ["q:Idle", "queued"],
+      ["h:Queued", "postprocessing"],
+      ["h:QuickCheck", "postprocessing"],
+      ["h:Verifying", "postprocessing"],
+      ["h:Repairing", "postprocessing"],
+      ["h:Fetching", "postprocessing"],
+      ["h:Extracting", "postprocessing"],
+      ["h:Moving", "postprocessing"],
+      ["h:Running", "postprocessing"],
+      ["h:Completed", "completed"],
+      ["h:Failed", "failed"],
+      ["q:Downloading:globalPause", "paused"],
+    ];
+    expect(expected.map(([raw]) => [raw, mapSabStatus(raw, () => undefined)])).toEqual(expected);
+  });
+});

@@ -3,7 +3,7 @@ import { startFixtureServer, type RecordedCall } from "../../../../test/helpers/
 import { loadFixture } from "../../../../test/helpers/fixtures";
 import { firstUrl } from "../../../../test/helpers/first-url";
 import { AuthError, ProtocolError } from "../../core/errors";
-import type { ProgramConfig } from "../registry";
+import type { ProgramConfig } from "../../core/model";
 import { QbDriver } from "./driver";
 import { mapQbState, statusTable } from "./map";
 

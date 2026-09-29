@@ -97,10 +97,7 @@ export class EmulatedPause {
   private async load(): Promise<PauseState> {
     if (!this.state) {
       const s = await this.store.load();
-      this.state = {
-        paused: s.paused === true,
-        keys: Array.isArray(s.keys) ? s.keys.filter(k => typeof k === "string") : [],
-      };
+      this.state = { paused: s.paused, keys: [...s.keys] };
     }
     return this.state;
   }

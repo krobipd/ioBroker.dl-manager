@@ -1,5 +1,5 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
-import { num } from "../../core/units";
+import { asRecord, asRecords, nonNegative, num } from "../../core/units";
 
 /** A file of a pyLoad package (`get_queue_data` → `links`). */
 export interface PyFile {
@@ -103,14 +103,6 @@ export function mapPyStatus(raw: string | number, debug: (msg: string) => void):
   return packageStatus([{ status: Number(raw) }], debug).status;
 }
 
-const obj = (v: unknown): Record<string, unknown> =>
-  v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
-const list = (v: unknown): Record<string, unknown>[] => (Array.isArray(v) ? v.map(obj) : []);
-const nonNegative = (v: unknown): number | null => {
-  const n = num(v);
-  return n !== null && n >= 0 ? n : null;
-};
-
 /**
  * One poll into the common model. A download is a pyLoad package (design decision 3).
  *
@@ -135,19 +127,19 @@ export function toSnapshot(
   debug: (msg: string) => void,
 ): ProgramSnapshot {
   const running = new Map<number, Record<string, unknown>>();
-  for (const d of list(active)) {
+  for (const d of asRecords(active)) {
     const fid = num(d.fid);
     if (fid !== null) {
       running.set(fid, d);
     }
   }
   const items: DownloadItem[] = [];
-  for (const p of list(queue)) {
+  for (const p of asRecords(queue)) {
     const pid = num(p.pid);
     if (pid === null) {
       continue;
     }
-    const files = list(p.links) as PyFile[];
+    const files = asRecords(p.links) as PyFile[];
     const { status, error } = packageStatus(files, debug);
     let size = 0;
     let done = 0;
@@ -177,7 +169,7 @@ export function toSnapshot(
       error,
     });
   }
-  const s = obj(server);
+  const s = asRecord(server);
   return {
     status: {
       version,

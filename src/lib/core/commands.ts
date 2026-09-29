@@ -1,5 +1,5 @@
+import { forCapabilities, ITEM_DATAPOINTS, PROGRAM_DATAPOINTS, type DatapointDef } from "./datapoints";
 import type { Capability, Command, ExtraDefinition } from "./model";
-import { fromMBps } from "./units";
 
 /** What the router needs to know about one program. */
 export interface RouteTarget {
@@ -25,35 +25,23 @@ export type Route =
 
 const IGNORE: Route = { kind: "ignore" };
 
-const programCommand = (dp: string, val: ioBroker.StateValue, caps: ReadonlySet<Capability>): Command | null => {
-  switch (dp) {
-    case "paused":
-      return caps.has("globalPause") ? { kind: val === true ? "pauseAll" : "resumeAll" } : null;
-    case "speedLimit":
-      return caps.has("speedLimit") ? { kind: "setSpeedLimit", bps: fromMBps(val) } : null;
-    case "uploadLimit":
-      return caps.has("uploadLimit") ? { kind: "setUploadLimit", bps: fromMBps(val) } : null;
-    case "altSpeed":
-      return caps.has("altSpeed") ? { kind: "setAltSpeed", on: val === true } : null;
-    default:
-      return null;
-  }
-};
-
-const itemCommand = (
+/**
+ * @param defs the datapoints the program has
+ * @param dp the written datapoint
+ * @param val the written value
+ * @param key the download's raw key ("" on program level)
+ * @returns the command and whether it is confirmed at once, null when the write asks for nothing
+ */
+function fromTable<S>(
+  defs: readonly DatapointDef<S>[],
   dp: string,
   val: ioBroker.StateValue,
   key: string,
-  caps: ReadonlySet<Capability>,
-): Command | null => {
-  if (dp === "paused" && caps.has("itemPause")) {
-    return { kind: val === true ? "pause" : "resume", key };
-  }
-  if (dp === "remove" && caps.has("itemRemove") && val === true) {
-    return { kind: "remove", key };
-  }
-  return null;
-};
+): { cmd: Command; confirm: boolean } | null {
+  const d = defs.find(x => x.id === dp);
+  const cmd = d?.command?.(val, key) ?? null;
+  return d && cmd ? { cmd, confirm: !d.read } : null;
+}
 
 /**
  * Turns a user write (`ack: false`) into a command.
@@ -94,12 +82,8 @@ export function routeState(
 
   if (parts.length === 2) {
     const dp = parts[1];
-    if (dp === "add") {
-      const url = typeof val === "string" ? val.trim() : "";
-      return url && t.capabilities.has("add") ? route({ kind: "add", url }, true) : IGNORE;
-    }
-    const cmd = programCommand(dp, val, t.capabilities);
-    return cmd ? route(cmd, false) : extra("program", dp);
+    const hit = fromTable(forCapabilities(PROGRAM_DATAPOINTS, t.capabilities), dp, val, "");
+    return hit ? route(hit.cmd, hit.confirm) : extra("program", dp);
   }
   if (parts.length === 4 && parts[1] === "downloads") {
     const key = t.itemKey(parts[2]);
@@ -107,11 +91,8 @@ export function routeState(
       return IGNORE;
     }
     const dp = parts[3];
-    const cmd = itemCommand(dp, val, key, t.capabilities);
-    if (cmd) {
-      return route(cmd, cmd.kind === "remove");
-    }
-    return dp === "paused" || dp === "remove" ? IGNORE : extra("item", dp, key);
+    const hit = fromTable(forCapabilities(ITEM_DATAPOINTS, t.capabilities), dp, val, key);
+    return hit ? route(hit.cmd, hit.confirm) : extra("item", dp, key);
   }
   return IGNORE;
 }

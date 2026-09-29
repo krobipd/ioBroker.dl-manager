@@ -1,5 +1,5 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
-import { hiLo, num } from "../../core/units";
+import { asRecord, asRecords, asText, doneOf, hiLo, num } from "../../core/units";
 
 const PP = [
   "PP_QUEUED",
@@ -55,17 +55,8 @@ export const statusTable = [
   ...FAILED.map(s => [`h:${s}`, "failed"] as const),
 ] as const satisfies readonly (readonly [string, Status])[];
 
-const QUEUE: ReadonlyMap<string, Status> = new Map<string, Status>([
-  ["QUEUED", "queued"],
-  ["PAUSED", "paused"],
-  ["DOWNLOADING", "downloading"],
-  ["FETCHING", "downloading"],
-  ...PP.map(s => [s, "postprocessing"] as const),
-]);
-const HISTORY: ReadonlyMap<string, Status> = new Map<string, Status>([
-  ...DONE.map(s => [s, "completed"] as const),
-  ...FAILED.map(s => [s, "failed"] as const),
-]);
+/** The table as a lookup (the globalPause row is decided in {@link mapNzbStatus}). */
+const BY_RAW: ReadonlyMap<string, Status> = new Map<string, Status>(statusTable);
 
 /**
  * @param raw a key of the status table
@@ -74,7 +65,7 @@ const HISTORY: ReadonlyMap<string, Status> = new Map<string, Status>([
  */
 export function mapNzbStatus(raw: string | number, debug: (msg: string) => void): Status {
   const [list, status, flag] = String(raw).split(":");
-  const known = (list === "h" ? HISTORY : QUEUE).get(status);
+  const known = BY_RAW.get(`${list}:${status}`);
   if (known === undefined) {
     // an unknown history text still says SUCCESS/FAILURE/WARNING before the slash
     const prefix = list === "h" ? status.split("/")[0] : "";
@@ -86,11 +77,6 @@ export function mapNzbStatus(raw: string | number, debug: (msg: string) => void)
   }
   return known;
 }
-
-const obj = (v: unknown): Record<string, unknown> =>
-  v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
-const list = (v: unknown): Record<string, unknown>[] => (Array.isArray(v) ? v.map(obj) : []);
-const text = (v: unknown): string => (typeof v === "string" ? v : "");
 
 /**
  * One poll into the common model. A job deleted by the user (history DELETED/*) is not shown.
@@ -109,33 +95,32 @@ export function toSnapshot(
   history: unknown,
   debug: (msg: string) => void,
 ): ProgramSnapshot {
-  const st = obj(status);
+  const st = asRecord(status);
   const paused = st.DownloadPaused === true;
   const items: DownloadItem[] = [];
-  for (const g of list(groups)) {
+  for (const g of asRecords(groups)) {
     const id = num(g.NZBID);
     if (id === null) {
       continue;
     }
-    const raw = text(g.Status);
+    const raw = asText(g.Status);
     const size = hiLo(g.FileSizeHi, g.FileSizeLo);
     const left = hiLo(g.RemainingSizeHi, g.RemainingSizeLo);
     items.push({
       key: String(id),
-      name: text(g.NZBName) || String(id),
+      name: asText(g.NZBName) || String(id),
       status: mapNzbStatus(`q:${raw}${paused ? ":globalPause" : ""}`, debug),
-      rawStatus: raw,
       sizeBytes: size,
-      doneBytes: size !== null && left !== null ? Math.max(0, size - left) : null,
+      doneBytes: doneOf(size, left),
       speedBps: null,
       etaSeconds: null,
-      category: text(g.Category),
+      category: asText(g.Category),
       error: "",
     });
   }
-  for (const h of list(history)) {
+  for (const h of asRecords(history)) {
     const id = num(h.NZBID);
-    const raw = text(h.Status);
+    const raw = asText(h.Status);
     if (id === null || raw.startsWith("DELETED/")) {
       continue;
     }
@@ -143,15 +128,14 @@ export function toSnapshot(
     const time = num(h.HistoryTime);
     items.push({
       key: String(id),
-      name: text(h.Name) || String(id),
+      name: asText(h.Name) || String(id),
       status: s,
-      rawStatus: raw,
       sizeBytes: hiLo(h.FileSizeHi, h.FileSizeLo),
       doneBytes: hiLo(h.DownloadedSizeHi, h.DownloadedSizeLo),
       speedBps: null,
       etaSeconds: null,
       finishedMs: time !== null && time > 0 ? time * 1000 : null,
-      category: text(h.Category),
+      category: asText(h.Category),
       error: s === "failed" ? raw : "",
     });
   }

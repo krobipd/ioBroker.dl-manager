@@ -3,7 +3,7 @@ import { startFixtureServer } from "../../../../test/helpers/fixture-server";
 import { firstUrl } from "../../../../test/helpers/first-url";
 import { loadFixture } from "../../../../test/helpers/fixtures";
 import { UnreachableError } from "../../core/errors";
-import type { ProgramConfig } from "../registry";
+import type { ProgramConfig } from "../../core/model";
 import { DlDriver } from "./driver";
 import { mapDlStatus, statusTable } from "./map";
 

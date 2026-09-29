@@ -1,5 +1,5 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
-import { num } from "../../core/units";
+import { asRecord, epochMs, eta, nonNegative, num } from "../../core/units";
 
 /** A torrent of `web.update_ui`. */
 export interface DlTorrent {
@@ -127,16 +127,6 @@ export function mapDlStatus(raw: string | number, debug: (msg: string) => void):
   return dlStatus(dlTorrentFromRaw(String(raw)), debug).status;
 }
 
-const obj = (v: unknown): Record<string, unknown> =>
-  v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
-const nonNegative = (v: unknown): number | null => {
-  const n = num(v);
-  return n !== null && n >= 0 ? n : null;
-};
-const seconds = (v: unknown): number | null => {
-  const n = num(v);
-  return n !== null && n > 0 ? n * 1000 : null;
-};
 const kib = (v: unknown): number => {
   const n = num(v);
   return n !== null && n > 0 ? Math.round(n * 1024) : 0;
@@ -159,27 +149,25 @@ export function toSnapshot(
   paused: boolean,
   debug: (msg: string) => void,
 ): ProgramSnapshot {
-  const u = obj(ui);
-  const stats = obj(u.stats);
-  const cfg = obj(config);
-  const items: DownloadItem[] = Object.entries(obj(u.torrents)).map(([hash, raw]) => {
-    const t = obj(raw) as DlTorrent;
+  const u = asRecord(ui);
+  const stats = asRecord(u.stats);
+  const cfg = asRecord(config);
+  const items: DownloadItem[] = Object.entries(asRecord(u.torrents)).map(([hash, raw]) => {
+    const t = asRecord(raw) as DlTorrent;
     const { status, error } = dlStatus(t, debug);
-    const e = num(t.eta);
     const ratio = num(t.ratio);
     return {
       key: hash,
       name: typeof t.name === "string" ? t.name : hash,
       status,
-      rawStatus: String(t.state),
       sizeBytes: nonNegative(t.total_wanted),
       doneBytes: nonNegative(t.total_done),
       speedBps: nonNegative(t.download_payload_rate),
       uploadBps: nonNegative(t.upload_payload_rate),
-      ratio: ratio !== null && ratio >= 0 ? ratio : null,
-      etaSeconds: e !== null && e > 0 ? e : null,
-      addedMs: seconds(t.time_added),
-      finishedMs: seconds(t.completed_time),
+      ratio: nonNegative(ratio),
+      etaSeconds: eta(t.eta, [0]),
+      addedMs: epochMs(t.time_added),
+      finishedMs: epochMs(t.completed_time),
       category: typeof t.label === "string" ? t.label : "",
       error,
     };

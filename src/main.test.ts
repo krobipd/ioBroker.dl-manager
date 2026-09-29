@@ -59,8 +59,7 @@ vi.mock("@iobroker/adapter-core", () => {
   };
 });
 
-import type { ProgramConfig, ProgramEntry } from "./lib/programs/registry";
-import type { ProgramDriver, ProgramSnapshot } from "./lib/core/model";
+import type { ProgramConfig, ProgramEntry, ProgramDriver, ProgramSnapshot } from "./lib/core/model";
 import { DownloadManagerAdapter } from "./main";
 
 interface Harness {
@@ -126,15 +125,25 @@ describe("DownloadManagerAdapter — start", () => {
   const channelKeys = (h: Harness): unknown[] =>
     [...h.store.objects.values()].filter(o => o.type === "channel").map(o => o.native.key);
 
-  it("stops at once after nulling a leftover supportedMessages", async () => {
+  it("removes only a leftover stopInstance entry — deviceManager stays — and stops for the restart", async () => {
+    for (const leftover of [true, false]) {
+      const { h, polls } = make();
+      h.instanceObject = { common: { supportedMessages: { deviceManager: true, stopInstance: leftover } }, native: {} };
+      await h.handlers.get("ready")?.();
+      expect(h.instanceWrites).toEqual([
+        { id: "system.adapter.dl-manager.0", obj: { common: { supportedMessages: { stopInstance: null } } } },
+      ]);
+      expect(polls()).toBe(0);
+      expect(h.store.objectWrites).toBe(0);
+    }
+  });
+
+  it("drops the old messagebox switch and stops for the restart", async () => {
     const { h, polls } = make();
-    h.instanceObject = { common: { supportedMessages: { stopInstance: true } }, native: {} };
+    h.instanceObject = { common: { messagebox: true, supportedMessages: { deviceManager: true } }, native: {} };
     await h.handlers.get("ready")?.();
-    expect(h.instanceWrites).toEqual([
-      { id: "system.adapter.dl-manager.0", obj: { common: { supportedMessages: null } } },
-    ]);
+    expect(h.instanceWrites).toEqual([{ id: "system.adapter.dl-manager.0", obj: { common: { messagebox: null } } }]);
     expect(polls()).toBe(0);
-    expect(h.store.objectWrites).toBe(0);
   });
 
   it("removes the tree setting the 0.0.1 placeholder declared and stops for the restart", async () => {
@@ -172,9 +181,13 @@ describe("DownloadManagerAdapter — start", () => {
     await runner?.pollNow();
     expect(channelKeys(h)).toEqual(["k1"]);
     expect(h.store.objects.has("dl-manager.0.qbittorrent-nas.downloads.k1.status")).toBe(true);
+    expect(h.store.states.get("dl-manager.0.qbittorrent-nas.downloads.k1.status")).toMatchObject({
+      val: "queued",
+      ack: true,
+    });
   });
 
-  it("reads no read-only state from the database on the second start", async () => {
+  it("reads no state from the database on the second start", async () => {
     const first = make();
     await first.h.handlers.get("ready")?.();
     await flush();
@@ -184,9 +197,8 @@ describe("DownloadManagerAdapter — start", () => {
     h.store.writeLog.length = 0;
     await h.handlers.get("ready")?.();
     await flush();
-    const readOnly = h.store.changedLog.filter(id => h.store.objects.get(id)?.common.write === false);
-    expect(readOnly).toEqual([]);
-    expect(h.store.changedLog.length).toBeGreaterThan(0);
+    // every state is compared in memory now, writable ones too (a user write is forgotten on the spot)
+    expect(h.store.changedLog).toEqual([]);
     expect(h.store.writeLog.map(w => w.id)).not.toContain("dl-manager.0.qbittorrent-nas.version");
   });
 
@@ -225,12 +237,14 @@ describe("DownloadManagerAdapter — start", () => {
     expect(configs.map(c => [c.password, c.apiKey])).toEqual([["p", "k"]]);
   });
 
-  it("starts normally when the instance object already carries supportedMessages null", async () => {
-    const { h, polls } = make();
-    h.instanceObject = { common: { supportedMessages: null }, native: {} };
-    await h.handlers.get("ready")?.();
-    expect(h.instanceWrites).toEqual([]);
-    expect(polls()).toBe(1);
+  it("starts normally with the device manager entry and no stopInstance, or a stopInstance already nulled", async () => {
+    for (const supported of [{ deviceManager: true }, { deviceManager: true, stopInstance: null }, null]) {
+      const { h, polls } = make();
+      h.instanceObject = { common: { supportedMessages: supported }, native: {} };
+      await h.handlers.get("ready")?.();
+      expect(h.instanceWrites).toEqual([]);
+      expect(polls()).toBe(1);
+    }
   });
 
   it("keeps finished downloads with the default tree settings", async () => {
@@ -283,35 +297,58 @@ describe("DownloadManagerAdapter — start", () => {
   });
 });
 
-describe("DownloadManagerAdapter — messages", () => {
-  it("answers the connection test with one line per program of the form", async () => {
-    const { h } = make();
-    await h.handlers.get("message")?.({
-      command: "testConnections",
-      from: "system.adapter.admin.0",
-      callback: { id: 1 },
-      message: { programs: [{ enabled: true, type: "qbittorrent", key: "x", host: "h9" }] },
-    });
-    expect(h.sent).toEqual([
-      [
-        "system.adapter.admin.0",
-        "testConnections",
-        { result: "qbittorrent-x: OK — version 4.6, 0 download(s)" },
-        { id: 1 },
-      ],
-    ]);
-  });
+describe("DownloadManagerAdapter — device manager", () => {
+  interface Host {
+    readRows(): Promise<Record<string, unknown>[]>;
+    writeRows(rows: Record<string, unknown>[]): Promise<void>;
+    hasObject(relId: string): Promise<boolean>;
+    readState(relId: string): Promise<ioBroker.StateValue | undefined>;
+    writeState(relId: string, val: ioBroker.StateValue): Promise<void>;
+    test(row: Record<string, unknown>): Promise<unknown>;
+  }
+  const hostOf = (h: Harness): Host => (h as unknown as { deviceManagement: { host: Host } }).deviceManagement.host;
 
-  it("answers nothing to a message without callback", async () => {
+  it("takes the dm messages through the device manager — the adapter itself answers none", () => {
     const { h } = make();
-    await h.handlers.get("message")?.({ command: "bogus", from: "x", message: {} });
+    expect(h.handlers.has("message")).toBe(true);
     expect(h.sent).toEqual([]);
   });
 
-  it("answers an unknown command instead of letting the caller wait", async () => {
+  it("reads the rows fresh from the instance object, skipping what is no row", async () => {
     const { h } = make();
-    await h.handlers.get("message")?.({ command: "bogus", from: "x", callback: { id: 2 }, message: {} });
-    expect(h.sent).toEqual([["x", "bogus", { error: "Unknown command: bogus" }, { id: 2 }]]);
+    h.instanceObject = { common: {}, native: { programs: [{ type: "deluge" }, null, "x", [1], { type: "aria2" }] } };
+    expect(await hostOf(h).readRows()).toEqual([{ type: "deluge" }, { type: "aria2" }]);
+    h.instanceObject = { common: {}, native: {} };
+    expect(await hostOf(h).readRows()).toEqual([]);
+  });
+
+  it("stores the rows in the instance object", async () => {
+    const { h } = make();
+    await hostOf(h).writeRows([{ type: "deluge" }]);
+    expect(h.instanceWrites).toEqual([
+      { id: "system.adapter.dl-manager.0", obj: { native: { programs: [{ type: "deluge" }] } } },
+    ]);
+  });
+
+  it("writes a card's switch the way a user does, and knows the own objects", async () => {
+    const { h } = make();
+    await h.handlers.get("ready")?.();
+    await hostOf(h).writeState("qbittorrent-nas.paused", true);
+    expect(h.store.states.get("dl-manager.0.qbittorrent-nas.paused")).toMatchObject({ val: true, ack: false });
+    expect(await hostOf(h).hasObject("qbittorrent-nas.online")).toBe(true);
+    expect(await hostOf(h).hasObject("qbittorrent-nas.nothing")).toBe(false);
+    expect(await hostOf(h).readState("qbittorrent-nas.paused")).toBe(true);
+    expect(await hostOf(h).readState("qbittorrent-nas.nothing")).toBeUndefined();
+  });
+
+  it("tests one row, before the start as well", async () => {
+    const { h, closed } = make();
+    expect(await hostOf(h).test({ type: "qbittorrent", key: "x", host: "h9" })).toEqual({
+      ok: true,
+      version: "4.6",
+      downloads: 0,
+    });
+    expect(closed()).toBe(1);
   });
 });
 
@@ -343,5 +380,18 @@ describe("DownloadManagerAdapter — unload", () => {
     expect(h.store.logs.some(l => l.msg.startsWith("pause all"))).toBe(false);
     await h.handlers.get("stateChange")?.("dl-manager.0.summary.pauseAll", { val: true, ack: false });
     expect(h.store.logs.some(l => l.msg === "pause all: paused 1 of 1 program(s)")).toBe(true);
+  });
+
+  it("forgets what it wrote to a state a user wrote, so the program's value goes out again", async () => {
+    const { h } = make();
+    await h.handlers.get("ready")?.();
+    await flush();
+    const states = (h as unknown as { states: { put(id: string, s: ioBroker.SettableState): Promise<void> } }).states;
+    const id = "qbittorrent-nas.paused";
+    await states.put(id, { val: false, ack: true });
+    await h.store.setState(id, { val: true, ack: false });
+    await h.handlers.get("stateChange")?.(`dl-manager.0.${id}`, { val: true, ack: false });
+    await states.put(id, { val: false, ack: true });
+    expect(h.store.states.get(`dl-manager.0.${id}`)).toMatchObject({ val: false, ack: true });
   });
 });

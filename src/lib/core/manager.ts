@@ -1,23 +1,19 @@
 import { deviceIcon } from "../device-icons";
-import { moveWithEnums, type EnumCarryAdapter } from "../enum-carry";
 import { errText } from "../err-text";
-import type { DriverDeps, ProgramEntry } from "../programs/registry";
 import { routeState, type RouteTarget } from "./commands";
 import { addressOf, parsePrograms, type ProgramRow } from "./config";
+import { carryAssignments, planHandover, readDevices, stampOffline, type DevicesAdapter } from "./devices";
 import { type PauseState, type PauseStore } from "./emulated-pause";
 import { classify } from "./errors";
-import type { Command, ProgramDriver } from "./model";
+import type { Command, DriverDeps, ProgramDriver, ProgramEntry } from "./model";
 import { redact } from "./redact";
 import { ProgramRunner, type RunnerDeps } from "./runner";
 import { computeSummary, type SummaryInput } from "./summary";
-import { ProgramTree, type ProgramEvents, type TreeAdapter, type TreeScope } from "./tree";
+import { ProgramTree, writeLastEvents, type ProgramEvents, type TreeAdapter, type TreeScope } from "./tree";
 import { toMBps } from "./units";
 
 /** The adapter methods the manager uses on top of the tree's. */
-export interface ManagerAdapter extends TreeAdapter {
-  /** Reads an object by its full id (enums). */
-  getForeignObjectAsync(id: string): Promise<ioBroker.Object | null | undefined>;
-}
+export interface ManagerAdapter extends TreeAdapter, DevicesAdapter {}
 
 /**
  * The emulated pause of one program keeps its state in the `native` of that program's `paused` datapoint — written
@@ -47,6 +43,11 @@ export function objectPauseStore(adapter: ManagerAdapter, id: string): PauseStor
     },
   };
 }
+
+/** What a connection test found. */
+export type TestResult =
+  | { ok: true; version: string; downloads?: number }
+  | { ok: false; kind: "setup" | "auth" | "unreachable" | "other"; text: string };
 
 /** Everything the manager needs from outside. */
 export interface ManagerDeps {
@@ -78,12 +79,6 @@ interface Running {
   runner: ProgramRunner;
 }
 
-const NO_REACHABLE_STAMP: [string, ioBroker.StateValue][] = [
-  ["info.connection", false],
-  ["info.programsOnline", 0],
-  ["info.programsAllOnline", false],
-];
-
 /**
  * All configured programs: reads the settings table, keeps the device tree in line with it, runs one isolated
  * runner per program, routes user writes to them and keeps the adapter-wide summary.
@@ -113,30 +108,12 @@ export class ProgramManager {
    */
   public async start(rawPrograms: unknown): Promise<void> {
     this.rows = parsePrograms(rawPrograms, this.deps.decrypt, this.deps.find);
-    const existing = await this.existingDevices();
-    await this.stampOffline(existing.keys());
-
-    const ids = new Set(this.rows.map(r => r.id));
-    const carries = new Map<string, string>();
-    for (const [oldId, native] of existing) {
-      if (ids.has(oldId)) {
-        continue;
-      }
-      const heir = this.rows.find(
-        r =>
-          r.enabled &&
-          !r.problem &&
-          !existing.has(r.id) &&
-          !carries.has(r.id) &&
-          r.cfg.type === native.type &&
-          addressOf(r.cfg) === native.address,
-      );
-      if (heir) {
-        carries.set(heir.id, oldId);
-      } else {
-        this.a.log.debug(`${oldId} is no longer configured — removing its objects`);
-        await this.a.delObject(`${this.a.namespace}.${oldId}`, { recursive: true });
-      }
+    const existing = await readDevices(this.a);
+    await stampOffline(this.a, existing.keys());
+    const { carries, orphans } = planHandover(this.rows, existing);
+    for (const oldId of orphans) {
+      this.a.log.debug(`${oldId} is no longer configured — removing its objects`);
+      await this.a.delObject(`${this.a.namespace}.${oldId}`, { recursive: true });
     }
 
     for (const row of this.rows) {
@@ -144,23 +121,19 @@ export class ProgramManager {
         continue;
       }
       const name = row.cfg.name || row.id;
-      if (row.problem) {
+      if (!row.entry) {
         const bare = { type: row.cfg.type, capabilities: new Set<never>(), extras: [] };
         await new ProgramTree(this.a, row.id, name, bare, this.opts).ensureBareDevice(row.problem);
         this.a.log.warn(`${row.id}: ${row.problem} — check the program in the adapter settings`);
         continue;
       }
-      const entry = this.deps.find(row.cfg.type);
-      if (!entry) {
-        continue;
-      }
-      const driver = entry.create(row.cfg, this.driverDeps(row.id));
+      const driver = row.entry.create(row.cfg, this.driverDeps(row.id));
       const tree = new ProgramTree(this.a, row.id, name, driver, this.opts);
       await tree.load();
       await tree.ensureDevice(deviceIcon(row.cfg.type), addressOf(row.cfg));
       const oldId = carries.get(row.id);
       if (oldId) {
-        await this.carry(oldId, row.id);
+        await carryAssignments(this.a, oldId, row.id);
       }
       const runner = new ProgramRunner(
         row.id,
@@ -185,8 +158,6 @@ export class ProgramManager {
    * @param val the written value
    */
   public async onUserWrite(relId: string, val: ioBroker.StateValue): Promise<void> {
-    // whatever the command does, the next poll writes the program's own value over the user's
-    this.running.get(relId.split(".")[0])?.tree.forget(`${this.a.namespace}.${relId}`);
     const route = routeState(relId, val, id => this.target(id));
     if (route.kind === "ignore") {
       return;
@@ -212,41 +183,38 @@ export class ProgramManager {
   }
 
   /**
-   * The settings page's connection test: asks every enabled program of the (unsaved) form once.
+   * The card's connection test: builds a driver for one settings row, asks the program once and closes the driver.
+   * A switched-off row is tested all the same — the user asked for it.
    *
-   * @param rawPrograms the table as the form holds it
-   * @returns one line per program
+   * @param raw one entry of `native.programs`
+   * @returns what the program answered
    */
-  public async testConnections(rawPrograms: unknown): Promise<string> {
-    const lines: string[] = [];
-    // the form holds the secrets as typed — nothing to decrypt, whatever the stored table does
-    for (const row of parsePrograms(rawPrograms, v => v, this.deps.find)) {
-      if (!row.enabled) {
-        continue;
-      }
-      const entry = this.deps.find(row.cfg.type);
-      if (row.problem || !entry) {
-        lines.push(`${row.id}: ${row.problem}`);
-        continue;
-      }
-      const driver = entry.create(row.cfg, this.driverDeps());
-      try {
-        if (driver.test) {
-          lines.push(`${row.id}: OK — version ${await driver.test()}`);
-        } else {
-          const snap = await driver.poll();
-          lines.push(`${row.id}: OK — version ${snap.status.version}, ${snap.items.length} download(s)`);
-        }
-      } catch (err: unknown) {
-        const text = redact(errText(err));
-        const kind = classify(err);
-        const prefix = kind === "auth" ? "login rejected — " : kind === "unreachable" ? "not reachable — " : "";
-        lines.push(`${row.id}: ${prefix}${text}`);
-      } finally {
-        await driver.close().catch(() => undefined);
-      }
+  public async testProgram(raw: unknown): Promise<TestResult> {
+    const [row] = parsePrograms(
+      [raw && typeof raw === "object" ? { ...raw, enabled: true } : raw],
+      this.deps.decrypt,
+      this.deps.find,
+    );
+    if (!row?.entry) {
+      return { ok: false, kind: "setup", text: row?.problem || "program type missing" };
     }
-    return lines.length ? lines.join("\n") : "no program is configured";
+    const driver = row.entry.create(row.cfg, this.driverDeps());
+    try {
+      if (driver.test) {
+        return { ok: true, version: await driver.test() };
+      }
+      const snap = await driver.poll();
+      return { ok: true, version: snap.status.version, downloads: snap.items.length };
+    } catch (err: unknown) {
+      const kind = classify(err);
+      return {
+        ok: false,
+        kind: kind === "auth" || kind === "unreachable" ? kind : "other",
+        text: redact(errText(err)),
+      };
+    } finally {
+      await driver.close().catch(() => undefined);
+    }
   }
 
   /** Stops every runner (they mark their program Unknown) and marks the adapter disconnected. */
@@ -271,79 +239,6 @@ export class ProgramManager {
     return p
       ? { capabilities: p.driver.capabilities, extras: p.driver.extras, itemKey: ch => p.tree.itemKey(ch) }
       : undefined;
-  }
-
-  /** @returns device id → its `native` for every device of this instance */
-  private async existingDevices(): Promise<Map<string, { type?: unknown; address?: unknown }>> {
-    const prefix = `${this.a.namespace}.`;
-    const devices = await this.a.getForeignObjects(`${prefix}*`, "device");
-    const out = new Map<string, { type?: unknown; address?: unknown }>();
-    for (const [id, obj] of Object.entries(devices)) {
-      const rel = id.slice(prefix.length);
-      if (!rel.includes(".")) {
-        out.set(rel, (obj.native ?? {}) as { type?: unknown; address?: unknown });
-      }
-    }
-    return out;
-  }
-
-  private async stampOffline(deviceIds: Iterable<string>): Promise<void> {
-    for (const id of deviceIds) {
-      if (await this.a.getObject(`${id}.online`)) {
-        await this.a.setStateChanged(`${id}.online`, { val: false, ack: true });
-        await this.a.setStateChanged(`${id}.error`, { val: "Unknown", ack: true });
-      }
-    }
-    for (const [id, val] of NO_REACHABLE_STAMP) {
-      await this.a.setStateChanged(id, { val, ack: true });
-    }
-  }
-
-  /**
-   * The user changed the ID column of a program: carry room and function assignments of the device and its
-   * datapoints to the new device, then remove the old one. Download channels are not carried — they come back with
-   * the next poll under the new device.
-   *
-   * @param oldId previous device id
-   * @param newId new device id (already created)
-   */
-  private async carry(oldId: string, newId: string): Promise<void> {
-    const oldFull = `${this.a.namespace}.${oldId}`;
-    const newFull = `${this.a.namespace}.${newId}`;
-    const carrier: EnumCarryAdapter = {
-      getForeignObjectsAsync: (pattern, type) => this.a.getForeignObjects(pattern, type),
-      getForeignObjectAsync: id => this.a.getForeignObjectAsync(id),
-      setForeignObject: (id, obj) => this.a.setForeignObject(id, obj as unknown as ioBroker.SettableObject),
-      log: this.a.log,
-    };
-    const enums = await this.a.getForeignObjects("enum.*", "enum");
-    const members = new Set<string>();
-    for (const e of Object.values(enums)) {
-      const list: unknown = (e.common as { members?: unknown }).members;
-      if (Array.isArray(list)) {
-        list.filter((m): m is string => typeof m === "string").forEach(m => members.add(m));
-      }
-    }
-    const children = [...members].filter(m => m.startsWith(`${oldFull}.`)).sort((x, y) => y.length - x.length);
-    for (const oldChild of children) {
-      const newChild = newFull + oldChild.slice(oldFull.length);
-      if (await this.a.getForeignObjectAsync(newChild)) {
-        await moveWithEnums(
-          carrier,
-          oldChild,
-          newChild,
-          () => this.a.delObject(oldChild, { recursive: true }),
-          errText,
-        );
-      }
-    }
-    const removeOld = (): Promise<unknown> => this.a.delObject(oldFull, { recursive: true });
-    if (members.has(oldFull)) {
-      await moveWithEnums(carrier, oldFull, newFull, removeOld, errText);
-    } else {
-      await removeOld();
-    }
-    this.a.log.info(`${oldId} is now ${newId} — room and function assignments carried over`);
   }
 
   private async pauseAll(on: boolean): Promise<void> {
@@ -409,16 +304,7 @@ export class ProgramManager {
       );
     }
     try {
-      const last = events.finished.at(-1);
-      if (last) {
-        await this.a.setState("summary.lastFinished", { val: last.name, ack: true });
-        await this.a.setState("summary.lastFinishedTime", { val: last.finishedMs ?? Date.now(), ack: true });
-      }
-      const failed = events.failed.at(-1);
-      if (failed) {
-        await this.a.setState("summary.lastFailed", { val: failed.name, ack: true });
-        await this.a.setState("summary.lastFailedTime", { val: Date.now(), ack: true });
-      }
+      await writeLastEvents((id, st) => this.a.setState(id, st), "summary", events);
       await this.writeSummary();
     } catch (err: unknown) {
       this.a.log.debug(`summary not written: ${errText(err)}`);

@@ -112,3 +112,27 @@ describe("NZBGet edge values", () => {
     expect(snap.status.downloadBps).toBe(4294967296);
   });
 });
+
+describe("mapNzbStatus — API boundary", () => {
+  it("reads an inherited name like constructor as an unknown status, not as a table entry", () => {
+    const lines: string[] = [];
+    for (const raw of ["q:constructor", "h:toString", "q:__proto__"]) {
+      expect([raw, mapNzbStatus(raw, m => lines.push(m))]).toEqual([raw, "queued"]);
+    }
+    expect(lines).toHaveLength(3);
+    expect(lines[0]).toContain("nzbget");
+  });
+});
+
+describe("mapNzbStatus — every NZBGet queue status", () => {
+  it("maps the queue statuses as documented (api-usenet-aria2-pyload.md)", () => {
+    const expected: [string, string][] = [
+      ["q:QUEUED", "queued"],
+      ["q:PAUSED", "paused"],
+      ["q:DOWNLOADING", "downloading"],
+      ["q:FETCHING", "downloading"],
+      ["q:DOWNLOADING:globalPause", "paused"],
+    ];
+    expect(expected.map(([raw]) => [raw, mapNzbStatus(raw, () => undefined)])).toEqual(expected);
+  });
+});

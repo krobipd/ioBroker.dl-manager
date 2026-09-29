@@ -1,22 +1,19 @@
 import { ProtocolError } from "../../core/errors";
-import type { Capability, Command, ExtraDefinition, ProgramDriver, ProgramSnapshot } from "../../core/model";
-import type { DriverDeps, ProgramConfig } from "../registry";
+import type {
+  Capability,
+  Command,
+  ExtraDefinition,
+  ProgramDriver,
+  ProgramSnapshot,
+  DriverDeps,
+  ProgramConfig,
+} from "../../core/model";
+import { RETRY_EXTRA } from "../retry-extra";
 import { NzbClient } from "./client";
 import { toSnapshot } from "./map";
 
 /** Download a failed job again (`HistoryRedownload`). */
-const EXTRAS: readonly ExtraDefinition[] = [
-  {
-    id: "retry",
-    level: "item",
-    type: "boolean",
-    role: "button",
-    write: true,
-    read: false,
-    nameKey: "retry",
-    descKey: "descRetry",
-  },
-];
+const EXTRAS: readonly ExtraDefinition[] = [RETRY_EXTRA];
 
 /** NZBGet (nzbgetcom 24 – 26). Real global pause; no speed, ETA or added time per job. */
 export class NzbDriver implements ProgramDriver {

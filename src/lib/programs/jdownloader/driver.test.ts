@@ -3,7 +3,7 @@ import { startFixtureServer } from "../../../../test/helpers/fixture-server";
 import { firstUrl } from "../../../../test/helpers/first-url";
 import { loadFixture } from "../../../../test/helpers/fixtures";
 import { ProtocolError } from "../../core/errors";
-import type { ProgramConfig } from "../registry";
+import type { ProgramConfig } from "../../core/model";
 import { checkJdCall, JdLocalTransport, JD_METHODS, jdBaseUrl, type JdTransport } from "./client";
 import { JdDriver } from "./driver";
 import { mapJdStatus, statusTable } from "./map";

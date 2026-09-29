@@ -1,12 +1,10 @@
 import { errText } from "../../err-text";
 import { ProtocolError } from "../../core/errors";
-import type { Capability, Command, ProgramDriver, ProgramSnapshot } from "../../core/model";
-import type { DriverDeps, ProgramConfig } from "../registry";
-import { jdBaseUrl, JdLocalTransport, type JdTransport } from "./client";
+import type { Capability, Command, ProgramDriver, ProgramSnapshot, DriverDeps, ProgramConfig } from "../../core/model";
+import { GENERAL_SETTINGS, jdBaseUrl, JdLocalTransport, type JdTransport } from "./client";
 import { JdCloudTransport } from "./cloud";
 import { toSnapshot } from "./map";
 
-const GS = "org.jdownloader.settings.GeneralSettings";
 const PACKAGE_QUERY = {
   bytesLoaded: true,
   bytesTotal: true,
@@ -131,9 +129,9 @@ export class JdDriver implements ProgramDriver {
         return;
       case "setSpeedLimit":
         if (cmd.bps > 0) {
-          await this.api.call("/config/set", [GS, null, "DownloadSpeedLimit", cmd.bps]);
+          await this.api.call("/config/set", [GENERAL_SETTINGS, null, "DownloadSpeedLimit", cmd.bps]);
         }
-        await this.api.call("/config/set", [GS, null, "DownloadSpeedLimitEnabled", cmd.bps > 0]);
+        await this.api.call("/config/set", [GENERAL_SETTINGS, null, "DownloadSpeedLimitEnabled", cmd.bps > 0]);
         return;
       default:
         throw new ProtocolError(`jdownloader: ${cmd.kind} is not supported`);
