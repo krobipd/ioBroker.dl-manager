@@ -109,7 +109,9 @@ export class ProgramTree {
    * Raw key → channel name; `fresh` once this start offered the channel's objects (a channel read from the database
    * gets them once, so a changed datapoint set or text reaches an existing installation).
    */
-  private readonly known = new Map<string, { name: string; fresh: boolean }>();
+  private readonly known = new Map<string, { name: string; fresh: boolean; leftSig: boolean }>();
+  /** The device still carries the removed list the 0.0.1 placeholder wrote (`native.removed`). */
+  private leftRemoved = false;
   private warned = false;
   private prev: Map<string, Status> | null = null;
   private baselineFinished: number | null = null;
@@ -167,9 +169,13 @@ export class ProgramTree {
       this.known.set(key, {
         name: typeof name === "string" ? name : "",
         fresh: false,
+        // the 0.0.1 placeholder stored a datapoint signature on every channel — nulled with the channel's first write
+        leftSig: obj.native?.sig !== undefined && obj.native?.sig !== null,
       });
     }
     this.ids = new ItemIds(stored);
+    const removed: unknown = (await this.adapter.getObject(this.dev))?.native?.removed;
+    this.leftRemoved = removed !== undefined && removed !== null;
     const last = await this.adapter.getState(`${this.dev}.lastFinishedTime`);
     this.baselineFinished = typeof last?.val === "number" ? last.val : null;
   }
@@ -188,7 +194,7 @@ export class ProgramTree {
         statusStates: { onlineId: this.onlineId() },
         ...(icon ? { icon } : {}),
       },
-      native: { type: this.driver.type, address, nameSource: "api" },
+      native: { type: this.driver.type, address, nameSource: "api", ...(this.leftRemoved ? { removed: null } : {}) },
     });
     await this.adapter.extendObject(`${this.dev}.downloads`, {
       type: "folder",
@@ -355,7 +361,7 @@ export class ProgramTree {
       await this.adapter.extendObject(ch, {
         type: "channel",
         common: { name: item.name },
-        native: { key: item.key, nameSource: "api" },
+        native: { key: item.key, nameSource: "api", ...(known?.leftSig ? { sig: null } : {}) },
       });
       for (const d of this.itemDefs) {
         await this.adapter.extendObject(`${ch}.${d.id}`, this.stateObject(d));
@@ -363,7 +369,7 @@ export class ProgramTree {
       for (const e of this.itemExtras) {
         await this.adapter.extendObject(`${ch}.${e.id}`, this.extraObject(e));
       }
-      this.known.set(item.key, { name: item.name, fresh: true });
+      this.known.set(item.key, { name: item.name, fresh: true, leftSig: false });
     } else if (known.name !== item.name) {
       await this.adapter.extendObject(ch, { common: { name: item.name } });
       known.name = item.name;

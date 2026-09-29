@@ -414,6 +414,31 @@ describe("ProgramTree — downloads", () => {
   });
 });
 
+describe("ProgramTree — keys the 0.0.1 placeholder left on its objects", () => {
+  it("nulls the device's removed list and every channel's signature once, and adds neither to a fresh tree", async () => {
+    const a = new FakeAdapter(NS);
+    await a.extendObject(DEV, {
+      type: "device",
+      common: { name: "x" },
+      native: { type: "qbittorrent", removed: ["k"] },
+    });
+    await a.extendObject(CH, {
+      type: "channel",
+      common: { name: "name aaaa11112222" },
+      native: { key: "aaaa11112222", sig: "status" },
+    });
+    const t = await makeTree(a);
+    await t.sync(snap([item("aaaa11112222")]));
+    expect(a.objects.get(DEV)?.native.removed).toBeNull();
+    expect(a.objects.get(CH)?.native.sig).toBeNull();
+    const fresh = new FakeAdapter(NS);
+    const f = await makeTree(fresh);
+    await f.sync(snap([item("aaaa11112222")]));
+    expect("removed" in (fresh.objects.get(DEV)?.native ?? {})).toBe(false);
+    expect("sig" in (fresh.objects.get(CH)?.native ?? {})).toBe(false);
+  });
+});
+
 describe("ProgramTree — finished and failed events", () => {
   it("fires finished on the transition, not on the startup baseline", async () => {
     const a = new FakeAdapter(NS);
