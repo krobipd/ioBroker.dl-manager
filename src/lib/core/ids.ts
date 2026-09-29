@@ -26,10 +26,10 @@ export function ownId(namespace: string, id: string): string {
 }
 
 /**
- * Device id of a program: `<type>-<user key>`. The user key comes from the settings table.
+ * Device id of a program: `<type>-<user key>`. The user key comes from the program row (set once when the program is added).
  *
  * @param type program type from the registry
- * @param userKey the ID column of the settings table
+ * @param userKey the key of the program row
  * @returns the device id
  */
 export function programId(type: string, userKey: string): string {

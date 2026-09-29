@@ -259,7 +259,7 @@ const DEVICES = PROGRAM_ROWS.map(([type]) => `${type}-fixture`);
 
 /** Adapter-specific config the fixtures need (fake endpoint address, credentials, ...). */
 const FIXTURE_NATIVE = {
-  // secrets go in as typed, the way the settings table stores them
+  // secrets go in as typed, the way the program rows hold them
   programs: PROGRAM_ROWS.map(([type, name, cfg]) => ({
     enabled: true,
     type,
@@ -337,7 +337,7 @@ async function resetInstanceNative(harness) {
   for (const key of Object.keys(instance?.native ?? {})) {
     if (!Object.hasOwn(FIXTURE_NATIVE, key)) stale[key] = null;
   }
-  // The settings table stores password and API key as typed (protectedNative, no encryptedAttributes) —
+  // The program rows hold password and API key as typed (protectedNative, no encryptedAttributes) —
   // the fixture rows go in the same way.
   await harness.changeAdapterConfig(ADAPTER, { native: { ...stale, ...FIXTURE_NATIVE } });
 }

@@ -57,7 +57,7 @@ export interface ManagerDeps {
   timers: Pick<RunnerDeps, "setTimeout" | "clearTimeout">;
   /** Registry lookup. */
   find: (type: string) => ProgramEntry | undefined;
-  /** The adapter's decrypt for the table's secret columns. */
+  /** The adapter's decrypt for the stored secrets. */
   decrypt: (value: string) => string;
   /** Actionable problems (rejected login). */
   problems: RunnerDeps["problems"];
@@ -80,7 +80,7 @@ interface Running {
 }
 
 /**
- * All configured programs: reads the settings table, keeps the device tree in line with it, runs one isolated
+ * All configured programs: reads the program rows, keeps the device tree in line with them, runs one isolated
  * runner per program, routes user writes to them and keeps the adapter-wide summary.
  */
 export class ProgramManager {

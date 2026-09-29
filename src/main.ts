@@ -221,8 +221,7 @@ export class DownloadManagerAdapter extends utils.Adapter {
           clearTimeout: t => this.clearTimeout(t),
         },
         find: this.find,
-        // the table stores the secrets as typed, protected by protectedNative: json-config >= 8.5.0 never decrypts
-        // an encryptedAttributes cell on load and encrypts it twice on the next save (ioBroker/json-config#179)
+        // the program rows hold the secrets as typed, protected by protectedNative (decision 9)
         decrypt: v => v,
         problems: {
           report: (key, title, action) => this.problems.report({ key, title, action }),

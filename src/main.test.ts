@@ -229,7 +229,7 @@ describe("DownloadManagerAdapter — start", () => {
     expect(h.store.objectLog).not.toContain("dl-manager.0.summary.pauseAll");
   });
 
-  it("hands the stored secrets to the program as they are — the table does not encrypt them", async () => {
+  it("hands the stored secrets to the program as they are — the program rows hold them as typed", async () => {
     const { h, configs } = make();
     (h as unknown as { decrypt: (v: string) => string }).decrypt = () => "garbled";
     h.config.programs = [{ enabled: true, type: "qbittorrent", key: "nas", host: "h1", password: "p", apiKey: "k" }];
