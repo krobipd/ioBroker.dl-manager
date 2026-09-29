@@ -1,8 +1,8 @@
-# <img src="https://cdn.jsdelivr.net/gh/krobipd/ioBroker.download-manager@main/admin/download-manager.svg" width="48" align="top" /> ioBroker.download-manager
+# <img src="https://cdn.jsdelivr.net/gh/krobipd/ioBroker.dl-manager@main/admin/dl-manager.svg" width="48" align="top" /> ioBroker.dl-manager
 
-**Release:** [![npm version](https://img.shields.io/npm/v/iobroker.download-manager)](https://www.npmjs.com/package/iobroker.download-manager) ![stable](https://iobroker.live/badges/download-manager-stable.svg) ![Installations](https://iobroker.live/badges/download-manager-installed.svg) [![npm downloads](https://img.shields.io/npm/dt/iobroker.download-manager)](https://www.npmjs.com/package/iobroker.download-manager)
+**Release:** [![npm version](https://img.shields.io/npm/v/iobroker.dl-manager)](https://www.npmjs.com/package/iobroker.dl-manager) ![stable](https://iobroker.live/badges/dl-manager-stable.svg) ![Installations](https://iobroker.live/badges/dl-manager-installed.svg) [![npm downloads](https://img.shields.io/npm/dt/iobroker.dl-manager)](https://www.npmjs.com/package/iobroker.dl-manager)
 
-**Build:** [![Test and Release](https://github.com/krobipd/ioBroker.download-manager/actions/workflows/test-and-release.yml/badge.svg)](https://github.com/krobipd/ioBroker.download-manager/actions/workflows/test-and-release.yml) ![Node](https://img.shields.io/badge/node-%3E%3D22-brightgreen) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue) [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Sentry](https://img.shields.io/badge/error%20reporting-Sentry-362d59?logo=sentry&logoColor=white)](https://github.com/ioBroker/plugin-sentry#plugin-sentry)
+**Build:** [![Test and Release](https://github.com/krobipd/ioBroker.dl-manager/actions/workflows/test-and-release.yml/badge.svg)](https://github.com/krobipd/ioBroker.dl-manager/actions/workflows/test-and-release.yml) ![Node](https://img.shields.io/badge/node-%3E%3D22-brightgreen) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue) [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Sentry](https://img.shields.io/badge/error%20reporting-Sentry-362d59?logo=sentry&logoColor=white)](https://github.com/ioBroker/plugin-sentry#plugin-sentry)
 
 **Support:** [![Ko-fi](https://img.shields.io/badge/Ko--fi-Support-ff5e5b?logo=ko-fi)](https://ko-fi.com/krobipd) [![PayPal](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://paypal.me/krobipd)
 
@@ -73,7 +73,7 @@ against those recorded answers.
 ## State Tree
 
 ```
-download-manager.0
+dl-manager.0
 ├── info                     connection, programsTotal, programsOnline, programsAllOnline
 ├── summary                  downloading, active, queued, downloadSpeed, uploadSpeed, pauseAll,
 │                            lastFinished, lastFinishedTime, lastFailed, lastFailedTime
@@ -122,7 +122,7 @@ The _Test connections_ button on the settings page asks every program of the (un
 ## Support
 
 - [ioBroker Forum](https://forum.iobroker.net/)
-- [GitHub Issues](https://github.com/krobipd/ioBroker.download-manager/issues)
+- [GitHub Issues](https://github.com/krobipd/ioBroker.dl-manager/issues)
 
 ### Support Development
 

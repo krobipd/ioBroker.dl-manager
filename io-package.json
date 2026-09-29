@@ -1,6 +1,6 @@
 {
   "common": {
-    "name": "download-manager",
+    "name": "dl-manager",
     "version": "0.0.1",
     "news": {
       "0.0.1": {
@@ -81,9 +81,9 @@
       "type": "free"
     },
     "platform": "Javascript/Node.js",
-    "icon": "download-manager.svg",
-    "extIcon": "https://raw.githubusercontent.com/krobipd/ioBroker.download-manager/main/admin/download-manager.svg",
-    "readme": "https://github.com/krobipd/ioBroker.download-manager/blob/main/README.md",
+    "icon": "dl-manager.svg",
+    "extIcon": "https://raw.githubusercontent.com/krobipd/ioBroker.dl-manager/main/admin/dl-manager.svg",
+    "readme": "https://github.com/krobipd/ioBroker.dl-manager/blob/main/README.md",
     "enabled": true,
     "tier": 3,
     "loglevel": "info",
@@ -119,7 +119,7 @@
   ],
   "notifications": [
     {
-      "scope": "download-manager",
+      "scope": "dl-manager",
       "name": {
         "en": "Download Manager",
         "de": "Download Manager",

@@ -247,5 +247,5 @@ jobs:
           sentry-url: https://de.sentry.io
           sentry-org: power-dreams
           sentry-project: iobroker
-          sentry-version-prefix: iobroker.download-manager
+          sentry-version-prefix: iobroker.dl-manager
           sentry-sourcemap-paths: build/

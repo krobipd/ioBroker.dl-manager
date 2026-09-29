@@ -1,4 +1,4 @@
-# ioBroker.download-manager — Benutzerdokumentation
+# ioBroker.dl-manager — Benutzerdokumentation
 
 Der Adapter verbindet ioBroker mit deinen Download-Programmen. Jedes Programm, das du einträgst, wird ein Gerät, jeder
 seiner Downloads ein Kanal mit eigenen Datenpunkten. Alles, was der Adapter zeigt, kommt vom Programm selbst; der
@@ -29,7 +29,7 @@ Docker-Netz läuft; sonst nimm My.JDownloader.
    Host, Port und die Zugangsdaten aus der Tabelle oben eintragen. Die ID wird Teil des Objektpfads — `qbittorrent-nas`.
 3. **Verbindungen testen** drücken. Jedes Programm antwortet mit seiner Version oder mit dem Grund, warum es nicht
    erreichbar ist.
-4. Speichern. Die Geräte erscheinen unter `download-manager.0`.
+4. Speichern. Die Geräte erscheinen unter `dl-manager.0`.
 
 ## Was du im Objektbaum findest
 

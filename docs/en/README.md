@@ -1,4 +1,4 @@
-# ioBroker.download-manager — user documentation
+# ioBroker.dl-manager — user documentation
 
 The adapter connects ioBroker to your download programs. Each program you add becomes a device, each of its
 downloads a channel with its own datapoints. Everything the adapter shows comes from the program itself; the adapter
@@ -28,7 +28,7 @@ network; otherwise use My.JDownloader.
 2. Add one line per program: choose the program, give it a short ID (letters, digits and `-`, e.g. `nas`), enter host,
    port and the access data from the table above. The ID becomes part of the object path — `qbittorrent-nas`.
 3. Press **Test connections**. Every program answers with its version or with the reason it cannot be reached.
-4. Save. The devices appear under `download-manager.0`.
+4. Save. The devices appear under `dl-manager.0`.
 
 ## What you find in the object tree
 

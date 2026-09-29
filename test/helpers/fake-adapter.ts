@@ -22,7 +22,7 @@ export class FakeAdapter {
     error: (msg: string): void => void this.logs.push({ level: "error", msg }),
   };
 
-  /** @param namespace e.g. "download-manager.0" */
+  /** @param namespace e.g. "dl-manager.0" */
   public constructor(public readonly namespace: string) {}
 
   private full(id: string): string {

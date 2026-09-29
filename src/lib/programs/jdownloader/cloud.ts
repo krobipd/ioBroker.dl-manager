@@ -5,7 +5,7 @@ import type { ProgramConfig } from "../registry";
 import { checkJdCall, type JdTransport } from "./client";
 
 /** The adapter's own app key — the web interface's prefix would trigger special behaviour in `config/set`. */
-const APP_KEY = "ioBroker.download-manager";
+const APP_KEY = "ioBroker.dl-manager";
 const API = "https://api.jdownloader.org";
 
 /**

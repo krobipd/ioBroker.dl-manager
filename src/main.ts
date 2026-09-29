@@ -25,12 +25,12 @@ export class DownloadManagerAdapter extends utils.Adapter {
     options: Partial<utils.AdapterOptions> = {},
     private readonly find: (type: string) => ProgramEntry | undefined = findProgram,
   ) {
-    super({ ...options, name: "download-manager" });
+    super({ ...options, name: "dl-manager" });
     this.problems = new ActionableProblems({
       logWarn: m => this.log.warn(m),
       logInfo: m => this.log.info(m),
       notify: m =>
-        void this.registerNotification("download-manager", "userActionRequired", m).catch((err: unknown) =>
+        void this.registerNotification("dl-manager", "userActionRequired", m).catch((err: unknown) =>
           this.log.debug(`Could not raise a notification: ${errText(err)}`),
         ),
     });

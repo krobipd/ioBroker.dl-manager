@@ -5,10 +5,10 @@ import { FakeAdapter } from "../test/helpers/fake-adapter";
 // read the result instead of counting mock calls.
 vi.mock("@iobroker/adapter-core", () => {
   class Adapter {
-    public namespace = "download-manager.0";
+    public namespace = "dl-manager.0";
     public adapterDir = "/tmp";
     public config: Record<string, unknown> = {};
-    public store = new FakeAdapter("download-manager.0");
+    public store = new FakeAdapter("dl-manager.0");
     public log = this.store.log;
     public handlers = new Map<string, (...args: unknown[]) => unknown>();
     public sent: unknown[] = [];
@@ -115,7 +115,7 @@ describe("DownloadManagerAdapter — start", () => {
     h.instanceObject = { common: { supportedMessages: { stopInstance: true } }, native: {} };
     await h.handlers.get("ready")?.();
     expect(h.instanceWrites).toEqual([
-      { id: "system.adapter.download-manager.0", obj: { common: { supportedMessages: null } } },
+      { id: "system.adapter.dl-manager.0", obj: { common: { supportedMessages: null } } },
     ]);
     expect(polls()).toBe(0);
     expect(h.store.objectWrites).toBe(0);
@@ -151,14 +151,14 @@ describe("DownloadManagerAdapter — start", () => {
     const { h } = make(() => Promise.resolve({ ...SNAP, items: [done] }));
     await h.handlers.get("ready")?.();
     await flush();
-    expect(h.store.objects.has("download-manager.0.qbittorrent-nas.downloads.k1")).toBe(true);
+    expect(h.store.objects.has("dl-manager.0.qbittorrent-nas.downloads.k1")).toBe(true);
   });
 
   it("refreshes the manifest names, stamps offline and starts the configured program", async () => {
     const { h, polls } = make();
     await h.store.setState("info.connection", { val: true, ack: true });
     await h.handlers.get("ready")?.();
-    expect(h.store.objects.get("download-manager.0.summary.pauseAll")?.common.name).toEqual({
+    expect(h.store.objects.get("dl-manager.0.summary.pauseAll")?.common.name).toEqual({
       en: "summaryPauseAll",
     });
     expect(polls()).toBe(1);
@@ -224,9 +224,9 @@ describe("DownloadManagerAdapter — unload", () => {
     const { h } = make();
     await h.handlers.get("ready")?.();
     await flush();
-    await h.handlers.get("stateChange")?.("download-manager.0.summary.pauseAll", { val: true, ack: true });
+    await h.handlers.get("stateChange")?.("dl-manager.0.summary.pauseAll", { val: true, ack: true });
     expect(h.store.logs.some(l => l.msg.startsWith("pause all"))).toBe(false);
-    await h.handlers.get("stateChange")?.("download-manager.0.summary.pauseAll", { val: true, ack: false });
+    await h.handlers.get("stateChange")?.("dl-manager.0.summary.pauseAll", { val: true, ack: false });
     expect(h.store.logs.some(l => l.msg === "pause all: paused 1 of 1 program(s)")).toBe(true);
   });
 });

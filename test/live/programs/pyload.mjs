@@ -57,7 +57,7 @@ export async function record(_ctx) {
   const token2 = csrfOf(dash.text) ?? token;
   const gen = await web.req("POST", "/json/generate_apikey", {
     headers: { "x-csrftoken": token2 },
-    json: { user: USER, password: PASS, name: "download-manager-ci", expires: 0 },
+    json: { user: USER, password: PASS, name: "dl-manager-ci", expires: 0 },
   });
   const generated = gen.json();
   const key = typeof generated === "string" ? generated : (generated?.data?.key ?? generated?.key);

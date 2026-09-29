@@ -11,7 +11,7 @@ import { AuthError, UnreachableError } from "./errors";
 import { objectPauseStore, ProgramManager } from "./manager";
 import type { Capability, Command, DownloadItem, ProgramDriver, ProgramSnapshot } from "./model";
 
-const NS = "download-manager.0";
+const NS = "dl-manager.0";
 const flush = (): Promise<void> => new Promise(resolve => setImmediate(resolve));
 
 interface FakeDriver extends ProgramDriver {

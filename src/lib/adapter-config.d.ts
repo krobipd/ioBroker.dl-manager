@@ -13,11 +13,11 @@ declare global {
 
     /**
      * Custom notification scope for this adapter, declared in io-package.json `notifications`. Augmenting the
-     * built-in `NotificationScopes` lets `registerNotification("download-manager", "userActionRequired", …)`
+     * built-in `NotificationScopes` lets `registerNotification("dl-manager", "userActionRequired", …)`
      * type-check without a cast. The single category surfaces user-actionable problems.
      */
     interface NotificationScopes {
-      "download-manager": "userActionRequired";
+      "dl-manager": "userActionRequired";
     }
   }
 }

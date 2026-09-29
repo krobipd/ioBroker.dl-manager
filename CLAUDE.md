@@ -1,4 +1,4 @@
-# CLAUDE.md — ioBroker.download-manager
+# CLAUDE.md — ioBroker.dl-manager
 
 > Gemeinsame ioBroker-Wissensbasis: `../CLAUDE.md` (lokal, nicht im Git). Standards dort, Projekt-Spezifisches hier.
 
@@ -9,10 +9,10 @@ My.JDownloader, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2, pyLoa
 Kanal mit Einzel-Datenpunkten, Summen für Blockly.
 
 - **Version:** `io-package.json` ist die Wahrheit; interne Geschichte samt Belegen in `.claude/dev-history.md` (lokal).
-- **GitHub:** https://github.com/krobipd/ioBroker.download-manager
-- **npm:** https://www.npmjs.com/package/iobroker.download-manager
+- **GitHub:** https://github.com/krobipd/ioBroker.dl-manager
+- **npm:** https://www.npmjs.com/package/iobroker.dl-manager
 - **Runtime-Deps:** nur `@iobroker/adapter-core` (fetch, WebSocket, node:crypto aus Node ≥ 22)
-- **Plan / Bauplan / Schnittstellen:** `Ressourcen/download-manager/` (`plan-2026-09-28.md`, `bauplan-2026-09-28.md`, `api-*.md`)
+- **Plan / Bauplan / Schnittstellen:** `Ressourcen/dl-manager/` (`plan-2026-09-28.md`, `bauplan-2026-09-28.md`, `api-*.md`)
 
 ## Architektur
 
@@ -64,7 +64,7 @@ _Jede Entscheidung steht hier als Regel-Satz; Beleg, Messung und Verlauf stehen 
 2. `driver.test.ts` über `runDriverContract` (`test/helpers/contract.ts`) plus die programmeigenen Fälle.
 3. Container-Modul `test/live/programs/<typ>.mjs` + Matrix-Zeile in `.github/workflows/live-programs.yml`; Lauf, dann `test/live/import.mjs` → `test/fixtures/<typ>/<version>/`.
 4. Route in `test/fixture-hook.js` + Zeile in `PROGRAM_ROWS` (`test/inventory.js`), Inventar neu erzeugen.
-5. `ICON_BY_TYPE`, Typ-Beschriftung in `Ressourcen/download-manager/i18n_src.py` (erzeugt `admin/i18n/*`), jsonConfig-Auswahl.
+5. `ICON_BY_TYPE`, Typ-Beschriftung in `Ressourcen/dl-manager/i18n_src.py` (erzeugt `admin/i18n/*`), jsonConfig-Auswahl.
 6. README-Tabelle „Tested with“, `docs/<sprache>/datapoints.md` (Matrix aus dem gebauten Code erzeugen, nicht von Hand).
 
 ## Tests

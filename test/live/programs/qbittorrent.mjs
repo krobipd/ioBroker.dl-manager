@@ -17,6 +17,7 @@ const PORT = 8080;
  * @returns {{ image: string, name: string, env: Record<string,string>, volumes: string[] }} container
  */
 export function prepare(work, tag) {
+  // a fixed 16-byte salt for the recorded WebUI password; the text is only a source of 16 bytes
   const salt = Buffer.from("download-manager").subarray(0, 16);
   const hash = pbkdf2Sync(PASS, salt, 100_000, 64, "sha512");
   const conf = [

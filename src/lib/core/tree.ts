@@ -14,7 +14,7 @@ import { percent, toGB, toMBps } from "./units";
 
 /** The adapter methods the tree uses — a seam, so the tests run against an in-memory store. */
 export interface TreeAdapter {
-  /** e.g. "download-manager.0" */
+  /** e.g. "dl-manager.0" */
   namespace: string;
   /** The adapter log. */
   log: { debug(msg: string): void; info(msg: string): void; warn(msg: string): void };

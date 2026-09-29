@@ -9,7 +9,7 @@ import { FakeAdapter } from "../../../test/helpers/fake-adapter";
 import type { Capability, DownloadItem, ExtraDefinition, ProgramSnapshot } from "./model";
 import { ProgramTree } from "./tree";
 
-const NS = "download-manager.0";
+const NS = "dl-manager.0";
 const CAPS: Capability[] = ["itemPause", "itemRemove", "upload", "itemSpeed", "itemEta", "globalPause", "add"];
 const driver = (
   caps: Capability[] = CAPS,

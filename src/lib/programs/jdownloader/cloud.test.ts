@@ -30,9 +30,9 @@ describe("My.JDownloader crypto — against values computed with Python hashlib/
 
   it("signs a server query with HMAC-SHA256 and decrypts AES-128-CBC made by openssl", () => {
     const login = Buffer.from("477ab518b9521f1d010036be4879c0735f9bad3f146f8a7c32df0cba9151e566", "hex");
-    expect(
-      jdSign(login, "/my/connect?email=test%40example.com&appkey=ioBroker.download-manager&rid=1700000000000"),
-    ).toBe("58a35d1c26a07b00b764ea4fbb02d231a855d9166b5a6bfd2a761a3786bc5a5a");
+    expect(jdSign(login, "/my/connect?email=test%40example.com&appkey=ioBroker.dl-manager&rid=1700000000000")).toBe(
+      "327cb72393bb51f10073a3ebbc7645cd96c02513ac885d3369e782fc4b5e0888",
+    );
     const device = Buffer.from("380b4a39ab32ad4c6340f22a3c47d227680228b4fc5b3405a64b67d7b71d1eb2", "hex");
     expect(
       jdDecrypt(device, "28LpYOnFj1+wm0+EWA6ZyP2PVpDxHjFuSdHkP0hgT3TOef2Aj/AsKfSnTqLeyN6RJUna2oJLMjQ+Pr/HMbp/fw=="),
