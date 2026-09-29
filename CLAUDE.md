@@ -110,7 +110,8 @@ _Jede Entscheidung steht hier als Regel-Satz; Beleg, Messung und Verlauf stehen 
 - **Objekt-Inventar** `test/inventory.js` + `test/fixture-hook.js` (ersetzt `fetch` nur im Adapter-Prozess): alle neun
   Programmtypen aus den Aufzeichnungen, Ergebnis `test/objects.inventory.json`; nur über `with-werkstatt-lock.py`.
   Die Zeilen gehen wie bei 0.2.0 in `native.programs` (als ganzes Objekt geschrieben — `changeAdapterConfig` machte aus der
-  Liste ein Objekt mit Zahlenschlüsseln), der Start zieht sie in den Speicher; Passwörter im Abzug maskiert.
+  Liste ein Objekt mit Zahlenschlüsseln), der Start zieht sie in den Speicher; Passwörter im Abzug maskiert, die
+  Aufstiegs-Suite sät den Speicher des Vorgängers mit den Fixture-Geheimnissen zurück (`unmasked`).
 - **Paket-/Standard-Prüfung** `test/package.js`, `test/standards` (`iobroker-adapter-checks`), `test/self-explaining.json`
   (D08), `test/readable-values.json` (Werte-Prüfung).
 - Zahlen nie pinnen — `npx vitest run` ist die Wahrheit.

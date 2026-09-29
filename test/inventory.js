@@ -433,8 +433,35 @@ async function seedPrevious(harness, previous) {
       obj.type === "state"
         ? { ...obj.common, custom: { ...obj.common?.custom, [RECORDING]: { enabled: true, origin: id } } }
         : obj.common;
-    await harness.objects.setObjectAsync(id, { ...obj, common });
+    await harness.objects.setObjectAsync(id, {
+      ...obj,
+      common,
+      ...(id === STORE ? { native: unmasked(obj.native) } : {}),
+    });
   }
+}
+
+/**
+ * The previous release's program store as the dump keeps it has its secrets masked — no controller can read them. The
+ * seed puts the fixture's secrets back, as typed (a row without `encrypted`), so the upgrade starts on a working store.
+ *
+ * @param {Record<string, unknown>} native the store object's native from the previous inventory
+ * @returns the native to seed
+ */
+function unmasked(native) {
+  const rows = Array.isArray(native?.rows) ? native.rows : [];
+  return {
+    ...native,
+    rows: rows.map(row => {
+      const fixture = PROGRAM_ROWS.find(([type]) => type === row.type)?.[2] ?? {};
+      const out = { ...row };
+      delete out.encrypted;
+      for (const field of ENCRYPTED_ROW_FIELDS) {
+        out[field] = row[field] === ENCRYPTED_MARKER ? (fixture[field] ?? "") : row[field];
+      }
+      return out;
+    }),
+  };
 }
 
 tests.integration(ADAPTER_DIR, {
