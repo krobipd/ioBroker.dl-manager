@@ -128,7 +128,7 @@ The test button on a program's card asks the program once and shows its answer.
 ### **WORK IN PROGRESS**
 
 - Fixed: saving a program card no longer hangs, and the settings page can no longer undo a change made on a card
-- Changed: program settings live in their own object and take effect at once; passwords and API keys are encrypted
+- Changed: a change on a card applies at once without restarting the adapter; passwords are no longer kept in plain text
 - Changed: device IDs follow the program and machine (My.JDownloader: its id) and never change; the name is a label
 - Changed: the last finished and failed download moved into a `last` channel below each program and the summary
 - Changed: the card shows the object ID in its details and has no pause switch; the `paused` datapoint stays
