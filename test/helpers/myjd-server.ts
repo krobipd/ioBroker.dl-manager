@@ -28,6 +28,8 @@ export interface MyJdFaults {
   device?: { status: number; type: string };
   /** Device failures come AES-encrypted with the device token, as the real service may send them. */
   encryptErrors?: boolean;
+  /** `/my/listdevices` answers this failure. */
+  listdevices?: { status: number; type: string };
   /** The device list instead of the one named device. */
   devices?: unknown[];
 }
@@ -97,6 +99,9 @@ export async function startMyJdServer(opts: {
       return { body: jdEncrypt(key, JSON.stringify({ ...newSession(), rid })) };
     }
     if (call.path === "/my/listdevices") {
+      if (faults.listdevices) {
+        return failure(faults.listdevices.status, faults.listdevices.type);
+      }
       if (!serverToken || !signed(call, serverToken)) {
         return failure(403, "TOKEN_INVALID");
       }

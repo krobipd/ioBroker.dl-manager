@@ -35,6 +35,8 @@ export function memoryPauseStore(initial: PauseState = { paused: false, keys: []
  */
 export class EmulatedPause {
   private state: PauseState | null = null;
+  /** The poll right after a pause may still list the downloads as running (aria2 unregisters from trackers first). */
+  private settling = false;
 
   /** @param store where the state survives a restart */
   public constructor(private readonly store: PauseStore) {}
@@ -54,6 +56,7 @@ export class EmulatedPause {
     if (add.length) {
       await stop(add);
     }
+    this.settling = true;
     await this.write({ paused: true, keys: [...s.keys, ...add] });
   }
 
@@ -78,7 +81,9 @@ export class EmulatedPause {
     if (!s.paused) {
       return false;
     }
-    if (s.keys.some(k => running.has(k))) {
+    const settling = this.settling;
+    this.settling = false;
+    if (!settling && s.keys.some(k => running.has(k))) {
       await this.write({ paused: false, keys: [] });
       return false;
     }

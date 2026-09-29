@@ -135,11 +135,57 @@ describe("ProgramRunner", () => {
     const r = new ProgramRunner("fake-a", driver, tree, makeDeps(clock), 10_000, onChange);
     r.start();
     await flush();
-    await r.stop();
+    const stopping = r.stop();
     release(SNAP);
+    await stopping;
     await flush();
     expect(tree.sync).not.toHaveBeenCalled();
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("stop waits for a tree write in progress and leaves the program Unknown (final review I1)", async () => {
+    const clock = new ManualClock();
+    const driver = makeDriver(() => Promise.resolve(SNAP));
+    const tree = makeTree();
+    const order: string[] = [];
+    let release: () => void = () => undefined;
+    tree.sync.mockImplementation(
+      () =>
+        new Promise<ProgramEvents>(resolve => {
+          release = () => {
+            order.push("sync");
+            resolve(NO_EVENTS);
+          };
+        }),
+    );
+    tree.markOffline.mockImplementation(reason => {
+      order.push(`offline:${reason}`);
+      return Promise.resolve();
+    });
+    const r = new ProgramRunner("fake-a", driver, tree, makeDeps(clock), 10_000, vi.fn());
+    r.start();
+    await flush();
+    const stopping = r.stop();
+    await flush();
+    release();
+    await stopping;
+    expect(order.at(-1)).toBe("offline:Unknown");
+  });
+
+  it("a poll that fails because stop closed the driver writes no reason of its own (final review I1)", async () => {
+    const clock = new ManualClock();
+    let fail: (e: Error) => void = () => undefined;
+    const driver = makeDriver(() => new Promise<ProgramSnapshot>((_resolve, reject) => (fail = reject)));
+    const tree = makeTree();
+    const deps = makeDeps(clock);
+    const r = new ProgramRunner("fake-a", driver, tree, deps, 10_000, vi.fn());
+    r.start();
+    await flush();
+    const stopping = r.stop();
+    fail(new UnreachableError("no answer within 10 s"));
+    await stopping;
+    await flush();
+    expect(tree.markOffline.mock.calls.map(c => c[0])).toEqual(["Unknown"]);
   });
 
   it("warns again when the same problem comes back after a good poll", async () => {

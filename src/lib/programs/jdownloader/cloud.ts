@@ -214,10 +214,15 @@ export class JdCloudTransport implements JdTransport {
     if (!s) {
       throw new ProtocolError("jdownloader-cloud: no session after the login");
     }
-    const list = (await this.server("/my/listdevices", [["sessiontoken", s.token]], s.server)).list;
-    const devices = Array.isArray(list) ? (list as { id?: unknown; name?: unknown }[]) : [];
+    const list = await this.server("/my/listdevices", [["sessiontoken", s.token]], s.server).catch((err: unknown) => {
+      this.session = null;
+      throw err;
+    });
+    const devices = Array.isArray(list.list) ? (list.list as { id?: unknown; name?: unknown }[]) : [];
     const found = devices.find(d => d.name === this.cfg.device);
     if (!found || typeof found.id !== "string") {
+      // no device, no session: the next call logs in and looks again (a PC that boots later)
+      this.session = null;
       const known = devices.map(d => String(d.name)).join(", ") || "none";
       throw new ProtocolError(
         `jdownloader-cloud: device "${this.cfg.device}" not found in the account — known: ${known}`,

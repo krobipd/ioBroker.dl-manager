@@ -503,6 +503,36 @@ describe("ProgramManager — connection test and stop", () => {
     ]);
   });
 
+  it("tests the form's secrets as typed, never decrypted (final review I3)", async () => {
+    const seen: string[] = [];
+    const m = new ProgramManager(
+      {
+        adapter: new FakeAdapter(NS),
+        timers: { setTimeout: () => undefined, clearTimeout: () => undefined },
+        find: () => ({
+          type: "qbittorrent",
+          needs: ["host"],
+          create: (cfg: ProgramConfig): ProgramDriver => {
+            seen.push(cfg.password);
+            return {
+              type: "qbittorrent",
+              capabilities: new Set(),
+              extras: [],
+              poll: () => Promise.resolve(snap(0)),
+              command: () => Promise.resolve(),
+              close: () => Promise.resolve(),
+            };
+          },
+        }),
+        decrypt: v => `garbled(${v})`,
+        problems: { report: () => undefined, resolve: () => undefined },
+      },
+      { intervalMs: 10_000, removeFinished: false },
+    );
+    await m.testConnections([row("qbittorrent", "a", "h1", { password: "typed" })]);
+    expect(seen).toEqual(["typed"]);
+  });
+
   it("says so when the form holds no program", async () => {
     expect(await world({}).manager().testConnections([])).toBe("no program is configured");
   });

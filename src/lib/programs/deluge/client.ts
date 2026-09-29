@@ -48,6 +48,11 @@ export class DlClient {
     }
   }
 
+  /** The web UI lost its daemon: log in and connect it again on the next call. */
+  public reset(): void {
+    this.ready = false;
+  }
+
   /** Aborts what is still waiting. */
   public close(): void {
     this.http.close();

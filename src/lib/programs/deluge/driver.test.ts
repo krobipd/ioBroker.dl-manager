@@ -130,6 +130,7 @@ async function dlSynth(
 const HOST = {
   "web.get_hosts": [["h1", "127.0.0.1", 58846, "Online"]],
   "web.get_host_status": ["h1", "Online", "2.2.0"],
+  "web.update_ui": { connected: true, torrents: {}, stats: {} },
 };
 
 describe("Deluge connection", () => {
@@ -172,9 +173,33 @@ describe("Deluge connection", () => {
   });
 
   it("reads an unknown session pause as not paused", async () => {
-    const s = await dlSynth({ ...HOST, "web.connected": true, "web.update_ui": { torrents: {}, stats: {} } });
+    const s = await dlSynth({
+      ...HOST,
+      "web.connected": true,
+      "web.update_ui": { connected: true, torrents: {}, stats: {} },
+    });
     try {
       expect((await new DlDriver(cfg(s.baseUrl), { ...timers, log }).poll()).status.paused).toBe(false);
+    } finally {
+      await s.close();
+    }
+  });
+});
+
+describe("Deluge daemon disconnect (final review C1)", () => {
+  it("keeps the channels when the daemon is gone and connects the web UI again once it is back", async () => {
+    const results: Record<string, unknown> = {
+      ...HOST,
+      "web.connected": true,
+      "web.update_ui": { connected: false, stats: { max_download: -1 } },
+    };
+    const s = await dlSynth(results);
+    try {
+      const d = new DlDriver(cfg(s.baseUrl), { ...timers, log });
+      await expect(d.poll()).rejects.toThrow(UnreachableError);
+      results["web.update_ui"] = { connected: true, torrents: {}, stats: {} };
+      await d.poll();
+      expect(s.calls.filter(c => c.body.includes('"auth.login"'))).toHaveLength(2);
     } finally {
       await s.close();
     }

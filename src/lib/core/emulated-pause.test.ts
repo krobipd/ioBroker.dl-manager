@@ -72,6 +72,14 @@ describe("EmulatedPause (plan § 5.3)", () => {
     expect(calls).toHaveLength(2);
   });
 
+  it("survives the poll right after the pause, while the program still lists the downloads as running (final review I2)", async () => {
+    const store = memoryPauseStore();
+    const p = new EmulatedPause(store);
+    await p.pause(["a"], () => Promise.resolve());
+    expect(await p.observe(new Set(["a"]))).toBe(true);
+    expect(await p.observe(new Set(["a"]))).toBe(false);
+  });
+
   it("is not paused while nobody paused it", async () => {
     const p = new EmulatedPause(memoryPauseStore());
     expect(await p.observe(new Set(["x"]))).toBe(false);

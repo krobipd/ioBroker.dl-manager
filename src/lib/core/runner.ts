@@ -119,6 +119,8 @@ export class ProgramRunner {
     } catch (err: unknown) {
       this.deps.log.debug(`[${this.id}] close failed: ${errText(err)}`);
     }
+    // a tree write already under way finishes first, so "Unknown" is the last word
+    await this.polling;
     this._online = false;
     await this.tree.markOffline("Unknown");
   }
@@ -153,6 +155,9 @@ export class ProgramRunner {
   }
 
   private async handle(err: unknown): Promise<void> {
+    if (this.stopped) {
+      return;
+    }
     const text = redact(errText(err));
     const kind = classify(err);
     this._online = false;

@@ -215,7 +215,8 @@ export class ProgramManager {
    */
   public async testConnections(rawPrograms: unknown): Promise<string> {
     const lines: string[] = [];
-    for (const row of parsePrograms(rawPrograms, this.deps.decrypt, this.deps.find)) {
+    // the form holds the secrets as typed — the admin encrypts them only when it saves
+    for (const row of parsePrograms(rawPrograms, v => v, this.deps.find)) {
       if (!row.enabled) {
         continue;
       }

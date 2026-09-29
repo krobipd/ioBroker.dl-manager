@@ -1,4 +1,4 @@
-import { ProtocolError } from "../../core/errors";
+import { ProtocolError, UnreachableError } from "../../core/errors";
 import type { Capability, Command, ProgramDriver, ProgramSnapshot } from "../../core/model";
 import type { DriverDeps, ProgramConfig } from "../registry";
 import { DlClient } from "./client";
@@ -40,6 +40,11 @@ export class DlDriver implements ProgramDriver {
   /** @returns one complete query */
   public async poll(): Promise<ProgramSnapshot> {
     const ui = await this.client.call("web.update_ui", [DL_KEYS, {}]);
+    // a restarted daemon leaves the web UI running without it: no torrent list — never an empty one
+    if ((ui as { connected?: unknown } | null)?.connected !== true) {
+      this.client.reset();
+      throw new UnreachableError("deluge: the web UI has lost its daemon — connecting again");
+    }
     const config = await this.client.call("core.get_config_values", [["max_download_speed", "max_upload_speed"]]);
     const paused = (await this.client.call("core.is_session_paused")) === true;
     return toSnapshot(this.client.version, ui, config, paused, m => this.deps.log.debug(m));

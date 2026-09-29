@@ -208,3 +208,31 @@ describe("My.JDownloader failures", () => {
     }
   });
 });
+
+describe("My.JDownloader device that appears later (final review I4)", () => {
+  it("looks for the device again on the next poll", async () => {
+    const s = await serve();
+    try {
+      s.faults.devices = [];
+      const d = cloud(s.baseUrl);
+      await expect(d.poll()).rejects.toThrow(/not found/);
+      delete s.faults.devices;
+      expect((await d.poll()).items.length).toBeGreaterThan(0);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("logs in afresh after the device list itself failed", async () => {
+    const s = await serve();
+    try {
+      s.faults.listdevices = { status: 503, type: "MAINTENANCE" };
+      const d = cloud(s.baseUrl);
+      await expect(d.poll()).rejects.toThrow(UnreachableError);
+      delete s.faults.listdevices;
+      expect((await d.poll()).items.length).toBeGreaterThan(0);
+    } finally {
+      await s.close();
+    }
+  });
+});
