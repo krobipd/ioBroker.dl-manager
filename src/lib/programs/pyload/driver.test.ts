@@ -2,7 +2,7 @@ import { runDriverContract, type ContractServer } from "../../../../test/helpers
 import { startFixtureServer } from "../../../../test/helpers/fixture-server";
 import { firstUrl } from "../../../../test/helpers/first-url";
 import { loadFixture } from "../../../../test/helpers/fixtures";
-import { UnreachableError } from "../../core/errors";
+import { AuthError, UnreachableError } from "../../core/errors";
 import type { ProgramConfig } from "../registry";
 import { PyDriver } from "./driver";
 import { mapPyStatus, statusTable } from "./map";
@@ -191,6 +191,21 @@ describe("pyLoad details", () => {
         { name: "host", links: ["https://host/"], dest: 1 },
         { name: "download", links: ["not a link"], dest: 1 },
       ]);
+    } finally {
+      await s.close();
+    }
+  });
+});
+
+describe("pyLoad limits of the service (final review M2, M3)", () => {
+  it("is asked at most every 5 s — a poll is four calls, pyLoad allows 100 a minute", () => {
+    expect(new PyDriver(cfg("http://nas:8000"), { ...timers, log }).minIntervalMs).toBe(5_000);
+  });
+
+  it("calls a 401 with a plain-text body a rejected login", async () => {
+    const s = await startFixtureServer(() => ({ status: 401, body: "Unauthorized" }));
+    try {
+      await expect(new PyDriver(cfg(s.baseUrl), { ...timers, log }).poll()).rejects.toThrow(AuthError);
     } finally {
       await s.close();
     }

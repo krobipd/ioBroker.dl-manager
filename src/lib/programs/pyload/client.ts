@@ -58,7 +58,12 @@ export class PyClient {
       ...(json ? { json } : {}),
     });
     if (res.status === 401 || res.status === 403) {
-      const err = (res.json() as { error?: unknown } | null)?.error;
+      let err: unknown;
+      try {
+        err = (res.json() as { error?: unknown } | null)?.error;
+      } catch {
+        err = undefined; // a proxy or an older pyLoad answers plain text
+      }
       throw new AuthError(`pyload: ${typeof err === "string" ? err : `HTTP ${res.status}`} — check the API key`);
     }
     if (res.status === 429) {

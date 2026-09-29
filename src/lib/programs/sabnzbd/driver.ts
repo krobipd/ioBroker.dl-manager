@@ -68,7 +68,9 @@ export class SabDriver implements ProgramDriver {
     }
     const slots = Array.isArray(queue.slots) ? (queue.slots as Record<string, unknown>[]) : [];
     this.inQueue = new Set(slots.map(s => String(s.nzo_id)));
-    return toSnapshot(queue, this.history, m => this.deps.log.debug(m));
+    const status = (await this.client.call({ mode: "status", skip_dashboard: "1" })).status;
+    const ppPause = (status as { pp_pause_event?: unknown } | null | undefined)?.pp_pause_event === true;
+    return toSnapshot(queue, this.history, m => this.deps.log.debug(m), ppPause);
   }
 
   /** @returns the version, after SABnzbd confirmed the key as its full API key (`mode=auth`, no warning on a miss) */

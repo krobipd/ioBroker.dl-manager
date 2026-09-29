@@ -184,3 +184,23 @@ describe("SABnzbd details", () => {
     }
   });
 });
+
+describe("SABnzbd pause for post-processing, from the program (final review M5)", () => {
+  it("reads pp_pause_event and keeps the pause switch off", async () => {
+    const s = await startFixtureServer(call => {
+      const q = new URLSearchParams(call.query);
+      if (q.get("mode") === "queue") {
+        return { body: { queue: { paused: true, slots: [] } } };
+      }
+      if (q.get("mode") === "status") {
+        return { body: { status: { pp_pause_event: true } } };
+      }
+      return { body: { history: false } };
+    });
+    try {
+      expect((await new SabDriver(cfg(s.baseUrl), { ...timers, log }).poll()).status.paused).toBe(false);
+    } finally {
+      await s.close();
+    }
+  });
+});

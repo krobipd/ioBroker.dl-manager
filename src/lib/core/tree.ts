@@ -86,6 +86,8 @@ export class ProgramTree {
   private removed = new Set<string>();
   private prev: Map<string, Status> | null = null;
   private baselineFinished: number | null = null;
+  /** The value last written per state id — a poll that changes nothing reads nothing from the database. */
+  private readonly written = new Map<string, ioBroker.StateValue>();
 
   /**
    * @param adapter the adapter seam
@@ -202,8 +204,17 @@ export class ProgramTree {
    * @param reason the fleet reason text — `Unknown` or the program's own message
    */
   public async markOffline(reason: string): Promise<void> {
-    await this.adapter.setStateChanged(`${this.dev}.online`, { val: false, ack: true });
-    await this.adapter.setStateChanged(`${this.dev}.error`, { val: reason, ack: true });
+    await this.put(`${this.dev}.online`, false);
+    await this.put(`${this.dev}.error`, reason);
+  }
+
+  /**
+   * A user wrote this state: the next poll writes the program's value again, even when it did not change.
+   *
+   * @param id full state id
+   */
+  public forget(id: string): void {
+    this.written.delete(id);
   }
 
   /**
@@ -336,7 +347,7 @@ export class ProgramTree {
       }
     }
     for (const [dp, val] of values) {
-      await this.adapter.setStateChanged(`${ch}.${dp}`, { val, ack: true });
+      await this.put(`${ch}.${dp}`, val);
     }
   }
 
@@ -379,7 +390,7 @@ export class ProgramTree {
       }
     }
     for (const [dp, val] of values) {
-      await this.adapter.setStateChanged(`${this.dev}.${dp}`, { val, ack: true });
+      await this.put(`${this.dev}.${dp}`, val);
     }
   }
 
@@ -396,9 +407,22 @@ export class ProgramTree {
     }
   }
 
+  private async put(id: string, val: ioBroker.StateValue): Promise<void> {
+    if (this.written.has(id) && this.written.get(id) === val) {
+      return;
+    }
+    await this.adapter.setStateChanged(id, { val, ack: true });
+    this.written.set(id, val);
+  }
+
   private async removeChannel(key: string): Promise<void> {
     const id = this.ids.idFor(key);
     await this.adapter.delObject(`${this.dev}.downloads.${id}`, { recursive: true });
+    for (const k of [...this.written.keys()]) {
+      if (k.startsWith(`${this.dev}.downloads.${id}.`)) {
+        this.written.delete(k);
+      }
+    }
     this.ids.release(key);
     this.known.delete(key);
   }

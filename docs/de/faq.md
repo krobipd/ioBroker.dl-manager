@@ -78,5 +78,6 @@ es wird als nicht erreichbar angezeigt.
 
 ## pyLoad meldet „too many requests“
 
-pyLoad erlaubt 100 Anfragen pro Minute. Erhöhe das Abfrage-Intervall oder frage dasselbe pyLoad seltener aus anderen
-Werkzeugen ab.
+pyLoad erlaubt 100 Anfragen pro Minute, deshalb fragt der Adapter es höchstens alle 5 Sekunden, egal was das
+Abfrage-Intervall sagt. Kommt die Meldung trotzdem, fragen weitere Werkzeuge dasselbe pyLoad — erhöhe das
+Abfrage-Intervall oder frage dort seltener.

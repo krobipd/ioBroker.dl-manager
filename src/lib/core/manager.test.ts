@@ -357,6 +357,26 @@ describe("ProgramManager — user writes", () => {
     expect(w.drivers.map(d => d.commands)).toEqual([[{ kind: "resumeAll" }], []]);
   });
 
+  it("sets a value the user wrote back when the program did not follow (final review M1)", async () => {
+    const w = world({ h1: { snapshot: snap(0, [item("aaaa11112222", "downloading")]) } });
+    const m = w.manager();
+    await m.start([row("qbittorrent", "nas", "h1")]);
+    await flush();
+    await w.a.setState("qbittorrent-nas.downloads.11112222.paused", { val: true, ack: false });
+    await m.onUserWrite("qbittorrent-nas.downloads.11112222.paused", true);
+    await flush();
+    expect(w.a.states.get(`${NS}.qbittorrent-nas.downloads.11112222.paused`)).toMatchObject({ val: false, ack: true });
+  });
+
+  it("says in one info line how many finished downloads it took out of the tree (final review M4)", async () => {
+    const w = world({ h1: { snapshot: snap(0, [item("c1", "completed"), item("c2", "completed")]) } });
+    await w.manager({ removeFinished: true }).start([row("qbittorrent", "a", "h1")]);
+    await flush();
+    expect(w.a.logs.filter(l => l.level === "info").map(l => l.msg)).toContain(
+      "qbittorrent-a: removed 2 finished download(s) from the object tree",
+    );
+  });
+
   it("says so when no configured program can pause", async () => {
     const w = world({ h1: { snapshot: snap(0) } }, { h1: ["add"] });
     const m = w.manager();
@@ -576,5 +596,17 @@ describe("ProgramManager — connection test and stop", () => {
     expect(w.a.val("sabnzbd-b.error")).toBe("Unknown");
     expect(w.a.val("info.connection")).toBe(false);
     expect(w.a.val("info.programsOnline")).toBe(0);
+  });
+
+  it("leaves no stale summary on a stopped adapter (final review M6)", async () => {
+    const w = world({ h1: { snapshot: snap(1_000_000, [item("a", "downloading")]) } });
+    const m = w.manager();
+    await m.start([row("qbittorrent", "a", "h1")]);
+    await flush();
+    expect(w.a.val("summary.active")).toBe(1);
+    await m.stop();
+    expect(w.a.val("summary.active")).toBe(0);
+    expect(w.a.val("summary.downloading")).toBe(false);
+    expect(w.a.val("summary.downloadSpeed")).toBeNull();
   });
 });

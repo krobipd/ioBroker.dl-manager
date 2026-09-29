@@ -172,6 +172,39 @@ describe("ProgramTree — downloads", () => {
     expect(a.objectWrites).toBe(0);
   });
 
+  it("reads nothing from the database on an identical second poll (final review M1)", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a);
+    const many = Array.from({ length: 2000 }, (_, i) => item(`k${String(i).padStart(12, "0")}`));
+    await t.sync(snap(many));
+    a.changedChecks = 0;
+    await t.sync(snap(many));
+    expect(a.changedChecks).toBe(0);
+  });
+
+  it("writes online again after markOffline, and a value the user wrote again after forget", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a);
+    await t.sync(snap([item("aaaa11112222")]));
+    await t.markOffline("timeout");
+    await t.sync(snap([item("aaaa11112222")]));
+    expect(a.val("qbittorrent-nas.online")).toBe(true);
+    expect(a.val("qbittorrent-nas.error")).toBe("");
+    await a.setState("qbittorrent-nas.downloads.11112222.paused", { val: true, ack: false });
+    t.forget(`${CH}.paused`);
+    await t.sync(snap([item("aaaa11112222")]));
+    expect(a.states.get(`${CH}.paused`)).toMatchObject({ val: false, ack: true });
+  });
+
+  it("writes every value of a download that comes back after it was removed", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a);
+    await t.sync(snap([item("aaaa11112222")]));
+    await t.sync(snap([]));
+    await t.sync(snap([item("aaaa11112222")]));
+    expect(a.val("qbittorrent-nas.downloads.11112222.progress")).toBe(50);
+  });
+
   it("writes no object for known channels after a restart either", async () => {
     const a = new FakeAdapter(NS);
     const t = await makeTree(a);

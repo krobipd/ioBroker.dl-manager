@@ -102,3 +102,16 @@ describe("SABnzbd edge values", () => {
     expect(snap.status).toMatchObject({ downloadBps: 1024, freeSpaceBytes: 1073741824 });
   });
 });
+
+describe("SABnzbd pause for post-processing (final review M5)", () => {
+  it("does not call its own pause for post-processing a user pause", () => {
+    const snap = toSnapshot(
+      { paused: true, slots: [{ nzo_id: "q1", status: "Downloading" }] },
+      [],
+      () => undefined,
+      true,
+    );
+    expect(snap.status.paused).toBe(false);
+    expect(snap.items[0].status).toBe("queued");
+  });
+});

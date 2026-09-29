@@ -166,7 +166,7 @@ export class ProgramManager {
         tree,
         { ...this.deps.timers, log: this.a.log, problems: this.deps.problems },
         Math.max(this.opts.intervalMs, driver.minIntervalMs ?? 0),
-        events => void this.changed(events),
+        events => void this.changed(row.id, events),
       );
       this.running.set(row.id, { driver, tree, runner });
     }
@@ -183,6 +183,8 @@ export class ProgramManager {
    * @param val the written value
    */
   public async onUserWrite(relId: string, val: ioBroker.StateValue): Promise<void> {
+    // whatever the command does, the next poll writes the program's own value over the user's
+    this.running.get(relId.split(".")[0])?.tree.forget(`${this.a.namespace}.${relId}`);
     const route = routeState(relId, val, id => this.target(id));
     if (route.kind === "ignore") {
       return;
@@ -250,9 +252,8 @@ export class ProgramManager {
     this.stopped = true;
     await Promise.allSettled([...this.running.values()].map(r => r.runner.stop()));
     this.running.clear();
-    for (const [id, val] of NO_REACHABLE_STAMP) {
-      await this.a.setState(id, { val, ack: true });
-    }
+    // nothing runs any more: every count and speed goes to nothing, the connection markers to false
+    await this.writeSummary();
   }
 
   private driverDeps(programId?: string): DriverDeps {
@@ -396,9 +397,12 @@ export class ProgramManager {
     }
   }
 
-  private async changed(events: ProgramEvents): Promise<void> {
+  private async changed(programId: string, events: ProgramEvents): Promise<void> {
     if (this.stopped) {
       return;
+    }
+    if (events.removedFromTree > 0) {
+      this.a.log.info(`${programId}: removed ${events.removedFromTree} finished download(s) from the object tree`);
     }
     try {
       const last = events.finished.at(-1);

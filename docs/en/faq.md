@@ -69,4 +69,5 @@ A line you delete takes its device with it. A line you switch off keeps its devi
 
 ## pyLoad reports "too many requests"
 
-pyLoad allows 100 calls a minute. Raise the query interval, or reduce other tools that ask the same pyLoad.
+pyLoad allows 100 calls a minute, so the adapter asks it at most every 5 seconds, whatever the query interval says.
+If the message still appears, other tools ask the same pyLoad as well — raise the query interval or ask less there.

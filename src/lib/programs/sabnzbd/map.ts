@@ -91,14 +91,18 @@ const category = (v: unknown): string => {
  * @param queue `mode=queue` → `queue`
  * @param history `mode=history` → `history.slots` (the last full list when SABnzbd reported no change)
  * @param debug debug log
+ * @param ppPause `mode=status` → `pp_pause_event`: SABnzbd holds the queue itself for post-processing
  * @returns the snapshot
  */
 export function toSnapshot(
   queue: Record<string, unknown>,
   history: readonly unknown[],
   debug: (msg: string) => void,
+  ppPause = false,
 ): ProgramSnapshot {
-  const paused = queue.paused === true;
+  // SABnzbd pauses itself while post-processing when the user switched that on — not a pause of the user's
+  const held = queue.paused === true;
+  const paused = held && !ppPause;
   const byKey = new Map<string, DownloadItem>();
   let firstDownloading = true;
   for (const raw of Array.isArray(queue.slots) ? queue.slots : []) {
@@ -109,8 +113,8 @@ export function toSnapshot(
     }
     const rawStatus = text(s.status);
     let status = mapSabStatus(`q:${rawStatus}`, debug);
-    if (paused) {
-      status = "paused";
+    if (held) {
+      status = paused ? "paused" : "queued";
     } else if (status === "downloading") {
       // SABnzbd calls every running slot "Downloading" — it works on the first one
       status = firstDownloading ? "downloading" : "queued";

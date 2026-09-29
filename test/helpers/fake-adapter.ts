@@ -8,6 +8,8 @@ export class FakeAdapter {
   public readonly states = new Map<string, ioBroker.State>();
   public objectWrites = 0;
   public stateWrites = 0;
+  /** Reads `setStateChanged` makes to compare — the real controller reads the state from the database each time. */
+  public changedChecks = 0;
   /** State writes to an id that has no object — the real database warns about every one of them. */
   public readonly orphanWrites: string[] = [];
   /** Every state write in order (id without namespace as given, value). */
@@ -150,6 +152,7 @@ export class FakeAdapter {
    * @param state the state
    */
   public setStateChanged(id: string, state: ioBroker.SettableState): Promise<void> {
+    this.changedChecks++;
     const old = this.states.get(this.full(id));
     if (old && old.val === state.val && old.ack === state.ack) {
       return Promise.resolve();
