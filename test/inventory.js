@@ -171,7 +171,8 @@ const FIXTURE_NATIVE = {
     ...cfg,
   })),
   pollInterval: 10,
-  removeFinished: false,
+  treeScope: "all",
+  maxDownloads: 0,
 };
 
 /** The adapter process gets the fetch hook — the test process keeps the real fetch. */

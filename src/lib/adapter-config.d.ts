@@ -7,8 +7,10 @@ declare global {
       programs: unknown;
       /** Seconds between two polls of one program. */
       pollInterval: number;
-      /** Take completed downloads out of the object tree. */
-      removeFinished: boolean;
+      /** Which downloads get a channel: `all`, `withoutCompleted` or `unfinished` (read through `core/config.ts`). */
+      treeScope: string;
+      /** At most this many download channels per program, 0 = all (read through `core/config.ts`). */
+      maxDownloads: number;
     }
 
     /**

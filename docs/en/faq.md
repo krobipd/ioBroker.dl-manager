@@ -36,9 +36,15 @@ No. `remove` takes the download off the program's list; the files stay on disk. 
 
 ## A finished download stays in the object tree
 
-It stays as long as the program lists it. Switch on _Remove finished downloads from ioBroker_ if you want only the
-running ones: completed downloads then disappear from the object tree, the program keeps them. Seeding and failed
-downloads always stay — a seeding torrent still transfers, a failed download needs you.
+It stays as long as the program lists it and the tree settings show it. Set _Downloads in the object tree_ to
+_Without completed_ to leave completed downloads out, or to _Only unfinished_ to leave seeding torrents out as well.
+Failed downloads always stay — they need you. The program keeps every download either way.
+
+## A download is missing from the object tree
+
+Either its status is not shown (_Downloads in the object tree_), or the program has more downloads than _At most this
+many downloads per program_ allows: then the running, failed, paused and queued ones keep their channel before seeding
+and completed ones. Raise the limit or set it to 0 for all — above 200 per program the object tree gets slow.
 
 ## I want a message when a download is done
 

@@ -50,7 +50,7 @@ _Jede Entscheidung steht hier als Regel-Satz; Beleg, Messung und Verlauf stehen 
 4. **Eine Statusliste für alle Programme** — queued, downloading, waiting, paused, checking, postprocessing, seeding, completed, failed.
 5. **Ein unbekannter Rohstatus wird `queued`** — mit Debug-Zeile samt Rohwert; der Vertragstest verlangt beides.
 6. **Datenpunkte nur, wo das Programm sie liefert** — Fähigkeiten je Treiber entscheiden, keine Platzhalter.
-7. **Fertige bleiben, solange das Programm sie führt** — außer die Option `removeFinished` ist an; `seeding` und `failed` bleiben immer.
+7. **Welche Downloads einen Kanal bekommen, entscheiden zwei Einstellungen je Instanz** — `treeScope` (`all` / `withoutCompleted` / `unfinished`, `failed` bleibt immer) und `maxDownloads` je Programm (0–1000, 0 = alle, Vorgabe 100; Rang laufend → fehlgeschlagen → pausiert/wartend → Warteschlange → seedend → fertig, je Rang die neuesten zuerst); Summen zählen immer alles, über 200 warnen Einstellungsseite und Log.
 8. **Nach einem Anmeldefehler wird das Programm nicht mehr gefragt** — bis zur nächsten Konfigurationsänderung (IP-Sperren).
 9. **Zugangsdaten liegen in der Tabelle wie eingetippt, geschützt über `protectedNative: ["programs"]`** — `encryptedAttributes` erst, wenn der Admin mit dem json-config-Fix (ioBroker/json-config#179, `||=` → `&&=`) Mindestversion ist; die Umstellung braucht dann eine Migration, die die gespeicherten Werte in json-configs XOR-Form (Systemgeheimnis, nicht AES) verschlüsselt. Nie `encryptedNative`-Punkt-Schlüssel (Prüfbot W1093/W1103).
 10. **Dateien löscht der Adapter nie** — `remove` nimmt einen Download nur aus der Liste des Programms.

@@ -111,7 +111,8 @@
   "native": {
     "programs": [],
     "pollInterval": 10,
-    "removeFinished": false
+    "treeScope": "all",
+    "maxDownloads": 100
   },
   "encryptedNative": [],
   "protectedNative": [

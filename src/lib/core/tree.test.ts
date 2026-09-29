@@ -7,7 +7,7 @@ vi.mock("@iobroker/adapter-core", () => ({
 
 import { FakeAdapter } from "../../../test/helpers/fake-adapter";
 import type { Capability, DownloadItem, ExtraDefinition, ProgramSnapshot } from "./model";
-import { ProgramTree } from "./tree";
+import { ProgramTree, type TreeOptions } from "./tree";
 
 const NS = "dl-manager.0";
 const CAPS: Capability[] = ["itemPause", "itemRemove", "upload", "itemSpeed", "itemEta", "globalPause", "add"];
@@ -38,13 +38,18 @@ const snap = (items: DownloadItem[], complete = true): ProgramSnapshot => ({
   complete,
 });
 
-async function makeTree(a: FakeAdapter, opts = { removeFinished: false }, caps = CAPS): Promise<ProgramTree> {
+async function makeTree(
+  a: FakeAdapter,
+  opts: TreeOptions = { scope: "all", limit: 0 },
+  caps = CAPS,
+): Promise<ProgramTree> {
   const t = new ProgramTree(a, "qbittorrent-nas", "qBittorrent (NAS)", driver(caps), opts);
   await t.load();
   await t.ensureDevice(undefined);
   return t;
 }
 
+const ALL: TreeOptions = { scope: "all", limit: 0 };
 const DEV = `${NS}.qbittorrent-nas`;
 const CH = `${DEV}.downloads.11112222`;
 
@@ -62,7 +67,7 @@ describe("ProgramTree — device", () => {
 
   it("creates program datapoints only for capabilities the driver has", async () => {
     const a = new FakeAdapter(NS);
-    await makeTree(a, { removeFinished: false }, ["itemPause"]);
+    await makeTree(a, ALL, ["itemPause"]);
     expect(a.objects.has(`${DEV}.downloadSpeed`)).toBe(true);
     expect(a.objects.has(`${DEV}.uploadSpeed`)).toBe(false);
     expect(a.objects.has(`${DEV}.add`)).toBe(false);
@@ -95,15 +100,7 @@ describe("ProgramTree — device", () => {
 
   it("shows a row that cannot run as a bare device with its problem", async () => {
     const a = new FakeAdapter(NS);
-    const t = new ProgramTree(
-      a,
-      "emule-x",
-      "eMule",
-      { type: "emule", capabilities: new Set(), extras: [] },
-      {
-        removeFinished: false,
-      },
-    );
+    const t = new ProgramTree(a, "emule-x", "eMule", { type: "emule", capabilities: new Set(), extras: [] }, ALL);
     await t.ensureBareDevice("unknown program type: emule");
     const ids = [...a.objects.keys()].filter(k => k.startsWith(`${NS}.emule-x`)).sort();
     expect(ids).toEqual([`${NS}.emule-x`, `${NS}.emule-x.error`, `${NS}.emule-x.online`]);
@@ -113,7 +110,7 @@ describe("ProgramTree — device", () => {
 
   it("stores the program address on the device", async () => {
     const a = new FakeAdapter(NS);
-    const t = new ProgramTree(a, "qbittorrent-nas", "qBittorrent (NAS)", driver(), { removeFinished: false });
+    const t = new ProgramTree(a, "qbittorrent-nas", "qBittorrent (NAS)", driver(), ALL);
     await t.load();
     await t.ensureDevice(undefined, "http://10.0.0.2:8080");
     expect(a.objects.get(DEV)?.native).toMatchObject({ type: "qbittorrent", address: "http://10.0.0.2:8080" });
@@ -209,7 +206,7 @@ describe("ProgramTree — downloads", () => {
     const a = new FakeAdapter(NS);
     const t = await makeTree(a);
     await t.sync(snap([item("aaaa11112222")]));
-    const again = new ProgramTree(a, "qbittorrent-nas", "qBittorrent (NAS)", driver(), { removeFinished: false });
+    const again = new ProgramTree(a, "qbittorrent-nas", "qBittorrent (NAS)", driver(), ALL);
     await again.load();
     a.objectWrites = 0;
     await again.sync(snap([item("aaaa11112222")]));
@@ -245,7 +242,7 @@ describe("ProgramTree — downloads", () => {
     const a = new FakeAdapter(NS);
     const t = await makeTree(a);
     await t.sync(snap([item("aaaa11112222")]));
-    const again = new ProgramTree(a, "qbittorrent-nas", "qBittorrent (NAS)", driver(), { removeFinished: false });
+    const again = new ProgramTree(a, "qbittorrent-nas", "qBittorrent (NAS)", driver(), ALL);
     await again.load();
     await again.sync(snap([]));
     expect(a.objects.has(CH)).toBe(false);
@@ -253,7 +250,7 @@ describe("ProgramTree — downloads", () => {
 
   it("writes no value without its datapoint — a driver without any capability", async () => {
     const a = new FakeAdapter(NS);
-    const t = await makeTree(a, { removeFinished: false }, []);
+    const t = await makeTree(a, ALL, []);
     const full = item("aaaa11112222", {
       uploadBps: 1,
       ratio: 1,
@@ -300,7 +297,7 @@ describe("ProgramTree — downloads", () => {
       "category",
       "itemError",
     ];
-    const t = await makeTree(a, { removeFinished: false }, all);
+    const t = await makeTree(a, ALL, all);
     await t.sync(snap([item("aaaa11112222", { ratio: 2, category: "tv" })]));
     expect(a.orphanWrites).toEqual([]);
   });
@@ -310,9 +307,7 @@ describe("ProgramTree — downloads", () => {
     const extras: ExtraDefinition[] = [
       { id: "recheck", level: "item", type: "boolean", role: "button", write: true, read: false, nameKey: "recheck" },
     ];
-    const t = new ProgramTree(a, "qbittorrent-nas", "qBittorrent (NAS)", driver(CAPS, extras), {
-      removeFinished: false,
-    });
+    const t = new ProgramTree(a, "qbittorrent-nas", "qBittorrent (NAS)", driver(CAPS, extras), ALL);
     await t.load();
     await t.ensureDevice(undefined);
     await t.sync(snap([item("aaaa11112222")]));
@@ -324,9 +319,7 @@ describe("ProgramTree — downloads", () => {
     const extras: ExtraDefinition[] = [
       { id: "recheck", level: "item", type: "boolean", role: "button", write: true, read: false, nameKey: "recheck" },
     ];
-    const t = new ProgramTree(a, "qbittorrent-nas", "qBittorrent (NAS)", driver([...CAPS, "itemRemove"], extras), {
-      removeFinished: false,
-    });
+    const t = new ProgramTree(a, "qbittorrent-nas", "qBittorrent (NAS)", driver([...CAPS, "itemRemove"], extras), ALL);
     await t.load();
     await t.ensureDevice(undefined);
     await t.sync(snap([item("aaaa11112222")]));
@@ -350,7 +343,7 @@ describe("ProgramTree — downloads", () => {
 
   it("counts post-processing as downloading and an unknown alternative speed as off", async () => {
     const a = new FakeAdapter(NS);
-    const t = await makeTree(a, { removeFinished: false }, [...CAPS, "altSpeed"]);
+    const t = await makeTree(a, ALL, [...CAPS, "altSpeed"]);
     await t.sync(snap([item("aaaa11112222", { status: "postprocessing" })]));
     expect(a.val("qbittorrent-nas.downloading")).toBe(true);
     expect(a.val("qbittorrent-nas.altSpeed")).toBe(false);
@@ -358,7 +351,7 @@ describe("ProgramTree — downloads", () => {
 
   it("rebuilds the channels when the driver's datapoint set grew", async () => {
     const a = new FakeAdapter(NS);
-    const small = await makeTree(a, { removeFinished: false }, []);
+    const small = await makeTree(a, ALL, []);
     await small.sync(snap([item("aaaa11112222")]));
     expect(a.objects.has(`${CH}.speed`)).toBe(false);
     const big = await makeTree(a);
@@ -379,9 +372,7 @@ describe("ProgramTree — downloads", () => {
     const extras: ExtraDefinition[] = [
       { id: "recheck", level: "item", type: "boolean", role: "button", write: true, read: false, nameKey: "recheck" },
     ];
-    const t = new ProgramTree(a, "qbittorrent-nas", "qBittorrent (NAS)", driver(CAPS, extras), {
-      removeFinished: false,
-    });
+    const t = new ProgramTree(a, "qbittorrent-nas", "qBittorrent (NAS)", driver(CAPS, extras), ALL);
     await t.load();
     await t.ensureDevice(undefined);
     await t.sync(snap([item("aaaa11112222")]));
@@ -497,51 +488,198 @@ describe("ProgramTree — finished and failed events", () => {
   });
 });
 
-describe("ProgramTree — removeFinished option", () => {
-  it("removes completed, keeps seeding and failed, never re-creates a removed one", async () => {
+const at = (key: string, status: DownloadItem["status"], addedMs?: number, finishedMs?: number): DownloadItem =>
+  item(key, {
+    status,
+    ...(addedMs === undefined ? {} : { addedMs }),
+    ...(finishedMs === undefined ? {} : { finishedMs }),
+  });
+const shownKeys = (a: FakeAdapter): string[] =>
+  [...a.objects.values()]
+    .filter(o => o.type === "channel")
+    .map(o => String(o.native.key))
+    .sort();
+
+describe("ProgramTree — which downloads the tree shows (scope)", () => {
+  it("shows every download with the scope all", async () => {
     const a = new FakeAdapter(NS);
-    const t = await makeTree(a, { removeFinished: true });
-    await t.sync(snap([item("c1"), item("s1"), item("f1")]));
-    const e = await t.sync(
-      snap([
-        item("c1", { status: "completed" }),
-        item("s1", { status: "seeding" }),
-        item("f1", { status: "failed", error: "x" }),
-      ]),
-    );
+    const t = await makeTree(a, ALL);
+    await t.sync(snap([at("c1", "completed"), at("s1", "seeding"), at("f1", "failed"), at("d1", "downloading")]));
+    expect(shownKeys(a)).toEqual(["c1", "d1", "f1", "s1"]);
+  });
+
+  it("leaves completed downloads out without completed, keeps seeding and failed", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a, { scope: "withoutCompleted", limit: 0 });
+    await t.sync(snap([at("c1", "downloading"), at("s1", "downloading"), at("f1", "downloading")]));
+    const e = await t.sync(snap([at("c1", "completed"), at("s1", "seeding"), at("f1", "failed")]));
     expect(e.finished.map(i => i.key)).toEqual(["c1", "s1"]);
     expect(e.removedFromTree).toBe(1);
-    expect(a.objects.has(`${DEV}.downloads.c1`)).toBe(false);
-    expect(a.objects.has(`${DEV}.downloads.s1`)).toBe(true);
-    expect(a.objects.has(`${DEV}.downloads.f1`)).toBe(true);
-    await t.sync(snap([item("c1", { status: "completed" })]));
-    expect(a.objects.has(`${DEV}.downloads.c1`)).toBe(false);
-    await t.sync(snap([item("c1", { status: "seeding" })]));
-    expect(a.objects.has(`${DEV}.downloads.c1`)).toBe(false);
+    expect(shownKeys(a)).toEqual(["f1", "s1"]);
   });
 
-  it("remembers removed downloads across a restart and forgets them once the program drops them", async () => {
+  it("brings a download back when it leaves the completed status again", async () => {
     const a = new FakeAdapter(NS);
-    const t = await makeTree(a, { removeFinished: true });
-    await t.sync(snap([item("c1")]));
-    await t.sync(snap([item("c1", { status: "completed" })]));
-    const again = new ProgramTree(a, "qbittorrent-nas", "qBittorrent (NAS)", driver(), { removeFinished: true });
-    await again.load();
-    await again.sync(snap([item("c1", { status: "completed" })]));
-    expect(a.objects.has(`${DEV}.downloads.c1`)).toBe(false);
-    await again.sync(snap([]));
-    expect(a.objects.get(DEV)?.native.removed).toEqual([]);
+    const t = await makeTree(a, { scope: "withoutCompleted", limit: 0 });
+    await t.sync(snap([at("c1", "completed")]));
+    expect(shownKeys(a)).toEqual([]);
+    await t.sync(snap([at("c1", "seeding")]));
+    expect(shownKeys(a)).toEqual(["c1"]);
   });
 
-  it("clears the tree of completed downloads that already existed when the option was switched on", async () => {
+  it("shows only unfinished and failed downloads with the scope unfinished", async () => {
     const a = new FakeAdapter(NS);
-    const off = await makeTree(a);
-    await off.sync(snap([item("c1", { status: "completed" }), item("d1")]));
-    const on = new ProgramTree(a, "qbittorrent-nas", "qBittorrent (NAS)", driver(), { removeFinished: true });
-    await on.load();
-    const e = await on.sync(snap([item("c1", { status: "completed" }), item("d1")]));
+    const t = await makeTree(a, { scope: "unfinished", limit: 0 });
+    await t.sync(
+      snap([
+        at("c1", "completed"),
+        at("s1", "seeding"),
+        at("f1", "failed"),
+        at("q1", "queued"),
+        at("p1", "paused"),
+        at("w1", "waiting"),
+        at("k1", "checking"),
+        at("x1", "postprocessing"),
+        at("d1", "downloading"),
+      ]),
+    );
+    expect(shownKeys(a)).toEqual(["d1", "f1", "k1", "p1", "q1", "w1", "x1"]);
+  });
+
+  it("takes out channels that existed before the scope was narrowed, and counts them", async () => {
+    const a = new FakeAdapter(NS);
+    const wide = await makeTree(a, ALL);
+    await wide.sync(snap([at("c1", "completed"), at("s1", "seeding"), at("d1", "downloading")]));
+    const narrow = new ProgramTree(a, "qbittorrent-nas", "qBittorrent (NAS)", driver(), {
+      scope: "unfinished",
+      limit: 0,
+    });
+    await narrow.load();
+    const e = await narrow.sync(snap([at("c1", "completed"), at("s1", "seeding"), at("d1", "downloading")]));
+    expect(e.removedFromTree).toBe(2);
+    expect(shownKeys(a)).toEqual(["d1"]);
+    const again = await narrow.sync(snap([at("c1", "completed"), at("s1", "seeding"), at("d1", "downloading")]));
+    expect(again.removedFromTree).toBe(0);
+  });
+});
+
+describe("ProgramTree — how many downloads the tree shows (limit)", () => {
+  it("keeps the running, the failed and the newest seeding ones when there are more than the limit", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a, { scope: "all", limit: 5 });
+    const seeds = Array.from({ length: 30 }, (_, n) =>
+      at(`s${String(n).padStart(2, "0")}`, "seeding", 1000 + n, 5000 + n),
+    );
+    await t.sync(snap([...seeds, at("d1", "downloading", 10), at("d2", "downloading", 11), at("f1", "failed", 12)]));
+    expect(shownKeys(a)).toEqual(["d1", "d2", "f1", "s28", "s29"]);
+  });
+
+  it("ranks running, failed, paused and waiting, queued, seeding, completed — the newest first within a rank", async () => {
+    const items = [
+      at("c1", "completed", 1, 99),
+      at("s1", "seeding", 1, 50),
+      at("q1", "queued", 5),
+      at("q2", "queued", 6),
+      at("w1", "waiting", 1),
+      at("p1", "paused", 2),
+      at("f1", "failed", 1),
+      at("x1", "postprocessing", 1),
+      at("k1", "checking", 2),
+      at("d1", "downloading", 3),
+    ];
+    const expectations: [number, string[]][] = [
+      [3, ["d1", "k1", "x1"]],
+      [4, ["d1", "f1", "k1", "x1"]],
+      [6, ["d1", "f1", "k1", "p1", "w1", "x1"]],
+      [7, ["d1", "f1", "k1", "p1", "q2", "w1", "x1"]],
+      [9, ["d1", "f1", "k1", "p1", "q1", "q2", "s1", "w1", "x1"]],
+    ];
+    for (const [limit, keys] of expectations) {
+      const store = new FakeAdapter(NS);
+      const t = await makeTree(store, { scope: "all", limit });
+      await t.sync(snap(items));
+      expect(shownKeys(store), `limit ${limit}`).toEqual(keys);
+    }
+  });
+
+  it("orders finished downloads by when they finished, and keeps the program order where no time is known", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a, { scope: "all", limit: 2 });
+    await t.sync(snap([at("c1", "completed", 900, 10), at("c2", "completed", 1, 20), at("c3", "completed")]));
+    expect(shownKeys(a)).toEqual(["c1", "c2"]);
+    const one = new FakeAdapter(NS);
+    const single = await makeTree(one, { scope: "all", limit: 1 });
+    await single.sync(snap([at("c1", "completed", 900, 10), at("c2", "completed", 1, 20)]));
+    expect(shownKeys(one)).toEqual(["c2"]);
+    const b = new FakeAdapter(NS);
+    const u = await makeTree(b, { scope: "all", limit: 2 });
+    await u.sync(snap([at("q3", "queued"), at("q1", "queued"), at("q2", "queued")]));
+    expect(shownKeys(b)).toEqual(["q1", "q3"]);
+  });
+
+  it("gives a dropped download its channel back once there is room again", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a, { scope: "all", limit: 2 });
+    await t.sync(snap([at("d1", "downloading", 3), at("d2", "downloading", 2), at("d3", "downloading", 1)]));
+    expect(shownKeys(a)).toEqual(["d1", "d2"]);
+    await t.sync(snap([at("d2", "downloading", 2), at("d3", "downloading", 1)]));
+    expect(shownKeys(a)).toEqual(["d2", "d3"]);
+  });
+
+  it("drops the lower-ranked channel when a higher-ranked download arrives", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a, { scope: "all", limit: 1 });
+    await t.sync(snap([at("s1", "seeding", 1, 2)]));
+    const e = await t.sync(snap([at("s1", "seeding", 1, 2), at("d1", "downloading", 3)]));
     expect(e.removedFromTree).toBe(1);
-    expect(a.objects.has(`${DEV}.downloads.c1`)).toBe(false);
-    expect(a.objects.has(`${DEV}.downloads.d1`)).toBe(true);
+    expect(shownKeys(a)).toEqual(["d1"]);
+  });
+
+  it("applies the scope before the limit", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a, { scope: "unfinished", limit: 2 });
+    await t.sync(
+      snap([at("s1", "seeding", 9, 9), at("q1", "queued", 1), at("q2", "queued", 2), at("q3", "queued", 3)]),
+    );
+    expect(shownKeys(a)).toEqual(["q2", "q3"]);
+  });
+
+  it("shows every download with the limit 0", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a, ALL);
+    await t.sync(snap(Array.from({ length: 12 }, (_, n) => at(`k${n}`, "seeding", n))));
+    expect(shownKeys(a)).toHaveLength(12);
+  });
+});
+
+describe("ProgramTree — the warning about many downloads", () => {
+  const many = (n: number): ProgramSnapshot => snap(Array.from({ length: n }, (_, k) => at(`k${k}`, "seeding", k)));
+
+  it("warns once when more than 200 downloads stand in the tree without a limit", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a, ALL, []);
+    await t.sync(many(201));
+    await t.sync(many(202));
+    const warns = a.logs.filter(l => l.level === "warn");
+    expect(warns.map(l => l.msg)).toEqual([
+      "qBittorrent (NAS): 201 downloads in the object tree — this many can slow ioBroker down; limit them in the adapter settings (100 or fewer recommended)",
+    ]);
+  });
+
+  it("warns with a limit above 200 as well", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a, { scope: "all", limit: 300 }, []);
+    await t.sync(many(250));
+    expect(a.logs.filter(l => l.level === "warn")).toHaveLength(1);
+  });
+
+  it("stays quiet at 200 downloads and below, and with a limit of 200 or less", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a, ALL, []);
+    await t.sync(many(200));
+    const b = new FakeAdapter(NS);
+    const u = await makeTree(b, { scope: "all", limit: 200 }, []);
+    await u.sync(many(400));
+    expect([...a.logs, ...b.logs].filter(l => l.level === "warn")).toEqual([]);
   });
 });

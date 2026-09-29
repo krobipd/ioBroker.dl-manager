@@ -1,5 +1,6 @@
 import type { ProgramConfig, ProgramEntry, RequiredField } from "../programs/registry";
 import { programId, sanitize } from "./ids";
+import type { TreeScope } from "./tree";
 
 /** One row of the settings table after reading. */
 export interface ProgramRow {
@@ -121,4 +122,26 @@ export function parsePollInterval(raw: unknown): number {
     return 10_000;
   }
   return Math.min(3600, Math.max(2, Math.round(n))) * 1000;
+}
+
+const TREE_SCOPES: readonly TreeScope[] = ["all", "withoutCompleted", "unfinished"];
+
+/**
+ * @param raw `native.treeScope`
+ * @returns which downloads the object tree shows, `all` when unknown
+ */
+export function parseTreeScope(raw: unknown): TreeScope {
+  return TREE_SCOPES.find(s => s === raw) ?? "all";
+}
+
+/**
+ * @param raw `native.maxDownloads`
+ * @returns how many downloads per program the object tree shows, 0 to 1000 (0 = all), 100 when unusable
+ */
+export function parseMaxDownloads(raw: unknown): number {
+  const n = typeof raw === "string" && raw.trim() !== "" ? Number(raw) : raw;
+  if (typeof n !== "number" || !Number.isFinite(n)) {
+    return 100;
+  }
+  return Math.min(1000, Math.max(0, Math.floor(n)));
 }

@@ -10,6 +10,7 @@ import type { DriverDeps, ProgramConfig, ProgramEntry } from "../programs/regist
 import { AuthError, UnreachableError } from "./errors";
 import { objectPauseStore, ProgramManager } from "./manager";
 import type { Capability, Command, DownloadItem, ProgramDriver, ProgramSnapshot } from "./model";
+import type { TreeOptions } from "./tree";
 
 const NS = "dl-manager.0";
 const flush = (): Promise<void> => new Promise(resolve => setImmediate(resolve));
@@ -46,7 +47,7 @@ function world(
 ): {
   a: FakeAdapter;
   drivers: FakeDriver[];
-  manager: (opts?: { removeFinished?: boolean }) => ProgramManager;
+  manager: (opts?: Partial<TreeOptions>) => ProgramManager;
   reported: string[];
 } {
   const a = new FakeAdapter(NS);
@@ -87,7 +88,7 @@ function world(
     },
   });
   const entries: Record<string, ProgramEntry> = { qbittorrent: entry("qbittorrent"), sabnzbd: entry("sabnzbd") };
-  const manager = (opts: { removeFinished?: boolean } = {}): ProgramManager =>
+  const manager = (opts: Partial<TreeOptions> = {}): ProgramManager =>
     new ProgramManager(
       {
         adapter: a,
@@ -96,7 +97,7 @@ function world(
         decrypt: v => v,
         problems: { report: key => void reported.push(key), resolve: () => undefined },
       },
-      { intervalMs: 10_000, removeFinished: opts.removeFinished === true },
+      { intervalMs: 10_000, scope: opts.scope ?? "all", limit: opts.limit ?? 0 },
     );
   return { a, drivers, manager, reported };
 }
@@ -327,7 +328,7 @@ describe("ProgramManager — poll interval", () => {
         decrypt: v => v,
         problems: { report: () => undefined, resolve: () => undefined },
       },
-      { intervalMs: 10_000, removeFinished: false },
+      { intervalMs: 10_000, scope: "all", limit: 0 },
     );
     await m.start([row("jdownloader-cloud", "c", "h")]);
     await flush();
@@ -368,13 +369,28 @@ describe("ProgramManager — user writes", () => {
     expect(w.a.states.get(`${NS}.qbittorrent-nas.downloads.11112222.paused`)).toMatchObject({ val: false, ack: true });
   });
 
-  it("says in one info line how many finished downloads it took out of the tree (final review M4)", async () => {
-    const w = world({ h1: { snapshot: snap(0, [item("c1", "completed"), item("c2", "completed")]) } });
-    await w.manager({ removeFinished: true }).start([row("qbittorrent", "a", "h1")]);
+  it("says in one info line how many download channels the tree settings took out (final review M4)", async () => {
+    const b = { snapshot: snap(0, [item("c1", "downloading"), item("c2", "downloading"), item("d1", "downloading")]) };
+    const w = world({ h1: b });
+    const m = w.manager({ scope: "withoutCompleted" });
+    await m.start([row("qbittorrent", "a", "h1")]);
+    await flush();
+    b.snapshot = snap(0, [item("c1", "completed"), item("c2", "completed"), item("d1", "downloading")]);
+    await m.onUserWrite("qbittorrent-a.paused", true);
     await flush();
     expect(w.a.logs.filter(l => l.level === "info").map(l => l.msg)).toContain(
-      "qbittorrent-a: removed 2 finished download(s) from the object tree",
+      "qbittorrent-a: removed 2 download(s) from the object tree (tree settings)",
     );
+  });
+
+  it("hands scope and limit to the tree", async () => {
+    const items = [item("q1", "queued"), item("q2", "queued"), item("q3", "queued"), item("c1", "completed")];
+    const w = world({ h1: { snapshot: snap(0, items) } });
+    await w.manager({ scope: "unfinished", limit: 2 }).start([row("qbittorrent", "a", "h1")]);
+    await flush();
+    const channels = [...w.a.objects.values()].filter(o => o.type === "channel");
+    expect(channels).toHaveLength(2);
+    expect(channels.map(o => o.native.key)).not.toContain("c1");
   });
 
   it("says so when no configured program can pause", async () => {
@@ -547,7 +563,7 @@ describe("ProgramManager — connection test and stop", () => {
         decrypt: v => `garbled(${v})`,
         problems: { report: () => undefined, resolve: () => undefined },
       },
-      { intervalMs: 10_000, removeFinished: false },
+      { intervalMs: 10_000, scope: "all", limit: 0 },
     );
     await m.testConnections([row("qbittorrent", "a", "h1", { password: "typed" })]);
     expect(seen).toEqual(["typed"]);
@@ -579,7 +595,7 @@ describe("ProgramManager — connection test and stop", () => {
         decrypt: v => v,
         problems: { report: () => undefined, resolve: () => undefined },
       },
-      { intervalMs: 10_000, removeFinished: false },
+      { intervalMs: 10_000, scope: "all", limit: 0 },
     );
     expect(await m.testConnections([row("sabnzbd", "b", "h1")])).toBe("sabnzbd-b: OK — version 5.1.3");
   });

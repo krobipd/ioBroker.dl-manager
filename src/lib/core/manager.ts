@@ -10,7 +10,7 @@ import type { Command, ProgramDriver } from "./model";
 import { redact } from "./redact";
 import { ProgramRunner, type RunnerDeps } from "./runner";
 import { computeSummary, type SummaryInput } from "./summary";
-import { ProgramTree, type ProgramEvents, type TreeAdapter } from "./tree";
+import { ProgramTree, type ProgramEvents, type TreeAdapter, type TreeScope } from "./tree";
 import { toMBps } from "./units";
 
 /** The adapter methods the manager uses on top of the tree's. */
@@ -66,8 +66,10 @@ export interface ManagerDeps {
 export interface ManagerOptions {
   /** Poll interval in ms. */
   intervalMs: number;
-  /** Take completed downloads out of the object tree. */
-  removeFinished: boolean;
+  /** Which downloads the object tree shows. */
+  scope: TreeScope;
+  /** At most this many download channels per program, 0 = no limit. */
+  limit: number;
 }
 
 interface Running {
@@ -402,7 +404,9 @@ export class ProgramManager {
       return;
     }
     if (events.removedFromTree > 0) {
-      this.a.log.info(`${programId}: removed ${events.removedFromTree} finished download(s) from the object tree`);
+      this.a.log.info(
+        `${programId}: removed ${events.removedFromTree} download(s) from the object tree (tree settings)`,
+      );
     }
     try {
       const last = events.finished.at(-1);

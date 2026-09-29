@@ -59,7 +59,8 @@ against those recorded answers.
 | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Programs**                                | One line per program: program, ID (becomes part of the object path, e.g. `qbittorrent-nas`), name, host, port (empty = the program's default), HTTPS, path (only behind a reverse proxy), user, password, API key and — for My.JDownloader — the device name |
 | **Query interval**                          | How often every program is asked (seconds, default 10). My.JDownloader is asked at most every 30 seconds, pyLoad at most every 5 seconds                                                                                                                     |
-| **Remove finished downloads from ioBroker** | Completed downloads disappear from the object tree; the program keeps them. Seeding and failed downloads stay                                                                                                                                                |
+| **Downloads in the object tree**            | _All_ (default), _Without completed_ or _Only unfinished_ (no completed, no seeding). Failed downloads always stay. The program keeps every download, and the totals count all of them                                                                     |
+| **At most this many downloads per program** | Default 100, 0 = all. Above the limit, running and failed downloads keep their channel first, completed and seeding ones give it up first. More than 200 per program slow ioBroker down — the settings page and the log warn about it                     |
 
 **JDownloader:** the local API (JDownloader → Settings → Advanced settings → `DeprecatedApi`) has no password. Use it only when JDownloader runs on the ioBroker host or in the same Docker network; otherwise choose _JDownloader 2 (My.JDownloader)_ and log in with your My.JDownloader account.
 
@@ -97,7 +98,7 @@ Only the datapoints a program really supports are created — pyLoad has no paus
 | `online` is false, `error` shows a network text         | The program is not reachable from the ioBroker host — host, port, HTTPS, firewall                                                                       |
 | A warning "login rejected" and an ioBroker notification | The program refused the login. The adapter asks it no more (qBittorrent and Transmission lock an address after failed logins) until the settings change |
 | `error` is `Unknown`                                    | The program has not been asked yet, or the adapter is stopped                                                                                           |
-| A download disappears                                   | The program removed it, or it finished while _Remove finished downloads from ioBroker_ is on                                                            |
+| A download disappears                                   | The program removed it, or the tree settings leave it out — its status is not shown, or the program has more downloads than the limit                  |
 | pyLoad reports "too many requests"                      | pyLoad allows 100 calls a minute — raise the query interval                                                                                             |
 
 The _Test connections_ button on the settings page asks every program of the (unsaved) table once and shows the answer.

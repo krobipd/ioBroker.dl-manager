@@ -137,7 +137,7 @@ describe("DownloadManagerAdapter — start", () => {
     expect(polls()).toBe(1);
   });
 
-  it("keeps finished downloads while removeFinished is not set", async () => {
+  it("keeps finished downloads with the default tree settings", async () => {
     const done = {
       key: "k1",
       name: "done",
@@ -152,6 +152,38 @@ describe("DownloadManagerAdapter — start", () => {
     await h.handlers.get("ready")?.();
     await flush();
     expect(h.store.objects.has("dl-manager.0.qbittorrent-nas.downloads.k1")).toBe(true);
+  });
+
+  const treeItem = (key: string, status: "completed" | "queued"): ProgramSnapshot["items"][number] => ({
+    key,
+    name: key,
+    status,
+    sizeBytes: 1,
+    doneBytes: 1,
+    speedBps: null,
+    etaSeconds: null,
+    error: "",
+  });
+  const channelKeys = (h: Harness): unknown[] =>
+    [...h.store.objects.values()].filter(o => o.type === "channel").map(o => o.native.key);
+
+  it("reads which downloads the tree shows from the settings", async () => {
+    const { h } = make(() =>
+      Promise.resolve({ ...SNAP, items: [treeItem("c1", "completed"), treeItem("q1", "queued")] }),
+    );
+    h.config.treeScope = "unfinished";
+    h.config.maxDownloads = 0;
+    await h.handlers.get("ready")?.();
+    await flush();
+    expect(channelKeys(h)).toEqual(["q1"]);
+  });
+
+  it("reads how many downloads the tree shows from the settings", async () => {
+    const { h } = make(() => Promise.resolve({ ...SNAP, items: [treeItem("q1", "queued"), treeItem("q2", "queued")] }));
+    h.config.maxDownloads = "1";
+    await h.handlers.get("ready")?.();
+    await flush();
+    expect(channelKeys(h)).toEqual(["q1"]);
   });
 
   it("refreshes the manifest names, stamps offline and starts the configured program", async () => {

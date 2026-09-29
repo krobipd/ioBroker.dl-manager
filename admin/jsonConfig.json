@@ -219,16 +219,49 @@
       "lg": 4,
       "xl": 4
     },
-    "removeFinished": {
-      "type": "checkbox",
-      "label": "label_removeFinished",
-      "help": "help_removeFinished",
-      "default": false,
+    "treeScope": {
+      "type": "select",
+      "label": "label_treeScope",
+      "help": "help_treeScope",
+      "options": [
+        { "label": "treeScope_all", "value": "all" },
+        { "label": "treeScope_withoutCompleted", "value": "withoutCompleted" },
+        { "label": "treeScope_unfinished", "value": "unfinished" }
+      ],
+      "default": "all",
       "xs": 12,
       "sm": 12,
-      "md": 8,
-      "lg": 8,
-      "xl": 8
+      "md": 4,
+      "lg": 4,
+      "xl": 4
+    },
+    "maxDownloads": {
+      "type": "number",
+      "label": "label_maxDownloads",
+      "help": "help_maxDownloads",
+      "min": 0,
+      "max": 1000,
+      "step": 1,
+      "default": 100,
+      "xs": 12,
+      "sm": 12,
+      "md": 4,
+      "lg": 4,
+      "xl": 4
+    },
+    "_warnManyDownloads": {
+      "newLine": true,
+      "type": "infoBox",
+      "boxType": "warning",
+      "closeable": false,
+      "title": "warnManyDownloads_title",
+      "text": "warnManyDownloads_text",
+      "hidden": "!(Number(data.maxDownloads) === 0 || Number(data.maxDownloads) > 200)",
+      "xs": 12,
+      "sm": 12,
+      "md": 12,
+      "lg": 12,
+      "xl": 12
     },
     "_supportHeader": {
       "newLine": true,

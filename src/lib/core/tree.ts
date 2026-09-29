@@ -42,8 +42,19 @@ export interface ProgramEvents {
   finished: DownloadItem[];
   /** Downloads that failed in this sync. */
   failed: DownloadItem[];
-  /** Downloads taken out of the object tree by the "remove finished" option. */
+  /** Download channels taken out of the object tree by the tree settings (scope and limit). */
   removedFromTree: number;
+}
+
+/** Which downloads the object tree shows (adapter setting `treeScope`). */
+export type TreeScope = "all" | "withoutCompleted" | "unfinished";
+
+/** The adapter settings that shape the object tree. */
+export interface TreeOptions {
+  /** Which downloads get a channel. */
+  scope: TreeScope;
+  /** At most this many download channels per program, 0 = no limit. */
+  limit: number;
 }
 
 /** The driver facts the tree needs. */
@@ -57,6 +68,20 @@ export interface TreeDriver {
 }
 
 const DONE: ReadonlySet<Status> = new Set<Status>(["completed", "seeding"]);
+/** Who keeps a channel when a program has more downloads than the limit — lower first. */
+const RANK: Readonly<Record<Status, number>> = {
+  downloading: 0,
+  checking: 0,
+  postprocessing: 0,
+  failed: 1,
+  paused: 2,
+  waiting: 2,
+  queued: 3,
+  seeding: 4,
+  completed: 5,
+};
+/** More download channels than this per program get a warning — unless the limit keeps them at or below it. */
+const WARN_ABOVE = 200;
 const STATUS_LABEL: Readonly<Record<Status, I18nKey>> = {
   queued: "statusQueued",
   downloading: "statusDownloading",
@@ -83,7 +108,7 @@ export class ProgramTree {
   private ids = new ItemIds(new Map());
   /** Raw key → channel signature as stored (`native.sig`) and name. */
   private readonly known = new Map<string, { sig: string; name: string }>();
-  private removed = new Set<string>();
+  private warned = false;
   private prev: Map<string, Status> | null = null;
   private baselineFinished: number | null = null;
   /** The value last written per state id — a poll that changes nothing reads nothing from the database. */
@@ -94,15 +119,14 @@ export class ProgramTree {
    * @param programId device id, e.g. `qbittorrent-nas`
    * @param programName the user's display name
    * @param driver capabilities and extras of the program's driver
-   * @param opts adapter options that shape the tree
-   * @param opts.removeFinished take completed downloads out of the object tree
+   * @param opts adapter options that shape the tree (which downloads, how many)
    */
   public constructor(
     private readonly adapter: TreeAdapter,
     programId: string,
     private readonly programName: string,
     private readonly driver: TreeDriver,
-    private readonly opts: { removeFinished: boolean },
+    private readonly opts: TreeOptions,
   ) {
     this.dev = `${adapter.namespace}.${programId}`;
     this.itemDefs = forCapabilities(ITEM_DATAPOINTS, driver.capabilities);
@@ -128,7 +152,7 @@ export class ProgramTree {
     return undefined;
   }
 
-  /** Reads the stored channels, the "removed" list and the last recorded finish. Runs before the first sync. */
+  /** Reads the stored channels and the last recorded finish. Runs before the first sync. */
   public async load(): Promise<void> {
     const channels = await this.adapter.getForeignObjects(`${this.dev}.downloads.*`, "channel");
     const stored = new Map<string, string>();
@@ -143,9 +167,6 @@ export class ProgramTree {
       this.known.set(key, { sig: typeof sig === "string" ? sig : "", name: typeof name === "string" ? name : "" });
     }
     this.ids = new ItemIds(stored);
-    const device = await this.adapter.getObject(this.dev);
-    const removed: unknown = device?.native?.removed;
-    this.removed = new Set(Array.isArray(removed) ? removed.filter((k): k is string => typeof k === "string") : []);
     const last = await this.adapter.getState(`${this.dev}.lastFinishedTime`);
     this.baselineFinished = typeof last?.val === "number" ? last.val : null;
   }
@@ -229,7 +250,7 @@ export class ProgramTree {
     const prev = this.prev ?? new Map<string, Status>();
     const next = new Map<string, Status>();
     const present = new Set<string>();
-    let removedChanged = false;
+    const shown = this.shown(snapshot.items);
 
     for (const item of snapshot.items) {
       present.add(item.key);
@@ -241,16 +262,11 @@ export class ProgramTree {
       if (item.status === "failed" && !baseline && before !== "failed") {
         events.failed.push(item);
       }
-      if (this.removed.has(item.key)) {
-        continue;
-      }
-      if (this.opts.removeFinished && item.status === "completed") {
+      if (!shown.has(item.key)) {
         if (this.known.has(item.key)) {
           await this.removeChannel(item.key);
+          events.removedFromTree++;
         }
-        this.removed.add(item.key);
-        removedChanged = true;
-        events.removedFromTree++;
         continue;
       }
       await this.writeItem(item);
@@ -262,20 +278,61 @@ export class ProgramTree {
           await this.removeChannel(key);
         }
       }
-      for (const key of [...this.removed]) {
-        if (!present.has(key)) {
-          this.removed.delete(key);
-          removedChanged = true;
-        }
-      }
     }
-    if (removedChanged) {
-      await this.storeRemoved();
-    }
+    this.warnAboutMany(shown.size);
     this.prev = next;
     await this.writeProgram(snapshot);
     await this.writeEvents(events);
     return events;
+  }
+
+  /**
+   * The downloads that get a channel: those the scope admits, and of them — when there are more than the limit — the
+   * best ranked ones, the newest first within a rank (finished downloads by their finish, the others by when they were
+   * added; without a time in the program's own order).
+   *
+   * @param items all downloads of the poll
+   * @returns the keys of the downloads to show
+   */
+  private shown(items: readonly DownloadItem[]): Set<string> {
+    const admitted = items.filter(i => this.admits(i.status));
+    const limit = this.opts.limit;
+    if (limit <= 0 || admitted.length <= limit) {
+      return new Set(admitted.map(i => i.key));
+    }
+    const time = (i: DownloadItem): number =>
+      (DONE.has(i.status) ? (i.finishedMs ?? i.addedMs) : i.addedMs) ?? Number.NEGATIVE_INFINITY;
+    const ranked = [...admitted].sort((a, b) => {
+      const byRank = RANK[a.status] - RANK[b.status];
+      if (byRank !== 0) {
+        return byRank;
+      }
+      const ta = time(a);
+      const tb = time(b);
+      return ta === tb ? 0 : tb > ta ? 1 : -1;
+    });
+    return new Set(ranked.slice(0, limit).map(i => i.key));
+  }
+
+  private admits(status: Status): boolean {
+    switch (this.opts.scope) {
+      case "withoutCompleted":
+        return status !== "completed";
+      case "unfinished":
+        return !DONE.has(status);
+      default:
+        return true;
+    }
+  }
+
+  private warnAboutMany(shown: number): void {
+    if (this.warned || shown <= WARN_ABOVE) {
+      return;
+    }
+    this.warned = true;
+    this.adapter.log.warn(
+      `${this.programName}: ${shown} downloads in the object tree — this many can slow ioBroker down; limit them in the adapter settings (100 or fewer recommended)`,
+    );
   }
 
   private isNewFinish(item: DownloadItem, baseline: boolean): boolean {
@@ -425,15 +482,6 @@ export class ProgramTree {
     }
     this.ids.release(key);
     this.known.delete(key);
-  }
-
-  private async storeRemoved(): Promise<void> {
-    const device = await this.adapter.getObject(this.dev);
-    if (!device) {
-      return;
-    }
-    device.native = { ...device.native, removed: [...this.removed].sort() };
-    await this.adapter.setForeignObject(this.dev, device);
   }
 
   private stateObject(d: DatapointDef): ioBroker.PartialObject {

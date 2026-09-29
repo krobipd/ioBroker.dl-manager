@@ -41,10 +41,16 @@ Dateien.
 
 ## Ein fertiger Download bleibt im Objektbaum
 
-Er bleibt, solange das Programm ihn führt. Schalte _Fertige Downloads aus ioBroker entfernen_ ein, wenn du nur die
-laufenden sehen willst: Fertige Downloads verschwinden dann aus dem Objektbaum, das Programm behält sie.
-Weiterverteilte und fehlgeschlagene Downloads bleiben immer — ein weiterverteilter Torrent überträgt noch, ein
-fehlgeschlagener Download braucht dich.
+Er bleibt, solange das Programm ihn führt und die Einstellungen ihn zeigen. Stelle _Downloads im Objektbaum_ auf
+_Ohne fertige_, um fertige Downloads wegzulassen, oder auf _Nur unfertige_, um auch weiterverteilte Torrents wegzulassen.
+Fehlgeschlagene Downloads bleiben immer — sie brauchen dich. Das Programm behält in jedem Fall alle Downloads.
+
+## Ein Download fehlt im Objektbaum
+
+Entweder wird sein Status nicht gezeigt (_Downloads im Objektbaum_), oder das Programm hat mehr Downloads, als
+_Höchstens so viele Downloads je Programm_ erlaubt: dann behalten laufende, fehlgeschlagene, pausierte und wartende
+ihren Kanal vor weiterverteilten und fertigen. Erhöhe die Grenze oder setze 0 für alle — über 200 je Programm wird der
+Objektbaum langsam.
 
 ## Ich will eine Nachricht, wenn ein Download fertig ist
 

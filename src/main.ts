@@ -2,7 +2,7 @@ import * as utils from "@iobroker/adapter-core";
 import { I18n } from "@iobroker/adapter-core";
 import { join } from "node:path";
 import { ActionableProblems } from "./lib/actionable-problems";
-import { parsePollInterval } from "./lib/core/config";
+import { parseMaxDownloads, parsePollInterval, parseTreeScope } from "./lib/core/config";
 import { ProgramManager } from "./lib/core/manager";
 import { errText } from "./lib/err-text";
 import { tDesc, tName } from "./lib/i18n";
@@ -145,7 +145,11 @@ export class DownloadManagerAdapter extends utils.Adapter {
           resolve: (key, msg) => this.problems.resolve(key, msg),
         },
       },
-      { intervalMs: parsePollInterval(this.config.pollInterval), removeFinished: this.config.removeFinished === true },
+      {
+        intervalMs: parsePollInterval(this.config.pollInterval),
+        scope: parseTreeScope(this.config.treeScope),
+        limit: parseMaxDownloads(this.config.maxDownloads),
+      },
     );
   }
 

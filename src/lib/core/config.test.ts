@@ -1,5 +1,5 @@
 import type { ProgramEntry } from "../programs/registry";
-import { addressOf, parsePollInterval, parsePrograms } from "./config";
+import { addressOf, parseMaxDownloads, parsePollInterval, parsePrograms, parseTreeScope } from "./config";
 
 const ENTRIES: Record<string, ProgramEntry> = {
   qbittorrent: { type: "qbittorrent", needs: ["host", "username", "password"], create: () => undefined as never },
@@ -157,5 +157,32 @@ describe("parsePollInterval", () => {
     expect(parsePollInterval(undefined)).toBe(10_000);
     expect(parsePollInterval(Number.NaN)).toBe(10_000);
     expect(parsePollInterval(1e9)).toBe(3_600_000);
+  });
+});
+
+describe("parseTreeScope", () => {
+  it("takes the three known scopes and falls back to all", () => {
+    expect(parseTreeScope("all")).toBe("all");
+    expect(parseTreeScope("withoutCompleted")).toBe("withoutCompleted");
+    expect(parseTreeScope("unfinished")).toBe("unfinished");
+    expect(parseTreeScope("unfinishedx")).toBe("all");
+    expect(parseTreeScope(undefined)).toBe("all");
+    expect(parseTreeScope(3)).toBe("all");
+  });
+});
+
+describe("parseMaxDownloads", () => {
+  it("takes whole numbers from 0 to 1000, 100 when unusable", () => {
+    expect(parseMaxDownloads(5)).toBe(5);
+    expect(parseMaxDownloads(0)).toBe(0);
+    expect(parseMaxDownloads(1000)).toBe(1000);
+    expect(parseMaxDownloads("25")).toBe(25);
+    expect(parseMaxDownloads(7.9)).toBe(7);
+    expect(parseMaxDownloads(1001)).toBe(1000);
+    expect(parseMaxDownloads(-3)).toBe(0);
+    expect(parseMaxDownloads("")).toBe(100);
+    expect(parseMaxDownloads(undefined)).toBe(100);
+    expect(parseMaxDownloads(Number.NaN)).toBe(100);
+    expect(parseMaxDownloads("abc")).toBe(100);
   });
 });

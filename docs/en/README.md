@@ -43,12 +43,23 @@ network; otherwise use My.JDownloader.
 The status is the same list for every program: queued, downloading, waiting, paused, checking, post-processing, seeding,
 completed, failed.
 
-## Finished downloads
+## Which downloads the object tree shows
 
-A finished download stays in the object tree as long as the program lists it. Switch on **Remove finished downloads
-from ioBroker** if you prefer a short list: completed downloads then disappear from the object tree while the program
-keeps them. Seeding and failed downloads stay. `remove` on a download takes it off the program's list; the files
-always stay on disk.
+Two settings decide which downloads get their own channel. The program keeps every download either way, and the totals
+(`summary.*`, the program's own counters and `lastFinished`) always count all of them.
+
+- **Downloads in the object tree:** _All_ (the default), _Without completed_, or _Only unfinished_ — the last one also
+  leaves out seeding torrents. Failed downloads always stay, they need you.
+- **At most this many downloads per program:** 100 by default, 0 = all. When a program has more, the running ones keep
+  their channel first, then failed, paused and waiting, queued, seeding and completed ones — the newest first within
+  each group. A download that loses its channel gets it back as soon as there is room again.
+
+Every download creates up to 15 objects whose values can change with every poll. With 0 or more than 200 downloads per
+program that quickly adds up to thousands, which puts a load on the ioBroker database and slows the object tree in the
+admin down. The settings page shows a warning then, and the log warns once per program when more than 200 downloads
+actually stand in the tree.
+
+`remove` on a download takes it off the program's list; the files always stay on disk.
 
 ## More
 
