@@ -117,7 +117,7 @@ The test button on a program's card asks the program once and shows its answer.
     ### **WORK IN PROGRESS**
 -->
 
-### **WORK IN PROGRESS**
+### 0.2.0 (2026-09-29)
 
 - New: programs are set up as cards — a dialog with only the program's fields, and test, pause and on/off on every card
 - New: for My.JDownloader you pick the JDownloader from a list of your account after logging in

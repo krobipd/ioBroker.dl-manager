@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "dl-manager",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "news": {
+      "0.2.0": {
+        "en": "Programs are now set up as cards, each with a dialog that shows only its own fields. My.JDownloader lists your devices to pick from.",
+        "de": "Programme werden jetzt als Karten eingerichtet, jede mit einem Dialog nur für ihre eigenen Felder. My.JDownloader zeigt deine Geräte zur Auswahl.",
+        "ru": "Программы теперь настраиваются карточками, у каждой диалог только с её полями. My.JDownloader показывает ваши устройства для выбора.",
+        "pt": "Os programas agora são configurados como cartões, cada um com um diálogo só com os seus campos. O My.JDownloader lista os seus dispositivos.",
+        "nl": "Programma's worden nu als kaarten ingesteld, elk met een dialoog met alleen de eigen velden. My.JDownloader toont je apparaten om te kiezen.",
+        "fr": "Les programmes se configurent désormais en cartes, chacune avec un dialogue limité à ses champs. My.JDownloader liste vos appareils au choix.",
+        "it": "I programmi ora si configurano come schede, ognuna con una finestra solo con i propri campi. My.JDownloader elenca i tuoi dispositivi.",
+        "es": "Los programas ahora se configuran como tarjetas, cada una con un diálogo solo con sus campos. My.JDownloader lista tus dispositivos para elegir.",
+        "pl": "Programy konfiguruje się teraz jako karty, każda z oknem tylko z jej polami. My.JDownloader pokazuje Twoje urządzenia do wyboru.",
+        "uk": "Програми тепер налаштовуються картками, кожна з діалогом лише з її полями. My.JDownloader показує ваші пристрої для вибору.",
+        "zh-cn": "程序现在以卡片形式设置，每张卡片的对话框只显示该程序自己的字段。My.JDownloader 会列出您的设备供选择。"
+      },
       "0.1.0": {
         "en": "First release — JDownloader 2, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 and pyLoad in one instance, with one channel per download",
         "de": "Erste Version — JDownloader 2, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 und pyLoad in einer Instanz, mit einem eigenen Kanal je Download",
