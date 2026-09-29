@@ -1,6 +1,6 @@
 {
   "name": "iobroker.dl-manager",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "ioBroker adapter for download managers: JDownloader, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 and pyLoad",
   "author": {
     "name": "krobi",

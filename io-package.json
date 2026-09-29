@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "dl-manager",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "news": {
+      "0.3.0": {
+        "en": "Saving a program card no longer hangs and applies at once. Device IDs now follow program and machine and move once; update scripts and VIS.",
+        "de": "Speichern einer Programmkarte hängt nicht mehr und gilt sofort. Geräte-IDs folgen jetzt Programm und Rechner und ziehen einmal um; Skripte und VIS anpassen.",
+        "ru": "Сохранение карточки программы больше не зависает и действует сразу. ID устройств теперь по программе и компьютеру и меняются один раз; обновите скрипты и VIS.",
+        "pt": "Guardar um cartão de programa já não bloqueia e aplica-se de imediato. Os IDs seguem programa e máquina e mudam uma vez; atualize scripts e VIS.",
+        "nl": "Een programmakaart opslaan blijft niet meer hangen en werkt direct. Apparaat-ID's volgen programma en computer en verhuizen eenmalig; pas scripts en VIS aan.",
+        "fr": "Enregistrer une carte de programme ne bloque plus et s'applique aussitôt. Les ID suivent programme et machine et changent une fois ; adaptez scripts et VIS.",
+        "it": "Salvare una scheda programma non si blocca più e vale subito. Gli ID seguono programma e computer e cambiano una volta; aggiorna script e VIS.",
+        "es": "Guardar una tarjeta de programa ya no se bloquea y se aplica al instante. Los ID siguen programa y equipo y cambian una vez; actualiza scripts y VIS.",
+        "pl": "Zapis karty programu już się nie zawiesza i działa od razu. ID urządzeń wynikają z programu i komputera i zmieniają się raz; popraw skrypty i VIS.",
+        "uk": "Збереження картки програми більше не зависає і діє одразу. ID пристроїв тепер за програмою та комп'ютером і змінюються один раз; оновіть скрипти та VIS.",
+        "zh-cn": "保存程序卡片不再卡住并立即生效。设备 ID 现按程序和主机命名并迁移一次；请更新脚本和 VIS。"
+      },
       "0.2.0": {
         "en": "Programs are now set up as cards, each with a dialog that shows only its own fields. My.JDownloader lists your devices to pick from.",
         "de": "Programme werden jetzt als Karten eingerichtet, jede mit einem Dialog nur für ihre eigenen Felder. My.JDownloader zeigt deine Geräte zur Auswahl.",
