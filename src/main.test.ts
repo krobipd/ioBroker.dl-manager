@@ -116,6 +116,31 @@ describe("DownloadManagerAdapter — start", () => {
     expect(h.store.objectWrites).toBe(0);
   });
 
+  it("starts normally when the instance object already carries supportedMessages null", async () => {
+    const { h, polls } = make();
+    h.instanceObject = { common: { supportedMessages: null }, native: {} };
+    await h.handlers.get("ready")?.();
+    expect(h.instanceWrites).toEqual([]);
+    expect(polls()).toBe(1);
+  });
+
+  it("keeps finished downloads while removeFinished is not set", async () => {
+    const done = {
+      key: "k1",
+      name: "done",
+      status: "completed" as const,
+      sizeBytes: 1,
+      doneBytes: 1,
+      speedBps: null,
+      etaSeconds: null,
+      error: "",
+    };
+    const { h } = make(() => Promise.resolve({ ...SNAP, items: [done] }));
+    await h.handlers.get("ready")?.();
+    await flush();
+    expect(h.store.objects.has("download-manager.0.qbittorrent-nas.downloads.k1")).toBe(true);
+  });
+
   it("refreshes the manifest names, stamps offline and starts the configured program", async () => {
     const { h, polls } = make();
     await h.store.setState("info.connection", { val: true, ack: true });
@@ -147,6 +172,12 @@ describe("DownloadManagerAdapter — messages", () => {
         { id: 1 },
       ],
     ]);
+  });
+
+  it("answers nothing to a message without callback", async () => {
+    const { h } = make();
+    await h.handlers.get("message")?.({ command: "bogus", from: "x", message: {} });
+    expect(h.sent).toEqual([]);
   });
 
   it("answers an unknown command instead of letting the caller wait", async () => {

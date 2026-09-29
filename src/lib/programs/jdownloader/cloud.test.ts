@@ -1,7 +1,7 @@
 import { runDriverContract } from "../../../../test/helpers/contract";
 import { loadFixture } from "../../../../test/helpers/fixtures";
 import { startMyJdServer, type MyJdServer } from "../../../../test/helpers/myjd-server";
-import { AuthError, ProtocolError } from "../../core/errors";
+import { AuthError, ProtocolError, UnreachableError } from "../../core/errors";
 import type { ProgramConfig } from "../registry";
 import { adaptParams, JdCloudTransport, jdDecrypt, jdSecret, jdSign, jdTokens } from "./cloud";
 import { JdDriver } from "./driver";
@@ -142,6 +142,69 @@ describe("JDownloader over My.JDownloader", () => {
       expect(s.sessions).toHaveLength(2);
     } finally {
       await s.close();
+    }
+  });
+});
+
+describe("My.JDownloader failures", () => {
+  it("keeps working over two expired sessions in a row", async () => {
+    const s = await serve();
+    try {
+      const d = cloud(s.baseUrl);
+      await d.poll();
+      s.expireSession();
+      await d.poll();
+      s.expireSession();
+      expect((await d.poll()).items.length).toBeGreaterThan(0);
+      expect(s.calls.filter(c => c.path === "/my/reconnect")).toHaveLength(2);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("reads an encrypted TOKEN_INVALID and logs in afresh when the reconnect is refused as well", async () => {
+    const s = await serve();
+    try {
+      const d = cloud(s.baseUrl);
+      await d.poll();
+      s.faults.encryptErrors = true;
+      s.faults.reconnect = { status: 403, type: "TOKEN_INVALID" };
+      s.expireSession();
+      expect((await d.poll()).items.length).toBeGreaterThan(0);
+      expect(s.calls.filter(c => c.path === "/my/connect")).toHaveLength(2);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("gives every failure of the service its error kind", async () => {
+    const cases: [(f: MyJdServer["faults"]) => void, unknown][] = [
+      [f => (f.connect = { status: 403, type: "ERROR_EMAIL_NOT_CONFIRMED" }), AuthError],
+      [f => (f.connect = { status: 401, type: "" }), AuthError],
+      [f => (f.connect = { status: 403, type: "MAINTENANCE" }), UnreachableError],
+      [f => (f.noToken = true), /without session token/],
+      [f => (f.devices = [{ name: "PC" }]), /not found/],
+      [f => (f.device = { status: 403, type: "AUTH_FAILED" }), AuthError],
+      [f => (f.device = { status: 403, type: "OFFLINE" }), /device is offline/],
+    ];
+    for (const [fault, err] of cases) {
+      const s = await serve();
+      try {
+        fault(s.faults);
+        const got: unknown = await cloud(s.baseUrl)
+          .poll()
+          .then(
+            () => "resolved",
+            (e: unknown) => e,
+          );
+        if (err instanceof RegExp) {
+          expect(String(got)).toMatch(err);
+        } else {
+          expect(got).toBeInstanceOf(err as typeof Error);
+        }
+      } finally {
+        await s.close();
+      }
     }
   });
 });

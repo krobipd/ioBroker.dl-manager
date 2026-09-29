@@ -6,6 +6,7 @@ describe("sanitize", () => {
     expect(sanitize("a.b*c,d")).toBe("a-b-c-d");
     expect(sanitize("Grüße")).toBe("grusse");
     expect(sanitize("...")).toBe("");
+    expect(sanitize("a--b")).toBe("a-b");
   });
 });
 
@@ -38,6 +39,14 @@ describe("ItemIds", () => {
       ]),
     );
     expect(again.idFor("bbbb12345678")).toBe("bbbb12345678-2");
+    const crowded = new ItemIds(
+      new Map([
+        ["x", "bbbb12345678"],
+        ["y", "12345678"],
+        ["z", "bbbb12345678-2"],
+      ]),
+    );
+    expect(crowded.idFor("bbbb12345678")).toBe("bbbb12345678-3");
   });
 
   it("returns the same id for the same key", () => {

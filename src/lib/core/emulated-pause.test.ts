@@ -53,6 +53,30 @@ describe("EmulatedPause (plan § 5.3)", () => {
     expect(saved).toEqual([]);
   });
 
+  it("a second pause stops only what is new, and nothing is stopped or started for nothing", async () => {
+    const store = memoryPauseStore();
+    const p = new EmulatedPause(store);
+    const calls: string[][] = [];
+    const record = (keys: string[]): Promise<void> => {
+      calls.push(keys);
+      return Promise.resolve();
+    };
+    await p.pause([], record);
+    expect(calls).toEqual([]);
+    await p.pause(["a"], record);
+    await p.pause(["a", "b"], record);
+    expect(calls).toEqual([["a"], ["b"]]);
+    expect(await store.load()).toEqual({ paused: true, keys: ["a", "b"] });
+    const idle = new EmulatedPause(memoryPauseStore({ paused: true, keys: [] }));
+    await idle.resume(record);
+    expect(calls).toHaveLength(2);
+  });
+
+  it("is not paused while nobody paused it", async () => {
+    const p = new EmulatedPause(memoryPauseStore());
+    expect(await p.observe(new Set(["x"]))).toBe(false);
+  });
+
   it("forgets keys the program no longer lists", async () => {
     const store = memoryPauseStore({ paused: true, keys: ["gone", "a"] });
     const p = new EmulatedPause(store);

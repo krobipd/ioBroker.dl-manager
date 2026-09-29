@@ -12,6 +12,24 @@ export interface MyJdServer extends ContractServer {
   expireSession(): void;
   /** Session tokens handed out so far. */
   sessions: string[];
+  /** Faults the test switches on; read on every request. */
+  faults: MyJdFaults;
+}
+
+/** What the server does wrong, set by a test. */
+export interface MyJdFaults {
+  /** `/my/connect` answers this failure. */
+  connect?: { status: number; type: string };
+  /** `/my/connect` answers without session and regain token. */
+  noToken?: boolean;
+  /** `/my/reconnect` answers this failure. */
+  reconnect?: { status: number; type: string };
+  /** Every device call answers this failure. */
+  device?: { status: number; type: string };
+  /** Device failures come AES-encrypted with the device token, as the real service may send them. */
+  encryptErrors?: boolean;
+  /** The device list instead of the one named device. */
+  devices?: unknown[];
 }
 
 /**
@@ -35,6 +53,7 @@ export async function startMyJdServer(opts: {
   let deviceToken: Buffer | null = null;
   let expire = false;
   let lastRid = 0;
+  const faults: MyJdFaults = {};
   const newSession = (): { sessiontoken: string; regaintoken: string } => {
     const sessiontoken = createHash("sha256").update(`s${sessions.length}`).digest("hex").slice(0, 32);
     sessions.push(sessiontoken);
@@ -57,13 +76,20 @@ export async function startMyJdServer(opts: {
     const q = new URLSearchParams(call.query);
     const rid = Number(q.get("rid") ?? 0);
     if (call.path === "/my/connect") {
+      if (faults.connect) {
+        return failure(faults.connect.status, faults.connect.type);
+      }
       if (!signed(call, login)) {
         return failure(403, "AUTH_FAILED");
       }
       serverToken = null;
-      return { body: jdEncrypt(login, JSON.stringify({ ...newSession(), rid })) };
+      const session = newSession();
+      return { body: jdEncrypt(login, JSON.stringify(faults.noToken ? { rid } : { ...session, rid })) };
     }
     if (call.path === "/my/reconnect") {
+      if (faults.reconnect) {
+        return failure(faults.reconnect.status, faults.reconnect.type);
+      }
       if (!serverToken || !signed(call, serverToken)) {
         return failure(403, "AUTH_FAILED");
       }
@@ -77,7 +103,7 @@ export async function startMyJdServer(opts: {
       return {
         body: jdEncrypt(
           serverToken,
-          JSON.stringify({ list: [{ id: "dev1", name: opts.deviceName, type: "jd" }], rid }),
+          JSON.stringify({ list: faults.devices ?? [{ id: "dev1", name: opts.deviceName, type: "jd" }], rid }),
         ),
       };
     }
@@ -85,9 +111,11 @@ export async function startMyJdServer(opts: {
     if (!m || !deviceToken || m[1] !== sessions.at(-1)) {
       return failure(403, "TOKEN_INVALID");
     }
-    if (expire) {
-      expire = false;
-      return failure(403, "TOKEN_INVALID");
+    const deviceFailure = expire ? { status: 403, type: "TOKEN_INVALID" } : faults.device;
+    expire = false;
+    if (deviceFailure) {
+      const plain = JSON.stringify({ src: "DEVICE", type: deviceFailure.type });
+      return { status: deviceFailure.status, body: faults.encryptErrors ? jdEncrypt(deviceToken, plain) : plain };
     }
     const req = JSON.parse(jdDecrypt(deviceToken, call.body)) as { url: string; params: unknown[]; rid: number };
     if (req.rid <= lastRid) {
@@ -109,6 +137,7 @@ export async function startMyJdServer(opts: {
   return {
     ...s,
     sessions,
+    faults,
     expireSession: () => {
       expire = true;
     },

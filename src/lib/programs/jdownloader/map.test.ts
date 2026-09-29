@@ -116,3 +116,87 @@ describe("JDownloader snapshot from the recorded answers (build 48637)", () => {
     expect(s.items.find(i => i.name === "small")?.status).toBe("completed");
   });
 });
+
+describe("JDownloader package rules (written out, not taken from map.ts)", () => {
+  const st = (links: JdLink[]): string => packageStatus(links, () => undefined).status;
+  const running = (task: string): JdLink => link({ enabled: true, running: true, ...adv("PluginProgress", task) });
+
+  it("maps every post-processing and waiting task of a running link", () => {
+    for (const task of ["EXTRACTION", "FFMPEG", "FLV_FIXER", "CONVERT", "MOVE_FILE"]) {
+      expect([task, st([running(task)])]).toEqual([task, "postprocessing"]);
+    }
+    for (const task of ["WAIT", "CAPTCHA", "USERIO"]) {
+      expect([task, st([running(task)])]).toEqual([task, "waiting"]);
+    }
+  });
+
+  it("ignores the task of a link that does not run", () => {
+    expect(st([link({ enabled: true, ...adv("PluginProgress", "WAIT") })])).toBe("queued");
+  });
+
+  it("lets a running link win over an error or a skip reason of its siblings", () => {
+    const extractErr = link({ enabled: true, finished: true, ...adv("ExtractionStatus", "ERROR_PW") });
+    const failed = link({ enabled: true, ...adv("FinalLinkState", "FAILED") });
+    const skipped = link({ enabled: true, ...adv("ConditionalSkipReason", "WaitingSkipReason") });
+    expect(st([running("DOWNLOAD"), extractErr])).toBe("downloading");
+    expect(st([running("DOWNLOAD"), failed])).toBe("downloading");
+    expect(st([running("DOWNLOAD"), skipped])).toBe("downloading");
+    expect(st([link({ enabled: true, running: true })])).toBe("downloading");
+  });
+
+  it("calls an empty package queued, never completed or paused", () => {
+    expect(st([])).toBe("queued");
+  });
+
+  it("names an unknown plugin task and extraction state in a debug line", () => {
+    const lines: string[] = [];
+    packageStatus(
+      [
+        link({ enabled: true, running: true, ...adv("PluginProgress", "NEW_TASK") }),
+        link({ enabled: true, ...adv("ExtractionStatus", "NEW_EXTRACT") }),
+      ],
+      m => lines.push(m),
+    );
+    expect(lines.join("\n")).toContain("PluginProgress:NEW_TASK");
+    expect(lines.join("\n")).toContain("ExtractionStatus:NEW_EXTRACT");
+  });
+});
+
+describe("JDownloader snapshot details", () => {
+  it("reads packages without links, skips packages without uuid and keeps special values unknown", () => {
+    const s = toSnapshot(
+      "48637",
+      { state: "STOPPING", limit: false, limitspeed: 5 },
+      [
+        { name: "no uuid" },
+        { uuid: 1, name: "off", enabled: false, bytesTotal: -1, speed: 7 },
+        { uuid: 2, name: "on", enabled: true },
+      ],
+      null,
+      () => undefined,
+    );
+    expect(s.items.map(i => i.name)).toEqual(["off", "on"]);
+    expect(s.items[0]).toMatchObject({ status: "paused", sizeBytes: null, speedBps: 0 });
+    expect(s.status).toMatchObject({ paused: true, speedLimitBps: 0 });
+  });
+
+  it("takes the first link's added date and a finish time only for a completed package", () => {
+    const links: JdLink[] = [
+      link({ uuid: 1, packageUUID: 5, enabled: true, finished: true, addedDate: 300, finishedDate: 900 }),
+      link({ uuid: 2, packageUUID: 5, enabled: true, finished: true, addedDate: 100, finishedDate: 800 }),
+      link({ uuid: 3, packageUUID: 6, enabled: true, addedDate: 50, finishedDate: 700 }),
+    ];
+    const s = toSnapshot(
+      "48637",
+      {},
+      [
+        { uuid: 5, name: "done" },
+        { uuid: 6, name: "open" },
+      ],
+      links,
+      () => undefined,
+    );
+    expect(s.items[0]).toMatchObject({ addedMs: 100, finishedMs: 900 });
+    expect(s.items[1].finishedMs).toBeNull();
+  });
+});

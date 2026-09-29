@@ -1,9 +1,10 @@
 import { runDriverContract, type ContractServer } from "../../../../test/helpers/contract";
 import { startFixtureServer } from "../../../../test/helpers/fixture-server";
+import { firstUrl } from "../../../../test/helpers/first-url";
 import { loadFixture } from "../../../../test/helpers/fixtures";
 import { ProtocolError } from "../../core/errors";
 import type { ProgramConfig } from "../registry";
-import { JdLocalTransport, JD_METHODS, jdBaseUrl, type JdTransport } from "./client";
+import { checkJdCall, JdLocalTransport, JD_METHODS, jdBaseUrl, type JdTransport } from "./client";
 import { JdDriver } from "./driver";
 import { mapJdStatus, statusTable } from "./map";
 
@@ -188,5 +189,111 @@ describe("JDownloader driver", () => {
     expect(pushes).toBeGreaterThan(0);
     expect(listens).toBeLessThanOrEqual(seen + 1);
     expect(events.calls).toContain("/events/unsubscribe");
+  });
+});
+
+describe("JDownloader limits and transports", () => {
+  const GS = "org.jdownloader.settings.GeneralSettings";
+
+  it("allows the config interface only for the two limit keys of GeneralSettings, reading as well as writing", () => {
+    expect(() => checkJdCall("/config/set", ["org.other.Settings", null, "DownloadSpeedLimit", 1])).toThrow(
+      ProtocolError,
+    );
+    expect(() => checkJdCall("/config/get", [GS, null, "DefaultDownloadFolder"])).toThrow(ProtocolError);
+    expect(() => checkJdCall("/config/get", [GS, null, "DownloadSpeedLimit"])).not.toThrow();
+  });
+
+  it("calls a 4xx answer of the local API a protocol error", async () => {
+    const s = await startFixtureServer(() => ({ status: 403, body: { type: "FORBIDDEN" } }));
+    try {
+      await expect(new JdLocalTransport(s.baseUrl, timers).call("/jd/version")).rejects.toThrow(/HTTP 403 FORBIDDEN/);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("talks to the cloud for jdownloader-cloud and opens no push channel there", async () => {
+    const c: ProgramConfig = {
+      ...cfg("http://nas:1"),
+      type: "jdownloader-cloud",
+      username: "a@b",
+      password: "p",
+      device: "PC",
+    };
+    expect(await firstUrl(() => new JdDriver(c, { ...timers, log }).poll())).toMatch(
+      /^https:\/\/api\.jdownloader\.org\/my\/connect\?/,
+    );
+    const spy = vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("fetch failed"));
+    try {
+      const stop = new JdDriver(c, { ...timers, log }).subscribe(() => undefined);
+      await new Promise(resolve => globalThis.setTimeout(resolve, 10));
+      stop();
+      expect(spy).not.toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
+describe("JDownloader commands and events", () => {
+  const recorder = (answers: (path: string) => unknown): JdTransport & { calls: string[] } => {
+    const calls: string[] = [];
+    return {
+      calls,
+      call: (path: string) => {
+        calls.push(path);
+        const a = answers(path);
+        return a instanceof Error ? Promise.reject(a) : Promise.resolve(a);
+      },
+      close: () => undefined,
+    };
+  };
+
+  it("enables and restarts the links of a resumed package", async () => {
+    const t = recorder(() => true);
+    await new JdDriver(cfg("http://127.0.0.1:3128"), { ...timers, log }, t).command({ kind: "resume", key: "5" });
+    expect(t.calls).toEqual(["/downloadsV2/setEnabled", "/downloadsV2/resumeLinks"]);
+  });
+
+  it("refuses a subscription without id, ignores an empty event answer and subscribes afresh after a break", async () => {
+    let subscribes = 0;
+    let listens = 0;
+    let pushes = 0;
+    const events = recorder(path => {
+      if (path === "/events/subscribe") {
+        subscribes++;
+        return subscribes === 1 ? {} : { subscriptionid: 9 };
+      }
+      if (path === "/events/listen") {
+        listens++;
+        return listens === 1 ? [] : listens === 2 ? new Error("socket hang up") : new Promise(() => undefined);
+      }
+      return true;
+    });
+    const waits: (() => void)[] = [];
+    const d = new JdDriver(
+      cfg("http://127.0.0.1:3128"),
+      {
+        setTimeout: cb => {
+          waits.push(cb);
+          return 1 as unknown as ioBroker.Timeout;
+        },
+        clearTimeout: () => undefined,
+        log,
+      },
+      recorder(() => true),
+      events,
+    );
+    const stop = d.subscribe(() => pushes++);
+    const settle = (): Promise<void> => new Promise(resolve => globalThis.setTimeout(resolve, 5));
+    await settle();
+    expect(events.calls).toEqual(["/events/subscribe"]);
+    waits.shift()?.();
+    await settle();
+    expect(pushes).toBe(0);
+    waits.shift()?.();
+    await settle();
+    expect(events.calls.filter(c => c === "/events/subscribe")).toHaveLength(3);
+    stop();
   });
 });

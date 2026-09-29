@@ -11,6 +11,36 @@ describe("qBittorrent status", () => {
     }
   });
 
+  it("maps every documented state to the status the adapter promises (written out, not taken from map.ts)", () => {
+    const expected: Record<string, string> = {
+      downloading: "downloading",
+      forcedDL: "downloading",
+      metaDL: "checking",
+      forcedMetaDL: "checking",
+      checkingDL: "checking",
+      checkingUP: "checking",
+      checkingResumeData: "checking",
+      allocating: "checking",
+      stalledDL: "waiting",
+      queuedDL: "queued",
+      stoppedDL: "paused",
+      pausedDL: "paused",
+      uploading: "seeding",
+      stalledUP: "seeding",
+      forcedUP: "seeding",
+      queuedUP: "seeding",
+      stoppedUP: "completed",
+      pausedUP: "completed",
+      moving: "postprocessing",
+      error: "failed",
+      missingFiles: "failed",
+      unknown: "queued",
+    };
+    for (const [raw, status] of Object.entries(expected)) {
+      expect([raw, mapQbState(raw, () => undefined)]).toEqual([raw, status]);
+    }
+  });
+
   it("names an unknown state in a debug line", () => {
     const lines: string[] = [];
     expect(mapQbState("somethingNew", m => lines.push(m))).toBe("queued");
@@ -99,6 +129,40 @@ describe("qBittorrent snapshot from the recorded answers", () => {
       });
     });
   }
+
+  it("reads the torrent fields defensively and names the failure", () => {
+    const m = new MaindataState();
+    m.apply({
+      full_update: true,
+      torrents: {
+        a: { name: "a", state: "missingFiles", size: -1, ratio: -1 },
+        b: { name: "b", state: "error", has_tracker_error: true },
+        c: { name: "c", state: "error" },
+      },
+      server_state: {},
+    });
+    const s = toSnapshot("v5.0.0", m, false, () => undefined);
+    const by = Object.fromEntries(s.items.map(i => [i.key, i]));
+    expect(by.a).toMatchObject({ error: "files missing", sizeBytes: null, ratio: null, extra: { forceStart: false } });
+    expect(by.b.error).toBe("tracker error");
+    expect(by.c.error).toBe("error");
+    expect(s.status.altSpeed).toBe(false);
+  });
+
+  it("does not count failed or paused (4.x) torrents as running", () => {
+    const m = new MaindataState();
+    m.apply({
+      full_update: true,
+      torrents: {
+        e: { state: "error" },
+        f: { state: "missingFiles" },
+        p: { state: "pausedDL" },
+        u: { state: "pausedUP" },
+        r: { state: "downloading" },
+      },
+    });
+    expect([...qbRunning(m)]).toEqual(["r"]);
+  });
 
   it("counts running torrents for the adapter-made global pause", () => {
     const m = new MaindataState();

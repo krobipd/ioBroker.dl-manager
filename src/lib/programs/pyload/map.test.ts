@@ -70,3 +70,49 @@ describe("pyLoad snapshot from the recorded answers (0.5.0b3.dev101)", () => {
     expect(toSnapshot("0.5.0", {}, [], [], 0, { on: false, kib: 2000 }, () => undefined).status.speedLimitBps).toBe(0);
   });
 });
+
+describe("pyLoad package rules", () => {
+  const st = (files: { status?: number; error?: string }[]): { status: string; error: string } =>
+    packageStatus(files, () => undefined);
+
+  it("never calls an empty package or a file without status finished", () => {
+    expect(st([]).status).toBe("queued");
+    expect(st([{}]).status).toBe("queued");
+  });
+
+  it("turns a bare status word into a sentence", () => {
+    expect(st([{ status: 1, error: "temp. offline" }]).error).toBe("offline — the file is not available");
+  });
+
+  it("adds sizes, done bytes and the longest eta the adapter's way", () => {
+    const snap = toSnapshot(
+      "0.5.0",
+      { speed: -1 },
+      [
+        { name: "no id", links: [] },
+        {
+          pid: 1,
+          name: "p1",
+          links: [
+            { fid: 10, status: 12, size: 100 },
+            { fid: 11, status: 12, size: 100 },
+            { fid: 12, status: 4, size: 50 },
+          ],
+        },
+        { pid: 2, name: "p2", links: [{ fid: 20, status: 13, size: 0 }] },
+      ],
+      [
+        { fid: 10, bleft: 150, speed: 1, eta: 5 },
+        { fid: 11, bleft: 50, speed: 1, eta: 3 },
+        { fid: 20, bleft: 0, speed: 0, eta: 7 },
+      ],
+      1000,
+      null,
+      () => undefined,
+    );
+    expect(snap.items.map(i => i.key)).toEqual(["1", "2"]);
+    expect(snap.items[0]).toMatchObject({ sizeBytes: 250, doneBytes: 100, etaSeconds: 5 });
+    expect(snap.items[1]).toMatchObject({ sizeBytes: null, etaSeconds: null });
+    expect(snap.status).toMatchObject({ paused: false, downloadBps: null });
+  });
+});

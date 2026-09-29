@@ -57,6 +57,20 @@ describe("computeSummary", () => {
     expect(s["summary.pauseAll"]).toBe(true);
   });
 
+  it("keeps pauseAll false while one of two pausable programs still runs", () => {
+    const s = computeSummary([
+      { online: true, canPause: true, snapshot: snap(0, [], { paused: true }) },
+      { online: true, canPause: true, snapshot: snap(0, [], { paused: false }) },
+    ]);
+    expect(s["summary.pauseAll"]).toBe(false);
+  });
+
+  it("does not count a program as online before its first snapshot", () => {
+    const s = computeSummary([{ online: true, canPause: true, snapshot: null }]);
+    expect(s["info.programsOnline"]).toBe(0);
+    expect(s["info.connection"]).toBe(false);
+  });
+
   it("says unknown (null) for speeds nobody reports, and never 'all online' without programs", () => {
     const s = computeSummary([]);
     expect(s["info.connection"]).toBe(false);

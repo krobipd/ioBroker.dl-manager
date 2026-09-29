@@ -71,3 +71,19 @@ describe("Deluge snapshot from the recorded answers", () => {
     });
   }
 });
+
+describe("Deluge edge values", () => {
+  it("calls a torrent without speed but with peers downloading, and a negative size unknown", () => {
+    expect(
+      dlStatus({ state: "Downloading", download_payload_rate: 0, num_peers: 3, num_seeds: 0 }, () => undefined).status,
+    ).toBe("downloading");
+    const snap = toSnapshot(
+      "2.2.0",
+      { torrents: { h: { state: "Queued", total_wanted: -1 } } },
+      {},
+      false,
+      () => undefined,
+    );
+    expect(snap.items[0].sizeBytes).toBeNull();
+  });
+});

@@ -55,3 +55,60 @@ describe("NZBGet snapshot from the recorded answers", () => {
     });
   }
 });
+
+describe("NZBGet status (written out, not taken from map.ts)", () => {
+  const map = (raw: string): string => mapNzbStatus(raw, () => undefined);
+
+  it("maps every post-processing stage of the queue", () => {
+    for (const stage of [
+      "PP_QUEUED",
+      "LOADING_PARS",
+      "VERIFYING_SOURCES",
+      "REPAIRING",
+      "VERIFYING_REPAIRED",
+      "RENAMING",
+      "UNPACKING",
+      "MOVING",
+      "POST_UNPACK_RENAMING",
+      "POST_DOWNLOAD_RENAMING",
+      "EXECUTING_SCRIPT",
+      "PP_FINISHED",
+      "QS_QUEUED",
+      "QS_EXECUTING",
+    ]) {
+      expect([stage, map(`q:${stage}`)]).toEqual([stage, "postprocessing"]);
+    }
+  });
+
+  it("counts a script warning as success and reads unknown history texts by their prefix", () => {
+    expect(map("h:WARNING/SCRIPT")).toBe("completed");
+    expect(map("h:SUCCESS/NEWKIND")).toBe("completed");
+    expect(map("h:WARNING/NEWKIND")).toBe("failed");
+    expect(map("h:FAILURE/NEWKIND")).toBe("failed");
+    expect(map("h:SOMETHING")).toBe("queued");
+  });
+
+  it("does not hide post-processing behind the global pause", () => {
+    expect(map("q:UNPACKING:globalPause")).toBe("postprocessing");
+    expect(map("q:QUEUED:globalPause")).toBe("paused");
+  });
+});
+
+describe("NZBGet edge values", () => {
+  it("skips groups without id, reads 64-bit rates and keeps special values unknown", () => {
+    const snap = toSnapshot(
+      "26.3",
+      { DownloadRateHi: 1, DownloadRateLo: 0, DownloadRate: 5 },
+      [
+        { Status: "QUEUED" },
+        { NZBID: 1, Status: "QUEUED", FileSizeHi: 0, FileSizeLo: 100, RemainingSizeHi: 0, RemainingSizeLo: 150 },
+      ],
+      [{ NZBID: 2, Status: "SUCCESS/ALL", HistoryTime: 0 }],
+      () => undefined,
+    );
+    expect(snap.items.map(i => i.key)).toEqual(["1", "2"]);
+    expect(snap.items[0].doneBytes).toBe(0);
+    expect(snap.items[1]).toMatchObject({ finishedMs: null, error: "" });
+    expect(snap.status.downloadBps).toBe(4294967296);
+  });
+});

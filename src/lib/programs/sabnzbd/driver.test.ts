@@ -1,5 +1,6 @@
 import { runDriverContract, type ContractServer } from "../../../../test/helpers/contract";
 import { startFixtureServer } from "../../../../test/helpers/fixture-server";
+import { firstUrl } from "../../../../test/helpers/first-url";
 import { loadFixture } from "../../../../test/helpers/fixtures";
 import type { ProgramConfig } from "../registry";
 import { SabDriver } from "./driver";
@@ -125,6 +126,59 @@ describe("SABnzbd driver", () => {
       expect(s.calls.at(-1)?.query).toContain("mode=retry");
       await d.command({ kind: "setSpeedLimit", bps: 0 });
       expect(s.calls.at(-1)?.query).toContain("name=speedlimit&value=0");
+    } finally {
+      await s.close();
+    }
+  });
+});
+
+describe("SABnzbd details", () => {
+  it("asks the default port with a slash in front of a bare path", async () => {
+    const d = new SabDriver({ ...cfg("http://nas:1"), port: 0, path: "sab" }, { ...timers, log });
+    expect((await firstUrl(() => d.poll())).startsWith("http://nas:8080/sab/api?")).toBe(true);
+  });
+
+  it("calls a 4xx and status false protocol errors with SABnzbd's reason", async () => {
+    for (const [answer, err] of [
+      [{ status: 404, body: {} }, /HTTP 404/],
+      [{ body: { status: false, error: "not allowed" } }, /not allowed/],
+    ] as const) {
+      const s = await startFixtureServer(() => answer);
+      try {
+        await expect(new SabDriver(cfg(s.baseUrl), { ...timers, log }).poll()).rejects.toThrow(err);
+      } finally {
+        await s.close();
+      }
+    }
+  });
+
+  it("names the NZB key when it was entered instead of the API key", async () => {
+    const s = await startFixtureServer(() => ({ body: { auth: "nzbkey" } }));
+    try {
+      await expect(new SabDriver(cfg(s.baseUrl), { ...timers, log }).test()).rejects.toThrow(/NZB key/);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("reads the whole history again after a retry or a remove", async () => {
+    const s = await sabServer();
+    try {
+      const d = new SabDriver(cfg(s.baseUrl), { ...timers, log });
+      const lastUpdate = (): string | null =>
+        new URLSearchParams(
+          s.calls.filter(c => new URLSearchParams(c.query).get("mode") === "history").at(-1)?.query,
+        ).get("last_history_update");
+      const snap = await d.poll();
+      await d.poll();
+      expect(lastUpdate()).not.toBe("0");
+      await d.command({ kind: "extra", name: "retry", key: snap.items[0].key });
+      await d.poll();
+      expect(lastUpdate()).toBe("0");
+      await d.poll();
+      await d.command({ kind: "remove", key: snap.items[0].key });
+      await d.poll();
+      expect(lastUpdate()).toBe("0");
     } finally {
       await s.close();
     }

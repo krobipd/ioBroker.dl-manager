@@ -83,3 +83,21 @@ describe("aria2 snapshot from the recorded answers (1.37.0)", () => {
     expect(s.items[0].etaSeconds).toBe(1);
   });
 });
+
+describe("aria2 edge values", () => {
+  it("calls an active download without speed waiting and keeps unknown values unknown", () => {
+    const snap = toSnapshot(
+      "1.37.0",
+      [
+        { gid: "a", status: "active", downloadSpeed: "0", totalLength: "0", uploadSpeed: "-1", errorMessage: "old" },
+        { gid: "b", status: "error", errorMessage: "404 Not Found", errorCode: "3" },
+      ],
+      {},
+      {},
+      false,
+      () => undefined,
+    );
+    expect(snap.items[0]).toMatchObject({ status: "waiting", sizeBytes: null, uploadBps: null, error: "" });
+    expect(snap.items[1].error).toBe("404 Not Found");
+  });
+});

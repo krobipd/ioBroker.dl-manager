@@ -118,6 +118,7 @@ describe("errText — the non-Error branches stay", () => {
     const cyc: Record<string, unknown> = {};
     cyc.self = cyc;
     expect(errText(cyc)).toBe("[object Object]");
+    expect(errText({ toJSON: () => undefined })).toBe("[object Object]");
   });
 });
 describe("errText — it never throws and never prints source text", () => {

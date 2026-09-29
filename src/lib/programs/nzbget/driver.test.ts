@@ -1,6 +1,8 @@
 import { runDriverContract, type ContractServer } from "../../../../test/helpers/contract";
 import { startFixtureServer } from "../../../../test/helpers/fixture-server";
+import { firstUrl } from "../../../../test/helpers/first-url";
 import { loadFixture } from "../../../../test/helpers/fixtures";
+import { NzbClient } from "./client";
 import type { ProgramConfig } from "../registry";
 import { NzbDriver } from "./driver";
 import { mapNzbStatus, statusTable } from "./map";
@@ -90,6 +92,47 @@ describe("NZBGet driver", () => {
       expect(s.calls.at(-1)?.body).toContain('"method":"rate","params":[0]');
     } finally {
       await s.close();
+    }
+  });
+});
+
+describe("NZBGet connection", () => {
+  it("asks the default port with a slash in front of a bare path", async () => {
+    const d = new NzbDriver({ ...cfg("http://nas:1"), port: 0, path: "nzb" }, { ...timers, log });
+    expect(await firstUrl(() => d.poll())).toBe("http://nas:6789/nzb/jsonrpc");
+  });
+
+  it("sends once more when NZBGet closed the kept-alive socket", async () => {
+    const closed = new TypeError("fetch failed", { cause: { code: "UND_ERR_SOCKET" } });
+    const spy = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValueOnce(closed)
+      .mockResolvedValueOnce(new Response(JSON.stringify({ result: "26.3" }), { status: 200 }));
+    try {
+      expect(await new NzbClient(cfg("http://nas:1"), timers).call("version")).toBe("26.3");
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("sends basic auth only with a user, and names 4xx answers and RPC errors", async () => {
+    const s = await startFixtureServer(() => ({ body: { result: "26.3" } }));
+    try {
+      await new NzbClient({ ...cfg(s.baseUrl), username: "", password: "" }, timers).call("version");
+      expect(s.calls[0].headers.authorization).toBeUndefined();
+    } finally {
+      await s.close();
+    }
+    for (const [answer, err] of [
+      [{ status: 404, body: {} }, /HTTP 404/],
+      [{ body: { error: { message: "Invalid procedure" } } }, /failed: Invalid procedure/],
+    ] as const) {
+      const t = await startFixtureServer(() => answer);
+      try {
+        await expect(new NzbClient(cfg(t.baseUrl), timers).call("version")).rejects.toThrow(err);
+      } finally {
+        await t.close();
+      }
     }
   });
 });

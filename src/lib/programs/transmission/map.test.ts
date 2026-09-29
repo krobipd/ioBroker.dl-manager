@@ -104,3 +104,37 @@ describe("Transmission snapshot from the recorded answers", () => {
     });
   }
 });
+
+describe("Transmission snapshot edge values", () => {
+  it("reads units, labels, old free-space fields and special values the adapter's way", () => {
+    const s = toSnapshot(
+      "4.1.3",
+      [
+        { status: 4 },
+        {
+          hash_string: "a",
+          name: "a",
+          status: 4,
+          size_when_done: 100,
+          left_until_done: 150,
+          labels: ["tv", 7, "hd"],
+          added_date: 0,
+          rate_download: -1,
+        },
+      ],
+      {
+        units: { speed_bytes: 1024 },
+        speed_limit_down: 10,
+        speed_limit_down_enabled: true,
+        download_dir_free_space: 5,
+      },
+      {},
+      {},
+      false,
+      () => undefined,
+    );
+    expect(s.items.map(i => i.key)).toEqual(["a"]);
+    expect(s.items[0]).toMatchObject({ doneBytes: 0, category: "tv, hd", addedMs: null, speedBps: null });
+    expect(s.status).toMatchObject({ speedLimitBps: 10240, freeSpaceBytes: 5, altSpeed: false });
+  });
+});

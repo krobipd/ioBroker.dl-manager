@@ -102,6 +102,23 @@ describe("parsePrograms", () => {
     expect(rows[0].cfg.port).toBe(0);
   });
 
+  it("never decrypts an empty secret, and takes only real ports and a real https switch", () => {
+    const rows = parsePrograms(
+      [
+        { type: "qbittorrent", key: "a", host: "h", username: "u", password: "", port: 70000, https: "yes" },
+        { type: "qbittorrent", key: "b", host: "h", username: "u", password: "p", port: -5 },
+        { type: "", key: "c" },
+      ],
+      v => (v ? `plain(${v})` : "garbage"),
+      find,
+    );
+    expect(rows[0].cfg.password).toBe("");
+    expect(rows[0].cfg.port).toBe(0);
+    expect(rows[0].cfg.https).toBe(false);
+    expect(rows[1].cfg.port).toBe(0);
+    expect(rows[2].id).toBe("program-c");
+  });
+
   it("lets a failing decrypt through as an empty secret", () => {
     const [row] = parsePrograms(
       [{ enabled: true, type: "sabnzbd", key: "a", host: "h", apiKey: "x" }],

@@ -90,7 +90,35 @@ describe("routeState", () => {
   });
 
   it("ignores a datapoint whose capability the program lacks", () => {
-    expect(routeState("qbittorrent-nas.speedLimit", 1, lookup(["globalPause"]))).toEqual({ kind: "ignore" });
-    expect(routeState("qbittorrent-nas.downloads.11112222.remove", true, lookup([]))).toEqual({ kind: "ignore" });
+    const ignore = { kind: "ignore" };
+    expect(routeState("qbittorrent-nas.speedLimit", 1, lookup(["globalPause"]))).toEqual(ignore);
+    expect(routeState("qbittorrent-nas.downloads.11112222.remove", true, lookup([]))).toEqual(ignore);
+    expect(routeState("qbittorrent-nas.paused", true, lookup([]))).toEqual(ignore);
+    expect(routeState("qbittorrent-nas.uploadLimit", 1, lookup([]))).toEqual(ignore);
+    expect(routeState("qbittorrent-nas.altSpeed", true, lookup([]))).toEqual(ignore);
+    expect(routeState("qbittorrent-nas.add", "magnet:?xt=1", lookup([]))).toEqual(ignore);
+    expect(routeState("qbittorrent-nas.downloads.11112222.paused", true, lookup([]))).toEqual(ignore);
+  });
+
+  it("pauses only on a real true", () => {
+    expect(routeState("qbittorrent-nas.paused", 1, lookup())).toMatchObject({ cmd: { kind: "resumeAll" } });
+  });
+
+  it("fires a button only on true and sends it without a value", () => {
+    const d = "qbittorrent-nas.downloads.11112222";
+    expect(routeState(`${d}.recheck`, false, lookup())).toEqual({ kind: "ignore" });
+    expect(routeState(`${d}.recheck`, true, lookup())).toEqual({
+      kind: "command",
+      program: "qbittorrent-nas",
+      cmd: { kind: "extra", name: "recheck", key: "aaaa11112222" },
+      confirm: true,
+    });
+  });
+
+  it("keeps item extras, text links and foreign paths apart", () => {
+    const ignore = { kind: "ignore" };
+    expect(routeState("qbittorrent-nas.recheck", true, lookup())).toEqual(ignore);
+    expect(routeState("qbittorrent-nas.add", 5, lookup())).toEqual(ignore);
+    expect(routeState("qbittorrent-nas.other.11112222.remove", true, lookup())).toEqual(ignore);
   });
 });

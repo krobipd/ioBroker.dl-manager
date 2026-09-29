@@ -115,6 +115,48 @@ describe("ProgramRunner", () => {
     expect(tree.markOffline).toHaveBeenCalledWith("401 Unauthorized");
   });
 
+  it("after a rejected login neither schedules nor answers a poll request", async () => {
+    const clock = new ManualClock();
+    const driver = makeDriver(() => Promise.reject(new AuthError("401")));
+    const r = new ProgramRunner("fake-a", driver, makeTree(), makeDeps(clock), 10_000, vi.fn());
+    r.start();
+    await flush();
+    expect(clock.timers.size).toBe(0);
+    await r.pollNow();
+    expect(driver.polls).toBe(1);
+  });
+
+  it("drops a poll that finishes after stop", async () => {
+    const clock = new ManualClock();
+    let release: (s: ProgramSnapshot) => void = () => undefined;
+    const driver = makeDriver(() => new Promise<ProgramSnapshot>(resolve => (release = resolve)));
+    const tree = makeTree();
+    const onChange = vi.fn();
+    const r = new ProgramRunner("fake-a", driver, tree, makeDeps(clock), 10_000, onChange);
+    r.start();
+    await flush();
+    await r.stop();
+    release(SNAP);
+    await flush();
+    expect(tree.sync).not.toHaveBeenCalled();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("warns again when the same problem comes back after a good poll", async () => {
+    const clock = new ManualClock();
+    let fail = true;
+    const driver = makeDriver(() => (fail ? Promise.reject(new ProtocolError("bad answer")) : Promise.resolve(SNAP)));
+    const deps = makeDeps(clock);
+    const r = new ProgramRunner("fake-a", driver, makeTree(), deps, 10_000, vi.fn());
+    r.start();
+    await flush();
+    fail = false;
+    await clock.tick();
+    fail = true;
+    await clock.tick();
+    expect(deps.lines.filter(l => l.level === "warn")).toHaveLength(2);
+  });
+
   it("reports an empty change after a failed poll, so the summary sees the program go offline", async () => {
     const clock = new ManualClock();
     const driver = makeDriver(() => Promise.reject(new UnreachableError("timeout")));

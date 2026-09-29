@@ -130,8 +130,34 @@ describe("HttpClient", () => {
     const s = await serve(() => undefined);
     server = s.server;
     const c = new HttpClient(timers, { timeoutMs: 50 });
-    await expect(c.request({ method: "GET", url: s.url })).rejects.toThrow(UnreachableError);
+    await expect(c.request({ method: "GET", url: s.url })).rejects.toThrow(/no answer within 0.05 s/);
     server.closeAllConnections();
+  });
+
+  it("resends only on a closed socket, never on another network error", async () => {
+    const refused = (): TypeError => new TypeError("fetch failed", { cause: { code: "ECONNREFUSED" } });
+    const spy = vi.spyOn(globalThis, "fetch").mockRejectedValue(refused());
+    try {
+      const c = new HttpClient(timers, { resendOnClosedSocket: true });
+      await expect(c.request({ method: "POST", url: "http://x/" })).rejects.toThrow(UnreachableError);
+      expect(spy).toHaveBeenCalledTimes(1);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("keeps no cookie without a name", async () => {
+    const cookies: (string | undefined)[] = [];
+    const s = await serve((req, _b, res) => {
+      cookies.push(req.headers.cookie);
+      res.setHeader("set-cookie", ["=orphan", "SID=abc"]);
+      res.end("Ok.");
+    });
+    server = s.server;
+    const c = new HttpClient(timers);
+    await c.request({ method: "GET", url: s.url });
+    await c.request({ method: "GET", url: s.url });
+    expect(cookies[1]).toBe("SID=abc");
   });
 
   it("reports a refused connection as unreachable", async () => {

@@ -8,6 +8,10 @@ export class FakeAdapter {
   public readonly states = new Map<string, ioBroker.State>();
   public objectWrites = 0;
   public stateWrites = 0;
+  /** State writes to an id that has no object — the real database warns about every one of them. */
+  public readonly orphanWrites: string[] = [];
+  /** Every state write in order (id without namespace as given, value). */
+  public readonly writeLog: { id: string; val: ioBroker.StateValue }[] = [];
   public readonly logs: { level: string; msg: string }[] = [];
   public readonly log = {
     debug: (msg: string): void => void this.logs.push({ level: "debug", msg }),
@@ -129,7 +133,12 @@ export class FakeAdapter {
    * @param state the state
    */
   public setState(id: string, state: ioBroker.SettableState): Promise<void> {
-    this.states.set(this.full(id), { ...(state as ioBroker.State), ts: Date.now(), lc: Date.now() });
+    const key = this.full(id);
+    if (!this.objects.has(key)) {
+      this.orphanWrites.push(key);
+    }
+    this.writeLog.push({ id, val: state.val ?? null });
+    this.states.set(key, { ...(state as ioBroker.State), ts: Date.now(), lc: Date.now() });
     this.stateWrites++;
     return Promise.resolve();
   }

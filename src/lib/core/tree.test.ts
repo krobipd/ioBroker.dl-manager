@@ -218,6 +218,129 @@ describe("ProgramTree — downloads", () => {
     expect(a.objects.has(CH)).toBe(false);
   });
 
+  it("writes no value without its datapoint — a driver without any capability", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a, { removeFinished: false }, []);
+    const full = item("aaaa11112222", {
+      uploadBps: 1,
+      ratio: 1,
+      addedMs: 1,
+      finishedMs: 2,
+      category: "tv",
+      error: "x",
+      extra: { forceStart: true },
+    });
+    await t.sync({
+      status: {
+        version: "1",
+        paused: true,
+        downloadBps: 1,
+        uploadBps: 1,
+        speedLimitBps: 1,
+        uploadLimitBps: 1,
+        altSpeed: true,
+        freeSpaceBytes: 1,
+        extra: { x: 1 },
+      },
+      items: [full],
+      complete: true,
+    });
+    expect(a.orphanWrites).toEqual([]);
+  });
+
+  it("writes no value without its datapoint — a driver with every capability", async () => {
+    const a = new FakeAdapter(NS);
+    const all: Capability[] = [
+      "globalPause",
+      "itemPause",
+      "itemRemove",
+      "add",
+      "speedLimit",
+      "upload",
+      "uploadLimit",
+      "altSpeed",
+      "freeSpace",
+      "itemSpeed",
+      "itemEta",
+      "itemAdded",
+      "itemFinished",
+      "category",
+      "itemError",
+    ];
+    const t = await makeTree(a, { removeFinished: false }, all);
+    await t.sync(snap([item("aaaa11112222", { ratio: 2, category: "tv" })]));
+    expect(a.orphanWrites).toEqual([]);
+  });
+
+  it("writes no value for an extra the download does not carry", async () => {
+    const a = new FakeAdapter(NS);
+    const extras: ExtraDefinition[] = [
+      { id: "recheck", level: "item", type: "boolean", role: "button", write: true, read: false, nameKey: "recheck" },
+    ];
+    const t = new ProgramTree(a, "qbittorrent-nas", "qBittorrent (NAS)", driver(CAPS, extras), {
+      removeFinished: false,
+    });
+    await t.load();
+    await t.ensureDevice(undefined);
+    await t.sync(snap([item("aaaa11112222")]));
+    expect(a.states.has(`${CH}.recheck`)).toBe(false);
+  });
+
+  it("gives buttons (datapoint and extra) the default false", async () => {
+    const a = new FakeAdapter(NS);
+    const extras: ExtraDefinition[] = [
+      { id: "recheck", level: "item", type: "boolean", role: "button", write: true, read: false, nameKey: "recheck" },
+    ];
+    const t = new ProgramTree(a, "qbittorrent-nas", "qBittorrent (NAS)", driver([...CAPS, "itemRemove"], extras), {
+      removeFinished: false,
+    });
+    await t.load();
+    await t.ensureDevice(undefined);
+    await t.sync(snap([item("aaaa11112222")]));
+    expect(a.objects.get(`${CH}.remove`)?.common.def).toBe(false);
+    expect(a.objects.get(`${CH}.recheck`)?.common.def).toBe(false);
+  });
+
+  it("mirrors the status into the download's paused switch", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a);
+    await t.sync(snap([item("aaaa11112222", { status: "paused" })]));
+    expect(a.val("qbittorrent-nas.downloads.11112222.paused")).toBe(true);
+  });
+
+  it("writes an unknown ratio as null", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a);
+    await t.sync(snap([item("aaaa11112222")]));
+    expect(a.val("qbittorrent-nas.downloads.11112222.ratio")).toBeNull();
+  });
+
+  it("counts post-processing as downloading and an unknown alternative speed as off", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a, { removeFinished: false }, [...CAPS, "altSpeed"]);
+    await t.sync(snap([item("aaaa11112222", { status: "postprocessing" })]));
+    expect(a.val("qbittorrent-nas.downloading")).toBe(true);
+    expect(a.val("qbittorrent-nas.altSpeed")).toBe(false);
+  });
+
+  it("rebuilds the channels when the driver's datapoint set grew", async () => {
+    const a = new FakeAdapter(NS);
+    const small = await makeTree(a, { removeFinished: false }, []);
+    await small.sync(snap([item("aaaa11112222")]));
+    expect(a.objects.has(`${CH}.speed`)).toBe(false);
+    const big = await makeTree(a);
+    await big.sync(snap([item("aaaa11112222")]));
+    expect(a.objects.has(`${CH}.speed`)).toBe(true);
+  });
+
+  it("ignores a channel below downloads that carries no key", async () => {
+    const a = new FakeAdapter(NS);
+    await a.extendObject(`${DEV}.downloads.foreign`, { type: "channel", common: { name: "x" }, native: {} });
+    const t = await makeTree(a);
+    await expect(t.sync(snap([item("aaaa11112222")]))).resolves.toBeDefined();
+    expect(a.objects.has(`${DEV}.downloads.foreign`)).toBe(true);
+  });
+
   it("creates item extras declared by the driver and writes their values", async () => {
     const a = new FakeAdapter(NS);
     const extras: ExtraDefinition[] = [
@@ -274,6 +397,52 @@ describe("ProgramTree — finished and failed events", () => {
     expect(typeof a.val("qbittorrent-nas.lastFailedTime")).toBe("number");
   });
 
+  it("does not repeat the recorded finish after a restart", async () => {
+    const a = new FakeAdapter(NS);
+    a.states.set(`${DEV}.lastFinishedTime`, { val: 5000, ack: true } as ioBroker.State);
+    const t = await makeTree(a);
+    const e = await t.sync(snap([item("k1", { status: "completed", finishedMs: 5000 })]));
+    expect(e.finished).toHaveLength(0);
+  });
+
+  it("reports no old failure on the first poll and a lasting failure only once", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a);
+    const e1 = await t.sync(snap([item("k1", { status: "failed", error: "x" })]));
+    expect(e1.failed).toHaveLength(0);
+    await t.sync(snap([item("k1", { status: "failed", error: "x" }), item("k2")]));
+    const e2 = await t.sync(snap([item("k1", { status: "failed", error: "x" }), item("k2", { status: "failed" })]));
+    const e3 = await t.sync(snap([item("k1", { status: "failed", error: "x" }), item("k2", { status: "failed" })]));
+    expect(e2.failed.map(i => i.key)).toEqual(["k2"]);
+    expect(e3.failed).toHaveLength(0);
+  });
+
+  it("does not report a second finish when seeding ends", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a);
+    await t.sync(snap([item("k1")]));
+    await t.sync(snap([item("k1", { status: "seeding" })]));
+    const e = await t.sync(snap([item("k1", { status: "completed" })]));
+    expect(e.finished).toHaveLength(0);
+  });
+
+  it("takes the last of several finishes and failures of one poll", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a);
+    await t.sync(snap([item("k1"), item("k2"), item("k3"), item("k4")]));
+    await t.sync(
+      snap([
+        item("k1", { status: "completed", finishedMs: 1000 }),
+        item("k2", { status: "completed", finishedMs: 2000 }),
+        item("k3", { status: "failed" }),
+        item("k4", { status: "failed" }),
+      ]),
+    );
+    expect(a.val("qbittorrent-nas.lastFinished")).toBe("name k2");
+    expect(a.val("qbittorrent-nas.lastFinishedTime")).toBe(2000);
+    expect(a.val("qbittorrent-nas.lastFailed")).toBe("name k4");
+  });
+
   it("counts a download that appears already finished after the baseline", async () => {
     const a = new FakeAdapter(NS);
     const t = await makeTree(a);
@@ -313,6 +482,8 @@ describe("ProgramTree — removeFinished option", () => {
     expect(a.objects.has(`${DEV}.downloads.s1`)).toBe(true);
     expect(a.objects.has(`${DEV}.downloads.f1`)).toBe(true);
     await t.sync(snap([item("c1", { status: "completed" })]));
+    expect(a.objects.has(`${DEV}.downloads.c1`)).toBe(false);
+    await t.sync(snap([item("c1", { status: "seeding" })]));
     expect(a.objects.has(`${DEV}.downloads.c1`)).toBe(false);
   });
 

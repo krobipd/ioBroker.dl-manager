@@ -40,7 +40,10 @@ const snap = (downloadBps: number, items: DownloadItem[] = [], paused = false): 
   complete: true,
 });
 
-function world(behaviour: Record<string, Behaviour>): {
+function world(
+  behaviour: Record<string, Behaviour>,
+  capsFor: Record<string, Capability[]> = {},
+): {
   a: FakeAdapter;
   drivers: FakeDriver[];
   manager: (opts?: { removeFinished?: boolean }) => ProgramManager;
@@ -57,7 +60,7 @@ function world(behaviour: Record<string, Behaviour>): {
       const b = behaviour[cfg.host] ?? { error: new UnreachableError("no behaviour") };
       const d: FakeDriver = {
         type,
-        capabilities: new Set(caps),
+        capabilities: new Set(capsFor[cfg.host] ?? caps),
         extras: [],
         polls: 0,
         commands: [],
@@ -194,6 +197,81 @@ describe("ProgramManager — start", () => {
     );
   });
 
+  it("hands a device on only to an enabled, sound row of the same type and address", async () => {
+    const office = async (w: ReturnType<typeof world>, member: string): Promise<void> => {
+      await w.a.setForeignObject("enum.rooms.office", {
+        type: "enum",
+        common: { name: "Office", members: [member] },
+        native: {},
+      });
+    };
+    const members = (w: ReturnType<typeof world>): string[] =>
+      (w.a.objects.get("enum.rooms.office")?.common as { members: string[] }).members;
+    const cases: [string, Record<string, unknown>, Record<string, unknown>[]][] = [
+      ["sabnzbd-old", { address: "http://h1" }, [row("qbittorrent", "new", "h1")]],
+      ["qbittorrent-old", { address: "http://h2" }, [row("qbittorrent", "new", "h1")]],
+      ["qbittorrent-old", { address: "http://h1" }, [row("qbittorrent", "new", "h1", { enabled: false })]],
+      ["qbittorrent-old", { address: "http://h1" }, [row("qbittorrent", "new", "h9"), row("qbittorrent", "new", "h1")]],
+    ];
+    for (const [old, native, rows] of cases) {
+      const w = world({ h1: { snapshot: snap(0) }, h9: { snapshot: snap(0) } });
+      await seedDevice(w.a, old, native);
+      await office(w, `${NS}.${old}`);
+      await w.manager().start(rows);
+      expect([old, members(w)]).toEqual([old, [`${NS}.${old}`]]);
+      expect([old, w.a.objects.has(`${NS}.${old}`)]).toEqual([old, false]);
+    }
+  });
+
+  it("never hands a device to a program that already has one, and one device per row", async () => {
+    const w = world({ h1: { snapshot: snap(0) } });
+    await seedDevice(w.a, "qbittorrent-new", { address: "http://h1" });
+    await seedDevice(w.a, "qbittorrent-old", { address: "http://h1" });
+    await w.a.setForeignObject("enum.rooms.office", {
+      type: "enum",
+      common: { name: "Office", members: [`${NS}.qbittorrent-old`] },
+      native: {},
+    });
+    await w.manager().start([row("qbittorrent", "new", "h1")]);
+    expect((w.a.objects.get("enum.rooms.office")?.common as { members: string[] }).members).toEqual([
+      `${NS}.qbittorrent-old`,
+    ]);
+
+    const w2 = world({ h1: { snapshot: snap(0) } });
+    await seedDevice(w2.a, "qbittorrent-o1", { address: "http://h1" });
+    await seedDevice(w2.a, "qbittorrent-o2", { address: "http://h1" });
+    await w2.manager().start([row("qbittorrent", "new", "h1")]);
+    expect(w2.a.objects.has(`${NS}.qbittorrent-o1`)).toBe(false);
+    expect(w2.a.objects.has(`${NS}.qbittorrent-o2`)).toBe(false);
+  });
+
+  it("carries no assignment into a datapoint the new device does not have", async () => {
+    const w = world({ h1: { snapshot: snap(0) } });
+    await seedDevice(w.a, "qbittorrent-old", { address: "http://h1" });
+    await w.a.setForeignObject(`${NS}.qbittorrent-old.foo`, {
+      type: "state",
+      common: { name: "foo", type: "number", role: "value", read: true, write: false },
+      native: {},
+    });
+    await w.a.setForeignObject("enum.functions.x", {
+      type: "enum",
+      common: { name: "X", members: [`${NS}.qbittorrent-old.foo`] },
+      native: {},
+    });
+    await w.manager().start([row("qbittorrent", "new", "h1")]);
+    const members = (w.a.objects.get("enum.functions.x")?.common as { members: string[] }).members;
+    expect(members).not.toContain(`${NS}.qbittorrent-new.foo`);
+  });
+
+  it("treats only top-level devices as programs and stamps no value into a missing object", async () => {
+    const w = world({ h1: { snapshot: snap(0) } });
+    await w.a.extendObject("qbittorrent-nas.child", { type: "device", common: { name: "child" }, native: {} });
+    await w.a.setForeignObject(`${NS}.sabnzbd-old`, { type: "device", common: { name: "old" }, native: {} });
+    await w.manager().start([row("qbittorrent", "nas", "h1")]);
+    expect(w.a.objects.has(`${NS}.qbittorrent-nas.child`)).toBe(true);
+    expect(w.a.orphanWrites.filter(id => id.includes("sabnzbd-old"))).toEqual([]);
+  });
+
   it("writes the summary over reachable programs only", async () => {
     const w = world({
       h1: { snapshot: snap(1_000_000, [item("a", "downloading")]) },
@@ -268,6 +346,77 @@ describe("ProgramManager — user writes", () => {
     expect(w.drivers.map(d => d.commands)).toEqual([[{ kind: "pauseAll" }], [{ kind: "pauseAll" }], []]);
     const info = w.a.logs.filter(l => l.level === "info").map(l => l.msg);
     expect(info).toContain("pause all: paused 2 of 3 program(s) — not reachable: qbittorrent-c");
+  });
+
+  it("resume all resumes, and pause all leaves programs without a pause alone", async () => {
+    const w = world({ h1: { snapshot: snap(0) }, h2: { snapshot: snap(0) } }, { h2: ["add"] });
+    const m = w.manager();
+    await m.start([row("qbittorrent", "a", "h1"), row("sabnzbd", "b", "h2")]);
+    await flush();
+    await m.onUserWrite("summary.pauseAll", false);
+    expect(w.drivers.map(d => d.commands)).toEqual([[{ kind: "resumeAll" }], []]);
+  });
+
+  it("says so when no configured program can pause", async () => {
+    const w = world({ h1: { snapshot: snap(0) } }, { h1: ["add"] });
+    const m = w.manager();
+    await m.start([row("qbittorrent", "a", "h1")]);
+    await flush();
+    await m.onUserWrite("summary.pauseAll", true);
+    expect(w.a.logs.map(l => l.msg)).toContain("pause all: no configured program can pause");
+  });
+
+  it("puts the last of several finishes and failures of one poll into the summary", async () => {
+    const b = { snapshot: snap(0, [item("k1", "downloading"), item("k2", "downloading"), item("k3", "queued")]) };
+    b.snapshot.items.push(item("k4", "queued"));
+    const w = world({ h1: b });
+    const m = w.manager();
+    await m.start([row("qbittorrent", "a", "h1")]);
+    await flush();
+    b.snapshot = snap(0, [
+      item("k1", "completed"),
+      item("k2", "completed"),
+      item("k3", "failed"),
+      item("k4", "failed"),
+    ]);
+    await m.onUserWrite("qbittorrent-a.paused", true);
+    await flush();
+    expect(w.a.val("summary.lastFinished")).toBe("name-k2");
+    expect(w.a.val("summary.lastFailed")).toBe("name-k4");
+  });
+
+  it("writes no summary for a poll that ends after stop", async () => {
+    const w = world({ h1: { snapshot: snap(0) } });
+    // the first poll hangs in its tree write; stop then hangs in marking the program offline — the poll ends
+    // while the manager still holds its runner
+    let openPoll: () => void = () => undefined;
+    let openStop: () => void = () => undefined;
+    const pollGate = new Promise<void>(resolve => (openPoll = resolve));
+    const stopGate = new Promise<void>(resolve => (openStop = resolve));
+    let stopArmed = false;
+    const plain = w.a.setStateChanged.bind(w.a);
+    w.a.setStateChanged = (id, st) => {
+      if (id.endsWith(".version")) {
+        return pollGate.then(() => plain(id, st));
+      }
+      if (stopArmed && id.endsWith(".online") && st.val === false) {
+        return stopGate.then(() => plain(id, st));
+      }
+      return plain(id, st);
+    };
+    const m = w.manager();
+    await m.start([row("qbittorrent", "a", "h1")]);
+    await flush();
+    stopArmed = true;
+    const stopping = m.stop();
+    await flush();
+    const from = w.a.writeLog.length;
+    openPoll();
+    await flush();
+    openStop();
+    await stopping;
+    await flush();
+    expect(w.a.writeLog.slice(from).filter(x => x.id === "info.connection" && x.val === true)).toEqual([]);
   });
 
   it("confirms a button with ack after the command, leaves a switch to the next poll", async () => {
@@ -352,6 +501,10 @@ describe("ProgramManager — connection test and stop", () => {
       "sabnzbd-b: login rejected — 401 Unauthorized",
       "qbittorrent-c: host missing",
     ]);
+  });
+
+  it("says so when the form holds no program", async () => {
+    expect(await world({}).manager().testConnections([])).toBe("no program is configured");
   });
 
   it("uses a driver's own quiet check instead of a poll when it has one", async () => {

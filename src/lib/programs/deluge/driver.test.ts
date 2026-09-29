@@ -1,6 +1,8 @@
 import { runDriverContract, type ContractServer } from "../../../../test/helpers/contract";
 import { startFixtureServer } from "../../../../test/helpers/fixture-server";
+import { firstUrl } from "../../../../test/helpers/first-url";
 import { loadFixture } from "../../../../test/helpers/fixtures";
+import { UnreachableError } from "../../core/errors";
 import type { ProgramConfig } from "../registry";
 import { DlDriver } from "./driver";
 import { mapDlStatus, statusTable } from "./map";
@@ -100,6 +102,79 @@ describe("Deluge driver", () => {
       expect(s.calls.at(-1)?.body).toContain(`"params":["${snap.items[0].key}",false]`);
       await d.command({ kind: "setSpeedLimit", bps: 0 });
       expect(s.calls.at(-1)?.body).toContain('"max_download_speed":-1');
+    } finally {
+      await s.close();
+    }
+  });
+});
+
+/**
+ * deluge-web whose results the test sets per method (login always accepted).
+ *
+ * @param results result per method
+ * @param status HTTP status of every non-login answer
+ * @returns the running server
+ */
+async function dlSynth(
+  results: Record<string, unknown>,
+  status = 200,
+): Promise<Awaited<ReturnType<typeof startFixtureServer>>> {
+  return startFixtureServer(call => {
+    const { method, id } = JSON.parse(call.body) as { method: string; id: number };
+    if (method === "auth.login") {
+      return { body: { result: true, error: null, id }, headers: { "set-cookie": "_session_id=abc" } };
+    }
+    return { status, body: { result: method in results ? results[method] : null, error: null, id } };
+  });
+}
+const HOST = {
+  "web.get_hosts": [["h1", "127.0.0.1", 58846, "Online"]],
+  "web.get_host_status": ["h1", "Online", "2.2.0"],
+};
+
+describe("Deluge connection", () => {
+  it("asks the default port and logs in first", async () => {
+    const d = new DlDriver({ ...cfg("http://nas:1"), port: 0 }, { ...timers, log });
+    expect(await firstUrl(() => d.poll())).toBe("http://nas:8112/json");
+    const s = await dlSynth({ ...HOST, "web.connected": true });
+    try {
+      await new DlDriver(cfg(s.baseUrl), { ...timers, log }).poll();
+      expect(s.calls[0].body).toContain('"auth.login"');
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("connects the web UI to the daemon when it is not connected yet", async () => {
+    const s = await dlSynth({ ...HOST, "web.connected": false });
+    try {
+      await new DlDriver(cfg(s.baseUrl), { ...timers, log }).poll();
+      expect(s.calls.some(c => c.body.includes('"web.connect"'))).toBe(true);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("names an empty connection manager, an offline daemon and a 4xx answer", async () => {
+    const cases: [Record<string, unknown>, number, RegExp | (new (message: string) => Error)][] = [
+      [{ "web.get_hosts": [] }, 200, /knows no daemon/],
+      [{ ...HOST, "web.get_host_status": ["h1", "Offline", ""] }, 200, UnreachableError],
+      [HOST, 404, /HTTP 404/],
+    ];
+    for (const [results, status, err] of cases) {
+      const s = await dlSynth(results, status);
+      try {
+        await expect(new DlDriver(cfg(s.baseUrl), { ...timers, log }).poll()).rejects.toThrow(err);
+      } finally {
+        await s.close();
+      }
+    }
+  });
+
+  it("reads an unknown session pause as not paused", async () => {
+    const s = await dlSynth({ ...HOST, "web.connected": true, "web.update_ui": { torrents: {}, stats: {} } });
+    try {
+      expect((await new DlDriver(cfg(s.baseUrl), { ...timers, log }).poll()).status.paused).toBe(false);
     } finally {
       await s.close();
     }

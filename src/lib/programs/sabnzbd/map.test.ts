@@ -73,3 +73,32 @@ describe("SABnzbd snapshot from the recorded answers", () => {
 function snap455(state: string): ReturnType<typeof toSnapshot> {
   return toSnapshot(queue("4.5.5", state), (history("4.5.5", state).slots as unknown[]) ?? [], () => undefined);
 }
+
+describe("SABnzbd edge values", () => {
+  it("skips slots without id, reads units in KiB, MiB and GiB, and keeps special values unknown", () => {
+    const snap = toSnapshot(
+      {
+        kbpersec: "1",
+        diskspace1: "1",
+        slots: [
+          { status: "Queued" },
+          { nzo_id: "q1", status: "Queued", mb: "1", mbleft: "2", time_added: 0 },
+          { nzo_id: "q2", mb: "-1" },
+        ],
+      },
+      [
+        { status: "Completed" },
+        { nzo_id: "h1", status: "Extracting", completed: 1790000000, bytes: 5 },
+        { nzo_id: "h2", status: "Completed", fail_message: "old", bytes: 7 },
+      ],
+      () => undefined,
+    );
+    expect(snap.items.map(i => i.key)).toEqual(["q1", "q2", "h1", "h2"]);
+    const by = Object.fromEntries(snap.items.map(i => [i.key, i]));
+    expect(by.q1).toMatchObject({ sizeBytes: 1048576, doneBytes: 0, addedMs: null });
+    expect(by.q2.sizeBytes).toBeNull();
+    expect(by.h1).toMatchObject({ finishedMs: null, doneBytes: 5 });
+    expect(by.h2).toMatchObject({ error: "", doneBytes: 7 });
+    expect(snap.status).toMatchObject({ downloadBps: 1024, freeSpaceBytes: 1073741824 });
+  });
+});
