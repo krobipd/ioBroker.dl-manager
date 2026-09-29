@@ -381,6 +381,25 @@ describe("DownloadManagerAdapter — start", () => {
     expect(h.store.logs.filter(l => l.msg.includes("moved into"))).toEqual([]);
   });
 
+  it("brings the names of the last channel and its values to every installation", async () => {
+    const { h } = make();
+    await h.handlers.get("ready")?.();
+    const name = (id: string): unknown => h.store.objects.get(`dl-manager.0.summary.${id}`)?.common.name;
+    expect([
+      name("last"),
+      name("last.finished"),
+      name("last.finishedTime"),
+      name("last.failed"),
+      name("last.failedTime"),
+    ]).toEqual([
+      { en: "channelLast" },
+      { en: "lastFinished" },
+      { en: "lastFinishedTime" },
+      { en: "lastFailed" },
+      { en: "lastFailedTime" },
+    ]);
+  });
+
   it("starts a fresh installation without programs — no store, no error", async () => {
     const { h, polls } = make();
     h.store.objects.delete(STORE);
