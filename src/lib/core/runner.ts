@@ -7,9 +7,9 @@ import type { ProgramEvents } from "./tree";
 /** Adapter services the runner needs — a seam for the tests. */
 export interface RunnerDeps {
   /** The adapter's timer (never a bare setTimeout). */
-  setTimeout(cb: () => void, ms: number): ioBroker.Timeout | undefined;
+  setTimeout: (cb: () => void, ms: number) => ioBroker.Timeout | undefined;
   /** Clears an adapter timer. */
-  clearTimeout(t: ioBroker.Timeout | undefined): void;
+  clearTimeout: (t: ioBroker.Timeout | undefined) => void;
   /** The adapter log. */
   log: { debug(msg: string): void; info(msg: string): void; warn(msg: string): void };
   /** Actionable problems (fleet pattern, `actionable-problems.ts`): the one warn + notification for a rejected login. */

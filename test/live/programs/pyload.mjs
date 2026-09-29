@@ -89,7 +89,7 @@ export async function record(_ctx) {
 
   // finished and failed (404)
   const smallRes = await add("small", ["http://seed:8080/small.bin"]);
-  w("commands", "add-package", "POST /api/add_package", smallRes);
+  w("commands", "add-package-call", "POST /api/add_package", smallRes);
   const small = smallRes.json();
   const failed = (await add("missing", ["http://seed:8080/missing.bin"])).json();
   const linkSeen = new Set();

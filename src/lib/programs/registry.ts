@@ -41,9 +41,9 @@ export type RequiredField = "host" | "username" | "password" | "apiKey" | "devic
 /** Adapter services a driver may use — timers only through the adapter. */
 export interface DriverDeps {
   /** The adapter's timer. */
-  setTimeout(cb: () => void, ms: number): ioBroker.Timeout | undefined;
+  setTimeout: (cb: () => void, ms: number) => ioBroker.Timeout | undefined;
   /** Clears an adapter timer. */
-  clearTimeout(t: ioBroker.Timeout | undefined): void;
+  clearTimeout: (t: ioBroker.Timeout | undefined) => void;
   /** The adapter log. */
   log: { debug(msg: string): void; info(msg: string): void; warn(msg: string): void };
   /** Where an emulated global pause keeps its state (absent in the connection test — then kept in memory). */

@@ -4,9 +4,9 @@ import { ProtocolError, UnreachableError } from "./errors";
 /** The adapter's timers — the deadline never runs on a bare setTimeout. */
 export interface HttpTimers {
   /** The adapter's timer. */
-  setTimeout(cb: () => void, ms: number): ioBroker.Timeout | undefined;
+  setTimeout: (cb: () => void, ms: number) => ioBroker.Timeout | undefined;
   /** Clears an adapter timer. */
-  clearTimeout(t: ioBroker.Timeout | undefined): void;
+  clearTimeout: (t: ioBroker.Timeout | undefined) => void;
 }
 
 /** One request. */
