@@ -16,8 +16,7 @@ const MYJD = { email: "fixture@example.com", password: "fixture", device: "JD Fi
 
 const json = (value, status = 200, headers = {}) =>
   new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json", ...headers } });
-const text = (value, status = 200, headers = {}) =>
-  new Response(status === 204 ? null : value, { status, headers });
+const text = (value, status = 200, headers = {}) => new Response(status === 204 ? null : value, { status, headers });
 
 // ---- JDownloader (local API and, decrypted, the cloud's device calls) ----
 const JD_READS = {
