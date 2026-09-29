@@ -12,6 +12,8 @@ export class FakeAdapter {
   public stateWrites = 0;
   /** Reads `setStateChanged` makes to compare — the real controller reads the state from the database each time. */
   public changedChecks = 0;
+  /** The id of every `setStateChanged` call — each one is a database read in the real controller. */
+  public readonly changedLog: string[] = [];
   /** State writes to an id that has no object — the real database warns about every one of them. */
   public readonly orphanWrites: string[] = [];
   /** Every state write in order (id without namespace as given, value). */
@@ -151,6 +153,22 @@ export class FakeAdapter {
   }
 
   /**
+   * Reads copies of every state whose id starts with the pattern's prefix.
+   *
+   * @param pattern prefix with a trailing `*`
+   */
+  public getStates(pattern: string): Promise<Record<string, ioBroker.State>> {
+    const prefix = pattern.replace(/\*$/, "");
+    const out: Record<string, ioBroker.State> = {};
+    for (const [k, v] of this.states) {
+      if (k.startsWith(prefix)) {
+        out[k] = structuredClone(v);
+      }
+    }
+    return Promise.resolve(out);
+  }
+
+  /**
    * Writes a state.
    *
    * @param id own or full id
@@ -175,6 +193,7 @@ export class FakeAdapter {
    */
   public setStateChanged(id: string, state: ioBroker.SettableState): Promise<void> {
     this.changedChecks++;
+    this.changedLog.push(this.full(id));
     const old = this.states.get(this.full(id));
     if (old && old.val === state.val && old.ack === state.ack) {
       return Promise.resolve();

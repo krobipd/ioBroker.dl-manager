@@ -37,6 +37,7 @@ vi.mock("@iobroker/adapter-core", () => {
     public setState = (id: string, st: ioBroker.SettableState): Promise<void> => this.store.setState(id, st);
     public setStateChangedAsync = (id: string, st: ioBroker.SettableState): Promise<void> =>
       this.store.setStateChanged(id, st);
+    public getStatesAsync = (p: string): Promise<Record<string, ioBroker.State>> => this.store.getStates(p);
     public subscribeStatesAsync = (): Promise<void> => Promise.resolve();
     public setTimeout = (): undefined => undefined;
     public clearTimeout = (): void => undefined;
@@ -171,6 +172,35 @@ describe("DownloadManagerAdapter — start", () => {
     await runner?.pollNow();
     expect(channelKeys(h)).toEqual(["k1"]);
     expect(h.store.objects.has("dl-manager.0.qbittorrent-nas.downloads.k1.status")).toBe(true);
+  });
+
+  it("reads no read-only state from the database on the second start", async () => {
+    const first = make();
+    await first.h.handlers.get("ready")?.();
+    await flush();
+    const { h } = make();
+    h.store = first.h.store;
+    h.store.changedLog.length = 0;
+    h.store.writeLog.length = 0;
+    await h.handlers.get("ready")?.();
+    await flush();
+    const readOnly = h.store.changedLog.filter(id => h.store.objects.get(id)?.common.write === false);
+    expect(readOnly).toEqual([]);
+    expect(h.store.changedLog.length).toBeGreaterThan(0);
+    expect(h.store.writeLog.map(w => w.id)).not.toContain("dl-manager.0.qbittorrent-nas.version");
+  });
+
+  it("writes the offline stamp after a stop only where it changes", async () => {
+    const first = make();
+    await first.h.handlers.get("ready")?.();
+    await flush();
+    await new Promise<void>(resolve => first.h.handlers.get("unload")?.(resolve));
+    const { h } = make();
+    h.store = first.h.store;
+    h.store.writeLog.length = 0;
+    await h.handlers.get("ready")?.();
+    await flush();
+    expect(h.store.writeLog.filter(w => w.id === "info.connection").map(w => w.val)).toEqual([true]);
   });
 
   it("writes a manifest object only when its name differs", async () => {

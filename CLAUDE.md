@@ -28,6 +28,7 @@ src/lib/core/manager.ts          → ProgramManager: offline stempeln, verwaiste
 src/lib/core/runner.ts           → Abfrage-Schleife je Programm, Anmelde-Sperre, pollNow nach jedem Befehl
 src/lib/core/tree.ts             → ProgramTree: Gerät/Kanäle/Datenpunkte gegen den Schnappschuss abgleichen, itemKey
 src/lib/core/objects.ts          → KnownObjects: eigener Baum einmal gelesen, Objekte nur bei Unterschied schreiben (coveredBy)
+src/lib/core/states.ts           → KnownStates: schreibgeschützte Zustände im Speicher verglichen, beschreibbare per setStateChanged
 src/lib/core/summary.ts          → info.* und summary.* aus allen Programmen
 src/lib/core/commands.ts         → routeState: Datenpunkt-Id → pauseAll / Befehl an Programm / ignorieren
 src/lib/core/http.ts             → HttpClient: Timeout über Adapter-Timer, Cookies, keine Weiterleitungen, multipart

@@ -295,7 +295,7 @@ export class ProgramManager {
       }
     }
     for (const [id, val] of NO_REACHABLE_STAMP) {
-      await this.a.setState(id, { val, ack: true });
+      await this.a.setStateChanged(id, { val, ack: true });
     }
   }
 

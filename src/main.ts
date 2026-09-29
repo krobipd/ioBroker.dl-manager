@@ -5,6 +5,7 @@ import { ActionableProblems } from "./lib/actionable-problems";
 import { parseMaxDownloads, parsePollInterval, parseTreeScope } from "./lib/core/config";
 import { ProgramManager } from "./lib/core/manager";
 import { coveredBy, KnownObjects } from "./lib/core/objects";
+import { KnownStates } from "./lib/core/states";
 import { errText } from "./lib/err-text";
 import { tDesc, tName } from "./lib/i18n";
 import { migrateNativeKeys, type NativeKeyMigration } from "./lib/native-key-migration";
@@ -22,6 +23,8 @@ export class DownloadManagerAdapter extends utils.Adapter {
   private readonly problems: ActionableProblems;
   /** The own object tree, read once at start — an object is written only when it differs. */
   private readonly known: KnownObjects;
+  /** The own states, read once at start — read-only ones are compared in memory. */
+  private readonly states: KnownStates;
 
   /**
    * @param options Adapter options
@@ -42,6 +45,17 @@ export class DownloadManagerAdapter extends utils.Adapter {
       delObject: (id, opts) => this.delObjectAsync(id, opts),
       getObjectList: params => this.getObjectListAsync(params),
     });
+    this.states = new KnownStates(
+      {
+        get namespace(): string {
+          return namespace();
+        },
+        getStates: pattern => this.getStatesAsync(pattern),
+        setState: (id, state) => this.setState(id, state),
+        setStateChanged: (id, state) => this.setStateChangedAsync(id, state),
+      },
+      id => (this.known.get(id) as ioBroker.Object | undefined)?.common?.write === false,
+    );
     this.problems = new ActionableProblems({
       logWarn: m => this.log.warn(m),
       logInfo: m => this.log.info(m),
@@ -165,8 +179,8 @@ export class DownloadManagerAdapter extends utils.Adapter {
             this.getForeignObjectsAsync(pattern, type) as Promise<Record<string, ioBroker.Object>>,
           getForeignObjectAsync: id => this.getForeignObjectAsync(id),
           getState: id => this.getStateAsync(id),
-          setState: (id, state) => this.setState(id, state),
-          setStateChanged: (id, state) => this.setStateChangedAsync(id, state),
+          setState: (id, state) => this.states.set(id, state),
+          setStateChanged: (id, state) => this.states.put(id, state),
         },
         timers: {
           setTimeout: (cb, ms) => this.setTimeout(cb, ms),
@@ -199,6 +213,7 @@ export class DownloadManagerAdapter extends utils.Adapter {
       }
       await I18n.init(join(this.adapterDir, "admin"), this);
       await this.known.load();
+      await this.states.load();
       await this.refreshManifestObjects();
       this.manager = this.makeManager();
       await this.manager.start(this.config.programs);
@@ -244,7 +259,7 @@ export class DownloadManagerAdapter extends utils.Adapter {
     try {
       const manager = this.manager;
       this.manager = null;
-      void (manager ? manager.stop() : this.setState("info.connection", { val: false, ack: true }))
+      void (manager ? manager.stop() : this.states.put("info.connection", { val: false, ack: true }))
         .catch((err: unknown) => this.log.debug(`onUnload: final writes rejected: ${errText(err)}`))
         .finally(callback);
     } catch {
