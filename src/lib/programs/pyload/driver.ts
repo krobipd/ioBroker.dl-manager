@@ -8,6 +8,20 @@ import { toSnapshot } from "./map";
 /** Polls between two reads of the speed limit — a poll is four calls, pyLoad allows 100 a minute. */
 const LIMIT_EVERY = 10;
 
+/**
+ * @param url the link the user added
+ * @returns the package name: the link's file name (last path segment), else its host, else "download"
+ */
+function packageName(url: string): string {
+  try {
+    const u = new URL(url);
+    const file = u.pathname.split("/").filter(Boolean).pop();
+    return file ? decodeURIComponent(file) : u.hostname || "download";
+  } catch {
+    return "download";
+  }
+}
+
 /** pyLoad-ng 0.5. A download is a package; no pause per package (only abort), a real server pause. */
 export class PyDriver implements ProgramDriver {
   public readonly type = "pyload";
@@ -62,8 +76,7 @@ export class PyDriver implements ProgramDriver {
         await this.client.post("delete_packages", { package_ids: [Number(cmd.key)] });
         return;
       case "add": {
-        const name = cmd.url.split(/[/?#]/).filter(Boolean).pop() ?? "download";
-        await this.client.post("add_package", { name, links: [cmd.url], dest: 1 });
+        await this.client.post("add_package", { name: packageName(cmd.url), links: [cmd.url], dest: 1 });
         return;
       }
       case "pauseAll":

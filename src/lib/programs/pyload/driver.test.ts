@@ -1,5 +1,6 @@
 import { runDriverContract, type ContractServer } from "../../../../test/helpers/contract";
 import { startFixtureServer } from "../../../../test/helpers/fixture-server";
+import { firstUrl } from "../../../../test/helpers/first-url";
 import { loadFixture } from "../../../../test/helpers/fixtures";
 import { UnreachableError } from "../../core/errors";
 import type { ProgramConfig } from "../registry";
@@ -103,6 +104,93 @@ describe("pyLoad driver", () => {
         await d.poll();
       }
       expect(s.calls.filter(c => c.path === "/api/get_config_value")).toHaveLength(4);
+    } finally {
+      await s.close();
+    }
+  });
+});
+
+/**
+ * pyLoad whose answers the test sets: GET by function name, the two limit options from `config`.
+ *
+ * @param state answer per function
+ * @param state.config value per limit option
+ * @returns the running server
+ */
+async function pySynth(state: {
+  config: Record<string, unknown>;
+  [fn: string]: unknown;
+}): Promise<Awaited<ReturnType<typeof startFixtureServer>>> {
+  return startFixtureServer(call => {
+    const fn = call.path.replace(/^\/api\//, "");
+    if (fn === "get_config_value") {
+      return { body: JSON.stringify(state.config[String(new URLSearchParams(call.query).get("option"))] ?? null) };
+    }
+    if (call.method === "GET") {
+      return { body: JSON.stringify(state[fn] ?? null) };
+    }
+    return { body: "null" };
+  });
+}
+const posts = (s: { calls: { method: string; path: string; body: string }[] }, fn: string): unknown[] =>
+  s.calls.filter(c => c.method === "POST" && c.path === `/api/${fn}`).map(c => JSON.parse(c.body) as unknown);
+
+describe("pyLoad details", () => {
+  it("asks the default port and sends the API key alone", async () => {
+    const d = new PyDriver({ ...cfg("http://nas:1"), port: 0 }, { ...timers, log });
+    expect(await firstUrl(() => d.poll())).toBe("http://nas:8000/api/get_server_version");
+    const s = await pySynth({ config: {} });
+    try {
+      await new PyDriver({ ...cfg(s.baseUrl), username: "u", password: "p" }, { ...timers, log }).poll();
+      expect(s.calls.every(c => c.headers.authorization === undefined)).toBe(true);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("calls a 4xx a protocol error", async () => {
+    const s = await startFixtureServer(() => ({ status: 404, body: {} }));
+    try {
+      await expect(new PyDriver(cfg(s.baseUrl), { ...timers, log }).poll()).rejects.toThrow(/HTTP 404/);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("reads the limit (also as the string True), switches it off without overwriting it, and reads it back", async () => {
+    const state = { config: { limit_speed: "True", max_speed: 100 } as Record<string, unknown> };
+    const s = await pySynth(state);
+    try {
+      const d = new PyDriver(cfg(s.baseUrl), { ...timers, log });
+      expect((await d.poll()).status.speedLimitBps).toBe(102400);
+      await d.command({ kind: "setSpeedLimit", bps: 0 });
+      expect(posts(s, "set_config_value")).toEqual([{ category: "download", option: "limit_speed", value: false }]);
+      await d.command({ kind: "setSpeedLimit", bps: 1_024_000 });
+      expect(posts(s, "set_config_value").slice(1)).toEqual([
+        { category: "download", option: "max_speed", value: 1000 },
+        { category: "download", option: "limit_speed", value: true },
+      ]);
+      state.config.max_speed = 1000;
+      expect((await d.poll()).status.speedLimitBps).toBe(1_024_000);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("adds a link as a package named after the file, into the queue", async () => {
+    const s = await pySynth({ config: {} });
+    try {
+      await new PyDriver(cfg(s.baseUrl), { ...timers, log }).command({
+        kind: "add",
+        url: "https://host/dir/file.zip?x=1",
+      });
+      await new PyDriver(cfg(s.baseUrl), { ...timers, log }).command({ kind: "add", url: "https://host/" });
+      await new PyDriver(cfg(s.baseUrl), { ...timers, log }).command({ kind: "add", url: "not a link" });
+      expect(posts(s, "add_package")).toEqual([
+        { name: "file.zip", links: ["https://host/dir/file.zip?x=1"], dest: 1 },
+        { name: "host", links: ["https://host/"], dest: 1 },
+        { name: "download", links: ["not a link"], dest: 1 },
+      ]);
     } finally {
       await s.close();
     }
