@@ -192,11 +192,10 @@ export class JdDriver implements ProgramDriver {
       }
     };
     void loop();
+    // no unsubscribe on stop: the adapter is shutting down and refuses the request's deadline timer, close() aborts the
+    // request anyway — JD drops a subscription nobody listens to after its keepalive (120 s)
     return () => {
       stopped = true;
-      if (id !== undefined) {
-        events.call("/events/unsubscribe", [id]).catch(() => undefined);
-      }
     };
   }
 }

@@ -32,7 +32,6 @@ export const JD_METHODS: ReadonlySet<string> = new Set([
   "/jd/version",
   "/events/subscribe",
   "/events/listen",
-  "/events/unsubscribe",
 ]);
 
 /** Settings the adapter may read or write through `config/get|set`. */

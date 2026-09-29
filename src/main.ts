@@ -4,18 +4,24 @@ import { join } from "node:path";
 import { ActionableProblems } from "./lib/actionable-problems";
 import { parseMaxDownloads, parsePollInterval, parseTreeScope } from "./lib/core/config";
 import { ProgramManager } from "./lib/core/manager";
+import { coveredBy, KnownObjects } from "./lib/core/objects";
 import { errText } from "./lib/err-text";
 import { tDesc, tName } from "./lib/i18n";
 import { migrateNativeKeys, type NativeKeyMigration } from "./lib/native-key-migration";
 import { findProgram, type ProgramEntry } from "./lib/programs/registry";
 
 /** Native keys earlier versions declared and this one dropped (fleet helper `native-key-migration`). */
-const NATIVE_KEY_MIGRATIONS: NativeKeyMigration[] = [];
+const NATIVE_KEY_MIGRATIONS: NativeKeyMigration[] = [
+  // 0.0.1 (the npm placeholder) declared it; the tree settings treeScope and maxDownloads replace it
+  { drop: "removeFinished" },
+];
 
 /** ioBroker adapter that mirrors download programs into the object tree. */
 export class DownloadManagerAdapter extends utils.Adapter {
   private manager: ProgramManager | null = null;
   private readonly problems: ActionableProblems;
+  /** The own object tree, read once at start — an object is written only when it differs. */
+  private readonly known: KnownObjects;
 
   /**
    * @param options Adapter options
@@ -26,6 +32,16 @@ export class DownloadManagerAdapter extends utils.Adapter {
     private readonly find: (type: string) => ProgramEntry | undefined = findProgram,
   ) {
     super({ ...options, name: "dl-manager" });
+    const namespace = (): string => this.namespace;
+    this.known = new KnownObjects({
+      get namespace(): string {
+        return namespace();
+      },
+      extendObject: (id, obj) => this.extendObject(id, obj),
+      setForeignObject: (id, obj) => this.setForeignObject(id, obj),
+      delObject: (id, opts) => this.delObjectAsync(id, opts),
+      getObjectList: params => this.getObjectListAsync(params),
+    });
     this.problems = new ActionableProblems({
       logWarn: m => this.log.warn(m),
       logInfo: m => this.log.info(m),
@@ -63,56 +79,76 @@ export class DownloadManagerAdapter extends utils.Adapter {
     }
   }
 
-  /** Re-applies names and explanations of the manifest objects, so an update reaches existing installations. */
+  /**
+   * Re-applies names and explanations of the manifest objects, so an update reaches existing installations — each only
+   * when it differs: js-controller already wrote every manifest object once before `onReady`.
+   */
   private async refreshManifestObjects(): Promise<void> {
-    await this.extendObject("info", {
-      common: { name: tName("channelInfo") },
-    });
-    await this.extendObject("info.connection", {
-      common: { name: tName("connection"), desc: tDesc("descConnection") },
-    });
-    await this.extendObject("info.programsTotal", {
-      common: { name: tName("programsTotal"), desc: tDesc("descProgramsTotal") },
-    });
-    await this.extendObject("info.programsOnline", {
-      common: { name: tName("programsOnline"), desc: tDesc("descProgramsOnline") },
-    });
-    await this.extendObject("info.programsAllOnline", {
-      common: { name: tName("programsAllOnline"), desc: tDesc("descProgramsAllOnline") },
-    });
-    await this.extendObject("summary", {
-      common: { name: tName("channelSummary") },
-    });
-    await this.extendObject("summary.downloading", {
-      common: { name: tName("summaryDownloading"), desc: tDesc("descSummaryDownloading") },
-    });
-    await this.extendObject("summary.active", {
-      common: { name: tName("summaryActive"), desc: tDesc("descSummaryActive") },
-    });
-    await this.extendObject("summary.queued", {
-      common: { name: tName("summaryQueued"), desc: tDesc("descSummaryQueued") },
-    });
-    await this.extendObject("summary.downloadSpeed", {
-      common: { name: tName("summaryDownloadSpeed"), desc: tDesc("descSummaryDownloadSpeed") },
-    });
-    await this.extendObject("summary.uploadSpeed", {
-      common: { name: tName("summaryUploadSpeed"), desc: tDesc("descSummaryUploadSpeed") },
-    });
-    await this.extendObject("summary.pauseAll", {
-      common: { name: tName("summaryPauseAll"), desc: tDesc("descSummaryPauseAll") },
-    });
-    await this.extendObject("summary.lastFinished", {
-      common: { name: tName("lastFinished"), desc: tDesc("descLastFinished") },
-    });
-    await this.extendObject("summary.lastFinishedTime", {
-      common: { name: tName("lastFinishedTime") },
-    });
-    await this.extendObject("summary.lastFailed", {
-      common: { name: tName("lastFailed"), desc: tDesc("descLastFailed") },
-    });
-    await this.extendObject("summary.lastFailedTime", {
-      common: { name: tName("lastFailedTime") },
-    });
+    let patch: ioBroker.PartialObject;
+    patch = { common: { name: tName("channelInfo") } };
+    if (!coveredBy(patch, this.known.get("info"))) {
+      await this.extendObject("info", patch);
+    }
+    patch = { common: { name: tName("connection"), desc: tDesc("descConnection") } };
+    if (!coveredBy(patch, this.known.get("info.connection"))) {
+      await this.extendObject("info.connection", patch);
+    }
+    patch = { common: { name: tName("programsTotal"), desc: tDesc("descProgramsTotal") } };
+    if (!coveredBy(patch, this.known.get("info.programsTotal"))) {
+      await this.extendObject("info.programsTotal", patch);
+    }
+    patch = { common: { name: tName("programsOnline"), desc: tDesc("descProgramsOnline") } };
+    if (!coveredBy(patch, this.known.get("info.programsOnline"))) {
+      await this.extendObject("info.programsOnline", patch);
+    }
+    patch = { common: { name: tName("programsAllOnline"), desc: tDesc("descProgramsAllOnline") } };
+    if (!coveredBy(patch, this.known.get("info.programsAllOnline"))) {
+      await this.extendObject("info.programsAllOnline", patch);
+    }
+    patch = { common: { name: tName("channelSummary") } };
+    if (!coveredBy(patch, this.known.get("summary"))) {
+      await this.extendObject("summary", patch);
+    }
+    patch = { common: { name: tName("summaryDownloading"), desc: tDesc("descSummaryDownloading") } };
+    if (!coveredBy(patch, this.known.get("summary.downloading"))) {
+      await this.extendObject("summary.downloading", patch);
+    }
+    patch = { common: { name: tName("summaryActive"), desc: tDesc("descSummaryActive") } };
+    if (!coveredBy(patch, this.known.get("summary.active"))) {
+      await this.extendObject("summary.active", patch);
+    }
+    patch = { common: { name: tName("summaryQueued"), desc: tDesc("descSummaryQueued") } };
+    if (!coveredBy(patch, this.known.get("summary.queued"))) {
+      await this.extendObject("summary.queued", patch);
+    }
+    patch = { common: { name: tName("summaryDownloadSpeed"), desc: tDesc("descSummaryDownloadSpeed") } };
+    if (!coveredBy(patch, this.known.get("summary.downloadSpeed"))) {
+      await this.extendObject("summary.downloadSpeed", patch);
+    }
+    patch = { common: { name: tName("summaryUploadSpeed"), desc: tDesc("descSummaryUploadSpeed") } };
+    if (!coveredBy(patch, this.known.get("summary.uploadSpeed"))) {
+      await this.extendObject("summary.uploadSpeed", patch);
+    }
+    patch = { common: { name: tName("summaryPauseAll"), desc: tDesc("descSummaryPauseAll") } };
+    if (!coveredBy(patch, this.known.get("summary.pauseAll"))) {
+      await this.extendObject("summary.pauseAll", patch);
+    }
+    patch = { common: { name: tName("lastFinished"), desc: tDesc("descLastFinished") } };
+    if (!coveredBy(patch, this.known.get("summary.lastFinished"))) {
+      await this.extendObject("summary.lastFinished", patch);
+    }
+    patch = { common: { name: tName("lastFinishedTime") } };
+    if (!coveredBy(patch, this.known.get("summary.lastFinishedTime"))) {
+      await this.extendObject("summary.lastFinishedTime", patch);
+    }
+    patch = { common: { name: tName("lastFailed"), desc: tDesc("descLastFailed") } };
+    if (!coveredBy(patch, this.known.get("summary.lastFailed"))) {
+      await this.extendObject("summary.lastFailed", patch);
+    }
+    patch = { common: { name: tName("lastFailedTime") } };
+    if (!coveredBy(patch, this.known.get("summary.lastFailedTime"))) {
+      await this.extendObject("summary.lastFailedTime", patch);
+    }
   }
 
   private makeManager(): ProgramManager {
@@ -121,9 +157,9 @@ export class DownloadManagerAdapter extends utils.Adapter {
         adapter: {
           namespace: this.namespace,
           log: this.log,
-          extendObject: (id, obj) => this.extendObject(id, obj),
-          setForeignObject: (id, obj) => this.setForeignObject(id, obj),
-          delObject: (id, opts) => this.delObjectAsync(id, opts),
+          extendObject: (id, obj) => this.known.extend(id, obj),
+          setForeignObject: (id, obj) => this.known.replace(id, obj),
+          delObject: (id, opts) => this.known.remove(id, opts),
           getObject: id => this.getObjectAsync(id),
           getForeignObjects: (pattern, type) =>
             this.getForeignObjectsAsync(pattern, type) as Promise<Record<string, ioBroker.Object>>,
@@ -162,6 +198,7 @@ export class DownloadManagerAdapter extends utils.Adapter {
         return;
       }
       await I18n.init(join(this.adapterDir, "admin"), this);
+      await this.known.load();
       await this.refreshManifestObjects();
       this.manager = this.makeManager();
       await this.manager.start(this.config.programs);

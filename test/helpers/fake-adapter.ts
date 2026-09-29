@@ -7,6 +7,8 @@ export class FakeAdapter {
   public readonly objects = new Map<string, ioBroker.Object>();
   public readonly states = new Map<string, ioBroker.State>();
   public objectWrites = 0;
+  /** The full id of every object write in order. */
+  public readonly objectLog: string[] = [];
   public stateWrites = 0;
   /** Reads `setStateChanged` makes to compare — the real controller reads the state from the database each time. */
   public changedChecks = 0;
@@ -45,6 +47,7 @@ export class FakeAdapter {
     merged._id = key;
     this.objects.set(key, merged);
     this.objectWrites++;
+    this.objectLog.push(key);
     return Promise.resolve();
   }
 
@@ -59,6 +62,7 @@ export class FakeAdapter {
     copy._id = id;
     this.objects.set(id, copy);
     this.objectWrites++;
+    this.objectLog.push(id);
     return Promise.resolve();
   }
 
@@ -106,6 +110,24 @@ export class FakeAdapter {
       }
     }
     return Promise.resolve(out);
+  }
+
+  /**
+   * Reads copies of all objects between two ids, like the object database's getObjectList.
+   *
+   * @param params the range
+   * @param params.startkey first id
+   * @param params.endkey last id
+   */
+  public getObjectList(params: {
+    startkey: string;
+    endkey: string;
+  }): Promise<{ rows: { id: string; value: ioBroker.Object }[] }> {
+    const rows = [...this.objects]
+      .filter(([k]) => k >= params.startkey && k <= params.endkey)
+      .sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0))
+      .map(([id, v]) => ({ id, value: structuredClone(v) }));
+    return Promise.resolve({ rows });
   }
 
   /**

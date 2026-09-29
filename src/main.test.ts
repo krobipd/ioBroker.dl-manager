@@ -23,6 +23,8 @@ vi.mock("@iobroker/adapter-core", () => {
       this.store.setForeignObject(id, obj);
     public delObjectAsync = (id: string, o?: { recursive?: boolean }): Promise<void> => this.store.delObject(id, o);
     public getObjectAsync = (id: string): Promise<ioBroker.Object | null> => this.store.getObject(id);
+    public getObjectListAsync = (p: { startkey: string; endkey: string }): Promise<unknown> =>
+      this.store.getObjectList(p);
     public getForeignObjectsAsync = (p: string, t: ioBroker.ObjectType): Promise<Record<string, ioBroker.Object>> =>
       this.store.getForeignObjects(p, t);
     public getForeignObjectAsync = (id: string): Promise<unknown> =>
@@ -110,6 +112,19 @@ function make(pollResult: () => Promise<ProgramSnapshot> = () => Promise.resolve
 }
 
 describe("DownloadManagerAdapter — start", () => {
+  const treeItem = (key: string, status: "completed" | "queued"): ProgramSnapshot["items"][number] => ({
+    key,
+    name: key,
+    status,
+    sizeBytes: 1,
+    doneBytes: 1,
+    speedBps: null,
+    etaSeconds: null,
+    error: "",
+  });
+  const channelKeys = (h: Harness): unknown[] =>
+    [...h.store.objects.values()].filter(o => o.type === "channel").map(o => o.native.key);
+
   it("stops at once after nulling a leftover supportedMessages", async () => {
     const { h, polls } = make();
     h.instanceObject = { common: { supportedMessages: { stopInstance: true } }, native: {} };
@@ -119,6 +134,57 @@ describe("DownloadManagerAdapter — start", () => {
     ]);
     expect(polls()).toBe(0);
     expect(h.store.objectWrites).toBe(0);
+  });
+
+  it("removes the tree setting the 0.0.1 placeholder declared and stops for the restart", async () => {
+    const { h, polls } = make();
+    h.instanceObject = { common: {}, native: { removeFinished: false, pollInterval: 10 } };
+    await h.handlers.get("ready")?.();
+    expect(h.instanceWrites).toEqual([
+      { id: "system.adapter.dl-manager.0", obj: { native: { removeFinished: null } } },
+    ]);
+    expect(polls()).toBe(0);
+  });
+
+  it("writes no object on the second start", async () => {
+    const first = make();
+    await first.h.handlers.get("ready")?.();
+    await flush();
+    const { h } = make();
+    h.store = first.h.store;
+    h.store.objectWrites = 0;
+    await h.handlers.get("ready")?.();
+    await flush();
+    expect(h.store.objectWrites).toBe(0);
+  });
+
+  it("creates the channel again when a removed download comes back", async () => {
+    const polls = [[treeItem("k1", "queued")], [], [treeItem("k1", "queued")]];
+    const { h } = make(() => Promise.resolve({ ...SNAP, items: polls.shift() ?? [] }));
+    await h.handlers.get("ready")?.();
+    await flush();
+    const runner = (
+      h as unknown as { manager: { running: Map<string, { runner: { pollNow(): Promise<void> } }> } }
+    ).manager.running.get("qbittorrent-nas")?.runner;
+    await runner?.pollNow();
+    expect(channelKeys(h)).toEqual([]);
+    await runner?.pollNow();
+    expect(channelKeys(h)).toEqual(["k1"]);
+    expect(h.store.objects.has("dl-manager.0.qbittorrent-nas.downloads.k1.status")).toBe(true);
+  });
+
+  it("writes a manifest object only when its name differs", async () => {
+    const { h } = make();
+    await h.store.extendObject("info.connection", { type: "state", common: { name: "old" } });
+    await h.store.extendObject("summary.pauseAll", {
+      type: "state",
+      common: { name: { en: "summaryPauseAll" }, desc: { en: "descSummaryPauseAll" } },
+    });
+    h.store.objectLog.length = 0;
+    await h.handlers.get("ready")?.();
+    expect(h.store.objects.get("dl-manager.0.info.connection")?.common.name).toEqual({ en: "connection" });
+    expect(h.store.objectLog).toContain("dl-manager.0.info.connection");
+    expect(h.store.objectLog).not.toContain("dl-manager.0.summary.pauseAll");
   });
 
   it("hands the stored secrets to the program as they are — the table does not encrypt them", async () => {
@@ -153,19 +219,6 @@ describe("DownloadManagerAdapter — start", () => {
     await flush();
     expect(h.store.objects.has("dl-manager.0.qbittorrent-nas.downloads.k1")).toBe(true);
   });
-
-  const treeItem = (key: string, status: "completed" | "queued"): ProgramSnapshot["items"][number] => ({
-    key,
-    name: key,
-    status,
-    sizeBytes: 1,
-    doneBytes: 1,
-    speedBps: null,
-    etaSeconds: null,
-    error: "",
-  });
-  const channelKeys = (h: Harness): unknown[] =>
-    [...h.store.objects.values()].filter(o => o.type === "channel").map(o => o.native.key);
 
   it("reads which downloads the tree shows from the settings", async () => {
     const { h } = make(() =>

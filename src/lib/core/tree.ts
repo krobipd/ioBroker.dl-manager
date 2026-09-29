@@ -96,18 +96,20 @@ const STATUS_LABEL: Readonly<Record<Status, I18nKey>> = {
 const round2 = (v: number): number => Math.round(v * 100) / 100;
 
 /**
- * Mirrors ONE program into the object tree: its device, its datapoints and one channel per download. Objects are
- * written only when they are new or changed; values only when they changed. Nothing is removed from an incomplete
- * poll.
+ * Mirrors ONE program into the object tree: its device, its datapoints and one channel per download. Every object is
+ * offered once per start (the adapter's `extendObject` writes only what differs), later only when it is new or
+ * changed; values only when they changed. Nothing is removed from an incomplete poll.
  */
 export class ProgramTree {
   private readonly dev: string;
   private readonly itemDefs: DatapointDef[];
   private readonly itemExtras: readonly ExtraDefinition[];
-  private readonly sig: string;
   private ids = new ItemIds(new Map());
-  /** Raw key → channel signature as stored (`native.sig`) and name. */
-  private readonly known = new Map<string, { sig: string; name: string }>();
+  /**
+   * Raw key → channel name; `fresh` once this start offered the channel's objects (a channel read from the database
+   * gets them once, so a changed datapoint set or text reaches an existing installation).
+   */
+  private readonly known = new Map<string, { name: string; fresh: boolean }>();
   private warned = false;
   private prev: Map<string, Status> | null = null;
   private baselineFinished: number | null = null;
@@ -131,7 +133,6 @@ export class ProgramTree {
     this.dev = `${adapter.namespace}.${programId}`;
     this.itemDefs = forCapabilities(ITEM_DATAPOINTS, driver.capabilities);
     this.itemExtras = driver.extras.filter(e => e.level === "item");
-    this.sig = [...this.itemDefs.map(d => d.id), ...this.itemExtras.map(e => e.id)].join(",");
   }
 
   /** @returns the id of the program's online indicator */
@@ -162,9 +163,11 @@ export class ProgramTree {
         continue;
       }
       stored.set(key, id.slice(`${this.dev}.downloads.`.length));
-      const sig: unknown = obj.native?.sig;
       const name: unknown = obj.common?.name;
-      this.known.set(key, { sig: typeof sig === "string" ? sig : "", name: typeof name === "string" ? name : "" });
+      this.known.set(key, {
+        name: typeof name === "string" ? name : "",
+        fresh: false,
+      });
     }
     this.ids = new ItemIds(stored);
     const last = await this.adapter.getState(`${this.dev}.lastFinishedTime`);
@@ -348,11 +351,11 @@ export class ProgramTree {
     const id = this.ids.idFor(item.key);
     const ch = `${this.dev}.downloads.${id}`;
     const known = this.known.get(item.key);
-    if (!known || known.sig !== this.sig) {
+    if (!known || !known.fresh) {
       await this.adapter.extendObject(ch, {
         type: "channel",
         common: { name: item.name },
-        native: { key: item.key, sig: this.sig, nameSource: "api" },
+        native: { key: item.key, nameSource: "api" },
       });
       for (const d of this.itemDefs) {
         await this.adapter.extendObject(`${ch}.${d.id}`, this.stateObject(d));
@@ -360,7 +363,7 @@ export class ProgramTree {
       for (const e of this.itemExtras) {
         await this.adapter.extendObject(`${ch}.${e.id}`, this.extraObject(e));
       }
-      this.known.set(item.key, { sig: this.sig, name: item.name });
+      this.known.set(item.key, { name: item.name, fresh: true });
     } else if (known.name !== item.name) {
       await this.adapter.extendObject(ch, { common: { name: item.name } });
       known.name = item.name;

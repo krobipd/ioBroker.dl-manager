@@ -7,6 +7,7 @@ vi.mock("@iobroker/adapter-core", () => ({
 
 import { FakeAdapter } from "../../../test/helpers/fake-adapter";
 import type { Capability, DownloadItem, ExtraDefinition, ProgramSnapshot } from "./model";
+import { KnownObjects } from "./objects";
 import { ProgramTree, type TreeOptions } from "./tree";
 
 const NS = "dl-manager.0";
@@ -202,12 +203,45 @@ describe("ProgramTree — downloads", () => {
     expect(a.val("qbittorrent-nas.downloads.11112222.progress")).toBe(50);
   });
 
-  it("writes no object for known channels after a restart either", async () => {
+  it("writes no object for known channels after a restart either (writes go through KnownObjects, as in the adapter)", async () => {
     const a = new FakeAdapter(NS);
     const t = await makeTree(a);
     await t.sync(snap([item("aaaa11112222")]));
+    const known = new KnownObjects(a);
+    await known.load();
+    const writes = {
+      ...a,
+      namespace: NS,
+      log: a.log,
+      extendObject: (id: string, obj: ioBroker.PartialObject) => known.extend(id, obj),
+      setForeignObject: (id: string, obj: ioBroker.SettableObject) => known.replace(id, obj),
+      delObject: (id: string, o: { recursive: boolean }) => known.remove(id, o),
+      getObject: (id: string) => a.getObject(id),
+      getForeignObjects: (p: string, ty: ioBroker.ObjectType) => a.getForeignObjects(p, ty),
+      getState: (id: string) => a.getState(id),
+      setState: (id: string, s: ioBroker.SettableState) => a.setState(id, s),
+      setStateChanged: (id: string, s: ioBroker.SettableState) => a.setStateChanged(id, s),
+    };
+    const again = new ProgramTree(writes, "qbittorrent-nas", "qBittorrent (NAS)", driver(), ALL);
+    await again.load();
+    a.objectWrites = 0;
+    await again.ensureDevice(undefined);
+    await again.sync(snap([item("aaaa11112222")]));
+    expect(a.objectWrites).toBe(0);
+  });
+
+  it("brings a known channel's datapoints to the current texts once after a restart", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a);
+    await t.sync(snap([item("aaaa11112222")]));
+    const stale = a.objects.get(`${CH}.progress`);
+    if (stale) {
+      stale.common.name = "old name";
+    }
     const again = new ProgramTree(a, "qbittorrent-nas", "qBittorrent (NAS)", driver(), ALL);
     await again.load();
+    await again.sync(snap([item("aaaa11112222")]));
+    expect(a.objects.get(`${CH}.progress`)?.common.name).toEqual({ en: "progress", de: "progress_de" });
     a.objectWrites = 0;
     await again.sync(snap([item("aaaa11112222")]));
     expect(a.objectWrites).toBe(0);

@@ -105,7 +105,6 @@ describe("JDownloader local transport", () => {
         "/downloadsV2/setEnabled",
         "/events/listen",
         "/events/subscribe",
-        "/events/unsubscribe",
         "/jd/version",
         "/linkgrabberv2/addLinks",
         "/toolbar/getStatus",
@@ -162,7 +161,7 @@ describe("JDownloader driver", () => {
     expect(sent).toEqual([["org.jdownloader.settings.GeneralSettings", null, "DownloadSpeedLimitEnabled", false]]);
   });
 
-  it("pushes only a poll trigger from the event long poll, and stops listening on unsubscribe", async () => {
+  it("pushes only a poll trigger from the event long poll, and stops listening without a request of its own", async () => {
     let listens = 0;
     const events = fake(path => {
       if (path === "/events/subscribe") {
@@ -188,7 +187,9 @@ describe("JDownloader driver", () => {
     await new Promise(resolve => globalThis.setTimeout(resolve, 40));
     expect(pushes).toBeGreaterThan(0);
     expect(listens).toBeLessThanOrEqual(seen + 1);
-    expect(events.calls).toContain("/events/unsubscribe");
+    // the adapter is shutting down: a request now gets no deadline (the adapter refuses new timers), and close() aborts
+    // it anyway — JD drops a subscription nobody listens to after its keepalive (120 s)
+    expect(events.calls).not.toContain("/events/unsubscribe");
   });
 });
 

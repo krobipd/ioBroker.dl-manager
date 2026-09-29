@@ -10,7 +10,7 @@
 // Suite 2 "upgrade from the previous release" (only when INVENTORY_PREVIOUS is
 //   set — pre-release.py exports the last tag's inventory): seed the previous
 //   objects BEFORE start, start, feed, then assert that every object carries the
-//   current name/desc/role/type/unit and that removed objects are gone.
+//   current common (every field) and object type, and that removed objects are gone.
 const fs = require("node:fs");
 const path = require("node:path");
 const assert = require("node:assert");
@@ -32,7 +32,6 @@ const OBJECTS_SECOND_LANGUAGE = path.join(__dirname, "objects.inventory.de.json"
 const FIRST_LANGUAGE = "en";
 const SECOND_LANGUAGE = "de";
 const VOLATILE = ["ts", "from", "user", "acl"];
-const COMPARED = ["name", "desc", "role", "type", "unit"];
 // Key order carries no meaning in an ioBroker object: extendObject keeps the key order an existing
 // object already has, while adapter-core's I18n.getTranslatedObject builds its own — the same eleven
 // texts in another order are the same name. Arrays keep their order.
@@ -46,6 +45,58 @@ const canonical = v =>
         )
       : x,
   );
+// How long the upgrade suite keeps watching after its verdict: a write in that window means the wait ended before
+// the adapter did (round 61, measured 2026-09-29 over the fleet: none in 10 s at HEAD; parcelapp's old wait judged
+// 5 ms before the first of 187 writes).
+const SETTLE_MS = 10000;
+const INSTANCE_OBJECTS = new Set(
+  (require(path.join(ADAPTER_DIR, "io-package.json")).instanceObjects ?? []).map(o => `${NS}${o._id}`),
+);
+
+/**
+ * Every object write of the adapter in this suite, and which of them changed nothing (round 61). An unchanged
+ * rewrite still goes to the database and to every subscriber — the adapter writes only what differs. The FIRST
+ * write of an `instanceObjects` entry is js-controller's own (`_createInstancesObjects` extends every entry before
+ * `onReady`, 7.2.2) and not the adapter's choice. Called as the suite's first await, so the start is watched from
+ * its first write; the known content comes from the database, a seed included.
+ *
+ * @param {import("@iobroker/testing").IntegrationTestHarness} harness
+ */
+async function watchObjectWrites(harness) {
+  const watch = { writes: new Map(), unchanged: [], deleted: [], times: [] };
+  const known = new Map();
+  const content = obj => {
+    const { ts, from, user, ...rest } = obj;
+    return canonical(rest);
+  };
+  harness.on("objectChange", (id, obj) => {
+    if (!id.startsWith(NS)) {
+      return;
+    }
+    if (!obj) {
+      watch.deleted.push(id);
+      known.delete(id);
+      return;
+    }
+    const now = content(obj);
+    if (obj.from === `system.adapter.${ADAPTER}.0`) {
+      const n = (watch.writes.get(id) ?? 0) + 1;
+      watch.writes.set(id, n);
+      watch.times.push([id, Date.now()]);
+      if (known.get(id) === now && !(n === 1 && INSTANCE_OBJECTS.has(id))) {
+        watch.unchanged.push(id);
+      }
+    }
+    known.set(id, now);
+  });
+  const list = await harness.objects.getObjectListAsync({ startkey: NS, endkey: `${NS}香` });
+  for (const row of list.rows) {
+    if (row.value) {
+      known.set(row.id, content(row.value));
+    }
+  }
+  return watch;
+}
 
 /**
  * Adapter-specific: make the adapter create every object it can create.
@@ -242,18 +293,11 @@ tests.integration(ADAPTER_DIR, {
   defineAdditionalTests({ suite }) {
     suite("object inventory", getHarness => {
       let harness;
-      const writes = new Map();
+      let watch;
       before(async function () {
         this.timeout(120000);
         harness = getHarness();
-        // Before the first await of the suite: every start, direct or through a helper, is counted. Only the
-        // adapter's own writes (`from`, set by js-controller on setObject/extendObject) — a seed the harness
-        // writes before the start is not the adapter's.
-        harness.on("objectChange", (id, obj) => {
-          if (obj && id.startsWith(NS) && obj.from === `system.adapter.${ADAPTER}.0`) {
-            writes.set(id, (writes.get(id) ?? 0) + 1);
-          }
-        });
+        watch = await watchObjectWrites(harness);
         await resetInstanceNative(harness);
         await setSystemLanguage(harness, FIRST_LANGUAGE);
         await harness.startAdapterAndWait(false, ADAPTER_ENV);
@@ -291,8 +335,13 @@ tests.integration(ADAPTER_DIR, {
       });
 
       it("writes no object more than MAX_OBJECT_WRITES times", function () {
-        const churn = [...writes].filter(([, n]) => n > MAX_OBJECT_WRITES).map(([id, n]) => `${id} ×${n}`);
+        const churn = [...watch.writes].filter(([, n]) => n > MAX_OBJECT_WRITES).map(([id, n]) => `${id} ×${n}`);
         assert.deepStrictEqual(churn, [], `objects written more than ${MAX_OBJECT_WRITES} times in one start`);
+      });
+
+      it("rewrites no object unchanged", function () {
+        const idle = [...new Set(watch.unchanged)];
+        assert.deepStrictEqual(idle, [], `objects written without a change:\n${idle.join("\n")}`);
       });
     });
 
@@ -322,20 +371,27 @@ tests.integration(ADAPTER_DIR, {
     if (previousFile && fs.existsSync(previousFile)) {
       suite("upgrade from the previous release", getHarness => {
         let harness;
+        let watch;
+        let verdictAt;
         const previous = JSON.parse(fs.readFileSync(previousFile, "utf8"));
         before(async function () {
           this.timeout(120000);
           harness = getHarness();
+          watch = await watchObjectWrites(harness);
           // The harness registers its own before() (fresh DB) ahead of this one,
           // so the seed survives and the adapter starts on top of the OLD objects.
           for (const [id, obj] of Object.entries(previous)) {
             await harness.objects.setObjectAsync(id, obj);
           }
           await resetInstanceNative(harness);
+          // The inventory was written in FIRST_LANGUAGE: labels an adapter localises itself (`states`)
+          // only compare in the same language.
+          await setSystemLanguage(harness, FIRST_LANGUAGE);
           await harness.startAdapterAndWait(false, ADAPTER_ENV);
           await feedFixtures(harness);
           // The seeded set makes feedFixtures a no-op here — this is the real wait.
           await waitForAdapterWork(harness);
+          verdictAt = Date.now();
         });
 
         it("every current object carries the current texts and roles", async function () {
@@ -349,13 +405,15 @@ tests.integration(ADAPTER_DIR, {
               stale.push(`${id}: missing after upgrade`);
               continue;
             }
-            for (const f of COMPARED) {
+            // Every field of `common`, not a chosen few: an adapter writes only what differs (round 61),
+            // so every changed field must reach an existing installation.
+            for (const f of new Set([...Object.keys(obj.common ?? {}), ...Object.keys(got.common ?? {})])) {
               if (canonical(got.common?.[f]) !== canonical(obj.common?.[f])) {
                 stale.push(`${id}: ${f} still ${JSON.stringify(got.common?.[f])}`);
               }
             }
             // The KIND of the object (state/channel/device/folder/meta) lives one level
-            // ABOVE `common`; the `type` in COMPARED is the VALUE type (string/number/
+            // ABOVE `common`; `common.type` is the VALUE type (string/number/
             // boolean) — something entirely different that merely shares the name. Without
             // this comparison a type migration that never reaches an existing installation
             // stays green: every text matches while every datapoint under the wrongly
@@ -374,6 +432,27 @@ tests.integration(ADAPTER_DIR, {
           const live = await dumpObjects(harness);
           const leftovers = Object.keys(previous).filter(id => !(id in current) && id in live);
           assert.deepStrictEqual(leftovers, [], "leftover objects:\n" + leftovers.join("\n"));
+        });
+
+        it("rewrites no object unchanged", function () {
+          const idle = [...new Set(watch.unchanged)];
+          assert.deepStrictEqual(idle, [], `objects written without a change:\n${idle.join("\n")}`);
+        });
+
+        // A kept object that is deleted and created anew makes the suite judge a fresh object, not the
+        // upgraded one (hassemu v1.43.1: the stale cleanup removed 18 seeded clients before the dump).
+        it("deletes no object the release keeps", function () {
+          const current = JSON.parse(fs.readFileSync(INVENTORY, "utf8"));
+          const lost = [...new Set(watch.deleted)].filter(id => id in previous && id in current);
+          assert.deepStrictEqual(lost, [], `kept objects deleted during the upgrade:\n${lost.join("\n")}`);
+        });
+
+        // Last in the suite: a write after the verdict means waitForAdapterWork ended before the adapter did.
+        it("writes nothing after the verdict", async function () {
+          this.timeout(SETTLE_MS + 5000);
+          await new Promise(resolve => setTimeout(resolve, Math.max(0, verdictAt + SETTLE_MS - Date.now())));
+          const late = [...new Set(watch.times.filter(([, t]) => t > verdictAt).map(([id]) => id))];
+          assert.deepStrictEqual(late, [], `objects written after the verdict:\n${late.join("\n")}`);
         });
       });
     }

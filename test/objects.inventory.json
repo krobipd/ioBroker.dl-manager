@@ -140,7 +140,6 @@
     },
     "native": {
       "key": "3fa7579e428726b8",
-      "sig": "status,progress,size,downloaded,speed,uploadSpeed,ratio,eta,error,paused,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.aria2-fixture.downloads.428726b8"
@@ -499,7 +498,6 @@
     },
     "native": {
       "key": "523bcf9781d13660",
-      "sig": "status,progress,size,downloaded,speed,uploadSpeed,ratio,eta,error,paused,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.aria2-fixture.downloads.81d13660"
@@ -858,7 +856,6 @@
     },
     "native": {
       "key": "b77325f58fefdf10",
-      "sig": "status,progress,size,downloaded,speed,uploadSpeed,ratio,eta,error,paused,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.aria2-fixture.downloads.8fefdf10"
@@ -1217,7 +1214,6 @@
     },
     "native": {
       "key": "be9dfb74c2a51b30",
-      "sig": "status,progress,size,downloaded,speed,uploadSpeed,ratio,eta,error,paused,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.aria2-fixture.downloads.c2a51b30"
@@ -1576,7 +1572,6 @@
     },
     "native": {
       "key": "3a47673ef3c50c25",
-      "sig": "status,progress,size,downloaded,speed,uploadSpeed,ratio,eta,error,paused,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.aria2-fixture.downloads.f3c50c25"
@@ -2500,7 +2495,6 @@
     },
     "native": {
       "key": "0123456789abcdef0123456789abcdef01234567",
-      "sig": "status,progress,size,downloaded,speed,uploadSpeed,ratio,eta,added,finished,category,error,paused,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.deluge-fixture.downloads.01234567"
@@ -2931,7 +2925,6 @@
     },
     "native": {
       "key": "ccc4c11770321ec2ee5cc52b5829fce13232883d",
-      "sig": "status,progress,size,downloaded,speed,uploadSpeed,ratio,eta,added,finished,category,error,paused,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.deluge-fixture.downloads.3232883d"
@@ -3362,7 +3355,6 @@
     },
     "native": {
       "key": "e2a552aaf122722a7eb9c5ab7558b13533df2b16",
-      "sig": "status,progress,size,downloaded,speed,uploadSpeed,ratio,eta,added,finished,category,error,paused,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.deluge-fixture.downloads.33df2b16"
@@ -3793,7 +3785,6 @@
     },
     "native": {
       "key": "53ac3e699aa08e11dad739081321db0b879fe521",
-      "sig": "status,progress,size,downloaded,speed,uploadSpeed,ratio,eta,added,finished,category,error,paused,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.deluge-fixture.downloads.879fe521"
@@ -4224,7 +4215,6 @@
     },
     "native": {
       "key": "e6739aead82f3befd4630694f10091769d00ddf1",
-      "sig": "status,progress,size,downloaded,speed,uploadSpeed,ratio,eta,added,finished,category,error,paused,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.deluge-fixture.downloads.9d00ddf1"
@@ -4655,7 +4645,6 @@
     },
     "native": {
       "key": "38b12b1a4fffb255161b45e772882bebe94d3b30",
-      "sig": "status,progress,size,downloaded,speed,uploadSpeed,ratio,eta,added,finished,category,error,paused,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.deluge-fixture.downloads.e94d3b30"
@@ -5086,7 +5075,6 @@
     },
     "native": {
       "key": "885bd0670addf14ec2c3014998ab3ef2f810fabf",
-      "sig": "status,progress,size,downloaded,speed,uploadSpeed,ratio,eta,added,finished,category,error,paused,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.deluge-fixture.downloads.f810fabf"
@@ -6292,7 +6280,6 @@
     },
     "native": {
       "key": "1790633501919",
-      "sig": "status,progress,size,downloaded,speed,eta,added,finished,error,paused,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.jdownloader-cloud-fixture.downloads.33501919"
@@ -6637,7 +6624,6 @@
     },
     "native": {
       "key": "1790633532205",
-      "sig": "status,progress,size,downloaded,speed,eta,added,finished,error,paused,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.jdownloader-cloud-fixture.downloads.33532205"
@@ -6982,7 +6968,6 @@
     },
     "native": {
       "key": "1790633547449",
-      "sig": "status,progress,size,downloaded,speed,eta,added,finished,error,paused,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.jdownloader-cloud-fixture.downloads.33547449"
@@ -7327,7 +7312,6 @@
     },
     "native": {
       "key": "1790633562849",
-      "sig": "status,progress,size,downloaded,speed,eta,added,finished,error,paused,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.jdownloader-cloud-fixture.downloads.33562849"
@@ -7672,7 +7656,6 @@
     },
     "native": {
       "key": "1790633577953",
-      "sig": "status,progress,size,downloaded,speed,eta,added,finished,error,paused,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.jdownloader-cloud-fixture.downloads.33577953"
@@ -8519,7 +8502,6 @@
     },
     "native": {
       "key": "1790633501919",
-      "sig": "status,progress,size,downloaded,speed,eta,added,finished,error,paused,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.jdownloader-fixture.downloads.33501919"
@@ -8864,7 +8846,6 @@
     },
     "native": {
       "key": "1790633532205",
-      "sig": "status,progress,size,downloaded,speed,eta,added,finished,error,paused,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.jdownloader-fixture.downloads.33532205"
@@ -9209,7 +9190,6 @@
     },
     "native": {
       "key": "1790633547449",
-      "sig": "status,progress,size,downloaded,speed,eta,added,finished,error,paused,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.jdownloader-fixture.downloads.33547449"
@@ -9554,7 +9534,6 @@
     },
     "native": {
       "key": "1790633562849",
-      "sig": "status,progress,size,downloaded,speed,eta,added,finished,error,paused,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.jdownloader-fixture.downloads.33562849"
@@ -9899,7 +9878,6 @@
     },
     "native": {
       "key": "1790633577953",
-      "sig": "status,progress,size,downloaded,speed,eta,added,finished,error,paused,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.jdownloader-fixture.downloads.33577953"
@@ -10746,7 +10724,6 @@
     },
     "native": {
       "key": "1",
-      "sig": "status,progress,size,downloaded,finished,category,error,paused,remove,retry",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.nzbget-fixture.downloads.1"
@@ -11066,7 +11043,6 @@
     },
     "native": {
       "key": "2",
-      "sig": "status,progress,size,downloaded,finished,category,error,paused,remove,retry",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.nzbget-fixture.downloads.2"
@@ -11386,7 +11362,6 @@
     },
     "native": {
       "key": "3",
-      "sig": "status,progress,size,downloaded,finished,category,error,paused,remove,retry",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.nzbget-fixture.downloads.3"
@@ -11706,7 +11681,6 @@
     },
     "native": {
       "key": "4",
-      "sig": "status,progress,size,downloaded,finished,category,error,paused,remove,retry",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.nzbget-fixture.downloads.4"
@@ -12026,7 +12000,6 @@
     },
     "native": {
       "key": "5",
-      "sig": "status,progress,size,downloaded,finished,category,error,paused,remove,retry",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.nzbget-fixture.downloads.5"
@@ -12346,7 +12319,6 @@
     },
     "native": {
       "key": "6",
-      "sig": "status,progress,size,downloaded,finished,category,error,paused,remove,retry",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.nzbget-fixture.downloads.6"
@@ -13206,7 +13178,6 @@
     },
     "native": {
       "key": "1",
-      "sig": "status,progress,size,downloaded,speed,eta,error,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.pyload-fixture.downloads.1"
@@ -13466,7 +13437,6 @@
     },
     "native": {
       "key": "2",
-      "sig": "status,progress,size,downloaded,speed,eta,error,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.pyload-fixture.downloads.2"
@@ -13726,7 +13696,6 @@
     },
     "native": {
       "key": "3",
-      "sig": "status,progress,size,downloaded,speed,eta,error,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.pyload-fixture.downloads.3"
@@ -13986,7 +13955,6 @@
     },
     "native": {
       "key": "4",
-      "sig": "status,progress,size,downloaded,speed,eta,error,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.pyload-fixture.downloads.4"
@@ -14823,7 +14791,6 @@
     },
     "native": {
       "key": "0123456789abcdef0123456789abcdef01234567",
-      "sig": "status,progress,size,downloaded,speed,uploadSpeed,ratio,eta,added,finished,category,paused,remove,recheck,forceStart",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.qbittorrent-fixture.downloads.01234567"
@@ -15292,7 +15259,6 @@
     },
     "native": {
       "key": "ccc4c11770321ec2ee5cc52b5829fce13232883d",
-      "sig": "status,progress,size,downloaded,speed,uploadSpeed,ratio,eta,added,finished,category,paused,remove,recheck,forceStart",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.qbittorrent-fixture.downloads.3232883d"
@@ -15761,7 +15727,6 @@
     },
     "native": {
       "key": "e2a552aaf122722a7eb9c5ab7558b13533df2b16",
-      "sig": "status,progress,size,downloaded,speed,uploadSpeed,ratio,eta,added,finished,category,paused,remove,recheck,forceStart",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.qbittorrent-fixture.downloads.33df2b16"
@@ -16230,7 +16195,6 @@
     },
     "native": {
       "key": "53ac3e699aa08e11dad739081321db0b879fe521",
-      "sig": "status,progress,size,downloaded,speed,uploadSpeed,ratio,eta,added,finished,category,paused,remove,recheck,forceStart",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.qbittorrent-fixture.downloads.879fe521"
@@ -16699,7 +16663,6 @@
     },
     "native": {
       "key": "e6739aead82f3befd4630694f10091769d00ddf1",
-      "sig": "status,progress,size,downloaded,speed,uploadSpeed,ratio,eta,added,finished,category,paused,remove,recheck,forceStart",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.qbittorrent-fixture.downloads.9d00ddf1"
@@ -17168,7 +17131,6 @@
     },
     "native": {
       "key": "38b12b1a4fffb255161b45e772882bebe94d3b30",
-      "sig": "status,progress,size,downloaded,speed,uploadSpeed,ratio,eta,added,finished,category,paused,remove,recheck,forceStart",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.qbittorrent-fixture.downloads.e94d3b30"
@@ -17637,7 +17599,6 @@
     },
     "native": {
       "key": "885bd0670addf14ec2c3014998ab3ef2f810fabf",
-      "sig": "status,progress,size,downloaded,speed,uploadSpeed,ratio,eta,added,finished,category,paused,remove,recheck,forceStart",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.qbittorrent-fixture.downloads.f810fabf"
@@ -18709,7 +18670,6 @@
     },
     "native": {
       "key": "9a869ca8-b712-4e0c-a1f7-d2a702adb331",
-      "sig": "status,progress,size,downloaded,added,finished,category,error,paused,remove,retry",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.sabnzbd-fixture.downloads.02adb331"
@@ -19053,7 +19013,6 @@
     },
     "native": {
       "key": "c269516a-3d32-4ac8-b591-f4ab12f5854e",
-      "sig": "status,progress,size,downloaded,added,finished,category,error,paused,remove,retry",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.sabnzbd-fixture.downloads.12f5854e"
@@ -19397,7 +19356,6 @@
     },
     "native": {
       "key": "8541a00e-0854-4f81-b46d-e6a530273197",
-      "sig": "status,progress,size,downloaded,added,finished,category,error,paused,remove,retry",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.sabnzbd-fixture.downloads.30273197"
@@ -19741,7 +19699,6 @@
     },
     "native": {
       "key": "0c1f8f73-f6ce-4acf-8859-03cc4746eb82",
-      "sig": "status,progress,size,downloaded,added,finished,category,error,paused,remove,retry",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.sabnzbd-fixture.downloads.4746eb82"
@@ -20085,7 +20042,6 @@
     },
     "native": {
       "key": "c3504c87-d709-47ce-978a-e1e88fe5a528",
-      "sig": "status,progress,size,downloaded,added,finished,category,error,paused,remove,retry",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.sabnzbd-fixture.downloads.8fe5a528"
@@ -20429,7 +20385,6 @@
     },
     "native": {
       "key": "c525aff9-7ccb-4f8c-b598-3aedddec0c47",
-      "sig": "status,progress,size,downloaded,added,finished,category,error,paused,remove,retry",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.sabnzbd-fixture.downloads.ddec0c47"
@@ -21724,7 +21679,6 @@
     },
     "native": {
       "key": "0123456789abcdef0123456789abcdef01234567",
-      "sig": "status,progress,size,downloaded,speed,uploadSpeed,ratio,eta,added,finished,category,error,paused,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.transmission-fixture.downloads.01234567"
@@ -22155,7 +22109,6 @@
     },
     "native": {
       "key": "ccc4c11770321ec2ee5cc52b5829fce13232883d",
-      "sig": "status,progress,size,downloaded,speed,uploadSpeed,ratio,eta,added,finished,category,error,paused,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.transmission-fixture.downloads.3232883d"
@@ -22586,7 +22539,6 @@
     },
     "native": {
       "key": "e2a552aaf122722a7eb9c5ab7558b13533df2b16",
-      "sig": "status,progress,size,downloaded,speed,uploadSpeed,ratio,eta,added,finished,category,error,paused,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.transmission-fixture.downloads.33df2b16"
@@ -23017,7 +22969,6 @@
     },
     "native": {
       "key": "53ac3e699aa08e11dad739081321db0b879fe521",
-      "sig": "status,progress,size,downloaded,speed,uploadSpeed,ratio,eta,added,finished,category,error,paused,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.transmission-fixture.downloads.879fe521"
@@ -23448,7 +23399,6 @@
     },
     "native": {
       "key": "e6739aead82f3befd4630694f10091769d00ddf1",
-      "sig": "status,progress,size,downloaded,speed,uploadSpeed,ratio,eta,added,finished,category,error,paused,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.transmission-fixture.downloads.9d00ddf1"
@@ -23879,7 +23829,6 @@
     },
     "native": {
       "key": "38b12b1a4fffb255161b45e772882bebe94d3b30",
-      "sig": "status,progress,size,downloaded,speed,uploadSpeed,ratio,eta,added,finished,category,error,paused,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.transmission-fixture.downloads.e94d3b30"
@@ -24310,7 +24259,6 @@
     },
     "native": {
       "key": "885bd0670addf14ec2c3014998ab3ef2f810fabf",
-      "sig": "status,progress,size,downloaded,speed,uploadSpeed,ratio,eta,added,finished,category,error,paused,remove",
       "nameSource": "api"
     },
     "_id": "dl-manager.0.transmission-fixture.downloads.f810fabf"
