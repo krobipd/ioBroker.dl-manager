@@ -112,7 +112,7 @@ The _Test connections_ button on the settings page asks every program of the (un
     ### **WORK IN PROGRESS**
 -->
 
-### **WORK IN PROGRESS**
+### 0.1.0 (2026-09-29)
 
 - New: first release — JDownloader 2, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 and pyLoad in one instance, with one channel per download
 

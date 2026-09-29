@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "dl-manager",
-    "version": "0.0.1",
+    "version": "0.1.0",
     "news": {
+      "0.1.0": {
+        "en": "First release — JDownloader 2, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 and pyLoad in one instance, with one channel per download",
+        "de": "Erste Version — JDownloader 2, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 und pyLoad in einer Instanz, mit einem eigenen Kanal je Download",
+        "ru": "Первый выпуск — JDownloader 2, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 и pyLoad в одном экземпляре, отдельный канал для каждой загрузки",
+        "pt": "Primeira versão — JDownloader 2, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 e pyLoad numa única instância, com um canal próprio por download",
+        "nl": "Eerste release — JDownloader 2, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 en pyLoad in één instantie, met een eigen kanaal per download",
+        "fr": "Première version — JDownloader 2, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 et pyLoad dans une seule instance, avec un canal par téléchargement",
+        "it": "Prima versione — JDownloader 2, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 e pyLoad in un'unica istanza, con un canale per ogni download",
+        "es": "Primera versión — JDownloader 2, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 y pyLoad en una sola instancia, con un canal propio por descarga",
+        "pl": "Pierwsze wydanie — JDownloader 2, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 i pyLoad w jednej instancji, z osobnym kanałem dla każdego pobierania",
+        "uk": "Перший випуск — JDownloader 2, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 і pyLoad в одному екземплярі, окремий канал для кожного завантаження",
+        "zh-cn": "首个版本 — 在一个实例中支持 JDownloader 2、qBittorrent、Transmission、Deluge、SABnzbd、NZBGet、aria2 和 pyLoad，每个下载都有自己的独立通道"
+      },
       "0.0.1": {
         "en": "Initial release",
         "de": "Erste Version",
