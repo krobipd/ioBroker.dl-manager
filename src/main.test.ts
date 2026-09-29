@@ -56,7 +56,7 @@ vi.mock("@iobroker/adapter-core", () => {
   };
 });
 
-import type { ProgramEntry } from "./lib/programs/registry";
+import type { ProgramConfig, ProgramEntry } from "./lib/programs/registry";
 import type { ProgramDriver, ProgramSnapshot } from "./lib/core/model";
 import { DownloadManagerAdapter } from "./main";
 
@@ -76,32 +76,37 @@ function make(pollResult: () => Promise<ProgramSnapshot> = () => Promise.resolve
   h: Harness;
   polls: () => number;
   closed: () => number;
+  configs: ProgramConfig[];
 } {
   let polls = 0;
   let closed = 0;
+  const configs: ProgramConfig[] = [];
   const entry: ProgramEntry = {
     type: "qbittorrent",
     needs: ["host"],
-    create: (): ProgramDriver => ({
-      type: "qbittorrent",
-      capabilities: new Set(["globalPause"]),
-      extras: [],
-      poll: () => {
-        polls++;
-        return pollResult();
-      },
-      command: () => Promise.resolve(),
-      close: () => {
-        closed++;
-        return Promise.resolve();
-      },
-    }),
+    create: (cfg: ProgramConfig): ProgramDriver => {
+      configs.push(cfg);
+      return {
+        type: "qbittorrent",
+        capabilities: new Set(["globalPause"]),
+        extras: [],
+        poll: () => {
+          polls++;
+          return pollResult();
+        },
+        command: () => Promise.resolve(),
+        close: () => {
+          closed++;
+          return Promise.resolve();
+        },
+      };
+    },
   };
   const adapter = new DownloadManagerAdapter({}, t => (t === "qbittorrent" ? entry : undefined));
   const h = adapter as unknown as Harness;
   h.config.programs = [{ enabled: true, type: "qbittorrent", key: "nas", name: "NAS", host: "h1" }];
   h.config.pollInterval = 10;
-  return { h, polls: () => polls, closed: () => closed };
+  return { h, polls: () => polls, closed: () => closed, configs };
 }
 
 describe("DownloadManagerAdapter — start", () => {
@@ -114,6 +119,14 @@ describe("DownloadManagerAdapter — start", () => {
     ]);
     expect(polls()).toBe(0);
     expect(h.store.objectWrites).toBe(0);
+  });
+
+  it("hands the stored secrets to the program as they are — the table does not encrypt them", async () => {
+    const { h, configs } = make();
+    (h as unknown as { decrypt: (v: string) => string }).decrypt = () => "garbled";
+    h.config.programs = [{ enabled: true, type: "qbittorrent", key: "nas", host: "h1", password: "p", apiKey: "k" }];
+    await h.handlers.get("ready")?.();
+    expect(configs.map(c => [c.password, c.apiKey])).toEqual([["p", "k"]]);
   });
 
   it("starts normally when the instance object already carries supportedMessages null", async () => {

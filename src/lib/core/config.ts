@@ -28,7 +28,7 @@ const str = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
  * its device can show it.
  *
  * @param raw `native.programs` as stored
- * @param decrypt the adapter's decrypt (the table encrypts password and API key with the system secret)
+ * @param decrypt turns a stored secret column (password, API key) into the value to use
  * @param find registry lookup
  * @returns the rows in table order
  */

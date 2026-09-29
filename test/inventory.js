@@ -154,8 +154,7 @@ const DEVICES = PROGRAM_ROWS.map(([type]) => `${type}-fixture`);
 
 /** Adapter-specific config the fixtures need (fake endpoint address, credentials, ...). */
 const FIXTURE_NATIVE = {
-  // secrets go in as they are: the throwaway system has no key the adapter could decrypt with, and its decrypt()
-  // of a plain value is what a settings page without encryptedAttributes would hand it too
+  // secrets go in as typed, the way the settings table stores them
   programs: PROGRAM_ROWS.map(([type, name, cfg]) => ({
     enabled: true,
     type,
@@ -232,17 +231,9 @@ async function resetInstanceNative(harness) {
   for (const key of Object.keys(instance?.native ?? {})) {
     if (!Object.hasOwn(FIXTURE_NATIVE, key)) stale[key] = null;
   }
-  // The settings table encrypts password and API key with the system secret (legacy XOR, json-config
-  // ConfigTable encrypt()) and the adapter decrypts them — the fixture rows go in the same way.
-  const secret = String((await harness.objects.getObjectAsync("system.config"))?.native?.secret ?? "");
-  const encrypt = value =>
-    [...value].map((c, i) => String.fromCharCode(secret.charCodeAt(i % secret.length) ^ c.charCodeAt(0))).join("");
-  const programs = FIXTURE_NATIVE.programs.map(row => ({
-    ...row,
-    password: row.password ? encrypt(row.password) : "",
-    apiKey: row.apiKey ? encrypt(row.apiKey) : "",
-  }));
-  await harness.changeAdapterConfig(ADAPTER, { native: { ...stale, ...FIXTURE_NATIVE, programs } });
+  // The settings table stores password and API key as typed (protectedNative, no encryptedAttributes) —
+  // the fixture rows go in the same way.
+  await harness.changeAdapterConfig(ADAPTER, { native: { ...stale, ...FIXTURE_NATIVE } });
 }
 
 tests.integration(ADAPTER_DIR, {

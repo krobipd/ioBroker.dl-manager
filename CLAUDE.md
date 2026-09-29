@@ -52,7 +52,7 @@ _Jede Entscheidung steht hier als Regel-Satz; Beleg, Messung und Verlauf stehen 
 6. **Datenpunkte nur, wo das Programm sie liefert** — Fähigkeiten je Treiber entscheiden, keine Platzhalter.
 7. **Fertige bleiben, solange das Programm sie führt** — außer die Option `removeFinished` ist an; `seeding` und `failed` bleiben immer.
 8. **Nach einem Anmeldefehler wird das Programm nicht mehr gefragt** — bis zur nächsten Konfigurationsänderung (IP-Sperren).
-9. **Zugangsdaten verschlüsselt die Tabelle** (`encryptedAttributes`), nicht `encryptedNative`-Punkt-Schlüssel (Prüfbot W1093/W1103).
+9. **Zugangsdaten liegen in der Tabelle wie eingetippt, geschützt über `protectedNative: ["programs"]`** — `encryptedAttributes` erst, wenn der Admin mit dem json-config-Fix (ioBroker/json-config#179, `||=` → `&&=`) Mindestversion ist; die Umstellung braucht dann eine Migration, die die gespeicherten Werte in json-configs XOR-Form (Systemgeheimnis, nicht AES) verschlüsselt. Nie `encryptedNative`-Punkt-Schlüssel (Prüfbot W1093/W1103).
 10. **Dateien löscht der Adapter nie** — `remove` nimmt einen Download nur aus der Liste des Programms.
 11. **JDownloader über My.JDownloader ist ein eigener Programmtyp** (`jdownloader-cloud`) mit demselben Treiber und zweitem Transport, höchstens alle 30 s, ohne Push.
 12. **Fehlt dem Programm eine Programm-Pause, wird sie nachgebildet** (Transmission, aria2, qBittorrent < 5.3) — nur Laufende anhalten, genau diese fortsetzen, Stand übersteht den Neustart.

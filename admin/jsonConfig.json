@@ -50,7 +50,6 @@
       "xl": 12,
       "noDelete": false,
       "uniqueColumns": ["key"],
-      "encryptedAttributes": ["password", "apiKey"],
       "useCardFor": ["xs", "sm"],
       "titleAttribute": "name",
       "showSecondAddAt": 5,
