@@ -123,7 +123,7 @@ The test button on a program's card asks the program once and shows its answer.
 - New: for My.JDownloader you pick the JDownloader from a list of your account after logging in
 - New: a second entry for the same program (same address, or same My.JDownloader device) is refused
 - Changed: switching a JDownloader between local and My.JDownloader keeps its rooms and functions
-- Fixed: a download that came back into the object tree could keep empty datapoints until its values changed
+- Fixed: a download that showed up again could show empty values until something about it changed
 
 ### 0.1.0 (2026-09-29)
 
