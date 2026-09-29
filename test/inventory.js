@@ -19,6 +19,10 @@ const { tests } = require("@iobroker/testing");
 const ADAPTER_DIR = path.join(__dirname, "..");
 const ADAPTER = require(path.join(ADAPTER_DIR, "io-package.json")).common.name;
 const NS = `${ADAPTER}.0.`;
+// An object is written at most three times in one start: created, its name refreshed, enriched once after
+// discovery. More is churn — every write goes to the database and to every subscriber (round 60, measured
+// 2026-09-28 over the fleet: 1-3 everywhere, 251 for an object whose stored key flipped on every resync).
+const MAX_OBJECT_WRITES = 3;
 const INVENTORY = path.join(__dirname, "objects.inventory.json");
 // Value dumps for the readable-values judge (`iobroker-adapter-checks values`, gate D08 + CI job): the states
 // after the fixture run, and the objects once more from a run in a second system language. Generated, not
@@ -246,9 +250,18 @@ tests.integration(ADAPTER_DIR, {
   defineAdditionalTests({ suite }) {
     suite("object inventory", getHarness => {
       let harness;
+      const writes = new Map();
       before(async function () {
         this.timeout(120000);
         harness = getHarness();
+        // Before the first await of the suite: every start, direct or through a helper, is counted. Only the
+        // adapter's own writes (`from`, set by js-controller on setObject/extendObject) — a seed the harness
+        // writes before the start is not the adapter's.
+        harness.on("objectChange", (id, obj) => {
+          if (obj && id.startsWith(NS) && obj.from === `system.adapter.${ADAPTER}.0`) {
+            writes.set(id, (writes.get(id) ?? 0) + 1);
+          }
+        });
         await resetInstanceNative(harness);
         await setSystemLanguage(harness, FIRST_LANGUAGE);
         await harness.startAdapterAndWait(false, ADAPTER_ENV);
@@ -283,6 +296,11 @@ tests.integration(ADAPTER_DIR, {
         const states = await dumpStates(harness);
         assert.ok(Object.keys(states).length > 0, "no states written — fixtures did not reach the adapter");
         fs.writeFileSync(STATES_INVENTORY, `${JSON.stringify(states, null, 2)}\n`);
+      });
+
+      it("writes no object more than MAX_OBJECT_WRITES times", function () {
+        const churn = [...writes].filter(([, n]) => n > MAX_OBJECT_WRITES).map(([id, n]) => `${id} ×${n}`);
+        assert.deepStrictEqual(churn, [], `objects written more than ${MAX_OBJECT_WRITES} times in one start`);
       });
     });
 
