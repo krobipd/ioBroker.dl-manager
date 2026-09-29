@@ -1,4 +1,4 @@
-import { moveWithEnums, type EnumCarryAdapter } from "../enum-carry";
+import { moveAllWithEnums, type EnumCarryAdapter } from "../enum-carry";
 import { errText } from "../err-text";
 import { programInfo } from "../programs/catalog";
 import { addressOf, type ProgramRow } from "./config";
@@ -158,18 +158,15 @@ export async function carryAssignments(a: DevicesAdapter, oldId: string, newId: 
       list.filter((m): m is string => typeof m === "string").forEach(m => members.add(m));
     }
   }
-  const children = [...members].filter(m => m.startsWith(`${oldFull}.`)).sort((x, y) => y.length - x.length);
-  for (const oldChild of children) {
+  // Only a successor that exists takes an assignment; the device itself exists already.
+  const successors = new Map<string, string>([[oldFull, newFull]]);
+  for (const oldChild of [...members].filter(m => m.startsWith(`${oldFull}.`))) {
     const newChild = newFull + oldChild.slice(oldFull.length);
     if (await a.getForeignObjectAsync(newChild)) {
-      await moveWithEnums(carrier, oldChild, newChild, () => a.delObject(oldChild, { recursive: true }), errText);
+      successors.set(oldChild, newChild);
     }
   }
-  const removeOld = (): Promise<unknown> => a.delObject(oldFull, { recursive: true });
-  if (members.has(oldFull)) {
-    await moveWithEnums(carrier, oldFull, newFull, removeOld, errText);
-  } else {
-    await removeOld();
-  }
+  const moved = (id: string): string[] => [successors.get(id)].filter((n): n is string => n !== undefined);
+  await moveAllWithEnums(carrier, moved, () => a.delObject(oldFull, { recursive: true }), errText);
   a.log.info(`${oldId} is now ${newId} — room and function assignments carried over`);
 }
