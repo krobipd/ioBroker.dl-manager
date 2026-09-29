@@ -37,7 +37,8 @@ export function tName(key: I18nKey, ...args: (string | number)[]): ioBroker.Stri
  * @param args the values
  */
 function fill(text: string, args: readonly (string | number)[]): string {
-  return args.reduce<string>((out, arg) => out.replace("%s", String(arg)), text);
+  // a function as replacement: a value such as `$&` stays as it is (a string would be read as a replacement pattern)
+  return args.reduce<string>((out, arg) => out.replace("%s", () => String(arg)), text);
 }
 
 /**

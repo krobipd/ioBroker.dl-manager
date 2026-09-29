@@ -27,6 +27,10 @@ describe("tName — placeholders, with the real adapter-core", () => {
     );
   });
 
+  it("keeps a value as it is, even one that looks like a replacement pattern", () => {
+    expect((tName("dmTestOther", "JD $& $1", "x $' y") as Record<string, string>).en).toBe("JD $& $1: x $' y");
+  });
+
   it("keeps a key without placeholders as it is", () => {
     expect((tName("dmTest") as Record<string, string>).en).toBe("Test connection");
   });
