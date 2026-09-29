@@ -19,7 +19,7 @@ const cfg = (base: string, secret = "good"): ProgramConfig => {
   const u = new URL(base);
   return {
     type: "aria2",
-    key: "",
+    deviceId: "",
     name: "",
     host: u.hostname,
     port: Number(u.port),

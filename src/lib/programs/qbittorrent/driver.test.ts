@@ -18,7 +18,7 @@ const cfg = (base: string, over: Partial<ProgramConfig> = {}): ProgramConfig => 
   const u = new URL(base);
   return {
     type: "qbittorrent",
-    key: "",
+    deviceId: "",
     name: "",
     host: u.hostname,
     port: Number(u.port),

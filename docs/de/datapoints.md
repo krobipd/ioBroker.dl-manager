@@ -19,50 +19,50 @@ Transmission, **DE** Deluge, **SAB** SABnzbd, **NZB** NZBGet, **a2** aria2, **py
 
 ## `summary` — über alle Programme
 
-| Datenpunkt                 | Typ           | Zugriff | Bedeutung                                                                                               |
-| -------------------------- | ------------- | ------- | ------------------------------------------------------------------------------------------------------- |
-| `summary.downloading`      | boolean       | r       | Wahr, solange irgendein Download eines Programms lädt oder nachbearbeitet wird.                         |
-| `summary.active`           | number        | r       | Downloads, die laden oder nachbearbeitet werden, über alle Programme.                                   |
-| `summary.queued`           | number        | r       | Downloads, die in einer Warteschlange stehen, über alle Programme.                                      |
-| `summary.downloadSpeed`    | number (MB/s) | r       | Download-Geschwindigkeit aller erreichbaren Programme zusammen.                                         |
-| `summary.uploadSpeed`      | number (MB/s) | r       | Upload-Geschwindigkeit aller erreichbaren Torrent-Programme zusammen.                                   |
-| `summary.pauseAll`         | boolean       | rw      | Wahr pausiert jedes erreichbare Programm, falsch setzt sie fort.                                        |
-| `summary.lastFinished`     | string        | r       | Name des zuletzt fertigen Downloads; bei jedem Abschluss geschrieben, auch wenn der Name gleich bleibt. |
-| `summary.lastFinishedTime` | number        | r       | Wann dieser Download fertig wurde.                                                                      |
-| `summary.lastFailed`       | string        | r       | Name des zuletzt fehlgeschlagenen Downloads.                                                            |
-| `summary.lastFailedTime`   | number        | r       | Wann dieser Download fehlschlug.                                                                        |
+| Datenpunkt                  | Typ           | Zugriff | Bedeutung                                                                                               |
+| --------------------------- | ------------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `summary.downloading`       | boolean       | r       | Wahr, solange irgendein Download eines Programms lädt oder nachbearbeitet wird.                         |
+| `summary.active`            | number        | r       | Downloads, die laden oder nachbearbeitet werden, über alle Programme.                                   |
+| `summary.queued`            | number        | r       | Downloads, die in einer Warteschlange stehen, über alle Programme.                                      |
+| `summary.downloadSpeed`     | number (MB/s) | r       | Download-Geschwindigkeit aller erreichbaren Programme zusammen.                                         |
+| `summary.uploadSpeed`       | number (MB/s) | r       | Upload-Geschwindigkeit aller erreichbaren Torrent-Programme zusammen.                                   |
+| `summary.pauseAll`          | boolean       | rw      | Wahr pausiert jedes erreichbare Programm, falsch setzt sie fort.                                        |
+| `summary.last.finished`     | string        | r       | Name des zuletzt fertigen Downloads; bei jedem Abschluss geschrieben, auch wenn der Name gleich bleibt. |
+| `summary.last.finishedTime` | number        | r       | Wann dieser Download fertig wurde.                                                                      |
+| `summary.last.failed`       | string        | r       | Name des zuletzt fehlgeschlagenen Downloads.                                                            |
+| `summary.last.failedTime`   | number        | r       | Wann dieser Download fehlschlug.                                                                        |
 
 `summary.pauseAll` zeigt wahr, wenn jedes erreichbare Programm, das pausieren kann, pausiert ist.
 
-## `<programm>-<id>` — ein Programm
+## `<programm>-<stück>` — ein Programm
 
-| Datenpunkt         | Typ           | Zugriff | JD  | qBt | TR  | DE  | SAB | NZB | a2  | pyL | Bedeutung                                                                                               |
-| ------------------ | ------------- | ------- | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | ------------------------------------------------------------------------------------------------------- |
-| `online`           | boolean       | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Das Programm hat auf die letzte Abfrage geantwortet.                                                    |
-| `error`            | string        | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | `Unknown` vor der ersten Antwort, leer, solange alles in Ordnung ist, sonst die Meldung des Programms.  |
-| `version`          | string        | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Programmversion.                                                                                        |
-| `downloading`      | boolean       | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Wahr, solange ein Download dieses Programms lädt oder nachbearbeitet wird.                              |
-| `paused`           | boolean       | rw      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Wahr pausiert das Programm, falsch setzt es fort.                                                       |
-| `downloadSpeed`    | number (MB/s) | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Download-Geschwindigkeit.                                                                               |
-| `uploadSpeed`      | number (MB/s) | r       |  –  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  –  | Upload-Geschwindigkeit.                                                                                 |
-| `speedLimit`       | number (MB/s) | rw      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Höchste Download-Geschwindigkeit des Programms; 0 heißt unbegrenzt.                                     |
-| `uploadLimit`      | number (MB/s) | rw      |  –  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  –  | Höchste Upload-Geschwindigkeit des Programms; 0 heißt unbegrenzt.                                       |
-| `altSpeed`         | boolean       | rw      |  –  |  ✓  |  ✓  |  –  |  –  |  –  |  –  |  –  | Schaltet die alternativen Geschwindigkeitsgrenzen des Programms ein oder aus.                           |
-| `freeSpace`        | number (GB)   | r       |  –  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  ✓  | Freier Speicher im Download-Ordner des Programms.                                                       |
-| `active`           | number        | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Aktive Downloads.                                                                                       |
-| `queued`           | number        | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Wartende Downloads.                                                                                     |
-| `total`            | number        | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Downloads in der Liste des Programms.                                                                   |
-| `add`              | string        | w       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Einen Link, Magnet-Link oder NZB-Link schreiben, um ihn diesem Programm hinzuzufügen.                   |
-| `lastFinished`     | string        | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Name des zuletzt fertigen Downloads; bei jedem Abschluss geschrieben, auch wenn der Name gleich bleibt. |
-| `lastFinishedTime` | number        | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Wann dieser Download fertig wurde.                                                                      |
-| `lastFailed`       | string        | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Name des zuletzt fehlgeschlagenen Downloads.                                                            |
-| `lastFailedTime`   | number        | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Wann dieser Download fehlschlug.                                                                        |
+| Datenpunkt          | Typ           | Zugriff | JD  | qBt | TR  | DE  | SAB | NZB | a2  | pyL | Bedeutung                                                                                               |
+| ------------------- | ------------- | ------- | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | ------------------------------------------------------------------------------------------------------- |
+| `online`            | boolean       | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Das Programm hat auf die letzte Abfrage geantwortet.                                                    |
+| `error`             | string        | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | `Unknown` vor der ersten Antwort, leer, solange alles in Ordnung ist, sonst die Meldung des Programms.  |
+| `version`           | string        | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Programmversion.                                                                                        |
+| `downloading`       | boolean       | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Wahr, solange ein Download dieses Programms lädt oder nachbearbeitet wird.                              |
+| `paused`            | boolean       | rw      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Wahr pausiert das Programm, falsch setzt es fort.                                                       |
+| `downloadSpeed`     | number (MB/s) | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Download-Geschwindigkeit.                                                                               |
+| `uploadSpeed`       | number (MB/s) | r       |  –  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  –  | Upload-Geschwindigkeit.                                                                                 |
+| `speedLimit`        | number (MB/s) | rw      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Höchste Download-Geschwindigkeit des Programms; 0 heißt unbegrenzt.                                     |
+| `uploadLimit`       | number (MB/s) | rw      |  –  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  –  | Höchste Upload-Geschwindigkeit des Programms; 0 heißt unbegrenzt.                                       |
+| `altSpeed`          | boolean       | rw      |  –  |  ✓  |  ✓  |  –  |  –  |  –  |  –  |  –  | Schaltet die alternativen Geschwindigkeitsgrenzen des Programms ein oder aus.                           |
+| `freeSpace`         | number (GB)   | r       |  –  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  ✓  | Freier Speicher im Download-Ordner des Programms.                                                       |
+| `active`            | number        | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Aktive Downloads.                                                                                       |
+| `queued`            | number        | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Wartende Downloads.                                                                                     |
+| `total`             | number        | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Downloads in der Liste des Programms.                                                                   |
+| `add`               | string        | w       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Einen Link, Magnet-Link oder NZB-Link schreiben, um ihn diesem Programm hinzuzufügen.                   |
+| `last.finished`     | string        | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Name des zuletzt fertigen Downloads; bei jedem Abschluss geschrieben, auch wenn der Name gleich bleibt. |
+| `last.finishedTime` | number        | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Wann dieser Download fertig wurde.                                                                      |
+| `last.failed`       | string        | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Name des zuletzt fehlgeschlagenen Downloads.                                                            |
+| `last.failedTime`   | number        | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Wann dieser Download fehlschlug.                                                                        |
 
 Transmission, aria2 und qBittorrent vor 5.3 haben keine Pause für das ganze Programm. Dort hält der Adapter die
 laufenden Downloads an, merkt sich genau diese und startet genau diese beim Fortsetzen wieder — ein Download, den du
 selbst angehalten hast, bleibt angehalten. Das Gemerkte übersteht einen Neustart des Adapters.
 
-## `<programm>-<id>.downloads.<download>` — ein Download
+## `<programm>-<stück>.downloads.<download>` — ein Download
 
 Ein Download ist, was du hinzugefügt hast: ein JDownloader- oder pyLoad-Paket, ein Torrent, ein NZB-Auftrag, ein
 aria2-Download.

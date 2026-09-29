@@ -3,16 +3,17 @@ import {
   ACTIONS,
   DeviceManagement,
   type ActionContext,
+  type DeviceDetails,
   type DeviceInfo,
   type DeviceLoadContext,
   type InstanceDetails,
+  type JsonFormSchema,
 } from "@iobroker/dm-utils";
 import { addressOf, parsePrograms, sameProgram, type ProgramRow, programKey } from "./core/config";
-import { programId } from "./core/ids";
+import { deviceIdFor, idSourceOf } from "./core/device-id";
 import type { TestResult } from "./core/manager";
 import {
   applyRuleOf,
-  deriveKey,
   dialogType,
   emptyForm,
   formFromData,
@@ -24,7 +25,7 @@ import {
   programLabel,
   rowToForm,
   storedType,
-  textOf,
+  type JdChoice,
   type ProgramForm,
   type SettingsRow,
 } from "./dm-forms";
@@ -35,22 +36,22 @@ import { findProgram } from "./programs/registry";
 
 /** What the device manager needs from the adapter besides the plain ioBroker surface. */
 export interface DmHost {
-  /** The stored settings rows (`native.programs` of the instance object), read fresh. */
+  /** The program rows (`store.ts`, secrets readable), read fresh. */
   readRows(): Promise<SettingsRow[]>;
-  /** Stores the settings rows — the instance restarts with them. */
-  writeRows(rows: SettingsRow[]): Promise<void>;
+  /** Stores the program rows and takes them over at once — the instance does not restart. */
+  saveRows(rows: readonly SettingsRow[]): Promise<void>;
   /** @returns whether this instance has an object with this id (below the namespace) */
   hasObject(relId: string): Promise<boolean>;
   /** @returns the value of an own state (id below the namespace), undefined when it has none */
   readState(relId: string): Promise<ioBroker.StateValue | undefined>;
-  /** Writes a state the way a user does (`ack: false`) — the adapter's command path takes it from there. */
-  writeState(relId: string, val: ioBroker.StateValue): Promise<void>;
-  /** Asks the program of one settings row once. */
+  /** Asks the program of one row once. */
   test(row: SettingsRow): Promise<TestResult>;
-  /** Logs into My.JDownloader and names the account's JDownloader instances. */
-  listJdDevices(email: string, password: string): Promise<string[]>;
+  /** Logs into My.JDownloader and lists the account's JDownloader instances. */
+  listJdDevices(email: string, password: string): Promise<JdChoice[]>;
   /** The pictogram of a program type, as a data URI. */
   icon(type: string): string | undefined;
+  /** The name of the ioBroker host this instance runs on — part of a local program's device id. */
+  iobHost(): string;
 }
 
 /**
@@ -73,8 +74,9 @@ const GLYPH = {
 };
 
 /**
- * The programs as cards of the ioBroker device manager: add, edit, delete and test a program, pause it from its card.
- * The settings rows stay the one store (`native.programs`); every change writes them, and the instance restarts.
+ * The programs as cards of the ioBroker device manager: add, edit, delete, switch and test a program. Every change is
+ * stored and taken over at once (`DmHost.saveRows`) — no restart, so each answer reaches the admin. The card shows the
+ * program's state; it controls nothing (krobi: the admin needs no control).
  */
 export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
   /**
@@ -112,7 +114,7 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
   protected async loadDevices(context: DeviceLoadContext<string>): Promise<void> {
     let rows: ProgramRow[];
     try {
-      rows = parsePrograms(await this.host.readRows(), v => v, findProgram);
+      rows = parsePrograms(await this.host.readRows(), findProgram);
     } catch (err: unknown) {
       this.log.error(`device manager: could not read the programs (${errText(err)})`);
       return;
@@ -162,6 +164,7 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
       model: state("version"),
       identifier: addressOf(row.cfg),
       enabled: row.enabled,
+      hasDetails: true,
       status: {
         connection: { ...state("online"), mapping: { true: "connected", false: "disconnected" } },
         ...(problem && row.enabled ? { warning: problem } : {}),
@@ -212,26 +215,6 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
             ]
           : []),
       ],
-      controls: pausable
-        ? [
-            {
-              id: "paused",
-              type: "switch",
-              stateId: `${ns}.${id}.paused`,
-              label: tName("dmPauseAll"),
-              handler: async (_device, _control, value) => {
-                const on = value === true;
-                try {
-                  await this.host.writeState(`${id}.paused`, on);
-                } catch (err: unknown) {
-                  this.log.error(`device manager: ${id} could not be paused (${errText(err)})`);
-                  return { error: { code: 500, message: errText(err) } };
-                }
-                return { val: on, ack: false, ts: Date.now(), lc: Date.now(), from: `system.adapter.${ns}` };
-              },
-            },
-          ]
-        : [],
       actions: [
         {
           // the switch the admin draws for `enabled`
@@ -255,7 +238,6 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
           id: "delete",
           icon: "delete",
           description: tName("dmDelete"),
-          // the admin asks before the handler runs — no message round trip across the restart the write causes
           confirmation: tName("dmDeleteConfirm", row.cfg.name || id),
           handler: (cardId, ctx) =>
             this.guard<{ delete: string } | { refresh: "devices" }>(ctx, () => this.deleteProgram(cardId), {
@@ -264,6 +246,27 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
         },
       ],
     };
+  }
+
+  /**
+   * The card's details: where the program's objects are — the device id is the adapter's, the name only a label.
+   *
+   * @param id the card
+   * @returns the details panel
+   */
+  protected async getDeviceDetails(id: string): Promise<DeviceDetails<string>> {
+    const row = parsePrograms(await this.host.readRows(), findProgram).find(r => r.id === id);
+    const line = (text: ioBroker.StringOrTranslated): Record<string, unknown> => ({
+      type: "staticText",
+      text,
+      newLine: true,
+      sm: 12,
+    });
+    const items: Record<string, unknown> = { id: line(tName("dmDetailsId", `${this.adapter.namespace}.${id}`)) };
+    if (row?.cfg.device) {
+      items.device = line(tName("dmDetailsDevice", row.cfg.device));
+    }
+    return { id, schema: { type: "panel", items } as unknown as JsonFormSchema };
   }
 
   /**
@@ -338,14 +341,12 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
     const index = cardId === undefined ? -1 : rows.findIndex(r => this.idOf(r) === cardId);
     const previous = index >= 0 ? rows[index] : undefined;
     const others = rows.filter((_, i) => i !== index);
-    const parsed = parsePrograms(others, v => v, findProgram);
+    const parsed = parsePrograms(others, findProgram);
     const opened: ProgramForm = previous
       ? rowToForm(previous)
       : { ...emptyForm(type), name: this.suggestedName(type, rows) };
     const schema = programForm(type, {
       takenKeys: parsed.filter(r => r.cfg.host).map(r => programKey(r.cfg)),
-      takenIds: parsed.map(r => r.id),
-      editing: previous !== undefined,
     });
     const answer = await ctx.showForm(schema, {
       title: tName(previous ? "dmEditTitle" : "dmAddTitle", previous ? opened.name : programLabel(type)),
@@ -358,22 +359,24 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
     }
     const form = formFromData(answer, opened);
     const stored = storedType(type, form);
-    const takenIds = new Set(parsed.map(r => r.id));
-    const key = previous ? textOf(previous.key) : form.key.trim() || deriveKey(stored, form.name, takenIds);
-    let device = "";
+    let device: JdChoice | undefined;
     if (stored === "jdownloader-cloud") {
-      const chosen = await this.pickJdDevice(ctx, form, parsed, previous);
-      if (chosen === undefined) {
+      device = await this.pickJdDevice(ctx, form, parsed, previous);
+      if (device === undefined) {
         return false;
       }
-      device = chosen;
     }
-    const row = formToRow(type, form, key, previous, device);
-    const [candidate] = parsePrograms([row], v => v, findProgram);
-    if (takenIds.has(candidate.id)) {
-      await ctx.showMessage(tName("dmIdTaken", candidate.id));
-      return false;
-    }
+    // an edited row keeps its id; a new one gets it from the machine or the My.JDownloader instance
+    const id =
+      (previous && this.idOf(previous)) ||
+      deviceIdFor(
+        idSourceOf(formToRow(type, form, "", {}, device)),
+        new Set(parsed.map(r => r.id)),
+        this.host.iobHost(),
+      ) ||
+      "";
+    const row = formToRow(type, form, id, previous, device);
+    const [candidate] = parsePrograms([row], findProgram);
     const twin = parsed.find(o => o.enabled && !o.problem && sameProgram(o.cfg, candidate.cfg));
     if (twin && candidate.enabled) {
       await ctx.showMessage(tName("dmDuplicate", twin.cfg.name || twin.id, addressOf(twin.cfg)));
@@ -385,7 +388,7 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
     } else {
       next.push(row);
     }
-    await this.host.writeRows(next);
+    await this.host.saveRows(next);
     return true;
   }
 
@@ -403,41 +406,40 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
     form: ProgramForm,
     others: readonly ProgramRow[],
     previous: SettingsRow | undefined,
-  ): Promise<string | undefined> {
+  ): Promise<JdChoice | undefined> {
     const email = form.username.trim();
     const progress = await ctx.openProgress(tName("dmLoggingIn", email), { indeterminate: true });
-    let names: string[];
+    let devices: JdChoice[];
     try {
-      names = await this.host.listJdDevices(email, form.password);
+      devices = await this.host.listJdDevices(email, form.password);
     } catch (err: unknown) {
       await progress.close();
       await ctx.showMessage(tName("dmLoginFailed", errText(err)));
       return undefined;
     }
     await progress.close();
-    const taken = new Set(
-      others
-        .filter(r => r.cfg.type === "jdownloader-cloud" && r.cfg.username.toLowerCase() === email.toLowerCase())
-        .map(r => r.cfg.device),
+    const mine = others.filter(
+      r => r.cfg.type === "jdownloader-cloud" && r.cfg.username.toLowerCase() === email.toLowerCase(),
     );
-    const free = names.filter(n => !taken.has(n));
+    // an instance another row asks is taken — by its id, or by its name for a row that has no id yet
+    const free = devices.filter(
+      d => !mine.some(r => (r.cfg.deviceId ? r.cfg.deviceId === d.id : r.cfg.device === d.name)),
+    );
     if (!free.length) {
       await ctx.showMessage(tName("dmNoDevices"));
       return undefined;
     }
-    const current = typeof previous?.device === "string" && free.includes(previous.device) ? previous.device : "";
+    const current = free.find(d => d.id === previous?.deviceId || d.name === previous?.device)?.id ?? "";
     const answer = await ctx.showForm(pickJdDeviceForm(free), {
       title: tName("dmPickDeviceTitle"),
-      data: { device: current || (free.length === 1 ? free[0] : "") },
+      data: { device: current || (free.length === 1 ? free[0].id : "") },
       applyDisabledRule: "!data.device",
     });
-    const device = answer?.device;
-    return typeof device === "string" && free.includes(device) ? device : undefined;
+    return free.find(d => d.id === answer?.device);
   }
 
   /**
-   * Deletes the row of a card. The admin confirmed before; the answer leaves before the write, which restarts the
-   * instance — a handler that waits for it never answers.
+   * Deletes the row of a card, and with it the program's device. The admin asked before the handler runs.
    *
    * @param cardId the card
    * @returns the card to remove
@@ -446,13 +448,7 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
     const rows = await this.host.readRows();
     const next = rows.filter(r => this.idOf(r) !== cardId);
     if (next.length !== rows.length) {
-      this.adapter.setTimeout(() => {
-        this.host
-          .writeRows(next)
-          .catch((err: unknown) =>
-            this.log.error(`could not delete the program ${cardId} from the settings (${errText(err)})`),
-          );
-      }, 0);
+      await this.host.saveRows(next);
     }
     return { delete: cardId };
   }
@@ -468,7 +464,7 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
     const index = rows.findIndex(r => this.idOf(r) === cardId);
     if (index >= 0) {
       rows[index] = { ...rows[index], enabled: rows[index].enabled === false };
-      await this.host.writeRows(rows);
+      await this.host.saveRows(rows);
     }
     return { refresh: "devices" };
   }
@@ -499,10 +495,10 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
 
   /**
    * @param row a stored row
-   * @returns its device id (= card id)
+   * @returns its device id (= card id) — the one the card was built with
    */
   private idOf(row: SettingsRow): string {
-    return programId(textOf(row.type), textOf(row.key));
+    return parsePrograms([row], findProgram)[0]?.id ?? "";
   }
 
   /**

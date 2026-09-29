@@ -134,18 +134,71 @@
         "admin": ">=8.0.14"
       }
     ],
-    "nogit": true
+    "nogit": true,
+    "messages": [
+      {
+        "condition": {
+          "operand": "and",
+          "rules": [
+            "oldVersion<0.3.0",
+            "newVersion>=0.3.0"
+          ]
+        },
+        "title": {
+          "en": "Device IDs change",
+          "de": "Geräte-IDs ändern sich",
+          "ru": "ID устройств меняются",
+          "pt": "Os IDs dos dispositivos mudam",
+          "nl": "Apparaat-ID's veranderen",
+          "fr": "Les ID des appareils changent",
+          "it": "Gli ID dei dispositivi cambiano",
+          "es": "Los ID de los dispositivos cambian",
+          "pl": "Zmieniają się ID urządzeń",
+          "uk": "ID пристроїв змінюються",
+          "zh-cn": "设备 ID 将更改"
+        },
+        "text": {
+          "en": "Example: jdownloader-cloud → jdownloader-9f3a, lastFinished → last.finished. Update old IDs in scripts and VIS. Do not go back to 0.2.",
+          "de": "Beispiel: jdownloader-cloud → jdownloader-9f3a, lastFinished → last.finished. Alte IDs in Skripten und VIS anpassen. Nicht auf 0.2 zurückgehen.",
+          "ru": "Пример: jdownloader-cloud → jdownloader-9f3a, lastFinished → last.finished. Обновите старые ID в скриптах и VIS. Не возвращайтесь на 0.2.",
+          "pt": "Exemplo: jdownloader-cloud → jdownloader-9f3a, lastFinished → last.finished. Atualize os IDs antigos em scripts e VIS. Não volte para a 0.2.",
+          "nl": "Voorbeeld: jdownloader-cloud → jdownloader-9f3a, lastFinished → last.finished. Pas oude ID's in scripts en VIS aan. Ga niet terug naar 0.2.",
+          "fr": "Exemple : jdownloader-cloud → jdownloader-9f3a, lastFinished → last.finished. Mettez à jour les anciens ID dans les scripts et VIS. Ne revenez pas à la 0.2.",
+          "it": "Esempio: jdownloader-cloud → jdownloader-9f3a, lastFinished → last.finished. Aggiorna i vecchi ID in script e VIS. Non tornare alla 0.2.",
+          "es": "Ejemplo: jdownloader-cloud → jdownloader-9f3a, lastFinished → last.finished. Actualiza los ID antiguos en scripts y VIS. No vuelvas a la 0.2.",
+          "pl": "Przykład: jdownloader-cloud → jdownloader-9f3a, lastFinished → last.finished. Zaktualizuj stare ID w skryptach i VIS. Nie wracaj do wersji 0.2.",
+          "uk": "Приклад: jdownloader-cloud → jdownloader-9f3a, lastFinished → last.finished. Оновіть старі ID у скриптах і VIS. Не повертайтеся до 0.2.",
+          "zh-cn": "示例：jdownloader-cloud → jdownloader-9f3a，lastFinished → last.finished。请在脚本和 VIS 中更新旧 ID。不要退回 0.2。"
+        },
+        "link": "https://github.com/krobipd/ioBroker.dl-manager/blob/main/docs/en/README.md#updating-from-02",
+        "linkText": {
+          "en": "Details",
+          "de": "Details",
+          "ru": "Подробнее",
+          "pt": "Detalhes",
+          "nl": "Details",
+          "fr": "Détails",
+          "it": "Dettagli",
+          "es": "Detalles",
+          "pl": "Szczegóły",
+          "uk": "Докладніше",
+          "zh-cn": "详情"
+        },
+        "level": "warn",
+        "buttons": [
+          "agree",
+          "cancel"
+        ]
+      }
+    ]
   },
   "native": {
-    "programs": [],
     "pollInterval": 10,
     "treeScope": "all",
     "maxDownloads": 100
   },
   "encryptedNative": [],
-  "protectedNative": [
-    "programs"
-  ],
+  "protectedNative": [],
   "notifications": [
     {
       "scope": "dl-manager",
@@ -635,7 +688,27 @@
       "native": {}
     },
     {
-      "_id": "summary.lastFinished",
+      "_id": "summary.last",
+      "type": "channel",
+      "common": {
+        "name": {
+          "en": "Last",
+          "de": "Zuletzt",
+          "ru": "Последнее",
+          "pt": "Último",
+          "nl": "Laatste",
+          "fr": "Dernier",
+          "it": "Ultimo",
+          "es": "Último",
+          "pl": "Ostatnie",
+          "uk": "Останнє",
+          "zh-cn": "最近"
+        }
+      },
+      "native": {}
+    },
+    {
+      "_id": "summary.last.finished",
       "type": "state",
       "common": {
         "name": {
@@ -673,7 +746,7 @@
       "native": {}
     },
     {
-      "_id": "summary.lastFinishedTime",
+      "_id": "summary.last.finishedTime",
       "type": "state",
       "common": {
         "name": {
@@ -697,7 +770,7 @@
       "native": {}
     },
     {
-      "_id": "summary.lastFailed",
+      "_id": "summary.last.failed",
       "type": "state",
       "common": {
         "name": {
@@ -735,7 +808,7 @@
       "native": {}
     },
     {
-      "_id": "summary.lastFailedTime",
+      "_id": "summary.last.failedTime",
       "type": "state",
       "common": {
         "name": {

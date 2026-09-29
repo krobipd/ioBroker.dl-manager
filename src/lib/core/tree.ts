@@ -1,5 +1,6 @@
 import { tDesc, tName, tState, type I18nKey } from "../i18n";
 import { forCapabilities, ITEM_DATAPOINTS, PROGRAM_DATAPOINTS, type DatapointDef } from "./datapoints";
+import { ID_SCHEME } from "./device-id";
 import { ItemIds } from "./ids";
 import { DONE, shownKeys, type TreeOptions } from "./visibility";
 import {
@@ -70,9 +71,17 @@ const STATUS_LABEL: Readonly<Record<Status, I18nKey>> = {
   failed: "statusFailed",
 };
 
+/** The channel of the "last" values, below a program's device and below `summary`. */
+export const LAST_CHANNEL = "last";
+
+/** @returns the object of the {@link LAST_CHANNEL} channel */
+export function lastChannelObject(): ioBroker.PartialObject {
+  return { type: "channel", common: { name: tName("channelLast") }, native: {} };
+}
+
 /**
- * The newest finished and the newest failed download of a poll into `<prefix>.lastFinished*` / `.lastFailed*` — below
- * a program's device and in the adapter's summary alike.
+ * The newest finished and the newest failed download of a poll into `<prefix>.last.finished*` / `.last.failed*` —
+ * below a program's device and in the adapter's summary alike.
  *
  * @param setState writes a state
  * @param prefix the id the four states sit below
@@ -85,13 +94,13 @@ export async function writeLastEvents(
 ): Promise<void> {
   const last = events.finished.at(-1);
   if (last) {
-    await setState(`${prefix}.lastFinished`, { val: last.name, ack: true });
-    await setState(`${prefix}.lastFinishedTime`, { val: last.finishedMs ?? Date.now(), ack: true });
+    await setState(`${prefix}.${LAST_CHANNEL}.finished`, { val: last.name, ack: true });
+    await setState(`${prefix}.${LAST_CHANNEL}.finishedTime`, { val: last.finishedMs ?? Date.now(), ack: true });
   }
   const failed = events.failed.at(-1);
   if (failed) {
-    await setState(`${prefix}.lastFailed`, { val: failed.name, ack: true });
-    await setState(`${prefix}.lastFailedTime`, { val: Date.now(), ack: true });
+    await setState(`${prefix}.${LAST_CHANNEL}.failed`, { val: failed.name, ack: true });
+    await setState(`${prefix}.${LAST_CHANNEL}.failedTime`, { val: Date.now(), ack: true });
   }
 }
 
@@ -122,6 +131,8 @@ export class ProgramTree {
    * @param programName the user's display name
    * @param driver capabilities and extras of the program's driver
    * @param opts adapter options that shape the tree (which downloads, how many)
+   * @param scheme the device id follows the id scheme (`native.idScheme`) — not yet for a My.JDownloader program
+   *   whose instance id is still unknown
    */
   public constructor(
     private readonly adapter: TreeAdapter,
@@ -129,6 +140,7 @@ export class ProgramTree {
     private readonly programName: string,
     private readonly driver: TreeDriver,
     private readonly opts: TreeOptions,
+    private readonly scheme = true,
   ) {
     this.dev = `${adapter.namespace}.${programId}`;
     this.itemDefs = forCapabilities(ITEM_DATAPOINTS, driver.capabilities);
@@ -169,7 +181,7 @@ export class ProgramTree {
     this.ids = new ItemIds(stored);
     const removed: unknown = (await this.adapter.getObject(this.dev))?.native?.removed;
     this.leftRemoved = removed !== undefined && removed !== null;
-    const last = await this.adapter.getState(`${this.dev}.lastFinishedTime`);
+    const last = await this.adapter.getState(`${this.dev}.${LAST_CHANNEL}.finishedTime`);
     this.baselineFinished = typeof last?.val === "number" ? last.val : null;
   }
 
@@ -177,7 +189,7 @@ export class ProgramTree {
    * Creates the device, the downloads folder and every program datapoint; marks the program offline.
    *
    * @param icon inline data URI of the program's pictogram
-   * @param address what identifies the program besides its key (`addressOf`) — carries room assignments on a key change
+   * @param address the program's address (`addressOf`)
    */
   public async ensureDevice(icon: string | undefined, address = ""): Promise<void> {
     await this.writeDevice(icon, address);
@@ -186,6 +198,7 @@ export class ProgramTree {
       common: { name: tName("folderDownloads") },
       native: {},
     });
+    await this.adapter.extendObject(`${this.dev}.${LAST_CHANNEL}`, lastChannelObject());
     for (const d of forCapabilities(PROGRAM_DATAPOINTS, this.driver.capabilities)) {
       await this.adapter.extendObject(`${this.dev}.${d.id}`, this.stateObject(d));
     }
@@ -197,7 +210,7 @@ export class ProgramTree {
 
   /**
    * @param icon the pictogram, none for a row that cannot run
-   * @param address what identifies the program besides its key, none for a row that cannot run
+   * @param address the program's address, none for a row that cannot run
    */
   private async writeDevice(icon?: string, address?: string): Promise<void> {
     await this.adapter.extendObject(this.dev, {
@@ -210,6 +223,7 @@ export class ProgramTree {
       native: {
         type: this.driver.type,
         nameSource: "api",
+        ...(this.scheme ? { idScheme: ID_SCHEME } : {}),
         ...(address !== undefined ? { address } : {}),
         ...(this.leftRemoved ? { removed: null } : {}),
       },

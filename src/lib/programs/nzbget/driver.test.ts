@@ -18,7 +18,7 @@ const cfg = (base: string, password = "good"): ProgramConfig => {
   const u = new URL(base);
   return {
     type: "nzbget",
-    key: "",
+    deviceId: "",
     name: "",
     host: u.hostname,
     port: Number(u.port),

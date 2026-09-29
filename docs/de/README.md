@@ -29,24 +29,30 @@ Docker-Netz läuft; sonst nimm My.JDownloader.
 2. **+** drücken, Programm wählen. Sein Dialog fragt nur, was dieses Programm braucht: einen Namen, Adresse und Port
    (leer = der Standard des Programms) und seine Anmeldung. Bei JDownloader _Lokal im Netz_ oder _Über My.JDownloader_
    wählen; mit My.JDownloader meldest du dich an und wählst deinen JDownloader aus einer Liste.
-3. Übernehmen. Die Instanz startet neu, und das Programm erscheint als Karte und als Gerät unter `dl-manager.0`. Die
-   Kennung im Objektpfad — `qbittorrent-nas` — kommt aus dem Namen; unter _Erweitert_ legst du sie vor dem ersten
-   Speichern selbst fest. Danach bleibt sie, damit Räume, Funktionen und Skripte weiter passen.
+3. Übernehmen. Das Programm erscheint sofort als Karte und als Gerät unter `dl-manager.0` — die Instanz startet nicht
+   neu. Der Name ist nur die Beschriftung von Karte und Gerät. Die Objekt-ID vergibt der Adapter: das Programm und der
+   Rechner, auf dem es läuft (`qbittorrent-nas`, `transmission-192-168-1-20`; bei `localhost` der Name des
+   ioBroker-Hosts), bei My.JDownloader die letzten vier Zeichen der Kennung, die das Konto für diesen JDownloader führt
+   (`jdownloader-7f11`). Ein zweites Programm auf demselben Rechner bekommt seinen Port, dann einen Zähler. Die ID ändert
+   sich danach nie mehr — nicht bei neuem Namen, neuer Adresse oder einem Wechsel zwischen lokal und My.JDownloader —,
+   damit Räume, Funktionen und Skripte weiter passen. Die Details der Karte zeigen sie.
 4. Der Test-Knopf auf der Karte fragt das Programm einmal und zeigt seine Version oder den Grund, warum es nicht
    erreichbar ist.
 
 Jedes Programm lässt sich beliebig oft hinzufügen. Ein zweiter Eintrag für dasselbe Programm — dieselbe Adresse oder
 derselbe JDownloader eines My.JDownloader-Kontos — wird abgewiesen. Der Schalter auf einer Karte schaltet ein Programm
-ab, ohne sein Gerät zu löschen; Löschen entfernt das Gerät, nie eine Datei.
+ab, ohne sein Gerät zu löschen; Löschen entfernt das Gerät, nie eine Datei. Passwörter und API-Schlüssel liegen mit dem
+Geheimnis der Installation verschlüsselt im Objekt `dl-manager.0.programs` des Adapters.
 
 ## Was du im Objektbaum findest
 
 - `info.*` — wie viele Programme eingerichtet und erreichbar sind.
 - `summary.*` — über alle Programme: ob irgendein Download aktiv ist, die Gesamt-Geschwindigkeiten, ein Schalter, der
-  alle Programme pausiert, der zuletzt fertige und der zuletzt fehlgeschlagene Download (mit Uhrzeit).
-- `<programm>-<id>.*` — das Programm: erreichbar, Grund, Version, Geschwindigkeiten, Limits, freier Speicher,
-  Pause-Schalter, ein Eingabefeld für neue Links, Zähler und der eigene zuletzt fertige / fehlgeschlagene Download.
-- `<programm>-<id>.downloads.<download>.*` — ein Kanal je Download mit Status, Fortschritt, Größe, Geschwindigkeit,
+  alle Programme pausiert; `summary.last.*` der zuletzt fertige und der zuletzt fehlgeschlagene Download (mit Uhrzeit).
+- `<programm>-<stück>.*` — das Programm: erreichbar, Grund, Version, Geschwindigkeiten, Limits, freier Speicher,
+  Pause-Schalter, ein Eingabefeld für neue Links, Zähler; `last.*` der eigene zuletzt fertige / fehlgeschlagene
+  Download.
+- `<programm>-<stück>.downloads.<download>.*` — ein Kanal je Download mit Status, Fortschritt, Größe, Geschwindigkeit,
   Restzeit, Fehler und den Aktionen, die das Programm anbietet (anhalten, entfernen, bei manchen Programmen neu prüfen,
   sofort starten oder erneut versuchen).
 
@@ -56,7 +62,7 @@ nachbearbeitet, wird weiterverteilt, fertig, fehlgeschlagen.
 ## Welche Downloads im Objektbaum stehen
 
 Zwei Einstellungen bestimmen, welche Downloads einen eigenen Kanal bekommen. Das Programm behält in jedem Fall alle
-Downloads, und die Summen (`summary.*`, die Zähler des Programms und `lastFinished`) zählen immer jeden Download.
+Downloads, und die Summen (`summary.*`, die Zähler des Programms und `last.finished`) zählen immer jeden Download.
 
 - **Downloads im Objektbaum:** _Alle_ (Vorgabe), _Ohne fertige_ oder _Nur unfertige_ — die letzte Stufe lässt auch
   weiterverteilte Torrents weg. Fehlgeschlagene Downloads bleiben immer, sie brauchen dich.
@@ -71,6 +77,20 @@ langsam. Die Einstellungsseite zeigt dann eine Warnung, und das Log warnt einmal
 200 Downloads im Objektbaum stehen.
 
 `remove` an einem Download nimmt ihn aus der Liste des Programms; die Dateien bleiben immer erhalten.
+
+## Aktualisierung von 0.2
+
+Der erste Start von 0.3 zieht die Programme aus den Instanz-Einstellungen in `dl-manager.0.programs` um (die Instanz
+startet einmal neu), verschlüsselt ihre Passwörter und gibt jedem Programm seine neue Objekt-ID. Jedes Gerät zieht mit
+seinen Werten, Räumen, Funktionen und Aliasen um; eine Aufzeichnung behält ihren Verlauf unter der alten ID. Ein
+My.JDownloader-Programm zieht um, sobald das Konto die Kennung seines JDownloaders genannt hat (erste erfolgreiche
+Verbindung). Der zuletzt fertige und fehlgeschlagene Download ziehen in den Kanal `last`: `lastFinished` →
+`last.finished`, `lastFinishedTime` → `last.finishedTime`, `lastFailed` → `last.failed`, `lastFailedTime` →
+`last.failedTime` — unter jedem Programm und unter `summary`.
+
+**Alte IDs in Skripten und VIS anpassen** — zum Beispiel `dl-manager.0.jdownloader-cloud` →
+`dl-manager.0.jdownloader-7f11` und `dl-manager.0.summary.lastFinished` → `dl-manager.0.summary.last.finished`. Nicht
+auf 0.2 zurückgehen: sie fände ihre Programme nicht mehr.
 
 ## Mehr
 

@@ -57,15 +57,21 @@ function world(
   drivers: FakeDriver[];
   manager: (opts?: Partial<TreeOptions>) => ProgramManager;
   reported: string[];
+  resolved: string[];
+  moved: [string, string][];
+  learned: [string, string][];
 } {
   const a = new FakeAdapter(NS);
   const drivers: FakeDriver[] = [];
   const reported: string[] = [];
+  const resolved: string[] = [];
+  const moved: [string, string][] = [];
+  const learned: [string, string][] = [];
   const caps: Capability[] = ["globalPause", "itemPause", "itemRemove", "add"];
   const entry = (type: string): ProgramEntry => ({
     type,
     needs: ["host"],
-    create: (cfg: ProgramConfig, _deps: DriverDeps): ProgramDriver => {
+    create: (cfg: ProgramConfig, deps: DriverDeps): ProgramDriver => {
       const b = behaviour[cfg.host] ?? { error: new UnreachableError("no behaviour") };
       const d: FakeDriver = {
         type,
@@ -77,6 +83,7 @@ function world(
         cfg,
         poll: () => {
           d.polls++;
+          deps.onDeviceId?.(`id-of-${cfg.host}`);
           if ("pending" in b) {
             return new Promise<ProgramSnapshot>(() => undefined);
           }
@@ -106,12 +113,25 @@ function world(
         adapter: a,
         timers: { setTimeout: () => undefined, clearTimeout: () => undefined },
         find: type => entries[type],
-        decrypt: v => v,
-        problems: { report: key => void reported.push(key) },
+        problems: {
+          report: key => void reported.push(key),
+          resolve: key => void resolved.push(key),
+        },
+        moveDevice: async (from, to) => {
+          moved.push([from, to]);
+          for (const [id, obj] of [...a.objects]) {
+            if (id === `${NS}.${from}` || id.startsWith(`${NS}.${from}.`)) {
+              a.objects.delete(id);
+              a.objects.set(`${NS}.${to}${id.slice(`${NS}.${from}`.length)}`, obj);
+            }
+          }
+          return Promise.resolve();
+        },
+        onDeviceId: (programId, deviceId) => void learned.push([programId, deviceId]),
       },
       { intervalMs: 10_000, scope: opts.scope ?? "all", limit: opts.limit ?? 0 },
     );
-  return { a, drivers, manager, reported };
+  return { a, drivers, manager, reported, resolved, moved, learned };
 }
 
 const row = (
@@ -195,113 +215,17 @@ describe("ProgramManager — start", () => {
     expect(w.a.val("info.programsAllOnline")).toBe(true);
   });
 
-  it("carries the room of a program whose key changed (same type and address)", async () => {
-    const w = world({ h1: { snapshot: snap(0) } });
-    await seedDevice(w.a, "qbittorrent-old", { address: "http://h1:8080" });
-    await w.a.setForeignObject("enum.rooms.office", {
-      type: "enum",
-      common: { name: "Office", members: [`${NS}.qbittorrent-old`, `${NS}.qbittorrent-old.online`, "other.0.x"] },
-      native: {},
-    });
-    await w.manager().start([row("qbittorrent", "new", "h1")]);
-    expect(w.a.objects.has(`${NS}.qbittorrent-old`)).toBe(false);
-    expect((w.a.objects.get("enum.rooms.office")?.common as { members: string[] }).members.sort()).toEqual(
-      ["other.0.x", `${NS}.qbittorrent-new`, `${NS}.qbittorrent-new.online`].sort(),
-    );
-  });
-
-  it("hands a device on only to an enabled, sound row of the same type and address", async () => {
-    const office = async (w: ReturnType<typeof world>, member: string): Promise<void> => {
-      await w.a.setForeignObject("enum.rooms.office", {
-        type: "enum",
-        common: { name: "Office", members: [member] },
-        native: {},
-      });
-    };
-    const members = (w: ReturnType<typeof world>): string[] =>
-      (w.a.objects.get("enum.rooms.office")?.common as { members: string[] }).members;
-    const cases: [string, Record<string, unknown>, Record<string, unknown>[]][] = [
-      ["sabnzbd-old", { address: "http://h1:8080" }, [row("qbittorrent", "new", "h1")]],
-      ["qbittorrent-old", { address: "http://h2:8080" }, [row("qbittorrent", "new", "h1")]],
-      ["qbittorrent-old", { address: "http://h1:8080" }, [row("qbittorrent", "new", "h1", { enabled: false })]],
-      [
-        "qbittorrent-old",
-        { address: "http://h1:8080" },
-        [row("qbittorrent", "new", "h9"), row("qbittorrent", "new", "h1")],
-      ],
-    ];
-    for (const [old, native, rows] of cases) {
-      const w = world({ h1: { snapshot: snap(0) }, h9: { snapshot: snap(0) } });
-      await seedDevice(w.a, old, native);
-      await office(w, `${NS}.${old}`);
-      await w.manager().start(rows);
-      expect([old, members(w)]).toEqual([old, [`${NS}.${old}`]]);
-      expect([old, w.a.objects.has(`${NS}.${old}`)]).toEqual([old, false]);
-    }
-  });
-
-  it("never hands a device to a program that already has one, and one device per row", async () => {
-    const w = world({ h1: { snapshot: snap(0) } });
-    await seedDevice(w.a, "qbittorrent-new", { address: "http://h1:8080" });
-    await seedDevice(w.a, "qbittorrent-old", { address: "http://h1:8080" });
-    await w.a.setForeignObject("enum.rooms.office", {
-      type: "enum",
-      common: { name: "Office", members: [`${NS}.qbittorrent-old`] },
-      native: {},
-    });
-    await w.manager().start([row("qbittorrent", "new", "h1")]);
-    expect((w.a.objects.get("enum.rooms.office")?.common as { members: string[] }).members).toEqual([
-      `${NS}.qbittorrent-old`,
-    ]);
-
-    const w2 = world({ h1: { snapshot: snap(0) } });
-    await seedDevice(w2.a, "qbittorrent-o1", { address: "http://h1:8080" });
-    await seedDevice(w2.a, "qbittorrent-o2", { address: "http://h1:8080" });
-    await w2.manager().start([row("qbittorrent", "new", "h1")]);
-    expect(w2.a.objects.has(`${NS}.qbittorrent-o1`)).toBe(false);
-    expect(w2.a.objects.has(`${NS}.qbittorrent-o2`)).toBe(false);
-  });
-
-  it("carries the room of a JDownloader switched between local and My.JDownloader under the same ID", async () => {
-    const w = world({ h1: { snapshot: snap(0) } });
-    await seedDevice(w.a, "jdownloader-keller", { type: "jdownloader", address: "http://h1:3128" });
-    await w.a.setForeignObject("enum.rooms.office", {
-      type: "enum",
-      common: { name: "Office", members: [`${NS}.jdownloader-keller`] },
-      native: {},
-    });
-    await w.manager().start([row("jdownloader-cloud", "keller", "h1", { username: "me@x", device: "PC" })]);
-    expect(w.a.objects.has(`${NS}.jdownloader-keller`)).toBe(false);
-    expect((w.a.objects.get("enum.rooms.office")?.common as { members: string[] }).members).toEqual([
-      `${NS}.jdownloader-cloud-keller`,
-    ]);
-  });
-
-  it("carries no assignment into a datapoint the new device does not have", async () => {
-    const w = world({ h1: { snapshot: snap(0) } });
-    await seedDevice(w.a, "qbittorrent-old", { address: "http://h1:8080" });
-    await w.a.setForeignObject(`${NS}.qbittorrent-old.foo`, {
-      type: "state",
-      common: { name: "foo", type: "number", role: "value", read: true, write: false },
-      native: {},
-    });
-    await w.a.setForeignObject("enum.functions.x", {
-      type: "enum",
-      common: { name: "X", members: [`${NS}.qbittorrent-old.foo`] },
-      native: {},
-    });
-    await w.manager().start([row("qbittorrent", "new", "h1")]);
-    const members = (w.a.objects.get("enum.functions.x")?.common as { members: string[] }).members;
-    expect(members).not.toContain(`${NS}.qbittorrent-new.foo`);
-  });
-
   it("treats only top-level devices as programs and stamps no value into a missing object", async () => {
     const w = world({ h1: { snapshot: snap(0) } });
     await w.a.extendObject("qbittorrent-nas.child", { type: "device", common: { name: "child" }, native: {} });
     await w.a.setForeignObject(`${NS}.sabnzbd-old`, { type: "device", common: { name: "old" }, native: {} });
+    await w.a.setForeignObject(`${NS}.summary`, { type: "channel", common: { name: "summary" }, native: {} });
     await w.manager().start([row("qbittorrent", "nas", "h1")]);
     expect(w.a.objects.has(`${NS}.qbittorrent-nas.child`)).toBe(true);
     expect(w.a.orphanWrites.filter(id => id.includes("sabnzbd-old"))).toEqual([]);
+    // a device without a program type is not the adapter's — it stays
+    expect(w.a.objects.has(`${NS}.sabnzbd-old`)).toBe(true);
+    expect(w.a.objects.has(`${NS}.summary`)).toBe(true);
   });
 
   it("writes the summary over reachable programs only", async () => {
@@ -326,6 +250,126 @@ describe("ProgramManager — start", () => {
     await w.manager().start([row("qbittorrent", "nas", "h1")]);
     await flush();
     expect(w.reported).toEqual(["auth:qbittorrent-nas"]);
+  });
+
+  it("never builds a device under an id that belongs to the instance itself", async () => {
+    const w = world({});
+    await w.manager().start([row("emule", "", "h", { id: "summary" })]);
+    expect(w.a.objects.has(`${NS}.summary`)).toBe(false);
+    expect(w.a.logs.some(l => l.level === "warn" && l.msg.startsWith("summary:"))).toBe(true);
+  });
+
+  it("hands the id My.JDownloader names on to the adapter", async () => {
+    const w = world({ h1: { snapshot: snap(0) } });
+    await w.manager().start([row("qbittorrent", "nas", "h1")]);
+    await flush();
+    expect(w.learned).toEqual([["qbittorrent-nas", "id-of-h1"]]);
+  });
+});
+
+describe("ProgramManager — apply (changed rows while running)", () => {
+  it("starts a new program, removes a deleted one with its device, and leaves an unchanged one running", async () => {
+    const w = world({ h1: { snapshot: snap(0) }, h2: { snapshot: snap(0) }, h3: { snapshot: snap(0) } });
+    const m = w.manager();
+    await m.start([row("qbittorrent", "a", "h1"), row("qbittorrent", "b", "h2")]);
+    await flush();
+    const [first, second] = w.drivers;
+    await m.apply([row("qbittorrent", "a", "h1"), row("sabnzbd", "c", "h3")]);
+    await flush();
+    expect(first.closed).toBe(false);
+    expect(second.closed).toBe(true);
+    expect(w.a.objects.has(`${NS}.qbittorrent-b`)).toBe(false);
+    expect(w.a.objects.has(`${NS}.sabnzbd-c`)).toBe(true);
+    expect(w.drivers).toHaveLength(3);
+    expect(w.drivers[2].polls).toBeGreaterThan(0);
+    expect(w.a.val("info.programsTotal")).toBe(2);
+  });
+
+  it("starts a changed program anew and forgets its rejected login", async () => {
+    const w = world({ h1: { error: new AuthError("401") }, h9: { snapshot: snap(0) } });
+    const m = w.manager();
+    await m.start([row("qbittorrent", "a", "h1")]);
+    await flush();
+    await m.apply([row("qbittorrent", "a", "h9")]);
+    await flush();
+    expect(w.drivers[0].closed).toBe(true);
+    expect(w.drivers[1].cfg.host).toBe("h9");
+    expect(w.resolved).toContain("auth:qbittorrent-a");
+    expect(w.a.val("qbittorrent-a.online")).toBe(true);
+  });
+
+  it("switches a program off: its device stays, offline and Unknown", async () => {
+    const w = world({ h1: { snapshot: snap(0) } });
+    const m = w.manager();
+    await m.start([row("qbittorrent", "a", "h1")]);
+    await flush();
+    await m.apply([row("qbittorrent", "a", "h1", { enabled: false })]);
+    expect(w.drivers[0].closed).toBe(true);
+    expect(w.a.objects.has(`${NS}.qbittorrent-a`)).toBe(true);
+    expect(w.a.val("qbittorrent-a.online")).toBe(false);
+    expect(w.a.val("qbittorrent-a.error")).toBe("Unknown");
+  });
+
+  it("moves the device of a program whose id changed before it starts under the new id", async () => {
+    const w = world({ h1: { snapshot: snap(0) } });
+    const m = w.manager();
+    await m.start([row("qbittorrent", "a", "h1", { id: "qbittorrent-old" })]);
+    await flush();
+    await m.apply(
+      [row("qbittorrent", "a", "h1", { id: "qbittorrent-new" })],
+      new Map([["qbittorrent-old", "qbittorrent-new"]]),
+    );
+    await flush();
+    expect(w.moved).toEqual([["qbittorrent-old", "qbittorrent-new"]]);
+    expect(w.drivers[0].closed).toBe(true);
+    expect(w.a.objects.has(`${NS}.qbittorrent-old`)).toBe(false);
+    expect(w.a.val("qbittorrent-new.online")).toBe(true);
+  });
+
+  it("waits for a poll under way before the device goes — nothing writes into it afterwards", async () => {
+    let release: (s: ProgramSnapshot) => void = () => undefined;
+    const w = world({});
+    const m = new ProgramManager(
+      {
+        adapter: w.a,
+        timers: { setTimeout: () => undefined, clearTimeout: () => undefined },
+        find: () => ({
+          type: "qbittorrent",
+          needs: ["host"],
+          create: (): ProgramDriver => ({
+            type: "qbittorrent",
+            capabilities: new Set(),
+            extras: [],
+            poll: () => new Promise<ProgramSnapshot>(r => (release = r)),
+            command: () => Promise.resolve(),
+            close: () => Promise.resolve(),
+          }),
+        }),
+        problems: { report: () => undefined, resolve: () => undefined },
+        moveDevice: () => Promise.resolve(),
+      },
+      { intervalMs: 10_000, scope: "all", limit: 0 },
+    );
+    await m.start([row("qbittorrent", "a", "h1")]);
+    const applied = m.apply([]);
+    await flush();
+    release(snap(0, [item("x", "downloading")]));
+    await applied;
+    await flush();
+    expect([...w.a.objects.keys()].filter(id => id.includes("qbittorrent-a"))).toEqual([]);
+    expect(w.a.orphanWrites.filter(id => id.includes("qbittorrent-a"))).toEqual([]);
+  });
+
+  it("takes changes one after the other", async () => {
+    const w = world({ h1: { snapshot: snap(0) }, h2: { snapshot: snap(0) } });
+    const m = w.manager();
+    await m.start([]);
+    await Promise.all([m.apply([row("qbittorrent", "a", "h1")]), m.apply([row("qbittorrent", "a", "h2")])]);
+    await flush();
+    expect(w.drivers.map(d => [d.cfg.host, d.closed])).toEqual([
+      ["h1", true],
+      ["h2", false],
+    ]);
   });
 });
 
@@ -356,8 +400,8 @@ describe("ProgramManager — poll interval", () => {
             close: () => Promise.resolve(),
           }),
         }),
-        decrypt: v => v,
-        problems: { report: () => undefined },
+        problems: { report: () => undefined, resolve: () => undefined },
+        moveDevice: () => Promise.resolve(),
       },
       { intervalMs: 10_000, scope: "all", limit: 0 },
     );
@@ -419,7 +463,9 @@ describe("ProgramManager — user writes", () => {
     const w = world({ h1: { snapshot: snap(0, items) } });
     await w.manager({ scope: "unfinished", limit: 2 }).start([row("qbittorrent", "a", "h1")]);
     await flush();
-    const channels = [...w.a.objects.values()].filter(o => o.type === "channel");
+    const channels = [...w.a.objects]
+      .filter(([id, o]) => o.type === "channel" && id.includes(".downloads."))
+      .map(([, o]) => o);
     expect(channels).toHaveLength(2);
     expect(channels.map(o => o.native.key)).not.toContain("c1");
   });
@@ -448,8 +494,8 @@ describe("ProgramManager — user writes", () => {
     ]);
     await m.onUserWrite("qbittorrent-a.paused", true);
     await flush();
-    expect(w.a.val("summary.lastFinished")).toBe("name-k2");
-    expect(w.a.val("summary.lastFailed")).toBe("name-k4");
+    expect(w.a.val("summary.last.finished")).toBe("name-k2");
+    expect(w.a.val("summary.last.failed")).toBe("name-k4");
   });
 
   it("writes no summary for a poll that ends after stop", async () => {
@@ -602,36 +648,6 @@ describe("ProgramManager — connection test and stop", () => {
     });
   });
 
-  it("hands the driver the stored secrets through decrypt", async () => {
-    const seen: string[] = [];
-    const m = new ProgramManager(
-      {
-        adapter: new FakeAdapter(NS),
-        timers: { setTimeout: () => undefined, clearTimeout: () => undefined },
-        find: () => ({
-          type: "qbittorrent",
-          needs: ["host"],
-          create: (cfg: ProgramConfig): ProgramDriver => {
-            seen.push(cfg.password);
-            return {
-              type: "qbittorrent",
-              capabilities: new Set(),
-              extras: [],
-              poll: () => Promise.resolve(snap(0)),
-              command: () => Promise.resolve(),
-              close: () => Promise.resolve(),
-            };
-          },
-        }),
-        decrypt: v => `plain(${v})`,
-        problems: { report: () => undefined },
-      },
-      { intervalMs: 10_000, scope: "all", limit: 0 },
-    );
-    await m.testProgram(row("qbittorrent", "a", "h1", { password: "stored" }));
-    expect(seen).toEqual(["plain(stored)"]);
-  });
-
   it("uses a driver's own quiet check instead of a poll when it has one", async () => {
     const w = world({ h1: { snapshot: snap(0) } });
     const m = new ProgramManager(
@@ -651,8 +667,8 @@ describe("ProgramManager — connection test and stop", () => {
             close: () => Promise.resolve(),
           }),
         }),
-        decrypt: v => v,
-        problems: { report: () => undefined },
+        problems: { report: () => undefined, resolve: () => undefined },
+        moveDevice: () => Promise.resolve(),
       },
       { intervalMs: 10_000, scope: "all", limit: 0 },
     );

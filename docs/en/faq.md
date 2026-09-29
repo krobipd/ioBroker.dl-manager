@@ -14,8 +14,8 @@ program's card asks it once and shows its answer. Some programs refuse callers t
 
 When a program refuses the login, the adapter writes a warning, shows an ioBroker notification and stops asking that
 program. qBittorrent and Transmission lock an address after several failed logins; asking again every few seconds
-would lock the ioBroker host out. Correct the access data in the settings — saving restarts the instance, and the
-program is asked again.
+would lock the ioBroker host out. Correct the access data on the program's card — the change applies at once, and
+the program is asked again.
 
 ## Should I use the JDownloader local API or My.JDownloader?
 
@@ -49,9 +49,9 @@ and completed ones. Raise the limit or set it to 0 for all — above 200 per pro
 
 ## I want a message when a download is done
 
-Trigger on `summary.lastFinished` (or on the program's own `lastFinished`) with **was updated**, not with **was
+Trigger on `summary.last.finished` (or on the program's own `last.finished`) with **was updated**, not with **was
 changed**: two downloads with the same name finish with the same value, and a "changed" trigger would miss the
-second one. `summary.lastFinishedTime` holds the time. `summary.lastFailed` works the same way for failed downloads.
+second one. `summary.last.finishedTime` holds the time. `summary.last.failed` works the same way for failed downloads.
 
 ## `paused` on Transmission, aria2 or an older qBittorrent
 
@@ -66,13 +66,15 @@ in the program's `downloadSpeed`; the adapter does not invent a value per downlo
 
 ## Two servers with the same program
 
-Add one line per server with its own ID — `qbittorrent-nas` and `qbittorrent-seedbox` are two devices side by side.
+Add one card per server — each gets the machine it runs on as its ID: `qbittorrent-nas` and `qbittorrent-seedbox`
+are two devices side by side. Two of the same program on one machine differ by their port (`qbittorrent-nas-8081`).
 
-## I changed a program's ID
+## Can I choose a program's ID?
 
-When a line keeps its program and address but gets a new ID, the adapter moves the room and function assignments of
-the device and its datapoints to the new device and removes the old one; the downloads come back with the next query.
-A line you delete takes its device with it. A line you switch off keeps its device, shown as offline.
+No — the adapter gives it once, when the program is added, and it never changes: a new name, a new address or a
+switch between local and My.JDownloader keep the device where it is, with its rooms, functions and scripts. The card's
+details show the ID. A card you delete takes its device with it. A card you switch off keeps its device, shown as
+offline.
 
 ## pyLoad reports "too many requests"
 

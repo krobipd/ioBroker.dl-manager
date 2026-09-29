@@ -3,10 +3,12 @@ import type { ProgramConfig, ProgramEntry, RequiredField } from "./model";
 import { programId, sanitize } from "./ids";
 import type { TreeScope } from "./tree";
 
-/** One row of the settings table after reading. */
+/** One program row after reading. */
 export interface ProgramRow {
-  /** Device id, `<type>-<key>`. */
+  /** Device id, stored in the row (`device-id.ts`). */
   id: string;
+  /** The id follows the id scheme — false for a My.JDownloader row whose instance id is not known yet. */
+  scheme: boolean;
   /** Switched on in the settings. */
   enabled: boolean;
   /** Cleaned values. */
@@ -28,33 +30,33 @@ const FIELD_TEXT: Readonly<Record<RequiredField, string>> = {
 const str = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
 
 /**
- * Reads the settings table. Every row that has a type becomes a row here — an unusable one carries its problem, so
- * its device can show it.
- *
- * @param raw `native.programs` as stored
- * @param decrypt turns a stored secret column (password, API key) into the value to use
- * @param find registry lookup
- * @returns the rows in table order
+ * @param id a stored device id
+ * @returns it when it is a valid id segment, "" otherwise
  */
-export function parsePrograms(
-  raw: unknown,
-  decrypt: (value: string) => string,
-  find: (type: string) => ProgramEntry | undefined,
-): ProgramRow[] {
+const sanitizeId = (id: string): string => (id === sanitize(id) ? id : "");
+
+/**
+ * The device id a row had up to 0.2.0: `<type>-<key>` from the row's ID column.
+ *
+ * @param raw a stored row
+ * @returns its old device id
+ */
+export function legacyId(raw: Record<string, unknown>): string {
+  return programId(sanitize(str(raw.type)) || "program", str(raw.key));
+}
+
+/**
+ * Reads the program rows (secrets readable, see `store.ts`). Every row that has a type becomes a row here — an
+ * unusable one carries its problem, so its device can show it.
+ *
+ * @param raw the rows
+ * @param find registry lookup
+ * @returns the rows in stored order
+ */
+export function parsePrograms(raw: unknown, find: (type: string) => ProgramEntry | undefined): ProgramRow[] {
   if (!Array.isArray(raw)) {
     return [];
   }
-  const secret = (v: unknown): string => {
-    const s = str(v);
-    if (!s) {
-      return "";
-    }
-    try {
-      return decrypt(s);
-    } catch {
-      return "";
-    }
-  };
   const rows: ProgramRow[] = [];
   const seen = new Set<string>();
   for (const r of raw as unknown[]) {
@@ -65,18 +67,18 @@ export function parsePrograms(
     const port = typeof o.port === "number" && Number.isInteger(o.port) && o.port > 0 && o.port < 65536 ? o.port : 0;
     const cfg: ProgramConfig = {
       type: str(o.type),
-      key: str(o.key),
       name: str(o.name),
       host: str(o.host),
       port,
       https: o.https === true,
       path: str(o.path),
       username: str(o.username),
-      password: secret(o.password),
-      apiKey: secret(o.apiKey),
+      password: str(o.password),
+      apiKey: str(o.apiKey),
       device: str(o.device),
+      deviceId: str(o.deviceId),
     };
-    const id = programId(sanitize(cfg.type) || "program", cfg.key);
+    const id = sanitizeId(str(o.id)) || legacyId(o);
     const enabled = o.enabled !== false;
     let problem = "";
     let entry: ProgramEntry | undefined;
@@ -95,14 +97,14 @@ export function parsePrograms(
       }
     }
     seen.add(id);
-    rows.push({ id, enabled, cfg, problem, ...(entry && !problem ? { entry } : {}) });
+    rows.push({ id, scheme: o.idPending !== true, enabled, cfg, problem, ...(entry && !problem ? { entry } : {}) });
   }
   return rows;
 }
 
 /**
- * What identifies a program independent of its ID column — shown on its card, stored at its device (carries room
- * assignments when the ID changes) and compared to find a program configured twice.
+ * What identifies a program besides its device id — shown on its card, stored at its device and compared to find a
+ * program configured twice.
  *
  * @param cfg the row
  * @returns the URL the program is reached at (its default port and path filled in), or `<account>/<device>` for a

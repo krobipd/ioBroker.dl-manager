@@ -87,6 +87,18 @@ describe("ProgramTree — device", () => {
     expect(a.objects.get(`${DEV}.downloads`)?.type).toBe("folder");
   });
 
+  it("marks the device with the id scheme and the last channel — not while its id waits for My.JDownloader", async () => {
+    const a = new FakeAdapter(NS);
+    await makeTree(a);
+    expect(a.objects.get(DEV)?.native.idScheme).toBe(3);
+    expect(a.objects.get(`${DEV}.last`)?.type).toBe("channel");
+    expect(a.objects.get(`${DEV}.last.finished`)?.type).toBe("state");
+    const waiting = new FakeAdapter(NS);
+    const t = new ProgramTree(waiting, "qbittorrent-nas", "q", driver(CAPS), { scope: "all", limit: 0 }, false);
+    await t.ensureDevice(undefined);
+    expect(waiting.objects.get(DEV)?.native).not.toHaveProperty("idScheme");
+  });
+
   it("creates program datapoints only for capabilities the driver has", async () => {
     const a = new FakeAdapter(NS);
     await makeTree(a, ALL, ["itemPause"]);
@@ -476,7 +488,7 @@ describe("ProgramTree — keys the 0.0.1 placeholder left on its objects", () =>
 describe("ProgramTree — finished and failed events", () => {
   it("fires finished on the transition, not on the startup baseline", async () => {
     const a = new FakeAdapter(NS);
-    a.states.set(`${DEV}.lastFinishedTime`, { val: 5000, ack: true } as ioBroker.State);
+    a.states.set(`${DEV}.last.finishedTime`, { val: 5000, ack: true } as ioBroker.State);
     const t = await makeTree(a);
     const e1 = await t.sync(snap([item("k1", { status: "completed", finishedMs: 1000 })]));
     expect(e1.finished).toHaveLength(0);
@@ -486,12 +498,12 @@ describe("ProgramTree — finished and failed events", () => {
     );
     expect(e2.finished).toHaveLength(0);
     expect(e3.finished.map(i => i.key)).toEqual(["k2"]);
-    expect(a.val("qbittorrent-nas.lastFinished")).toBe("name k2");
+    expect(a.val("qbittorrent-nas.last.finished")).toBe("name k2");
   });
 
   it("catches a download that finished while the adapter was stopped", async () => {
     const a = new FakeAdapter(NS);
-    a.states.set(`${DEV}.lastFinishedTime`, { val: 5000, ack: true } as ioBroker.State);
+    a.states.set(`${DEV}.last.finishedTime`, { val: 5000, ack: true } as ioBroker.State);
     const t = await makeTree(a);
     const e = await t.sync(snap([item("k1", { status: "completed", finishedMs: 9000 })]));
     expect(e.finished.map(i => i.key)).toEqual(["k1"]);
@@ -504,19 +516,19 @@ describe("ProgramTree — finished and failed events", () => {
     expect(e.finished).toHaveLength(0);
   });
 
-  it("fires failed on the transition and writes lastFailed", async () => {
+  it("fires failed on the transition and writes last.failed", async () => {
     const a = new FakeAdapter(NS);
     const t = await makeTree(a);
     await t.sync(snap([item("k1")]));
     const e = await t.sync(snap([item("k1", { status: "failed", error: "404" })]));
     expect(e.failed.map(i => i.key)).toEqual(["k1"]);
-    expect(a.val("qbittorrent-nas.lastFailed")).toBe("name k1");
-    expect(typeof a.val("qbittorrent-nas.lastFailedTime")).toBe("number");
+    expect(a.val("qbittorrent-nas.last.failed")).toBe("name k1");
+    expect(typeof a.val("qbittorrent-nas.last.failedTime")).toBe("number");
   });
 
   it("does not repeat the recorded finish after a restart", async () => {
     const a = new FakeAdapter(NS);
-    a.states.set(`${DEV}.lastFinishedTime`, { val: 5000, ack: true } as ioBroker.State);
+    a.states.set(`${DEV}.last.finishedTime`, { val: 5000, ack: true } as ioBroker.State);
     const t = await makeTree(a);
     const e = await t.sync(snap([item("k1", { status: "completed", finishedMs: 5000 })]));
     expect(e.finished).toHaveLength(0);
@@ -555,9 +567,9 @@ describe("ProgramTree — finished and failed events", () => {
         item("k4", { status: "failed" }),
       ]),
     );
-    expect(a.val("qbittorrent-nas.lastFinished")).toBe("name k2");
-    expect(a.val("qbittorrent-nas.lastFinishedTime")).toBe(2000);
-    expect(a.val("qbittorrent-nas.lastFailed")).toBe("name k4");
+    expect(a.val("qbittorrent-nas.last.finished")).toBe("name k2");
+    expect(a.val("qbittorrent-nas.last.finishedTime")).toBe(2000);
+    expect(a.val("qbittorrent-nas.last.failed")).toBe("name k4");
   });
 
   it("counts a download that appears already finished after the baseline", async () => {
@@ -568,7 +580,7 @@ describe("ProgramTree — finished and failed events", () => {
     expect(e.finished.map(i => i.key)).toEqual(["k9"]);
   });
 
-  it("writes lastFinished again for the same name (an update event for Blockly)", async () => {
+  it("writes last.finished again for the same name (an update event for Blockly)", async () => {
     const a = new FakeAdapter(NS);
     const t = await makeTree(a);
     await t.sync(snap([item("k1")]));
@@ -577,7 +589,7 @@ describe("ProgramTree — finished and failed events", () => {
     await t.sync(snap([item("k1", { status: "downloading" })]));
     await t.sync(snap([item("k1", { status: "completed" })]));
     expect(a.stateWrites).toBeGreaterThan(writes);
-    expect(a.val("qbittorrent-nas.lastFinished")).toBe("name k1");
+    expect(a.val("qbittorrent-nas.last.finished")).toBe("name k1");
   });
 });
 
@@ -588,9 +600,9 @@ const at = (key: string, status: DownloadItem["status"], addedMs?: number, finis
     ...(finishedMs === undefined ? {} : { finishedMs }),
   });
 const shownKeys = (a: FakeAdapter): string[] =>
-  [...a.objects.values()]
-    .filter(o => o.type === "channel")
-    .map(o => String(o.native.key))
+  [...a.objects]
+    .filter(([id, o]) => o.type === "channel" && id.includes(".downloads."))
+    .map(([, o]) => String(o.native.key))
     .sort();
 
 describe("ProgramTree — which downloads the tree shows (scope)", () => {

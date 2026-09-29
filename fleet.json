@@ -15,10 +15,11 @@
       "summary.downloadSpeed": "summaryDownloadSpeed",
       "summary.uploadSpeed": "summaryUploadSpeed",
       "summary.pauseAll": "summaryPauseAll",
-      "summary.lastFinished": "lastFinished",
-      "summary.lastFinishedTime": "lastFinishedTime",
-      "summary.lastFailed": "lastFailed",
-      "summary.lastFailedTime": "lastFailedTime"
+      "summary.last": "channelLast",
+      "summary.last.finished": "lastFinished",
+      "summary.last.finishedTime": "lastFinishedTime",
+      "summary.last.failed": "lastFailed",
+      "summary.last.failedTime": "lastFailedTime"
     },
     "desc": {
       "info.connection": "descConnection",
@@ -31,8 +32,8 @@
       "summary.downloadSpeed": "descSummaryDownloadSpeed",
       "summary.uploadSpeed": "descSummaryUploadSpeed",
       "summary.pauseAll": "descSummaryPauseAll",
-      "summary.lastFinished": "descLastFinished",
-      "summary.lastFailed": "descLastFailed"
+      "summary.last.finished": "descLastFinished",
+      "summary.last.failed": "descLastFailed"
     }
   },
   "forumThread": null,

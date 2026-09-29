@@ -19,7 +19,7 @@ const cfg = (base: string, pass = "good"): ProgramConfig => {
   const u = new URL(base);
   return {
     type: "transmission",
-    key: "",
+    deviceId: "",
     name: "",
     host: u.hostname,
     port: Number(u.port),

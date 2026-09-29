@@ -55,7 +55,7 @@ describe("admin/i18n", () => {
           .create(
             {
               type: p.type,
-              key: "",
+              deviceId: "",
               name: "",
               host: "h",
               port: 0,

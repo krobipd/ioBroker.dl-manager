@@ -27,12 +27,19 @@ vi.mock("@iobroker/adapter-core", () => {
       this.store.getObjectList(p);
     public getForeignObjectsAsync = (p: string, t: ioBroker.ObjectType): Promise<Record<string, ioBroker.Object>> =>
       this.store.getForeignObjects(p, t);
+    public host = "iobhost";
     public getForeignObjectAsync = (id: string): Promise<unknown> =>
-      Promise.resolve(id.startsWith("system.adapter.") ? structuredClone(this.instanceObject) : null);
-    public extendForeignObjectAsync = (id: string, obj: unknown): Promise<void> => {
+      id.startsWith("system.adapter.")
+        ? Promise.resolve(structuredClone(this.instanceObject))
+        : this.store.getForeignObjectAsync(id);
+    public extendForeignObjectAsync = (id: string, obj: ioBroker.PartialObject): Promise<void> => {
+      if (!id.startsWith("system.adapter.")) {
+        return this.store.extendObject(id, obj);
+      }
       this.instanceWrites.push({ id, obj });
       return Promise.resolve();
     };
+    public getForeignStatesAsync = (p: string): Promise<Record<string, ioBroker.State>> => this.store.getStates(p);
     public getStateAsync = (id: string): Promise<ioBroker.State | null> => this.store.getState(id);
     public setState = (id: string, st: ioBroker.SettableState): Promise<void> => this.store.setState(id, st);
     public setStateChangedAsync = (id: string, st: ioBroker.SettableState): Promise<void> =>
@@ -41,7 +48,13 @@ vi.mock("@iobroker/adapter-core", () => {
     public subscribeStatesAsync = (): Promise<void> => Promise.resolve();
     public setTimeout = (): undefined => undefined;
     public clearTimeout = (): void => undefined;
-    public decrypt = (v: string): string => v;
+    public encrypt = (v: string): string => `enc:${v}`;
+    public decrypt = (v: string): string => {
+      if (!v.startsWith("enc:")) {
+        throw new Error("not ours");
+      }
+      return v.slice(4);
+    };
     public registerNotification = (_scope: string, _cat: string, msg: string): Promise<void> => {
       this.notifications.push(msg);
       return Promise.resolve();
@@ -72,6 +85,15 @@ interface Harness {
 }
 
 const flush = (): Promise<void> => new Promise(resolve => setImmediate(resolve));
+const STORE = "dl-manager.0.programs";
+const rowsOf = (h: Harness): Record<string, unknown>[] =>
+  (h.store.objects.get(STORE)?.native.rows as Record<string, unknown>[] | undefined) ?? [];
+const seedRows = (h: Harness, rows: Record<string, unknown>[]): Promise<void> =>
+  h.store.setForeignObject(STORE, {
+    type: "meta",
+    common: { name: "programs", type: "meta.folder" },
+    native: { rows },
+  });
 const SNAP: ProgramSnapshot = { status: { version: "4.6", paused: false, downloadBps: 0 }, items: [], complete: true };
 
 function make(pollResult: () => Promise<ProgramSnapshot> = () => Promise.resolve(SNAP)): {
@@ -106,7 +128,7 @@ function make(pollResult: () => Promise<ProgramSnapshot> = () => Promise.resolve
   };
   const adapter = new DownloadManagerAdapter({}, t => (t === "qbittorrent" ? entry : undefined));
   const h = adapter as unknown as Harness;
-  h.config.programs = [{ enabled: true, type: "qbittorrent", key: "nas", name: "NAS", host: "h1" }];
+  void seedRows(h, [{ id: "qbittorrent-nas", enabled: true, type: "qbittorrent", name: "NAS", host: "h1" }]);
   h.config.pollInterval = 10;
   return { h, polls: () => polls, closed: () => closed, configs };
 }
@@ -123,7 +145,9 @@ describe("DownloadManagerAdapter — start", () => {
     error: "",
   });
   const channelKeys = (h: Harness): unknown[] =>
-    [...h.store.objects.values()].filter(o => o.type === "channel").map(o => o.native.key);
+    [...h.store.objects]
+      .filter(([id, o]) => o.type === "channel" && id.includes(".downloads."))
+      .map(([, o]) => o.native.key);
 
   it("removes only a leftover stopInstance entry — deviceManager stays — and stops for the restart", async () => {
     for (const leftover of [true, false]) {
@@ -134,7 +158,7 @@ describe("DownloadManagerAdapter — start", () => {
         { id: "system.adapter.dl-manager.0", obj: { common: { supportedMessages: { stopInstance: null } } } },
       ]);
       expect(polls()).toBe(0);
-      expect(h.store.objectWrites).toBe(0);
+      expect(h.store.objectLog).toEqual([STORE]);
     }
   });
 
@@ -162,10 +186,10 @@ describe("DownloadManagerAdapter — start", () => {
     await flush();
     const { h } = make();
     h.store = first.h.store;
-    h.store.objectWrites = 0;
+    h.store.objectLog.length = 0;
     await h.handlers.get("ready")?.();
     await flush();
-    expect(h.store.objectWrites).toBe(0);
+    expect(h.store.objectLog).toEqual([]);
   });
 
   it("creates the channel again when a removed download comes back", async () => {
@@ -229,12 +253,71 @@ describe("DownloadManagerAdapter — start", () => {
     expect(h.store.objectLog).not.toContain("dl-manager.0.summary.pauseAll");
   });
 
-  it("hands the stored secrets to the program as they are — the program rows hold them as typed", async () => {
+  it("hands the program the secrets it stored encrypted", async () => {
     const { h, configs } = make();
-    (h as unknown as { decrypt: (v: string) => string }).decrypt = () => "garbled";
-    h.config.programs = [{ enabled: true, type: "qbittorrent", key: "nas", host: "h1", password: "p", apiKey: "k" }];
+    await seedRows(h, [
+      { id: "qbittorrent-nas", type: "qbittorrent", host: "h1", password: "enc:p", apiKey: "enc:k", encrypted: true },
+    ]);
     await h.handlers.get("ready")?.();
     expect(configs.map(c => [c.password, c.apiKey])).toEqual([["p", "k"]]);
+  });
+
+  it("moves the programs out of the instance settings, secrets encrypted, and stops for the one restart", async () => {
+    const { h, polls } = make();
+    h.store.objects.delete(STORE);
+    const legacy = [{ enabled: true, type: "qbittorrent", key: "nas", name: "NAS", host: "h1", password: "p" }];
+    h.config.programs = legacy;
+    h.instanceObject = { common: {}, native: { programs: legacy, pollInterval: 10 } };
+    await h.handlers.get("ready")?.();
+    expect(rowsOf(h)).toEqual([{ ...legacy[0], password: "enc:p", apiKey: "", encrypted: true }]);
+    expect(h.instanceWrites).toEqual([{ id: "system.adapter.dl-manager.0", obj: { native: { programs: null } } }]);
+    expect(polls()).toBe(0);
+  });
+
+  it("never overwrites the store with an older copy the instance settings still hold", async () => {
+    const { h } = make();
+    h.config.programs = [{ type: "qbittorrent", key: "old", host: "h9" }];
+    await h.handlers.get("ready")?.();
+    expect(rowsOf(h).map(r => r.id)).toEqual(["qbittorrent-nas"]);
+  });
+
+  it("gives a row from before 0.3.0 its id and moves its device — value, recording, room and the last values", async () => {
+    const { h, polls } = make();
+    await seedRows(h, [{ enabled: true, type: "qbittorrent", key: "nas", name: "NAS", host: "h1" }]);
+    const old = "dl-manager.0.qbittorrent-nas";
+    await h.store.setForeignObject(old, { type: "device", common: { name: "NAS" }, native: { type: "qbittorrent" } });
+    await h.store.setForeignObject(`${old}.lastFinished`, {
+      type: "state",
+      common: {
+        name: "last",
+        type: "string",
+        role: "text",
+        read: true,
+        write: false,
+        custom: { "history.0": { enabled: true } },
+      },
+      native: {},
+    });
+    await h.store.setState(`${old}.lastFinished`, { val: "movie.mkv", ack: true });
+    await h.store.setForeignObject("enum.rooms.office", {
+      type: "enum",
+      common: { name: "Office", members: [old, `${old}.lastFinished`] },
+      native: {},
+    });
+    await h.handlers.get("ready")?.();
+    await flush();
+    const now = "dl-manager.0.qbittorrent-h1";
+    expect(rowsOf(h).map(r => [r.id, r.key])).toEqual([["qbittorrent-h1", undefined]]);
+    expect([...h.store.objects.keys()].filter(id => id.startsWith(`${old}`))).toEqual([]);
+    expect(h.store.objects.get(now)?.native.idScheme).toBe(3);
+    expect(h.store.val("qbittorrent-h1.last.finished")).toBe("movie.mkv");
+    expect(h.store.objects.get(`${now}.last.finished`)?.common.custom).toEqual({
+      "history.0": { enabled: true, aliasId: `${old}.lastFinished` },
+    });
+    expect((h.store.objects.get("enum.rooms.office")?.common as { members: string[] }).members.sort()).toEqual(
+      [now, `${now}.last.finished`].sort(),
+    );
+    expect(polls()).toBe(1);
   });
 
   it("starts normally with the device manager entry and no stopInstance, or a stopInstance already nulled", async () => {
@@ -294,17 +377,29 @@ describe("DownloadManagerAdapter — start", () => {
     await flush();
     expect(h.store.val("qbittorrent-nas.online")).toBe(true);
     expect(h.store.val("info.connection")).toBe(true);
+    // nothing from before 0.3.0 here: no move of the last values
+    expect(h.store.logs.filter(l => l.msg.includes("moved into"))).toEqual([]);
+  });
+
+  it("starts a fresh installation without programs — no store, no error", async () => {
+    const { h, polls } = make();
+    h.store.objects.delete(STORE);
+    await h.handlers.get("ready")?.();
+    expect(h.store.logs.filter(l => l.level === "error")).toEqual([]);
+    expect(h.store.objects.has(STORE)).toBe(false);
+    expect(h.store.val("info.programsTotal")).toBe(0);
+    expect(polls()).toBe(0);
   });
 });
 
 describe("DownloadManagerAdapter — device manager", () => {
   interface Host {
     readRows(): Promise<Record<string, unknown>[]>;
-    writeRows(rows: Record<string, unknown>[]): Promise<void>;
+    saveRows(rows: Record<string, unknown>[]): Promise<void>;
     hasObject(relId: string): Promise<boolean>;
     readState(relId: string): Promise<ioBroker.StateValue | undefined>;
-    writeState(relId: string, val: ioBroker.StateValue): Promise<void>;
     test(row: Record<string, unknown>): Promise<unknown>;
+    iobHost(): string;
   }
   const hostOf = (h: Harness): Host => (h as unknown as { deviceManagement: { host: Host } }).deviceManagement.host;
 
@@ -314,30 +409,72 @@ describe("DownloadManagerAdapter — device manager", () => {
     expect(h.sent).toEqual([]);
   });
 
-  it("reads the rows fresh from the instance object, skipping what is no row", async () => {
+  it("reads the rows from the store with readable secrets, skipping what is no row", async () => {
     const { h } = make();
-    h.instanceObject = { common: {}, native: { programs: [{ type: "deluge" }, null, "x", [1], { type: "aria2" }] } };
-    expect(await hostOf(h).readRows()).toEqual([{ type: "deluge" }, { type: "aria2" }]);
-    h.instanceObject = { common: {}, native: {} };
+    await seedRows(h, [
+      { type: "deluge", password: "enc:pw", encrypted: true },
+      null,
+      "x",
+      [1],
+      { type: "aria2" },
+    ] as never);
+    expect(await hostOf(h).readRows()).toEqual([{ type: "deluge", password: "pw", apiKey: "" }, { type: "aria2" }]);
+    h.store.objects.delete(STORE);
     expect(await hostOf(h).readRows()).toEqual([]);
+    expect(hostOf(h).iobHost()).toBe("iobhost");
   });
 
-  it("stores the rows in the instance object", async () => {
-    const { h } = make();
-    await hostOf(h).writeRows([{ type: "deluge" }]);
-    expect(h.instanceWrites).toEqual([
-      { id: "system.adapter.dl-manager.0", obj: { native: { programs: [{ type: "deluge" }] } } },
+  it("stores a change and takes it over at once — never through the instance object", async () => {
+    const { h, polls, closed } = make();
+    await h.handlers.get("ready")?.();
+    await flush();
+    const rows = await hostOf(h).readRows();
+    await hostOf(h).saveRows([
+      ...rows,
+      { id: "qbittorrent-h2", enabled: true, type: "qbittorrent", host: "h2", password: "x" },
     ]);
+    await flush();
+    expect(h.instanceWrites).toEqual([]);
+    expect(rowsOf(h)[1]).toMatchObject({ id: "qbittorrent-h2", password: "enc:x", encrypted: true });
+    expect(polls()).toBe(2);
+    expect(h.store.objects.has("dl-manager.0.qbittorrent-h2")).toBe(true);
+    await hostOf(h).saveRows(rows.map(r => ({ ...r, enabled: false })));
+    expect(closed()).toBe(2);
+    expect(h.store.objects.has("dl-manager.0.qbittorrent-h2")).toBe(false);
   });
 
-  it("writes a card's switch the way a user does, and knows the own objects", async () => {
+  it("writes nothing for an edit that changed nothing — a secret keeps its stored cipher", async () => {
+    const { h } = make();
+    await seedRows(h, [
+      { id: "qbittorrent-nas", type: "qbittorrent", host: "h1", password: "enc:p", apiKey: "", encrypted: true },
+    ]);
+    await h.handlers.get("ready")?.();
+    h.store.objectLog.length = 0;
+    await hostOf(h).saveRows(await hostOf(h).readRows());
+    expect(h.store.objectLog).not.toContain(STORE);
+  });
+
+  it("stores the id My.JDownloader names; a waiting row of a local program gets its id at the start", async () => {
+    const { h } = make();
+    await seedRows(h, [{ id: "qbittorrent-nas", idPending: true, enabled: true, type: "qbittorrent", host: "h1" }]);
+    await h.handlers.get("ready")?.();
+    await flush();
+    expect(rowsOf(h)).toMatchObject([{ id: "qbittorrent-h1" }]);
+    (h as unknown as { learnDeviceId(p: string, d: string): void }).learnDeviceId("qbittorrent-h1", "abc");
+    await flush();
+    await flush();
+    expect(rowsOf(h)).toMatchObject([{ id: "qbittorrent-h1", deviceId: "abc" }]);
+    expect(rowsOf(h)[0]).not.toHaveProperty("idPending");
+    expect(h.store.objects.has("dl-manager.0.qbittorrent-nas")).toBe(false);
+    expect(h.store.objects.has("dl-manager.0.qbittorrent-h1.online")).toBe(true);
+  });
+
+  it("knows the own objects and states", async () => {
     const { h } = make();
     await h.handlers.get("ready")?.();
-    await hostOf(h).writeState("qbittorrent-nas.paused", true);
-    expect(h.store.states.get("dl-manager.0.qbittorrent-nas.paused")).toMatchObject({ val: true, ack: false });
     expect(await hostOf(h).hasObject("qbittorrent-nas.online")).toBe(true);
     expect(await hostOf(h).hasObject("qbittorrent-nas.nothing")).toBe(false);
-    expect(await hostOf(h).readState("qbittorrent-nas.paused")).toBe(true);
+    expect(await hostOf(h).readState("qbittorrent-nas.error")).toBe("Unknown");
     expect(await hostOf(h).readState("qbittorrent-nas.nothing")).toBeUndefined();
   });
 

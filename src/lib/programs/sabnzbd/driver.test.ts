@@ -17,7 +17,7 @@ const cfg = (base: string, apiKey = "good"): ProgramConfig => {
   const u = new URL(base);
   return {
     type: "sabnzbd",
-    key: "",
+    deviceId: "",
     name: "",
     host: u.hostname,
     port: Number(u.port),

@@ -194,8 +194,6 @@ export type RequiredField = "host" | "username" | "password" | "apiKey" | "devic
 export interface ProgramConfig {
   /** Program type, e.g. `qbittorrent`. */
   type: string;
-  /** The user's ID column — part of the device id. */
-  key: string;
   /** Display name of the device. */
   name: string;
   /** Host name or IP address. */
@@ -214,6 +212,8 @@ export interface ProgramConfig {
   apiKey: string;
   /** My.JDownloader device name. */
   device: string;
+  /** My.JDownloader: the id the account lists for the device, "" until known. */
+  deviceId: string;
 }
 
 /** Adapter services a driver may use — timers only through the adapter. */
@@ -222,6 +222,8 @@ export interface DriverDeps extends HttpTimers {
   log: AdapterLog;
   /** Where an emulated global pause keeps its state (absent in the connection test — then kept in memory). */
   pauseStore?: PauseStore;
+  /** My.JDownloader: the account listed the device under this id — the adapter stores it (absent in the test). */
+  onDeviceId?: (id: string) => void;
 }
 
 /** A program the adapter can talk to. */

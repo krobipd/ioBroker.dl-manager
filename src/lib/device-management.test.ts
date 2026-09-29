@@ -50,11 +50,13 @@ interface Card {
   icon?: string;
   status: { connection: { stateId: string; mapping: unknown }; warning?: string };
   indicators: { id: string }[];
-  controls: { id: string; stateId: string; handler: (d: string, c: string, v: unknown) => Promise<unknown> }[];
+  controls?: unknown;
+  hasDetails?: boolean;
   actions: { id: string; confirmation?: unknown; handler: (id: string, ctx?: Ctx) => Promise<unknown> }[];
 }
 interface Internals {
   loadDevices(ctx: { addDevice: (c: unknown) => void }): Promise<void>;
+  getDeviceDetails(id: string): Promise<{ id: string; schema: { items: Record<string, { text: unknown }> } }>;
   getInstanceInfo(): {
     apiVersion: string;
     identifierLabel: unknown;
@@ -74,7 +76,7 @@ function make(
   values: Record<string, ioBroker.StateValue> = {},
 ): {
   dm: Internals;
-  host: DmHost & { written: Record<string, unknown>[][]; states: [string, unknown][] };
+  host: DmHost & { written: Record<string, unknown>[][] };
   timers: (() => void)[];
   errors: string[];
   devices: Mock;
@@ -83,26 +85,27 @@ function make(
   let stored = structuredClone(rows);
   const timers: (() => void)[] = [];
   const errors: string[] = [];
-  const devices = vi.fn((): Promise<string[]> => Promise.resolve(["Keller-NAS", "Tom-PC"]));
+  const devices = vi.fn((): Promise<{ id: string; name: string }[]> =>
+    Promise.resolve([
+      { id: "aaaa1111", name: "Keller-NAS" },
+      { id: "bbbb2222", name: "Tom-PC" },
+    ]),
+  );
   const tested = vi.fn((): Promise<TestResult> => Promise.resolve({ ok: true, version: "4.6", downloads: 2 }));
   const host = {
     written: [] as Record<string, unknown>[][],
-    states: [] as [string, unknown][],
     readRows: () => Promise.resolve(structuredClone(stored)),
-    writeRows: (next: Record<string, unknown>[]) => {
-      host.written.push(structuredClone(next));
-      stored = structuredClone(next);
+    saveRows: (next: readonly Record<string, unknown>[]) => {
+      host.written.push(structuredClone([...next]));
+      stored = structuredClone([...next]);
       return Promise.resolve();
     },
     hasObject: (relId: string) => Promise.resolve(objects.includes(relId)),
     readState: (relId: string) => Promise.resolve(values[relId]),
-    writeState: (relId: string, val: unknown) => {
-      host.states.push([relId, val]);
-      return Promise.resolve();
-    },
     test: tested,
     listJdDevices: devices,
     icon: (type: string) => `icon:${type}`,
+    iobHost: () => "iobhost",
   };
   const adapter = {
     namespace: NS,
@@ -126,33 +129,34 @@ const action = (card: Card, id: string): Card["actions"][number] => card.actions
 const add = (dm: Internals): ((c: Ctx) => Promise<unknown>) => dm.getInstanceInfo().actions[0].handler;
 
 const qbRow = {
+  id: "qbittorrent-nas",
   enabled: true,
   type: "qbittorrent",
-  key: "nas",
   name: "NAS",
   host: "h1",
   username: "admin",
   password: "pw",
 };
-const jdRow = { enabled: true, type: "jdownloader", key: "keller", name: "JD Keller", host: "h2" };
+const jdRow = { id: "jdownloader-keller", enabled: true, type: "jdownloader", name: "JD Keller", host: "h2" };
 const cloudRow = {
+  id: "jdownloader-2222",
   enabled: true,
   type: "jdownloader-cloud",
-  key: "tom",
   name: "JD Tom",
   username: "me@x.de",
   password: "pw",
   device: "Tom-PC",
+  deviceId: "bbbb2222",
 };
 
 describe("cards", () => {
   it("shows one card per row with address, program and live states", async () => {
-    const { dm } = make([qbRow, jdRow, cloudRow, { ...qbRow, key: "off", host: "h9", enabled: false }]);
+    const { dm } = make([qbRow, jdRow, cloudRow, { ...qbRow, id: "qbittorrent-off", host: "h9", enabled: false }]);
     const out = await cards(dm);
     expect(out.map(c => [c.id, c.name, c.identifier, c.manufacturer, c.enabled])).toEqual([
       ["qbittorrent-nas", "NAS", "http://h1:8080", "qBittorrent", true],
       ["jdownloader-keller", "JD Keller", "http://h2:3128", { key: "dmLocal", args: ["JDownloader 2"] }, true],
-      ["jdownloader-cloud-tom", "JD Tom", "me@x.de/Tom-PC", { key: "dmCloud", args: ["JDownloader 2"] }, true],
+      ["jdownloader-2222", "JD Tom", "me@x.de/Tom-PC", { key: "dmCloud", args: ["JDownloader 2"] }, true],
       ["qbittorrent-off", "NAS", "http://h9:8080", "qBittorrent", false],
     ]);
     expect(out[0].icon).toBe("icon:qbittorrent");
@@ -164,10 +168,10 @@ describe("cards", () => {
   });
 
   it("warns only about a real problem — not about Unknown, nothing, or a switched-off program", async () => {
-    const { dm } = make([qbRow, jdRow, cloudRow, { ...qbRow, key: "off", host: "h9", enabled: false }], [], {
+    const { dm } = make([qbRow, jdRow, cloudRow, { ...qbRow, id: "qbittorrent-off", host: "h9", enabled: false }], [], {
       "qbittorrent-nas.error": "login rejected (401)",
       "jdownloader-keller.error": "Unknown",
-      "jdownloader-cloud-tom.error": "",
+      "jdownloader-2222.error": "",
       "qbittorrent-off.error": "not reachable",
     });
     expect((await cards(dm)).map(c => c.status.warning)).toEqual([
@@ -189,33 +193,26 @@ describe("cards", () => {
     expect(host.written).toHaveLength(2);
   });
 
-  it("shows pause and free space only where the program has them", async () => {
+  it("shows pause and free space only where the program has them — as states, never as a control", async () => {
     const { dm } = make([qbRow, jdRow], ["qbittorrent-nas.paused", "qbittorrent-nas.freeSpace"]);
     const [qb, jd] = await cards(dm);
     expect(qb.indicators.map(i => i.id)).toEqual(["downloading", "active", "paused", "freeSpace"]);
-    expect(qb.controls.map(c => c.id)).toEqual(["paused"]);
     expect(jd.indicators.map(i => i.id)).toEqual(["downloading", "active"]);
-    expect(jd.controls).toEqual([]);
+    expect(qb.controls).toBeUndefined();
+    expect(jd.controls).toBeUndefined();
   });
 
-  it("answers a pause the database refused with an error instead of throwing", async () => {
-    const { dm, host, errors } = make([qbRow], ["qbittorrent-nas.paused"]);
-    host.writeState = () => Promise.reject(new Error("db down"));
-    const [qb] = await cards(dm);
-    expect(await qb.controls[0].handler("qbittorrent-nas", "paused", true)).toEqual({
-      error: { code: 500, message: "db down" },
-    });
-    expect(errors[0]).toMatch(/could not be paused \(db down\)/);
-  });
-
-  it("pauses a program from its card the way a user write does", async () => {
-    const { dm, host } = make([qbRow], ["qbittorrent-nas.paused"]);
-    const [qb] = await cards(dm);
-    expect(await qb.controls[0].handler("qbittorrent-nas", "paused", true)).toMatchObject({ val: true, ack: false });
-    await qb.controls[0].handler("qbittorrent-nas", "paused", "yes");
-    expect(host.states).toEqual([
-      ["qbittorrent-nas.paused", true],
-      ["qbittorrent-nas.paused", false],
+  it("shows the object ID in the card's details, and the My.JDownloader instance", async () => {
+    const { dm } = make([qbRow, cloudRow]);
+    expect((await cards(dm)).map(c => c.hasDetails)).toEqual([true, true]);
+    const qb = await dm.getDeviceDetails("qbittorrent-nas");
+    expect(Object.values(qb.schema.items).map(i => i.text)).toEqual([
+      { key: "dmDetailsId", args: [`${NS}.qbittorrent-nas`] },
+    ]);
+    const cloud = await dm.getDeviceDetails("jdownloader-2222");
+    expect(Object.values(cloud.schema.items).map(i => i.text)).toEqual([
+      { key: "dmDetailsId", args: [`${NS}.jdownloader-2222`] },
+      { key: "dmDetailsDevice", args: ["Tom-PC"] },
     ]);
   });
 
@@ -250,7 +247,7 @@ describe("cards", () => {
 });
 
 describe("adding a program", () => {
-  it("chooses the program, then stores only its fields with an ID from the name", async () => {
+  it("chooses the program, then stores only its fields with an ID from the machine it runs on", async () => {
     const { dm, host } = make([qbRow]);
     const ctx = context(
       { type: "deluge" },
@@ -259,8 +256,8 @@ describe("adding a program", () => {
     expect(await add(dm)(ctx)).toEqual({ refresh: true });
     expect(host.written).toHaveLength(1);
     expect(host.written[0][1]).toMatchObject({
+      id: "deluge-10-0-0-5",
       type: "deluge",
-      key: "",
       name: "Deluge",
       host: "10.0.0.5",
       port: 0,
@@ -315,7 +312,7 @@ describe("adding a program", () => {
     expect(twinOff.host.written).toHaveLength(1);
   });
 
-  it("hands the dialog the addresses and IDs of the other programs, so it refuses them itself", async () => {
+  it("hands the dialog the addresses of the other programs, so it refuses them itself", async () => {
     const { dm } = make([qbRow]);
     const ctx = context({ type: "qbittorrent" }, undefined);
     await add(dm)(ctx);
@@ -324,21 +321,25 @@ describe("adding a program", () => {
     const run = (expr: string | undefined, data: object): unknown => new Function("data", `return (${expr});`)(data);
     expect(run(items.host.validator, { host: "h1" })).toBe(false);
     expect(run(items.host.validator, { host: "h1", port: "9000" })).toBe(true);
-    expect(run(items.key.validator, { key: "nas" })).toBe(false);
+    expect(items.key).toBeUndefined();
   });
 
-  it("refuses a typed ID that is taken", async () => {
-    const { dm, host } = make([qbRow]);
-    const ctx = context({ type: "qbittorrent" }, { name: "X", host: "h5", key: "nas" });
-    await add(dm)(ctx);
-    expect(ctx.showMessage).toHaveBeenCalledWith({ key: "dmIdTaken", args: ["qbittorrent-nas"] });
-    expect(host.written).toEqual([]);
+  it("gives a second program on the same machine the port, then a counter — never an id another row holds", async () => {
+    const { dm, host } = make([{ ...qbRow, id: "qbittorrent-h5", host: "h5" }]);
+    await add(dm)(context({ type: "qbittorrent" }, { name: "qBittorrent", host: "h5", port: "9000" }));
+    expect(host.written[0][1]).toMatchObject({ id: "qbittorrent-h5-9000", name: "qBittorrent" });
+    const busy = make([
+      { ...qbRow, id: "qbittorrent-h5", host: "h5" },
+      { ...qbRow, id: "qbittorrent-h5-9000", host: "h6" },
+    ]);
+    await add(busy.dm)(context({ type: "qbittorrent" }, { name: "Q", host: "h5.lan", port: "9000" }));
+    expect(busy.host.written[0][2]).toMatchObject({ id: "qbittorrent-h5-9000-2" });
   });
 
-  it("gives a second program of a kind its own ID", async () => {
-    const { dm, host } = make([{ ...qbRow, key: "", name: "qBittorrent" }]);
-    await add(dm)(context({ type: "qbittorrent" }, { name: "qBittorrent", host: "h5" }));
-    expect(host.written[0][1]).toMatchObject({ key: "2" });
+  it("names a program on the ioBroker machine after the ioBroker host", async () => {
+    const { dm, host } = make();
+    await add(dm)(context({ type: "aria2" }, { name: "aria2", host: "localhost" }));
+    expect(host.written[0][0]).toMatchObject({ id: "aria2-iobhost" });
   });
 });
 
@@ -347,22 +348,29 @@ describe("adding a JDownloader over My.JDownloader", () => {
 
   it("logs in, offers the instances no row asks yet and stores the chosen one", async () => {
     const { dm, host, devices } = make([cloudRow]);
-    const ctx = context({ type: "jdownloader" }, cloudForm, { device: "Keller-NAS" });
+    const ctx = context({ type: "jdownloader" }, cloudForm, { device: "aaaa1111" });
     expect(await add(dm)(ctx)).toEqual({ refresh: true });
     expect(devices).toHaveBeenCalledWith("me@x.de", "pw");
     expect(ctx.progressClosed()).toBe(1);
     const pick = ctx.showForm.mock.calls[2];
     expect((pick[0] as { items: { device: { options: { value: string }[] } } }).items.device.options).toEqual([
-      { value: "Keller-NAS", label: "Keller-NAS" },
+      { value: "aaaa1111", label: "Keller-NAS" },
     ]);
-    expect(pick[1]).toMatchObject({ data: { device: "Keller-NAS" }, applyDisabledRule: "!data.device" });
+    expect(pick[1]).toMatchObject({ data: { device: "aaaa1111" }, applyDisabledRule: "!data.device" });
     expect(host.written[0][1]).toMatchObject({
+      id: "jdownloader-1111",
       type: "jdownloader-cloud",
-      key: "jd-freund",
       username: "me@x.de",
       device: "Keller-NAS",
+      deviceId: "aaaa1111",
       host: "",
     });
+  });
+
+  it("counts an instance a row from before 0.3.0 asks by its name as taken", async () => {
+    const { dm, host } = make([{ ...cloudRow, deviceId: undefined, id: "jdownloader-cloud", idPending: true }]);
+    await add(dm)(context({ type: "jdownloader" }, cloudForm, { device: "bbbb2222" }));
+    expect(host.written).toEqual([]);
   });
 
   it("says why when the login fails, and stores nothing", async () => {
@@ -377,14 +385,20 @@ describe("adding a JDownloader over My.JDownloader", () => {
 
   it("says so when every instance of the account is set up already", async () => {
     const { dm, devices } = make([cloudRow]);
-    devices.mockResolvedValueOnce(["Tom-PC"]);
+    devices.mockResolvedValueOnce([{ id: "bbbb2222", name: "Tom-PC" }]);
     const ctx = context({ type: "jdownloader" }, { ...cloudForm, username: "ME@X.DE" });
     await add(dm)(ctx);
     expect(ctx.showMessage).toHaveBeenCalledWith("dmNoDevices");
   });
 
+  it("never takes an instance another row asks, even when that row still carries an older name of it", async () => {
+    const { dm, host } = make([{ ...cloudRow, device: "Old-Name" }]);
+    await add(dm)(context({ type: "jdownloader" }, cloudForm, { device: "bbbb2222" }));
+    expect(host.written).toEqual([]);
+  });
+
   it("stores nothing when the user leaves the instance list or answers with one it did not offer", async () => {
-    for (const answer of [undefined, { device: "Tom-PC" }, { device: "Ghost-PC" }, { device: 3 }]) {
+    for (const answer of [undefined, { device: "bbbb2222" }, { device: "Ghost-PC" }, { device: 3 }]) {
       const { dm, host } = make([cloudRow]);
       await add(dm)(context({ type: "jdownloader" }, cloudForm, answer));
       expect(host.written).toEqual([]);
@@ -396,27 +410,31 @@ describe("editing a program", () => {
   it("opens the stored values and keeps the ID", async () => {
     const { dm, host } = make([qbRow]);
     const [qb] = await cards(dm);
-    const ctx = context({
-      ...{ name: "NAS 2", host: "h1", username: "admin", password: "pw", login: "user" },
-      key: "other",
-    });
+    const ctx = context({ name: "NAS 2", host: "h9", username: "admin", password: "pw", login: "user", key: "other" });
     expect(await action(qb, "edit").handler("qbittorrent-nas", ctx)).toEqual({ refresh: "devices" });
     expect(ctx.showForm.mock.calls[0][1]).toMatchObject({
       title: { key: "dmEditTitle", args: ["NAS"] },
       data: { name: "NAS", host: "h1", username: "admin", password: "pw", login: "user" },
     });
-    expect(host.written[0][0]).toMatchObject({ key: "nas", name: "NAS 2", username: "admin", password: "pw" });
+    expect(host.written[0][0]).toMatchObject({ id: "qbittorrent-nas", name: "NAS 2", host: "h9", password: "pw" });
+    expect(host.written[0][0]).not.toHaveProperty("key");
   });
 
-  it("keeps the ID when a JDownloader switches to My.JDownloader — the next start carries its rooms", async () => {
+  it("keeps the ID when a JDownloader switches to My.JDownloader — the device stays where it is", async () => {
     const { dm, host } = make([jdRow]);
     const [jd] = await cards(dm);
     const ctx = context(
       { name: "JD Keller", mode: "cloud", username: "me@x.de", password: "pw" },
-      { device: "Tom-PC" },
+      { device: "bbbb2222" },
     );
     await action(jd, "edit").handler("jdownloader-keller", ctx);
-    expect(host.written[0][0]).toMatchObject({ type: "jdownloader-cloud", key: "keller", device: "Tom-PC", host: "" });
+    expect(host.written[0][0]).toMatchObject({
+      id: "jdownloader-keller",
+      type: "jdownloader-cloud",
+      device: "Tom-PC",
+      deviceId: "bbbb2222",
+      host: "",
+    });
   });
 
   it("changes nothing when the user cancels, and reloads for a card that is gone", async () => {
@@ -436,21 +454,19 @@ describe("editing a program", () => {
 });
 
 describe("deleting and testing", () => {
-  it("answers first and stores the rows without the program right after", async () => {
+  it("stores the rows without the program, then answers — nothing restarts", async () => {
     const { dm, host, timers } = make([qbRow, jdRow]);
     const [qb] = await cards(dm);
     expect(await action(qb, "delete").handler("qbittorrent-nas", context())).toEqual({ delete: "qbittorrent-nas" });
-    expect(host.written).toEqual([]);
-    timers.forEach(t => t());
-    await new Promise(resolve => setImmediate(resolve));
     expect(host.written).toEqual([[jdRow]]);
+    expect(timers).toEqual([]);
   });
 
   it("writes nothing for a card whose row is gone already", async () => {
-    const { dm, timers } = make([qbRow]);
+    const { dm, host } = make([qbRow]);
     const [qb] = await cards(dm);
     await action(qb, "delete").handler("qbittorrent-gone", context());
-    expect(timers).toEqual([]);
+    expect(host.written).toEqual([]);
   });
 
   it("shows a delete whose settings cannot be read as a message", async () => {
@@ -462,14 +478,14 @@ describe("deleting and testing", () => {
     expect(ctx.showMessage).toHaveBeenCalledWith({ key: "dmActionFailed", args: ["db down"] });
   });
 
-  it("logs a delete the settings did not take", async () => {
-    const { dm, host, timers, errors } = make([qbRow]);
-    host.writeRows = () => Promise.reject(new Error("db down"));
+  it("shows a delete the store did not take as a message", async () => {
+    const { dm, host, errors } = make([qbRow]);
+    host.saveRows = () => Promise.reject(new Error("db down"));
     const [qb] = await cards(dm);
-    await action(qb, "delete").handler("qbittorrent-nas", context());
-    timers.forEach(t => t());
-    await new Promise(resolve => setImmediate(resolve));
-    expect(errors[0]).toMatch(/could not delete the program qbittorrent-nas.*db down/);
+    const ctx = context();
+    expect(await action(qb, "delete").handler("qbittorrent-nas", ctx)).toEqual({ refresh: "devices" });
+    expect(ctx.showMessage).toHaveBeenCalledWith({ key: "dmActionFailed", args: ["db down"] });
+    expect(errors[0]).toMatch(/db down/);
   });
 
   it("tests the stored row and says what the program answered", async () => {

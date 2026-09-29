@@ -18,7 +18,7 @@ const cfg = (base: string, apiKey = "good"): ProgramConfig => {
   const u = new URL(base);
   return {
     type: "pyload",
-    key: "",
+    deviceId: "",
     name: "",
     host: u.hostname,
     port: Number(u.port),

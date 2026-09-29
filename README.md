@@ -57,15 +57,22 @@ against those recorded answers.
 
 | Setting                                     | Meaning                                                                                                                                                                                                                               |
 | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Programs**                                | One card per program. **+** adds one: choose the program, and its dialog asks only for what that program needs — address, port (empty = its default), its login and, under _Advanced_, HTTPS, path and ID                             |
+| **Programs**                                | One card per program. **+** adds one: choose the program, and its dialog asks only for what that program needs — a name, address, port (empty = its default), its login and, under _Advanced_, HTTPS and path                         |
 | **Query interval**                          | How often every program is asked (seconds, default 10). My.JDownloader is asked at most every 30 seconds, pyLoad at most every 5 seconds                                                                                              |
 | **Downloads in the object tree**            | _All_ (default), _Without completed_ or _Only unfinished_ (no completed, no seeding). Failed downloads always stay. The program keeps every download, and the totals count all of them                                                |
 | **At most this many downloads per program** | Default 100, 0 = all. Above the limit, running and failed downloads keep their channel first, completed and seeding ones give it up first. More than 200 per program slow ioBroker down — the settings page and the log warn about it |
 
 Every program can be added as often as you like — two qBittorrent servers, a local JDownloader and one at a friend's.
 A second entry for the same program (the same address, or the same JDownloader of a My.JDownloader account) is refused.
-Each card shows whether the program answers, its speed and running downloads, and has a pause switch, an on/off switch,
-a connection test, edit and delete. The cards appear while the instance runs; every change restarts it.
+Each card shows whether the program answers, its speed and running downloads, and has an on/off switch, a connection
+test, edit and delete; its details show the object ID. A change on a card applies at once — the instance does not
+restart. Passwords and API keys are stored encrypted.
+
+The name is only a label. The object ID is given by the adapter once, when the program is added: the program and the
+machine it runs on (`qbittorrent-nas`, `transmission-192-168-1-20`, `aria2-<ioBroker host>` for `localhost`), for
+My.JDownloader the last four characters of the account's id for that JDownloader (`jdownloader-7f11`). A second
+program on the same machine gets its port, then a counter. Renaming, a new address or switching a JDownloader between
+local and My.JDownloader keeps the ID.
 
 **JDownloader:** the dialog switches between _Local network_ and _Through My.JDownloader_. The local API (JDownloader →
 Settings → Advanced settings → `DeprecatedApi`) has no password — use it only when JDownloader runs on the ioBroker host
@@ -81,12 +88,13 @@ or in the same Docker network. Through My.JDownloader you log in with your accou
 ```
 dl-manager.0
 ├── info                     connection, programsTotal, programsOnline, programsAllOnline
-├── summary                  downloading, active, queued, downloadSpeed, uploadSpeed, pauseAll,
-│                            lastFinished, lastFinishedTime, lastFailed, lastFailedTime
-└── <program>-<id>           e.g. qbittorrent-nas
+├── programs                 the program settings (the adapter's own store, not a datapoint)
+├── summary                  downloading, active, queued, downloadSpeed, uploadSpeed, pauseAll
+│   └── last                 finished, finishedTime, failed, failedTime
+└── <program>-<piece>        e.g. qbittorrent-nas
     ├── online, error, version, downloading, paused, downloadSpeed, uploadSpeed,
-    │   speedLimit, uploadLimit, altSpeed, freeSpace, active, queued, total, add,
-    │   lastFinished, lastFinishedTime, lastFailed, lastFailedTime
+    │   speedLimit, uploadLimit, altSpeed, freeSpace, active, queued, total, add
+    ├── last                 finished, finishedTime, failed, failedTime
     └── downloads
         └── <download>       status, progress, size, downloaded, speed, uploadSpeed, ratio, eta,
                              added, finished, category, error, paused, remove (+ program extras)
@@ -116,6 +124,15 @@ The test button on a program's card asks the program once and shows its answer.
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
+
+### **WORK IN PROGRESS**
+
+- Fixed: saving a program card no longer hangs, and the settings page can no longer undo a change made on a card
+- Changed: program settings live in their own object and take effect at once; passwords and API keys are encrypted
+- Changed: device IDs follow the program and machine (My.JDownloader: its id) and never change; the name is a label
+- Changed: the last finished and failed download moved into a `last` channel below each program and the summary
+- Changed: the card shows the object ID in its details and has no pause switch; the `paused` datapoint stays
+- Fixed: a JDownloader renamed in its own settings keeps its My.JDownloader connection
 
 ### 0.2.0 (2026-09-29)
 

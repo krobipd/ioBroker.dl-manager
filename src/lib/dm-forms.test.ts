@@ -6,7 +6,6 @@ vi.mock("./i18n", () => ({
 import { programKey } from "./core/config";
 import {
   applyRuleOf,
-  deriveKey,
   dialogType,
   emptyForm,
   formFromData,
@@ -54,7 +53,7 @@ const run = (expr: string | undefined, data: Record<string, unknown>): unknown =
  */
 const runRule = (rule: string, data: Record<string, unknown>): unknown => new Function("data", `return ${rule}`)(data);
 const form = (over: Partial<ProgramForm> = {}): ProgramForm => ({ ...emptyForm("qbittorrent"), ...over });
-const ctx = { takenKeys: [] as string[], takenIds: [] as string[], editing: false };
+const ctx = { takenKeys: [] as string[] };
 
 describe("rows and dialog data", () => {
   it("offers every program but My.JDownloader, which is a switch of the JDownloader dialog", () => {
@@ -103,7 +102,8 @@ describe("rows and dialog data", () => {
     expect(rowToForm({ type: "transmission", username: "u" })).toMatchObject({ needLogin: true, advanced: false });
     expect(rowToForm({ type: "jdownloader-cloud", username: "me@x" })).toMatchObject({ mode: "cloud", port: "" });
     expect(rowToForm({ port: "9" }).port).toBe(""); // like parsePrograms: a port is a number
-    expect(rowToForm({})).toMatchObject({ name: "", enabled: true, key: "" });
+    expect(rowToForm({})).toMatchObject({ name: "", enabled: true });
+    expect(rowToForm({ key: "old" })).not.toHaveProperty("key");
   });
 
   it("takes what the dialog answered and keeps the opened value for a missing or foreign-typed field", () => {
@@ -122,15 +122,15 @@ describe("formToRow", () => {
   const net = { host: " nas ", port: "8081", https: true, path: " /x ", advanced: true };
 
   it("keeps what the dialog does not show, and the switch-off", () => {
-    const row = formToRow("deluge", form({ ...net, password: "pw", enabled: false }), "k", {
+    const row = formToRow("deluge", form({ ...net, password: "pw", enabled: false }), "deluge-nas", {
       extra: 1,
       type: "deluge",
     });
     expect(row).toEqual({
       extra: 1,
+      id: "deluge-nas",
       enabled: false,
       type: "deluge",
-      key: "k",
       name: "",
       host: "nas",
       port: 8081,
@@ -140,6 +140,7 @@ describe("formToRow", () => {
       password: "pw",
       apiKey: "",
       device: "",
+      deviceId: "",
     });
   });
 
@@ -172,9 +173,9 @@ describe("formToRow", () => {
     const row = formToRow(
       "jdownloader",
       form({ ...net, mode: "cloud", username: " me@x ", password: "p" }),
-      "a",
+      "jdownloader-9f3a",
       {},
-      "PC",
+      { id: "abc9f3a", name: "PC" },
     );
     expect(row).toMatchObject({
       type: "jdownloader-cloud",
@@ -185,34 +186,20 @@ describe("formToRow", () => {
       username: "me@x",
       password: "p",
       device: "PC",
+      deviceId: "abc9f3a",
     });
-    expect(formToRow("jdownloader", form({ ...net, mode: "local" }), "a", { device: "PC" })).toMatchObject({
+    expect(
+      formToRow("jdownloader", form({ ...net, mode: "local" }), "jdownloader-9f3a", {
+        device: "PC",
+        deviceId: "abc9f3a",
+      }),
+    ).toMatchObject({
+      id: "jdownloader-9f3a",
       type: "jdownloader",
       host: "nas",
       device: "",
+      deviceId: "",
     });
-  });
-});
-
-describe("deriveKey", () => {
-  it("takes the name, or nothing when the name is just the program's", () => {
-    expect(deriveKey("deluge", "NAS Keller", new Set())).toBe("nas-keller");
-    expect(deriveKey("deluge", "Deluge", new Set())).toBe("");
-    expect(deriveKey("jdownloader-cloud", "JDownloader 2", new Set())).toBe("");
-    expect(deriveKey("aria2", "aria2", new Set())).toBe("");
-    expect(deriveKey("deluge", "", new Set())).toBe("");
-  });
-
-  it("counts up until the device id is free", () => {
-    expect(deriveKey("deluge", "Deluge", new Set(["deluge"]))).toBe("2");
-    expect(deriveKey("deluge", "Deluge", new Set(["deluge", "deluge-2"]))).toBe("3");
-    expect(deriveKey("deluge", "NAS", new Set(["deluge-nas"]))).toBe("nas-2");
-  });
-
-  it("stays within 20 characters with the counter", () => {
-    const key = deriveKey("deluge", "a very long program name indeed", new Set(["deluge-a-very-long-progra"]));
-    expect(key.length).toBeLessThanOrEqual(20);
-    expect(key).toMatch(/^[a-z0-9-]+$/);
   });
 });
 
@@ -252,9 +239,16 @@ describe("pickProgramForm", () => {
   });
 
   it("lists the JDownloader instances of an account", () => {
-    expect(itemsOf(pickJdDeviceForm(["A", "B"])).device.options).toEqual([
-      { value: "A", label: "A" },
-      { value: "B", label: "B" },
+    expect(
+      itemsOf(
+        pickJdDeviceForm([
+          { id: "id-a", name: "A" },
+          { id: "id-b", name: "B" },
+        ]),
+      ).device.options,
+    ).toEqual([
+      { value: "id-a", label: "A" },
+      { value: "id-b", label: "B" },
     ]);
   });
 });
@@ -269,7 +263,10 @@ describe("radio groups — the admin renders their labels as they are", () => {
         }
       }
     }
-    radios.push(itemsOf(pickProgramForm(() => undefined)).type, itemsOf(pickJdDeviceForm(["A"])).device);
+    radios.push(
+      itemsOf(pickProgramForm(() => undefined)).type,
+      itemsOf(pickJdDeviceForm([{ id: "i", name: "A" }])).device,
+    );
     expect(radios.length).toBeGreaterThan(3);
     for (const r of radios) {
       for (const o of r.options ?? []) {
@@ -281,7 +278,7 @@ describe("radio groups — the admin renders their labels as they are", () => {
 
 describe("programForm — only the fields of the program", () => {
   const fields = (type: ProgramType): string[] => Object.keys(itemsOf(programForm(type, ctx))).sort();
-  const common = ["advanced", "enabled", "hint", "host", "https", "key", "name", "path", "port", "taken"];
+  const common = ["advanced", "enabled", "hint", "host", "https", "name", "path", "port", "taken"];
 
   it("gives every program exactly its login fields", () => {
     expect(fields("deluge")).toEqual([...common, "password"].sort());
@@ -366,19 +363,11 @@ describe("programForm — only the fields of the program", () => {
     expect(itemsOf(programForm("aria2", ctx)).apiKey.validator).toBeUndefined();
   });
 
-  it("refuses an ID whose device id is taken — for the connection the JDownloader switch picks", () => {
-    const items = itemsOf(programForm("jdownloader", { ...ctx, takenIds: ["jdownloader-cloud-a"] }));
-    expect(run(items.key.validator, { mode: "cloud", key: "a" })).toBe(false);
-    expect(run(items.key.validator, { mode: "local", key: "a" })).toBe(true);
-    expect(run(items.key.validator, { key: "" })).toBe(true);
-    expect(run(items.key.validator, { key: "A B" })).toBe(false);
-    expect(run(items.key.validator, { key: "x".repeat(21) })).toBe(false);
-  });
-
-  it("fixes the ID of a row being edited", () => {
-    const items = itemsOf(programForm("deluge", { ...ctx, editing: true, takenIds: ["deluge-a"] }));
-    expect(items.key.disabled).toBe("true");
-    expect(run(items.key.validator, { key: "a" })).toBe(true);
+  it("has no ID field — the adapter gives the device id, the name is only a label", () => {
+    for (const p of OFFERED) {
+      expect(itemsOf(programForm(p.type, ctx))).not.toHaveProperty("key");
+    }
+    expect(itemsOf(programForm("deluge", ctx)).name).toMatchObject({ help: { key: "dmNameHelp" } });
   });
 
   it("requires a name", () => {
@@ -415,17 +404,13 @@ describe("applyRuleOf — OK stays off until every field passes", () => {
   });
 
   it("never holds a dialog without checks", () => {
-    expect(applyRuleOf(pickJdDeviceForm(["A"]))).toBe("false");
+    expect(applyRuleOf(pickJdDeviceForm([{ id: "i", name: "A" }]))).toBe("false");
   });
 });
 
 describe("dialog expressions — json-config runs them", () => {
   it("never spells `return`, so json-config puts its own in front", () => {
-    const hostile = {
-      takenKeys: ["return.lan:3128/"],
-      takenIds: ["jdownloader-returns"],
-      editing: false,
-    };
+    const hostile = { takenKeys: ["return.lan:3128/"] };
     for (const p of OFFERED) {
       for (const item of Object.values(itemsOf(programForm(p.type, hostile)))) {
         for (const expr of [item.hidden, item.validator, item.disabled]) {
@@ -435,7 +420,7 @@ describe("dialog expressions — json-config runs them", () => {
     }
   });
 
-  it("still finds a taken host and a taken ID that carry the word", () => {
+  it("still finds a taken host that carries the word", () => {
     const hostile = {
       takenKeys: [
         programKey({
@@ -448,16 +433,12 @@ describe("dialog expressions — json-config runs them", () => {
           device: "",
         }),
       ],
-      takenIds: ["jdownloader-returns"],
-      editing: false,
     };
     const items = itemsOf(programForm("jdownloader", hostile));
-    const data = { name: "JD", mode: "local", host: "return.lan", key: "returns" };
+    const data = { name: "JD", mode: "local", host: "return.lan" };
     expect(run(items.host.validator, data)).toBe(false);
     expect(run(items.taken.hidden, data)).toBe(false);
-    expect(run(items.key.validator, data)).toBe(false);
     expect(run(items.host.validator, { ...data, host: "nas" })).toBe(true);
     expect(run(items.taken.hidden, { ...data, host: "nas" })).toBe(true);
-    expect(run(items.key.validator, { ...data, key: "nas" })).toBe(true);
   });
 });

@@ -2,7 +2,8 @@ import { deviceIcon } from "../device-icons";
 import { errText } from "../err-text";
 import { routeState, type RouteTarget } from "./commands";
 import { addressOf, parsePrograms, type ProgramRow } from "./config";
-import { carryAssignments, planHandover, readDevices, stampOffline, type DevicesAdapter } from "./devices";
+import { RESERVED_IDS } from "./device-id";
+import { readDevices, stampOffline, type DevicesAdapter } from "./devices";
 import { type PauseState, type PauseStore } from "./emulated-pause";
 import { classify } from "./errors";
 import type { Command, DriverDeps, ProgramDriver, ProgramEntry } from "./model";
@@ -57,10 +58,12 @@ export interface ManagerDeps {
   timers: Pick<RunnerDeps, "setTimeout" | "clearTimeout">;
   /** Registry lookup. */
   find: (type: string) => ProgramEntry | undefined;
-  /** The adapter's decrypt for the stored secrets. */
-  decrypt: (value: string) => string;
-  /** Actionable problems (rejected login). */
-  problems: RunnerDeps["problems"];
+  /** Actionable problems (rejected login): raised by a runner, resolved when the program's settings change. */
+  problems: RunnerDeps["problems"] & { resolve(key: string, message: string): void };
+  /** Moves a program's device with everything below it to a new id (`move.ts`). */
+  moveDevice: (oldId: string, newId: string) => Promise<void>;
+  /** My.JDownloader named the id of a program's instance (first connect) — the adapter stores it. */
+  onDeviceId?: (programId: string, deviceId: string) => void;
 }
 
 /** Options from the adapter settings. */
@@ -80,14 +83,24 @@ interface Running {
 }
 
 /**
+ * @param row a program row
+ * @returns what decides how the program runs — a row whose signature changed is started anew
+ */
+const signature = (row: ProgramRow): string =>
+  JSON.stringify([row.enabled, row.scheme, row.problem, row.entry ? row.cfg : row.cfg.type]);
+
+/**
  * All configured programs: reads the program rows, keeps the device tree in line with them, runs one isolated
- * runner per program, routes user writes to them and keeps the adapter-wide summary.
+ * runner per program, routes user writes to them and keeps the adapter-wide summary. A change of the rows is taken
+ * over while the adapter runs ({@link ProgramManager.apply}) — only the programs it touches start anew.
  */
 export class ProgramManager {
   private readonly a: ManagerAdapter;
   private rows: ProgramRow[] = [];
   private readonly running = new Map<string, Running>();
   private stopped = false;
+  /** Changes of the rows, one after the other. */
+  private queue: Promise<void> = Promise.resolve();
 
   /**
    * @param deps outside services
@@ -101,54 +114,129 @@ export class ProgramManager {
   }
 
   /**
-   * Stamps every known program offline, aligns the device tree with the settings and starts one runner per usable
-   * program.
+   * Stamps every known program offline, removes the devices no row keeps and starts one runner per usable program.
    *
-   * @param rawPrograms `native.programs`
+   * @param raw the program rows (secrets readable)
    */
-  public async start(rawPrograms: unknown): Promise<void> {
-    this.rows = parsePrograms(rawPrograms, this.deps.decrypt, this.deps.find);
+  public async start(raw: unknown): Promise<void> {
+    this.rows = parsePrograms(raw, this.deps.find);
     const existing = await readDevices(this.a);
     await stampOffline(this.a, existing.keys());
-    const { carries, orphans } = planHandover(this.rows, existing);
-    for (const oldId of orphans) {
-      this.a.log.debug(`${oldId} is no longer configured — removing its objects`);
-      await this.a.delObject(`${this.a.namespace}.${oldId}`, { recursive: true });
+    const ids = new Set(this.rows.map(r => r.id));
+    for (const oldId of existing.keys()) {
+      if (!ids.has(oldId)) {
+        this.a.log.debug(`${oldId} is no longer configured — removing its objects`);
+        await this.a.delObject(`${this.a.namespace}.${oldId}`, { recursive: true });
+      }
     }
-
     for (const row of this.rows) {
-      if (!row.enabled) {
-        continue;
-      }
-      const name = row.cfg.name || row.id;
-      if (!row.entry) {
-        const bare = { type: row.cfg.type, capabilities: new Set<never>(), extras: [] };
-        await new ProgramTree(this.a, row.id, name, bare, this.opts).ensureBareDevice(row.problem);
-        this.a.log.warn(`${row.id}: ${row.problem} — check the program in the adapter settings`);
-        continue;
-      }
-      const driver = row.entry.create(row.cfg, this.driverDeps(row.id));
-      const tree = new ProgramTree(this.a, row.id, name, driver, this.opts);
-      await tree.load();
-      await tree.ensureDevice(deviceIcon(row.cfg.type), addressOf(row.cfg));
-      const oldId = carries.get(row.id);
-      if (oldId) {
-        await carryAssignments(this.a, oldId, row.id);
-      }
-      const runner = new ProgramRunner(
-        row.id,
-        driver,
-        tree,
-        { ...this.deps.timers, log: this.a.log, problems: this.deps.problems },
-        Math.max(this.opts.intervalMs, driver.minIntervalMs ?? 0),
-        events => void this.changed(row.id, events),
-      );
-      this.running.set(row.id, { driver, tree, runner });
+      await this.startProgram(row);
     }
     await this.writeSummary();
     for (const r of this.running.values()) {
       r.runner.start();
     }
+  }
+
+  /**
+   * Takes over changed program rows while the adapter runs: a removed program goes with its device, a moved one moves
+   * its device first, a changed or switched one starts anew (its rejected login is forgotten), the others run on.
+   *
+   * @param raw the program rows (secrets readable)
+   * @param moves old device id → new device id of the programs whose id changed
+   * @returns when the change is through
+   */
+  public apply(raw: unknown, moves: ReadonlyMap<string, string> = new Map()): Promise<void> {
+    const run = this.queue.then(() => this.applyNow(raw, moves));
+    this.queue = run.catch(() => undefined);
+    return run;
+  }
+
+  private async applyNow(raw: unknown, moves: ReadonlyMap<string, string>): Promise<void> {
+    if (this.stopped) {
+      return;
+    }
+    const next = parsePrograms(raw, this.deps.find);
+    const before = new Map(this.rows.map(r => [r.id, r]));
+    const nextIds = new Set(next.map(r => r.id));
+    for (const [oldId, newId] of moves) {
+      if (before.has(oldId) && nextIds.has(newId)) {
+        await this.stopProgram(oldId);
+        await this.deps.moveDevice(oldId, newId);
+        before.delete(oldId);
+      }
+    }
+    for (const oldId of before.keys()) {
+      if (!nextIds.has(oldId)) {
+        await this.stopProgram(oldId);
+        this.a.log.debug(`${oldId} is no longer configured — removing its objects`);
+        await this.a.delObject(`${this.a.namespace}.${oldId}`, { recursive: true });
+      }
+    }
+    this.rows = next;
+    for (const row of next) {
+      const was = before.get(row.id);
+      if (was && signature(was) === signature(row)) {
+        continue;
+      }
+      await this.stopProgram(row.id);
+      const started = await this.startProgram(row);
+      started?.runner.start();
+    }
+    await this.writeSummary();
+  }
+
+  /**
+   * Creates the device of one row and its runner (not started yet).
+   *
+   * @param row the row
+   * @returns what runs the program, undefined for a switched-off or unusable row
+   */
+  private async startProgram(row: ProgramRow): Promise<Running | undefined> {
+    if (!row.enabled) {
+      return undefined;
+    }
+    if (RESERVED_IDS.has(row.id)) {
+      this.a.log.warn(`${row.id}: this id belongs to the adapter itself — add the program again`);
+      return undefined;
+    }
+    const name = row.cfg.name || row.id;
+    if (!row.entry) {
+      const bare = { type: row.cfg.type, capabilities: new Set<never>(), extras: [] };
+      await new ProgramTree(this.a, row.id, name, bare, this.opts, row.scheme).ensureBareDevice(row.problem);
+      this.a.log.warn(`${row.id}: ${row.problem} — check the program in the adapter settings`);
+      return undefined;
+    }
+    const driver = row.entry.create(row.cfg, this.driverDeps(row.id));
+    const tree = new ProgramTree(this.a, row.id, name, driver, this.opts, row.scheme);
+    await tree.load();
+    await tree.ensureDevice(deviceIcon(row.cfg.type), addressOf(row.cfg));
+    const runner = new ProgramRunner(
+      row.id,
+      driver,
+      tree,
+      { ...this.deps.timers, log: this.a.log, problems: this.deps.problems },
+      Math.max(this.opts.intervalMs, driver.minIntervalMs ?? 0),
+      events => void this.changed(row.id, events),
+    );
+    const running = { driver, tree, runner };
+    this.running.set(row.id, running);
+    return running;
+  }
+
+  /**
+   * Stops the runner of one program — a poll under way finishes first, so nothing writes into its device afterwards —
+   * and forgets its rejected login.
+   *
+   * @param id the program's device id
+   */
+  private async stopProgram(id: string): Promise<void> {
+    const r = this.running.get(id);
+    this.running.delete(id);
+    if (r) {
+      await r.runner.stop();
+    }
+    this.deps.problems.resolve(`auth:${id}`, `${id}: settings changed — the program is asked again`);
   }
 
   /**
@@ -186,15 +274,11 @@ export class ProgramManager {
    * The card's connection test: builds a driver for one settings row, asks the program once and closes the driver.
    * A switched-off row is tested all the same — the user asked for it.
    *
-   * @param raw one entry of `native.programs`
+   * @param raw one program row (secrets readable)
    * @returns what the program answered
    */
   public async testProgram(raw: unknown): Promise<TestResult> {
-    const [row] = parsePrograms(
-      [raw && typeof raw === "object" ? { ...raw, enabled: true } : raw],
-      this.deps.decrypt,
-      this.deps.find,
-    );
+    const [row] = parsePrograms([raw && typeof raw === "object" ? { ...raw, enabled: true } : raw], this.deps.find);
     if (!row?.entry) {
       return { ok: false, kind: "setup", text: row?.problem || "program type missing" };
     }
@@ -220,6 +304,7 @@ export class ProgramManager {
   /** Stops every runner (they mark their program Unknown) and marks the adapter disconnected. */
   public async stop(): Promise<void> {
     this.stopped = true;
+    await this.queue;
     await Promise.allSettled([...this.running.values()].map(r => r.runner.stop()));
     this.running.clear();
     // nothing runs any more: every count and speed goes to nothing, the connection markers to false
@@ -230,7 +315,12 @@ export class ProgramManager {
     return {
       ...this.deps.timers,
       log: this.a.log,
-      ...(programId ? { pauseStore: objectPauseStore(this.a, `${this.a.namespace}.${programId}.paused`) } : {}),
+      ...(programId
+        ? {
+            pauseStore: objectPauseStore(this.a, `${this.a.namespace}.${programId}.paused`),
+            onDeviceId: (deviceId: string) => this.deps.onDeviceId?.(programId, deviceId),
+          }
+        : {}),
     };
   }
 

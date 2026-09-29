@@ -32,6 +32,11 @@ const OBJECTS_SECOND_LANGUAGE = path.join(__dirname, "objects.inventory.de.json"
 const FIRST_LANGUAGE = "en";
 const SECOND_LANGUAGE = "de";
 const VOLATILE = ["ts", "from", "user", "acl"];
+// Ciphertext from the installation secret differs per controller (CLAUDE_TEMPLATES.md, Objekt-Inventar) — the dump
+// keeps the field and replaces its value with a marker. Here the secrets sit in the rows of the program store.
+const STORE = `${NS}programs`;
+const ENCRYPTED_ROW_FIELDS = ["password", "apiKey"];
+const ENCRYPTED_MARKER = "<encrypted with the installation secret>";
 // Key order carries no meaning in an ioBroker object: extendObject keeps the key order an existing
 // object already has, while adapter-core's I18n.getTranslatedObject builds its own — the same eleven
 // texts in another order are the same name. Arrays keep their order.
@@ -254,12 +259,17 @@ const PROGRAM_ROWS = [
   ["aria2", "aria2", { host: "aria2.fixture", port: 6800, apiKey: "fixture" }],
   ["pyload", "pyLoad", { host: "pyload.fixture", port: 8000, apiKey: "fixture" }],
 ];
-/** Device id of each row (`<type>-<key>`). */
-const DEVICES = PROGRAM_ROWS.map(([type]) => `${type}-fixture`);
+/**
+ * Device id of each row: the program and the machine it runs on, My.JDownloader the last four characters of the id
+ * the fixture account lists (`dev1`) — the rows come from before 0.3.0 and get their ids at the start.
+ */
+const DEVICES = PROGRAM_ROWS.map(([type, , cfg]) =>
+  cfg.host ? `${type}-${cfg.host.split(".")[0]}` : "jdownloader-dev1",
+);
 
 /** Adapter-specific config the fixtures need (fake endpoint address, credentials, ...). */
 const FIXTURE_NATIVE = {
-  // secrets go in as typed, the way the program rows hold them
+  // the rows as 0.2.0 kept them in the instance settings — the adapter moves them into its store (one restart)
   programs: PROGRAM_ROWS.map(([type, name, cfg]) => ({
     enabled: true,
     type,
@@ -290,6 +300,16 @@ async function dumpObjects(harness) {
   for (const row of list.rows.sort((a, b) => a.id.localeCompare(b.id))) {
     const obj = { ...row.value };
     for (const key of VOLATILE) delete obj[key];
+    if (row.id === STORE && Array.isArray(obj.native?.rows)) {
+      obj.native = {
+        ...obj.native,
+        rows: obj.native.rows.map(r =>
+          Object.fromEntries(
+            Object.entries(r).map(([k, v]) => [k, ENCRYPTED_ROW_FIELDS.includes(k) && v ? ENCRYPTED_MARKER : v]),
+          ),
+        ),
+      };
+    }
     out[row.id] = obj;
   }
   return out;
@@ -337,9 +357,13 @@ async function resetInstanceNative(harness) {
   for (const key of Object.keys(instance?.native ?? {})) {
     if (!Object.hasOwn(FIXTURE_NATIVE, key)) stale[key] = null;
   }
-  // The program rows hold password and API key as typed (protectedNative, no encryptedAttributes) —
-  // the fixture rows go in the same way.
-  await harness.changeAdapterConfig(ADAPTER, { native: { ...stale, ...FIXTURE_NATIVE } });
+  // The fixture rows go in as 0.2.0 wrote them: secrets as typed. Written as a whole object — the harness's
+  // changeAdapterConfig merges a list into a key the manifest no longer declares as an object with numeric keys,
+  // which no admin ever stored.
+  await harness.objects.setObjectAsync(`system.adapter.${ADAPTER}.0`, {
+    ...instance,
+    native: { ...instance?.native, ...stale, ...FIXTURE_NATIVE },
+  });
 }
 
 /**

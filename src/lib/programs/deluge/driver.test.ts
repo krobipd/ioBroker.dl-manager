@@ -18,7 +18,7 @@ const cfg = (base: string, password = "deluge"): ProgramConfig => {
   const u = new URL(base);
   return {
     type: "deluge",
-    key: "",
+    deviceId: "",
     name: "",
     host: u.hostname,
     port: Number(u.port),

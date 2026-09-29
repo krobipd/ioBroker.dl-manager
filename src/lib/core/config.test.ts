@@ -1,5 +1,13 @@
 import type { ProgramEntry } from "./model";
-import { addressOf, parseMaxDownloads, parsePollInterval, parsePrograms, parseTreeScope, sameProgram } from "./config";
+import {
+  addressOf,
+  legacyId,
+  parseMaxDownloads,
+  parsePollInterval,
+  parsePrograms,
+  parseTreeScope,
+  sameProgram,
+} from "./config";
 
 const ENTRIES: Record<string, ProgramEntry> = {
   qbittorrent: { type: "qbittorrent", needs: ["host", "username", "password"], create: () => undefined as never },
@@ -11,16 +19,15 @@ const ENTRIES: Record<string, ProgramEntry> = {
   },
 };
 const find = (type: string): ProgramEntry | undefined => ENTRIES[type];
-const decrypt = (v: string): string => (v ? `plain(${v})` : "");
 
 describe("parsePrograms", () => {
-  it("reads a complete row, decrypts password and API key, and derives the device id", () => {
+  it("reads a complete row with its stored device id", () => {
     const [row] = parsePrograms(
       [
         {
           enabled: true,
           type: "qbittorrent",
-          key: "nas",
+          id: "qbittorrent-nas",
           name: "NAS",
           host: "10.0.0.2",
           port: 8080,
@@ -28,9 +35,9 @@ describe("parsePrograms", () => {
           path: "",
           username: "admin",
           password: "enc",
+          deviceId: "",
         },
       ],
-      decrypt,
       find,
     );
     expect(row.id).toBe("qbittorrent-nas");
@@ -40,7 +47,7 @@ describe("parsePrograms", () => {
       host: "10.0.0.2",
       port: 8080,
       username: "admin",
-      password: "plain(enc)",
+      password: "enc",
       apiKey: "",
     });
   });
@@ -51,37 +58,55 @@ describe("parsePrograms", () => {
         { enabled: true, type: "sabnzbd", key: "a", host: "h" },
         { enabled: true, type: "qbittorrent", key: "b", username: "u", password: "p" },
       ],
-      decrypt,
       find,
     );
     expect(rows.map(r => r.problem)).toEqual(["API key missing", "host missing"]);
   });
 
   it("marks an unknown program type, keeps its device id", () => {
-    const [row] = parsePrograms([{ enabled: true, type: "emule", key: "x", host: "h" }], decrypt, find);
+    const [row] = parsePrograms([{ enabled: true, type: "emule", id: "emule-x", host: "h" }], find);
     expect(row.id).toBe("emule-x");
     expect(row.problem).toBe("unknown program type: emule");
   });
 
-  it("uses the type as device id while the key is empty, and cleans a hand-edited key", () => {
+  it("takes a row without a stored id by the id it had up to 0.2.0, and ignores a hand-edited id that is no id", () => {
     const rows = parsePrograms(
       [
         { enabled: true, type: "sabnzbd", key: "", host: "h", apiKey: "k" },
         { enabled: true, type: "sabnzbd", key: "Mein NAS.2", host: "h2", apiKey: "k" },
+        { enabled: true, type: "sabnzbd", id: "Not An Id", key: "x", host: "h3", apiKey: "k" },
       ],
-      decrypt,
       find,
     );
-    expect(rows.map(r => r.id)).toEqual(["sabnzbd", "sabnzbd-mein-nas-2"]);
+    expect(rows.map(r => r.id)).toEqual(["sabnzbd", "sabnzbd-mein-nas-2", "sabnzbd-x"]);
+  });
+
+  it("marks a row whose id waits for its My.JDownloader instance", () => {
+    const rows = parsePrograms(
+      [
+        { enabled: true, type: "sabnzbd", id: "sabnzbd-nas", host: "h", apiKey: "k" },
+        {
+          enabled: true,
+          type: "jdownloader-cloud",
+          id: "jdownloader-cloud",
+          idPending: true,
+          username: "u",
+          password: "p",
+          device: "PC",
+        },
+      ],
+      find,
+    );
+    expect(rows.map(r => r.scheme)).toEqual([true, false]);
+    expect(rows[1].cfg.deviceId).toBe("");
   });
 
   it("reports the second row with the same device id as a duplicate", () => {
     const rows = parsePrograms(
       [
-        { enabled: true, type: "sabnzbd", key: "a", host: "h", apiKey: "k" },
-        { enabled: true, type: "sabnzbd", key: "a", host: "h2", apiKey: "k" },
+        { enabled: true, type: "sabnzbd", id: "sabnzbd-a", host: "h", apiKey: "k" },
+        { enabled: true, type: "sabnzbd", id: "sabnzbd-a", host: "h2", apiKey: "k" },
       ],
-      decrypt,
       find,
     );
     expect(rows.map(r => r.problem)).toEqual(["", "device id sabnzbd-a is used twice"]);
@@ -94,7 +119,6 @@ describe("parsePrograms", () => {
         { enabled: true, type: "sabnzbd", key: "b", host: "nas", port: 8080, apiKey: "k" },
         { enabled: true, type: "sabnzbd", key: "c", host: "nas", port: 8081, apiKey: "k" },
       ],
-      decrypt,
       find,
     );
     expect(rows.map(r => r.problem)).toEqual(["", "same program as sabnzbd-a", ""]);
@@ -107,7 +131,6 @@ describe("parsePrograms", () => {
         { enabled: true, type: "sabnzbd", key: "broken", host: "nas" },
         { enabled: true, type: "sabnzbd", key: "a", host: "nas", apiKey: "k" },
       ],
-      decrypt,
       find,
     );
     expect(rows.map(r => r.problem)).toEqual(["", "API key missing", ""]);
@@ -121,35 +144,33 @@ describe("parsePrograms", () => {
         { enabled: false, type: "sabnzbd", key: "c", host: "h3", apiKey: "k" },
         { enabled: true, type: "emule", key: "d", host: "h4" },
       ],
-      decrypt,
       find,
     );
     expect(rows.map(r => r.entry?.type)).toEqual(["sabnzbd", undefined, undefined, undefined]);
   });
 
   it("keeps a disabled row without judging it", () => {
-    const [row] = parsePrograms([{ enabled: false, type: "sabnzbd", key: "a" }], decrypt, find);
+    const [row] = parsePrograms([{ enabled: false, type: "sabnzbd", key: "a" }], find);
     expect(row.enabled).toBe(false);
     expect(row.problem).toBe("");
   });
 
   it("survives garbage from native", () => {
-    expect(parsePrograms(undefined, decrypt, find)).toEqual([]);
-    expect(parsePrograms("x", decrypt, find)).toEqual([]);
-    const rows = parsePrograms([null, 7, { type: 5, key: {}, port: "80" }], decrypt, find);
+    expect(parsePrograms(undefined, find)).toEqual([]);
+    expect(parsePrograms("x", find)).toEqual([]);
+    const rows = parsePrograms([null, 7, { type: 5, key: {}, port: "80" }], find);
     expect(rows).toHaveLength(1);
     expect(rows[0].problem).toBe("program type missing");
     expect(rows[0].cfg.port).toBe(0);
   });
 
-  it("never decrypts an empty secret, and takes only real ports and a real https switch", () => {
+  it("takes only real ports and a real https switch", () => {
     const rows = parsePrograms(
       [
         { type: "qbittorrent", key: "a", host: "h", username: "u", password: "", port: 70000, https: "yes" },
         { type: "qbittorrent", key: "b", host: "h", username: "u", password: "p", port: -5 },
         { type: "", key: "c" },
       ],
-      v => (v ? `plain(${v})` : "garbage"),
       find,
     );
     expect(rows[0].cfg.password).toBe("");
@@ -159,24 +180,20 @@ describe("parsePrograms", () => {
     expect(rows[2].id).toBe("program-c");
   });
 
-  it("lets a failing decrypt through as an empty secret", () => {
-    const [row] = parsePrograms(
-      [{ enabled: true, type: "sabnzbd", key: "a", host: "h", apiKey: "x" }],
-      () => {
-        throw new Error("bad secret");
-      },
-      find,
-    );
-    expect(row.problem).toBe("API key missing");
-  });
-
   it("does not need a host for My.JDownloader", () => {
     const [row] = parsePrograms(
       [{ enabled: true, type: "jdownloader-cloud", key: "", username: "me@x", password: "p", device: "PC" }],
-      decrypt,
       find,
     );
     expect(row.problem).toBe("");
+  });
+});
+
+describe("legacyId", () => {
+  it("is the device id up to 0.2.0: type and ID column", () => {
+    expect(legacyId({ type: "qbittorrent", key: "NAS 1" })).toBe("qbittorrent-nas-1");
+    expect(legacyId({ type: "jdownloader-cloud", key: "" })).toBe("jdownloader-cloud");
+    expect(legacyId({ type: " ", key: "x" })).toBe("program-x");
   });
 });
 

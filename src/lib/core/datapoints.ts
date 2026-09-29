@@ -173,10 +173,10 @@ export const PROGRAM_DATAPOINTS: readonly DatapointDef<ProgramSnapshot>[] = [
     nameKey: "add",
     descKey: "descAdd",
   }),
-  pr({ id: "lastFinished", type: "string", role: "text", nameKey: "lastFinished", descKey: "descLastFinished" }),
-  pr({ id: "lastFinishedTime", type: "number", role: "date", nameKey: "lastFinishedTime" }),
-  pr({ id: "lastFailed", type: "string", role: "text", nameKey: "lastFailed", descKey: "descLastFailed" }),
-  pr({ id: "lastFailedTime", type: "number", role: "date", nameKey: "lastFailedTime" }),
+  pr({ id: "last.finished", type: "string", role: "text", nameKey: "lastFinished", descKey: "descLastFinished" }),
+  pr({ id: "last.finishedTime", type: "number", role: "date", nameKey: "lastFinishedTime" }),
+  pr({ id: "last.failed", type: "string", role: "text", nameKey: "lastFailed", descKey: "descLastFailed" }),
+  pr({ id: "last.failedTime", type: "number", role: "date", nameKey: "lastFailedTime" }),
 ];
 
 /** Datapoints in each download's channel. */

@@ -18,8 +18,8 @@ sie nicht kennen:
 
 Weist ein Programm die Anmeldung ab, schreibt der Adapter eine Warnung, zeigt eine ioBroker-Benachrichtigung und fragt
 dieses Programm nicht mehr. qBittorrent und Transmission sperren eine Adresse nach mehreren Fehlversuchen; alle paar
-Sekunden neu zu fragen würde den ioBroker-Rechner aussperren. Korrigiere die Zugangsdaten in den Einstellungen — das
-Speichern startet die Instanz neu, und das Programm wird wieder gefragt.
+Sekunden neu zu fragen würde den ioBroker-Rechner aussperren. Korrigiere die Zugangsdaten auf der Karte des Programms —
+die Änderung gilt sofort, und das Programm wird wieder gefragt.
 
 ## Lokale JDownloader-Schnittstelle oder My.JDownloader?
 
@@ -55,9 +55,9 @@ Objektbaum langsam.
 
 ## Ich will eine Nachricht, wenn ein Download fertig ist
 
-Löse auf `summary.lastFinished` (oder auf `lastFinished` des Programms) mit **wurde aktualisiert** aus, nicht mit
+Löse auf `summary.last.finished` (oder auf `last.finished` des Programms) mit **wurde aktualisiert** aus, nicht mit
 **wurde geändert**: Zwei Downloads mit demselben Namen enden mit demselben Wert, und ein Auslöser auf „geändert“
-verpasst den zweiten. `summary.lastFinishedTime` enthält die Uhrzeit. `summary.lastFailed` funktioniert genauso für
+verpasst den zweiten. `summary.last.finishedTime` enthält die Uhrzeit. `summary.last.failed` funktioniert genauso für
 fehlgeschlagene Downloads.
 
 ## `paused` bei Transmission, aria2 oder einem älteren qBittorrent
@@ -73,14 +73,15 @@ Programm. Du findest sie in `downloadSpeed` des Programms; der Adapter erfindet 
 
 ## Zwei Server mit demselben Programm
 
-Lege je Server eine Zeile mit eigener ID an — `qbittorrent-nas` und `qbittorrent-seedbox` sind zwei Geräte
-nebeneinander.
+Lege je Server eine Karte an — jede bekommt den Rechner, auf dem sie läuft, als ID: `qbittorrent-nas` und
+`qbittorrent-seedbox` sind zwei Geräte nebeneinander. Zwei gleiche Programme auf einem Rechner unterscheidet ihr Port
+(`qbittorrent-nas-8081`).
 
-## Ich habe die ID eines Programms geändert
+## Kann ich die ID eines Programms wählen?
 
-Behält eine Zeile Programm und Adresse, bekommt aber eine neue ID, übernimmt der Adapter die Raum- und
-Funktionszuordnungen des Geräts und seiner Datenpunkte auf das neue Gerät und entfernt das alte; die Downloads kommen
-mit der nächsten Abfrage wieder. Eine gelöschte Zeile nimmt ihr Gerät mit. Eine ausgeschaltete Zeile behält ihr Gerät,
+Nein — der Adapter vergibt sie einmal beim Hinzufügen, und sie ändert sich nie: ein neuer Name, eine neue Adresse oder
+ein Wechsel zwischen lokal und My.JDownloader lassen das Gerät, wo es ist, mit Räumen, Funktionen und Skripten. Die
+Details der Karte zeigen die ID. Eine gelöschte Karte nimmt ihr Gerät mit. Eine ausgeschaltete Karte behält ihr Gerät,
 es wird als nicht erreichbar angezeigt.
 
 ## pyLoad meldet „too many requests“

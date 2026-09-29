@@ -26,7 +26,7 @@ const cfg = (base: string): ProgramConfig => {
   const u = new URL(base);
   return {
     type: "jdownloader",
-    key: "",
+    deviceId: "",
     name: "",
     host: u.hostname,
     port: Number(u.port),

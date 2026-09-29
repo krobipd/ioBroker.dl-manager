@@ -63,7 +63,7 @@ const recorded = (path: string): unknown => {
 };
 const cfg = (base: string, password = PASSWORD, device = "PC"): ProgramConfig => ({
   type: "jdownloader-cloud",
-  key: "",
+  deviceId: "",
   name: "",
   host: "",
   port: 0,
@@ -111,6 +111,32 @@ describe("JDownloader over My.JDownloader", () => {
     expect(d.subscribe(() => undefined)).toBeTypeOf("function");
   });
 
+  it("finds the instance by its id — a renamed JDownloader stays the same one — and names the id once", async () => {
+    const s = await serve();
+    try {
+      const named: string[] = [];
+      const byId = { ...cfg(s.baseUrl, PASSWORD, "Old name"), deviceId: "dev1" };
+      const t = new JdCloudTransport(byId, { ...timers, onDeviceId: id => named.push(id) }, s.baseUrl);
+      expect(await t.call("/jd/version")).toBeDefined();
+      expect(named).toEqual([]);
+      t.close();
+      const byName = new JdCloudTransport(
+        cfg(s.baseUrl, PASSWORD, "PC"),
+        { ...timers, onDeviceId: id => named.push(id) },
+        s.baseUrl,
+      );
+      expect(await byName.call("/jd/version")).toBeDefined();
+      expect(named).toEqual(["dev1"]);
+      byName.close();
+      // a known id never falls back to the name: another instance of that name is another JDownloader
+      const gone = new JdCloudTransport({ ...cfg(s.baseUrl), deviceId: "other" }, timers, s.baseUrl);
+      await expect(gone.call("/jd/version")).rejects.toThrow(ProtocolError);
+      gone.close();
+    } finally {
+      await s.close();
+    }
+  });
+
   it("calls a device name the account does not know a protocol error that lists the known ones", async () => {
     const s = await serve();
     try {
@@ -125,7 +151,7 @@ describe("JDownloader over My.JDownloader", () => {
     const s = await serve();
     try {
       const t = new JdCloudTransport(cfg(s.baseUrl, PASSWORD, ""), timers, s.baseUrl);
-      expect(await t.listDevices()).toEqual(["PC"]);
+      expect(await t.listDevices()).toEqual([{ id: "dev1", name: "PC" }]);
       t.close();
       s.faults.devices = [
         { id: "a", name: "Keller-NAS" },
@@ -134,8 +160,8 @@ describe("JDownloader over My.JDownloader", () => {
         { id: "d", name: "Tom-PC" },
       ];
       expect(await new JdCloudTransport(cfg(s.baseUrl, PASSWORD, ""), timers, s.baseUrl).listDevices()).toEqual([
-        "Keller-NAS",
-        "Tom-PC",
+        { id: "a", name: "Keller-NAS" },
+        { id: "d", name: "Tom-PC" },
       ]);
       await expect(new JdCloudTransport(cfg(s.baseUrl, "wrong", ""), timers, s.baseUrl).listDevices()).rejects.toThrow(
         AuthError,

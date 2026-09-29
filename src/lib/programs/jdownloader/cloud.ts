@@ -103,6 +103,14 @@ function errorType(res: HttpResponse, token: Buffer | null): string {
   }
 }
 
+/** A JDownloader instance of a My.JDownloader account. */
+export interface JdDevice {
+  /** The account's id for it — stays when the instance is renamed. */
+  id: string;
+  /** Its name, as set in JDownloader. */
+  name: string;
+}
+
 /**
  * JDownloader through My.JDownloader (api-jdownloader.md § 1.1, reference myjdapi 1.1.11): login with signed server
  * calls, AES-128-CBC device calls under `/t_<session>_<device>`, one reconnect with the regain token on TOKEN_INVALID.
@@ -116,13 +124,13 @@ export class JdCloudTransport implements JdTransport {
   private rid = 0;
 
   /**
-   * @param cfg the settings row: e-mail in `username`, password, device name in `device`
-   * @param timers the adapter's timers
+   * @param cfg the settings row: e-mail in `username`, password, device id in `deviceId` and its name in `device`
+   * @param timers the adapter's timers, and where the device id goes once the account named it
    * @param base the API address (tests point it at a local server)
    */
   public constructor(
     private readonly cfg: ProgramConfig,
-    timers: HttpTimers,
+    private readonly timers: HttpTimers & { onDeviceId?: (id: string) => void },
     private readonly base = API,
   ) {
     this.http = new HttpClient(timers, { timeoutMs: 20_000 });
@@ -194,13 +202,15 @@ export class JdCloudTransport implements JdTransport {
   }
 
   /**
-   * Logs in and names the JDownloader instances of the account — the settings dialog offers them to choose from.
+   * Logs in and lists the JDownloader instances of the account — the settings dialog offers them to choose from.
    * The session stays open for calls to the instance named in the settings row.
    *
-   * @returns the instance names, as the account lists them
+   * @returns id and name of each instance, as the account lists them
    */
-  public async listDevices(): Promise<string[]> {
-    return (await this.devices()).map(d => (typeof d.name === "string" ? d.name : "")).filter(n => n !== "");
+  public async listDevices(): Promise<JdDevice[]> {
+    return (await this.devices())
+      .map(d => ({ id: typeof d.id === "string" ? d.id : "", name: typeof d.name === "string" ? d.name : "" }))
+      .filter(d => d.id !== "" && d.name !== "");
   }
 
   /** @returns the account's device list, after a fresh login */
@@ -226,7 +236,10 @@ export class JdCloudTransport implements JdTransport {
 
   private async connect(): Promise<void> {
     const devices = await this.devices();
-    const found = devices.find(d => d.name === this.cfg.device);
+    // by its id — a JDownloader renamed in its settings stays the same instance; by name for a row without the id
+    const found =
+      (this.cfg.deviceId ? devices.find(d => d.id === this.cfg.deviceId) : undefined) ??
+      (this.cfg.deviceId ? undefined : devices.find(d => d.name === this.cfg.device));
     if (!found || typeof found.id !== "string") {
       // no device, no session: the next call logs in and looks again (a PC that boots later)
       this.session = null;
@@ -236,6 +249,9 @@ export class JdCloudTransport implements JdTransport {
       );
     }
     this.deviceId = found.id;
+    if (found.id !== this.cfg.deviceId) {
+      this.timers.onDeviceId?.(found.id);
+    }
   }
 
   private async reconnect(): Promise<void> {
@@ -318,18 +334,17 @@ interface Session {
  * @param password account password
  * @param timers the adapter's timers
  * @param base the API address (tests point it at a local server)
- * @returns the instance names
+ * @returns id and name of each instance
  */
 export async function listMyJdDevices(
   email: string,
   password: string,
   timers: HttpTimers,
   base = API,
-): Promise<string[]> {
+): Promise<JdDevice[]> {
   const transport = new JdCloudTransport(
     {
       type: "jdownloader-cloud",
-      key: "",
       name: "",
       host: "",
       port: 0,
@@ -339,6 +354,7 @@ export async function listMyJdDevices(
       password,
       apiKey: "",
       device: "",
+      deviceId: "",
     },
     timers,
     base,

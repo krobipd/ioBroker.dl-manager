@@ -8,7 +8,7 @@ const deps = {
 };
 const row = (type: string): ProgramConfig => ({
   type,
-  key: "",
+  deviceId: "",
   name: "",
   host: "h",
   port: 0,

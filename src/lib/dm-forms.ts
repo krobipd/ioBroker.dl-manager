@@ -1,19 +1,26 @@
 import type { JsonFormSchema } from "@iobroker/dm-utils";
-import { programId, sanitize } from "./core/ids";
 import { tName, tText, type I18nKey } from "./i18n";
 import { CATALOG, catalogEntry, type ProgramInfo, type ProgramType } from "./programs/catalog";
 
 /**
- * The settings dialogs of the device manager, and the conversion between a stored settings row (`native.programs[]`)
- * and the data a dialog edits. Pure: no adapter, no I/O.
+ * The settings dialogs of the device manager, and the conversion between a program row (`store.ts`) and the data a
+ * dialog edits. Pure: no adapter, no I/O.
  */
 
-/** One stored settings row, as `native.programs` holds it — fields the dialog does not know are kept. */
+/** One program row with readable secrets — fields the dialog does not know are kept. */
 export type SettingsRow = Record<string, unknown>;
+
+/** A JDownloader instance of a My.JDownloader account, as the dialog stores it. */
+export interface JdChoice {
+  /** The account's id for it. */
+  id: string;
+  /** Its name. */
+  name: string;
+}
 
 /** What a program dialog edits. Field names follow the settings row where there is one. */
 export interface ProgramForm {
-  /** Card and device name. */
+  /** Display name of the card and the device. */
   name: string;
   /** JDownloader only: `local` or `cloud` (My.JDownloader). */
   mode: "local" | "cloud";
@@ -31,14 +38,12 @@ export interface ProgramForm {
   password: string;
   /** API key or RPC secret. */
   apiKey: string;
-  /** Show HTTPS, path and ID. */
+  /** Show HTTPS and path. */
   advanced: boolean;
   /** TLS. */
   https: boolean;
   /** Path below the host, "" = the program's default. */
   path: string;
-  /** The ID part of the device id, "" = taken from the name when the row is added. */
-  key: string;
   /** The program is asked. */
   enabled: boolean;
 }
@@ -98,7 +103,6 @@ export function rowToForm(row: SettingsRow): ProgramForm {
     advanced: https || path !== "",
     https,
     path,
-    key: textOf(row.key),
     enabled: row.enabled !== false,
   };
 }
@@ -121,7 +125,6 @@ export function emptyForm(type: ProgramType): ProgramForm {
     advanced: false,
     https: false,
     path: "",
-    key: "",
     enabled: true,
   };
 }
@@ -153,7 +156,6 @@ export function formFromData(data: Record<string, unknown>, opened: ProgramForm)
     advanced: flag("advanced"),
     https: flag("https"),
     path: text("path"),
-    key: text("key"),
     enabled: flag("enabled"),
   };
 }
@@ -173,7 +175,7 @@ export function storedType(type: ProgramType, form: Pick<ProgramForm, "mode">): 
  *
  * @param type the dialog's program
  * @param form what the dialog returned
- * @param key the ID part, already decided (see {@link deriveKey})
+ * @param id the device id, already decided (`device-id.ts`) — an edited row keeps its own
  * @param previous the row being edited, if any
  * @param device My.JDownloader: the chosen JDownloader of the account
  * @returns the row to store
@@ -181,18 +183,18 @@ export function storedType(type: ProgramType, form: Pick<ProgramForm, "mode">): 
 export function formToRow(
   type: ProgramType,
   form: ProgramForm,
-  key: string,
+  id: string,
   previous: SettingsRow = {},
-  device = "",
+  device?: JdChoice,
 ): SettingsRow {
   const stored = storedType(type, form);
   const login = catalogEntry(stored).login;
   const port = Number(form.port);
   const row: SettingsRow = {
     ...previous,
+    id,
     enabled: form.enabled,
     type: stored,
-    key,
     name: form.name.trim(),
     host: "",
     port: 0,
@@ -202,9 +204,16 @@ export function formToRow(
     password: "",
     apiKey: "",
     device: "",
+    deviceId: "",
   };
   if (login === "account") {
-    return { ...row, username: form.username.trim(), password: form.password, device };
+    return {
+      ...row,
+      username: form.username.trim(),
+      password: form.password,
+      device: device?.name ?? "",
+      deviceId: device?.id ?? "",
+    };
   }
   Object.assign(row, {
     host: form.host.trim(),
@@ -228,32 +237,6 @@ export function formToRow(
       return form.login === "key" ? { ...row, apiKey: form.apiKey.trim() } : { ...row, ...user };
     default:
       return row;
-  }
-}
-
-/**
- * The ID part of a new row, decided once and stored — a renamed program keeps its device. Taken from the name; a name
- * that is just the program's own name (or none) gives the bare type as device id, then `-2`, `-3` …
- *
- * @param type the stored program type
- * @param name the name the user typed
- * @param takenIds device ids other rows hold
- * @returns an ID part whose device id is free
- */
-export function deriveKey(type: string, name: string, takenIds: ReadonlySet<string>): string {
-  const label = programLabel(type);
-  let base = sanitize(name).slice(0, 17).replace(/-$/, "");
-  if (base === sanitize(label) || base === sanitize(type)) {
-    base = "";
-  }
-  if (!takenIds.has(programId(type, base))) {
-    return base;
-  }
-  for (let n = 2; ; n++) {
-    const key = base ? `${base}-${n}` : String(n);
-    if (!takenIds.has(programId(type, key))) {
-      return key;
-    }
   }
 }
 
@@ -317,10 +300,6 @@ export function programKeyExpression(info: Pick<ProgramInfo, "port" | "path">): 
 export interface FormContext {
   /** `programKey` of every other row. */
   takenKeys: readonly string[];
-  /** Device id of every other row. */
-  takenIds: readonly string[];
-  /** Editing an existing row: its ID part cannot change any more. */
-  editing: boolean;
 }
 
 /**
@@ -431,22 +410,6 @@ export function programForm(type: ProgramType, ctx: FormContext): JsonFormSchema
       md: 4,
     };
   }
-  const idOf = jd ? `(${cloud}?'jdownloader-cloud':'jdownloader')` : literal(type);
-  items.key = {
-    type: "text",
-    label: tName("dmKey"),
-    help: tName(ctx.editing ? "dmKeyHelpFixed" : "dmKeyHelp"),
-    hidden: "!data.advanced",
-    disabled: ctx.editing ? "true" : "false",
-    validator: ctx.editing
-      ? "true"
-      : `!String(data.key||'').trim() || (/^[a-z0-9-]{1,20}$/.test(String(data.key).trim()) && ` +
-        `!${literal(ctx.takenIds)}.includes(${idOf}+'-'+String(data.key).trim()))`,
-    validatorErrorText: tName("dmKeyInvalid"),
-    validatorNoSaveOnError: true,
-    sm: 12,
-    md: 4,
-  };
   items.enabled = { type: "checkbox", label: tName("dmEnabled"), newLine: true, sm: 12 };
   if (info.login !== "account") {
     // the field's own error text is not shown in a device-manager dialog — say it where it is read
@@ -591,10 +554,10 @@ export function applyRuleOf(schema: JsonFormSchema): string {
 /**
  * The My.JDownloader step: which JDownloader of the account this entry asks.
  *
- * @param names the account's JDownloader instances not set up yet
+ * @param devices the account's JDownloader instances not set up yet
  * @returns the schema
  */
-export function pickJdDeviceForm(names: readonly string[]): JsonFormSchema {
+export function pickJdDeviceForm(devices: readonly JdChoice[]): JsonFormSchema {
   return {
     type: "panel",
     items: {
@@ -602,7 +565,7 @@ export function pickJdDeviceForm(names: readonly string[]): JsonFormSchema {
         type: "select",
         format: "radio",
         label: tName("dmPickDeviceHelp"),
-        options: names.map(n => ({ value: n, label: n })),
+        options: devices.map(d => ({ value: d.id, label: d.name })),
         sm: 12,
       },
     },

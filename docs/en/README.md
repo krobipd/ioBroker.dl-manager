@@ -29,23 +29,28 @@ network; otherwise use My.JDownloader.
 2. Press **+**, choose the program. Its dialog asks only for what this program needs: a name, the address and port
    (empty = the program's default) and its login. For JDownloader choose _Local network_ or _Through My.JDownloader_;
    with My.JDownloader you log in and pick your JDownloader from a list.
-3. Apply. The instance restarts, and the program appears as a card and as a device under `dl-manager.0`. The ID in
-   the object path — `qbittorrent-nas` — comes from the name; under _Advanced_ you can set it yourself before the first
-   save. It stays the same from then on, so rooms, functions and scripts keep working.
+3. Apply. The program appears as a card and as a device under `dl-manager.0` at once — the instance does not restart.
+   The name is only the label of the card and the device. The object ID is given by the adapter: the program and the
+   machine it runs on (`qbittorrent-nas`, `transmission-192-168-1-20`; for `localhost` the name of the ioBroker host),
+   for My.JDownloader the last four characters of the account's id for that JDownloader (`jdownloader-7f11`). A second
+   program on the same machine gets its port, then a counter. The ID never changes afterwards — not on a new name, a new
+   address or a switch between local and My.JDownloader — so rooms, functions and scripts keep working. The card's
+   details show it.
 4. The test button on the card asks the program once and shows its version or the reason it cannot be reached.
 
 Every program can be added as often as you like. A second entry for the same program — the same address, or the same
 JDownloader of a My.JDownloader account — is refused. The switch on a card turns a program off without deleting its
-device; delete removes the device, never a file.
+device; delete removes the device, never a file. Passwords and API keys are stored encrypted with the installation's
+secret in the adapter's object `dl-manager.0.programs`.
 
 ## What you find in the object tree
 
 - `info.*` — how many programs are configured and reachable.
-- `summary.*` — over all programs: whether any download is active, total speeds, a switch that pauses every program,
-  the last finished and the last failed download (with time).
-- `<program>-<id>.*` — the program: reachable, reason, version, speeds, limits, free space, pause switch, an input to
-  add a link, counts and its own last finished / failed download.
-- `<program>-<id>.downloads.<download>.*` — one channel per download with status, progress, size, speed, time left,
+- `summary.*` — over all programs: whether any download is active, total speeds, a switch that pauses every program;
+  `summary.last.*` the last finished and the last failed download (with time).
+- `<program>-<piece>.*` — the program: reachable, reason, version, speeds, limits, free space, pause switch, an input
+  to add a link, counts; `last.*` its own last finished / failed download.
+- `<program>-<piece>.downloads.<download>.*` — one channel per download with status, progress, size, speed, time left,
   error and the actions the program offers (pause, remove, and for some programs recheck, force start or retry).
 
 The status is the same list for every program: queued, downloading, waiting, paused, checking, post-processing, seeding,
@@ -54,7 +59,7 @@ completed, failed.
 ## Which downloads the object tree shows
 
 Two settings decide which downloads get their own channel. The program keeps every download either way, and the totals
-(`summary.*`, the program's own counters and `lastFinished`) always count all of them.
+(`summary.*`, the program's own counters and `last.finished`) always count all of them.
 
 - **Downloads in the object tree:** _All_ (the default), _Without completed_, or _Only unfinished_ — the last one also
   leaves out seeding torrents. Failed downloads always stay, they need you.
@@ -68,6 +73,19 @@ admin down. The settings page shows a warning then, and the log warns once per p
 actually stand in the tree.
 
 `remove` on a download takes it off the program's list; the files always stay on disk.
+
+## Updating from 0.2
+
+The first start of 0.3 moves the programs out of the instance settings into `dl-manager.0.programs` (the instance
+restarts once), encrypts their passwords and gives every program its new object ID. Each device moves with its values,
+rooms, functions and aliases; a recording keeps its history under the old ID. A My.JDownloader program moves as soon
+as the account has named its JDownloader's id (the first successful connection). The last finished and failed
+download move into the `last` channel: `lastFinished` → `last.finished`, `lastFinishedTime` → `last.finishedTime`,
+`lastFailed` → `last.failed`, `lastFailedTime` → `last.failedTime` — below every program and below `summary`.
+
+**Update old IDs in scripts and VIS** — for example `dl-manager.0.jdownloader-cloud` → `dl-manager.0.jdownloader-7f11`
+and `dl-manager.0.summary.lastFinished` → `dl-manager.0.summary.last.finished`. Do not go back to 0.2: it would not
+find its programs any more.
 
 ## More
 
