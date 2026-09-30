@@ -36,7 +36,7 @@
       "summary.last.failed": "descLastFailed"
     }
   },
-  "forumThread": null,
+  "forumThread": "https://forum.iobroker.net/topic/85475/test-adapter-dl-manager-0.x",
   "ciExtraJobs": {
     "live-programs.yml:live-programs": "starts the eight download programs (16 versions) in containers and records their real answers as the test fixtures; runs only on a manual start or when driver code, recording scripts or the workflow change"
   }
