@@ -8,6 +8,7 @@ vi.mock("@iobroker/adapter-core", () => ({
 import { FakeAdapter } from "../../../test/helpers/fake-adapter";
 import { AuthError, UnreachableError } from "./errors";
 import { objectPauseStore, ProgramManager } from "./manager";
+import { KnownStates } from "./states";
 import type {
   Capability,
   Command,
@@ -226,6 +227,63 @@ describe("ProgramManager — start", () => {
     // a device without a program type is not the adapter's — it stays
     expect(w.a.objects.has(`${NS}.sabnzbd-old`)).toBe(true);
     expect(w.a.objects.has(`${NS}.summary`)).toBe(true);
+  });
+
+  it("writes the summary one poll after the other — the last value written is the current one, none twice", async () => {
+    const a = new FakeAdapter(NS);
+    // polls that end together, and a database that answers each write at its own pace: two summaries would otherwise
+    // interleave and the older one could be written last
+    const gate: { open: () => void; ready: Promise<void> } = { open: () => undefined, ready: Promise.resolve() };
+    gate.ready = new Promise<void>(resolve => (gate.open = resolve));
+    const setState = a.setState.bind(a);
+    let calls = 0;
+    const known = new KnownStates({
+      namespace: NS,
+      getStates: () => Promise.resolve({}),
+      setState: async (id, st) => {
+        for (let n = (calls++ * 7) % 5; n >= 0; n--) {
+          await new Promise(resolve => setImmediate(resolve));
+        }
+        return setState(id, st);
+      },
+    });
+    a.setStateChanged = (id, st) => known.put(id, st);
+    const speed: Record<string, number> = { h1: 1_000_000, h2: 2_000_000, h3: 4_000_000 };
+    const m = new ProgramManager(
+      {
+        adapter: a,
+        timers: { setTimeout: () => undefined, clearTimeout: () => undefined },
+        find: () => ({
+          type: "qbittorrent",
+          needs: ["host"],
+          create: (cfg: ProgramConfig): ProgramDriver => ({
+            type: "qbittorrent",
+            capabilities: new Set(),
+            extras: [],
+            poll: async () => {
+              await gate.ready;
+              return snap(speed[cfg.host]);
+            },
+            command: () => Promise.resolve(),
+            close: () => Promise.resolve(),
+          }),
+        }),
+        problems: { report: () => undefined, resolve: () => undefined },
+        moveDevice: () => Promise.resolve(),
+      },
+      { intervalMs: 10_000, scope: "all", limit: 0 },
+    );
+    await m.start([row("qbittorrent", "a", "h1"), row("qbittorrent", "b", "h2"), row("qbittorrent", "c", "h3")]);
+    gate.open();
+    for (let i = 0; i < 300; i++) {
+      await flush();
+    }
+    const speeds = a.writeLog.filter(l => l.id === "summary.downloadSpeed").map(l => l.val);
+    // every poll adds a program: each summary written is larger than the one before, none comes back stale
+    expect(speeds[0]).toBeNull();
+    const sums = speeds.slice(1) as number[];
+    expect(sums).toEqual([...new Set(sums)].sort((x, y) => x - y));
+    expect(sums.at(-1)).toBe(7);
   });
 
   it("writes the summary over reachable programs only", async () => {

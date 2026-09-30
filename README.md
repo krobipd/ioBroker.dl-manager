@@ -125,6 +125,10 @@ The test button on a program's card asks the program once and shows its answer.
     ### **WORK IN PROGRESS**
 -->
 
+### **WORK IN PROGRESS**
+
+- Fixed: when several programs answered at the same moment, the totals could briefly show an older speed or count
+
 ### 0.3.0 (2026-09-29)
 
 - Fixed: saving a program card no longer hangs, and the settings page can no longer undo a change made on a card

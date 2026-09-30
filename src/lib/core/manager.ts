@@ -101,6 +101,8 @@ export class ProgramManager {
   private stopped = false;
   /** Changes of the rows, one after the other. */
   private queue: Promise<void> = Promise.resolve();
+  /** Summary writes, one after the other. */
+  private summaryQueue: Promise<void> = Promise.resolve();
 
   /**
    * @param deps outside services
@@ -401,7 +403,19 @@ export class ProgramManager {
     }
   }
 
-  private async writeSummary(): Promise<void> {
+  /**
+   * The summary over all programs, one write after the other: polls that end together would otherwise write their
+   * summaries interleaved, and an older one could be written last. Each one is computed when it is its turn.
+   *
+   * @returns when this summary is written
+   */
+  private writeSummary(): Promise<void> {
+    const run = this.summaryQueue.then(() => this.writeSummaryNow());
+    this.summaryQueue = run.catch(() => undefined);
+    return run;
+  }
+
+  private async writeSummaryNow(): Promise<void> {
     const inputs: SummaryInput[] = this.rows
       .filter(r => r.enabled)
       .map(r => {
