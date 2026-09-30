@@ -1,7 +1,7 @@
 import type { Mock } from "vitest";
 import { AuthError, ProtocolError, UnreachableError } from "./errors";
 import type { Command, ProgramDriver, ProgramSnapshot } from "./model";
-import { ProgramRunner, type RunnerDeps, type RunnerTree } from "./runner";
+import { ProgramRunner, WARN_COOLDOWN_MS, WARN_MEMORY, type RunnerDeps, type RunnerTree } from "./runner";
 import type { ProgramEvents } from "./tree";
 
 const flush = (): Promise<void> => new Promise(resolve => setImmediate(resolve));
@@ -92,7 +92,7 @@ describe("ProgramRunner", () => {
     await flush();
     expect(driver.polls).toBe(1);
     expect(tree.sync).toHaveBeenCalledWith(SNAP);
-    expect(onChange).toHaveBeenCalledWith(NO_EVENTS);
+    expect(onChange).toHaveBeenCalledWith(NO_EVENTS, true);
     expect(r.online).toBe(true);
     await clock.tick();
     expect(driver.polls).toBe(2);
@@ -187,19 +187,59 @@ describe("ProgramRunner", () => {
     expect(tree.markOffline.mock.calls.map(c => c[0])).toEqual(["Unknown"]);
   });
 
-  it("warns again when the same problem comes back after a good poll", async () => {
+  it("warns the same problem once an hour — also when good polls come in between (no flapping in the log)", async () => {
     const clock = new ManualClock();
+    let now = 0;
     let fail = true;
     const driver = makeDriver(() => (fail ? Promise.reject(new ProtocolError("bad answer")) : Promise.resolve(SNAP)));
-    const deps = makeDeps(clock);
+    const deps = { ...makeDeps(clock), now: () => now };
     const r = new ProgramRunner("fake-a", driver, makeTree(), deps, 10_000, vi.fn());
     r.start();
     await flush();
     fail = false;
     await clock.tick();
     fail = true;
+    now = WARN_COOLDOWN_MS - 1;
+    await clock.tick();
+    expect(deps.lines.filter(l => l.level === "warn").map(l => l.msg)).toEqual(["fake-a: bad answer"]);
+    expect(deps.lines.filter(l => l.level === "debug").map(l => l.msg)).toContain("[fake-a] bad answer");
+    now = WARN_COOLDOWN_MS;
     await clock.tick();
     expect(deps.lines.filter(l => l.level === "warn")).toHaveLength(2);
+  });
+
+  it("forgets the oldest text once it remembers the most — that text warns again inside the window", async () => {
+    const clock = new ManualClock();
+    let n = 0;
+    const driver = makeDriver(() => Promise.reject(new ProtocolError(`answer ${n}`)));
+    const deps = { ...makeDeps(clock), now: () => 0 };
+    const r = new ProgramRunner("fake-a", driver, makeTree(), deps, 10_000, vi.fn());
+    r.start();
+    await flush();
+    for (n = 1; n <= WARN_MEMORY; n++) {
+      await clock.tick();
+    }
+    n = 0;
+    await clock.tick();
+    const warns = deps.lines.filter(l => l.level === "warn").map(l => l.msg);
+    expect(warns).toHaveLength(WARN_MEMORY + 2);
+    expect(warns.at(-1)).toBe("fake-a: answer 0");
+  });
+
+  it("warns a different problem at once", async () => {
+    const clock = new ManualClock();
+    let text = "bad answer";
+    const driver = makeDriver(() => Promise.reject(new ProtocolError(text)));
+    const deps = { ...makeDeps(clock), now: () => 0 };
+    const r = new ProgramRunner("fake-a", driver, makeTree(), deps, 10_000, vi.fn());
+    r.start();
+    await flush();
+    text = "other answer";
+    await clock.tick();
+    expect(deps.lines.filter(l => l.level === "warn").map(l => l.msg)).toEqual([
+      "fake-a: bad answer",
+      "fake-a: other answer",
+    ]);
   });
 
   it("reports an empty change after a failed poll, so the summary sees the program go offline", async () => {
@@ -209,7 +249,7 @@ describe("ProgramRunner", () => {
     const r = new ProgramRunner("fake-a", driver, makeTree(), makeDeps(clock), 10_000, onChange);
     r.start();
     await flush();
-    expect(onChange).toHaveBeenCalledWith(NO_EVENTS);
+    expect(onChange).toHaveBeenCalledWith(NO_EVENTS, false);
   });
 
   it("refuses commands while the login is rejected", async () => {
@@ -343,5 +383,124 @@ describe("ProgramRunner", () => {
     r.start();
     await flush();
     expect(tree.markOffline).toHaveBeenCalledWith("GET http://***@h/api?apikey=*** failed");
+  });
+});
+
+describe("ProgramRunner — result of a card change and the login warning", () => {
+  it("writes the first answer after a card change on info, once, with product and version", async () => {
+    const clock = new ManualClock();
+    const deps = makeDeps(clock);
+    const r = new ProgramRunner(
+      "fake-a",
+      makeDriver(() => Promise.resolve(SNAP)),
+      makeTree(),
+      deps,
+      10_000,
+      vi.fn(),
+    );
+    r.announceNextResult("Fake");
+    r.start();
+    await flush();
+    await clock.tick();
+    expect(deps.lines.filter(l => l.level === "info").map(l => l.msg)).toEqual(["fake-a: answering (Fake 1)"]);
+  });
+
+  it("writes no answer line without a card change — reaching a program again is a state (debug)", async () => {
+    const clock = new ManualClock();
+    const deps = makeDeps(clock);
+    const r = new ProgramRunner(
+      "fake-a",
+      makeDriver(() => Promise.resolve(SNAP)),
+      makeTree(),
+      deps,
+      10_000,
+      vi.fn(),
+    );
+    r.start();
+    await flush();
+    expect(deps.lines.filter(l => l.level === "info")).toHaveLength(0);
+    expect(deps.lines.map(l => l.msg)).toContain("[fake-a] reachable");
+    expect(deps.lines.map(l => l.msg)).toContain("[fake-a] polled: 0 download(s)");
+  });
+
+  it("leaves the product version out when the program names none", async () => {
+    const clock = new ManualClock();
+    const deps = makeDeps(clock);
+    const snap = { ...SNAP, status: { ...SNAP.status, version: "" }, complete: false };
+    const r = new ProgramRunner(
+      "fake-a",
+      makeDriver(() => Promise.resolve(snap)),
+      makeTree(),
+      deps,
+      10_000,
+      vi.fn(),
+    );
+    r.announceNextResult("Fake");
+    r.start();
+    await flush();
+    expect(deps.lines.filter(l => l.level === "info").map(l => l.msg)).toEqual(["fake-a: answering (Fake)"]);
+    expect(deps.lines.map(l => l.msg)).toContain("[fake-a] polled: 0 download(s), lists incomplete");
+  });
+
+  it("writes an unreachable program after a card change on info — later misses stay on debug", async () => {
+    const clock = new ManualClock();
+    const deps = makeDeps(clock);
+    const driver = makeDriver(() => Promise.reject(new UnreachableError("timeout")));
+    const r = new ProgramRunner("fake-a", driver, makeTree(), deps, 10_000, vi.fn());
+    r.announceNextResult("Fake");
+    r.start();
+    await flush();
+    await clock.tick();
+    expect(deps.lines.filter(l => l.level === "info").map(l => l.msg)).toEqual(["fake-a: not reachable — timeout"]);
+    expect(deps.lines.filter(l => l.level === "debug").map(l => l.msg)).toContain("[fake-a] not reachable: timeout");
+  });
+
+  it("warns a failure after a card change even inside the warn window of the same text", async () => {
+    const clock = new ManualClock();
+    const deps = { ...makeDeps(clock), now: () => 0 };
+    const driver = makeDriver(() => Promise.reject(new ProtocolError("bad answer")));
+    const r = new ProgramRunner("fake-a", driver, makeTree(), deps, 10_000, vi.fn());
+    r.start();
+    await flush();
+    r.announceNextResult("Fake");
+    await clock.tick();
+    expect(deps.lines.filter(l => l.level === "warn")).toHaveLength(2);
+  });
+
+  it("names in the login warning what the card holds, and the action of its dialog", async () => {
+    const clock = new ManualClock();
+    const reports: [string, string, string][] = [];
+    const deps = {
+      ...makeDeps(clock),
+      problems: { report: (k: string, t: string, a: string) => void reports.push([k, t, a]) },
+    };
+    const driver = makeDriver(() => Promise.reject(new AuthError("transmission: login rejected")));
+    const hint = { cause: "no login is set on its card", action: "switch on the login on its card" };
+    const r = new ProgramRunner("tr-a", driver, makeTree(), deps, 10_000, vi.fn(), hint);
+    r.announceNextResult("Transmission");
+    r.start();
+    await flush();
+    expect(reports).toEqual([
+      [
+        "auth:tr-a",
+        "tr-a: transmission: login rejected (no login is set on its card) — not asked again until its card changes",
+        "switch on the login on its card",
+      ],
+    ]);
+    expect(deps.lines.filter(l => l.level === "info")).toHaveLength(0);
+    await expect(r.command({ kind: "pauseAll" })).rejects.toThrow(
+      "tr-a: the program refused the login — switch on the login on its card",
+    );
+  });
+
+  it("leaves the cause out when the card holds a login", async () => {
+    const clock = new ManualClock();
+    const titles: string[] = [];
+    const deps = { ...makeDeps(clock), problems: { report: (_k: string, t: string) => void titles.push(t) } };
+    const driver = makeDriver(() => Promise.reject(new AuthError("401")));
+    const r = new ProgramRunner("q-a", driver, makeTree(), deps, 10_000, vi.fn(), { action: "check it" });
+    r.start();
+    await flush();
+    expect(titles).toEqual(["q-a: 401 — not asked again until its card changes"]);
   });
 });

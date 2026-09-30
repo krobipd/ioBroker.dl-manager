@@ -35,8 +35,6 @@ export class PyDriver implements ProgramDriver {
     "itemError",
   ]);
   public readonly extras = [];
-  /** A poll is four calls (six with the limit), pyLoad allows 100 a minute — room for the user and other tools. */
-  public readonly minIntervalMs = 5_000;
   private readonly client: PyClient;
   private version = "";
   private limit: { on: boolean; kib: number } | null = null;

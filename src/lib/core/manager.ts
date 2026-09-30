@@ -5,7 +5,9 @@ import { addressOf, parsePrograms, type ProgramRow } from "./config";
 import { RESERVED_IDS } from "./device-id";
 import { readDevices, stampOffline, type DevicesAdapter } from "./devices";
 import { type PauseState, type PauseStore } from "./emulated-pause";
+import { programInfo } from "../programs/catalog";
 import { classify } from "./errors";
+import { loginHint } from "./login-hint";
 import type { Command, DriverDeps, ProgramDriver, ProgramEntry } from "./model";
 import { redact } from "./redact";
 import { ProgramRunner, type RunnerDeps } from "./runner";
@@ -58,8 +60,8 @@ export interface ManagerDeps {
   timers: Pick<RunnerDeps, "setTimeout" | "clearTimeout">;
   /** Registry lookup. */
   find: (type: string) => ProgramEntry | undefined;
-  /** Actionable problems (rejected login): raised by a runner, resolved when the program's settings change. */
-  problems: RunnerDeps["problems"] & { resolve(key: string, message: string): void };
+  /** Actionable problems (rejected login): raised by a runner, forgotten when the program's card changes. */
+  problems: RunnerDeps["problems"] & { forget(key: string): void };
   /** Moves a program's device with everything below it to a new id (`move.ts`). */
   moveDevice: (oldId: string, newId: string) => Promise<void>;
   /** My.JDownloader named the id of a program's instance (first connect) — the adapter stores it. */
@@ -90,6 +92,20 @@ const signature = (row: ProgramRow): string =>
   JSON.stringify([row.enabled, row.scheme, row.problem, row.entry ? row.cfg : row.cfg.type]);
 
 /**
+ * @param rows the program rows at the start
+ * @returns the one info line of the start: which programs run, which are switched off
+ */
+export function startLine(rows: readonly ProgramRow[]): string {
+  if (!rows.length) {
+    return "no program configured — add one on the settings page of the instance";
+  }
+  const on = rows.filter(r => r.enabled).map(r => r.id);
+  const off = rows.filter(r => !r.enabled).map(r => r.id);
+  const tail = off.length ? ` — switched off: ${off.join(", ")}` : "";
+  return `${on.length} program(s) asked${on.length ? `: ${on.join(", ")}` : ""}${tail}`;
+}
+
+/**
  * All configured programs: reads the program rows, keeps the device tree in line with them, runs one isolated
  * runner per program, routes user writes to them and keeps the adapter-wide summary. A change of the rows is taken
  * over while the adapter runs ({@link ProgramManager.apply}) — only the programs it touches start anew.
@@ -103,6 +119,8 @@ export class ProgramManager {
   private queue: Promise<void> = Promise.resolve();
   /** Summary writes, one after the other. */
   private summaryQueue: Promise<void> = Promise.resolve();
+  /** Programs started with the adapter whose first successful sync is still to come. */
+  private readonly firstSync = new Set<string>();
 
   /**
    * @param deps outside services
@@ -132,8 +150,12 @@ export class ProgramManager {
       }
     }
     for (const row of this.rows) {
-      await this.startProgram(row);
+      if (await this.startProgram(row)) {
+        // a changed tree setting restarts the instance: what the first sync takes out of the tree is its effect
+        this.firstSync.add(row.id);
+      }
     }
+    this.a.log.info(startLine(this.rows));
     await this.writeSummary();
     for (const r of this.running.values()) {
       r.runner.start();
@@ -143,36 +165,41 @@ export class ProgramManager {
   /**
    * Takes over changed program rows while the adapter runs: a removed program goes with its device, a moved one moves
    * its device first, a changed or switched one starts anew (its rejected login is forgotten), the others run on.
+   * A card change reports its result on info — deleted, switched off, or the first answer of the program.
    *
    * @param raw the program rows (secrets readable)
    * @param moves old device id → new device id of the programs whose id changed
+   * @param byCard whether a card change caused it (false: the adapter stored a learned My.JDownloader id)
    * @returns when the change is through
    */
-  public apply(raw: unknown, moves: ReadonlyMap<string, string> = new Map()): Promise<void> {
-    const run = this.queue.then(() => this.applyNow(raw, moves));
+  public apply(raw: unknown, moves: ReadonlyMap<string, string> = new Map(), byCard = true): Promise<void> {
+    const run = this.queue.then(() => this.applyNow(raw, moves, byCard));
     this.queue = run.catch(() => undefined);
     return run;
   }
 
-  private async applyNow(raw: unknown, moves: ReadonlyMap<string, string>): Promise<void> {
+  private async applyNow(raw: unknown, moves: ReadonlyMap<string, string>, byCard: boolean): Promise<void> {
     if (this.stopped) {
       return;
     }
     const next = parsePrograms(raw, this.deps.find);
     const before = new Map(this.rows.map(r => [r.id, r]));
     const nextIds = new Set(next.map(r => r.id));
+    const moved = new Set<string>();
     for (const [oldId, newId] of moves) {
       if (before.has(oldId) && nextIds.has(newId)) {
         await this.stopProgram(oldId);
         await this.deps.moveDevice(oldId, newId);
         before.delete(oldId);
+        moved.add(newId);
       }
     }
     for (const oldId of before.keys()) {
       if (!nextIds.has(oldId)) {
         await this.stopProgram(oldId);
-        this.a.log.debug(`${oldId} is no longer configured — removing its objects`);
+        const states = await this.a.getForeignObjects(`${this.a.namespace}.${oldId}.*`, "state");
         await this.a.delObject(`${this.a.namespace}.${oldId}`, { recursive: true });
+        this.a.log.info(`${oldId}: deleted — removed ${Object.keys(states).length} datapoint(s)`);
       }
     }
     this.rows = next;
@@ -183,7 +210,15 @@ export class ProgramManager {
       }
       await this.stopProgram(row.id);
       const started = await this.startProgram(row);
-      started?.runner.start();
+      const announce = byCard && !moved.has(row.id);
+      if (started) {
+        if (announce) {
+          started.runner.announceNextResult(programInfo(row.cfg.type)?.label ?? row.cfg.type);
+        }
+        started.runner.start();
+      } else if (announce && !row.enabled && was?.enabled !== false) {
+        this.a.log.info(`${row.id}: switched off — the program is no longer asked`);
+      }
     }
     await this.writeSummary();
   }
@@ -219,7 +254,8 @@ export class ProgramManager {
       tree,
       { ...this.deps.timers, log: this.a.log, problems: this.deps.problems },
       Math.max(this.opts.intervalMs, driver.minIntervalMs ?? 0),
-      events => void this.changed(row.id, events),
+      (events, ok) => void this.changed(row.id, events, ok),
+      loginHint(row.cfg),
     );
     const running = { driver, tree, runner };
     this.running.set(row.id, running);
@@ -228,17 +264,18 @@ export class ProgramManager {
 
   /**
    * Stops the runner of one program — a poll under way finishes first, so nothing writes into its device afterwards —
-   * and forgets its rejected login.
+   * and forgets its rejected login without a line: the caller logs what became of the program.
    *
    * @param id the program's device id
    */
   private async stopProgram(id: string): Promise<void> {
     const r = this.running.get(id);
     this.running.delete(id);
+    this.firstSync.delete(id);
     if (r) {
       await r.runner.stop();
     }
-    this.deps.problems.resolve(`auth:${id}`, `${id}: settings changed — the program is asked again`);
+    this.deps.problems.forget(`auth:${id}`);
   }
 
   /**
@@ -386,14 +423,18 @@ export class ProgramManager {
     }
   }
 
-  private async changed(programId: string, events: ProgramEvents): Promise<void> {
+  private async changed(programId: string, events: ProgramEvents, ok: boolean): Promise<void> {
     if (this.stopped) {
       return;
     }
+    const first = ok && this.firstSync.delete(programId);
     if (events.removedFromTree > 0) {
-      this.a.log.info(
-        `${programId}: removed ${events.removedFromTree} download(s) from the object tree (tree settings)`,
-      );
+      const line = `${programId}: removed ${events.removedFromTree} download(s) from the object tree (tree settings)`;
+      if (first) {
+        this.a.log.info(line);
+      } else {
+        this.a.log.debug(line);
+      }
     }
     try {
       await writeLastEvents((id, st) => this.a.setState(id, st), "summary", events);

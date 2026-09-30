@@ -7,7 +7,7 @@ vi.mock("@iobroker/adapter-core", () => ({
 
 import { FakeAdapter } from "../../../test/helpers/fake-adapter";
 import { AuthError, UnreachableError } from "./errors";
-import { objectPauseStore, ProgramManager } from "./manager";
+import { objectPauseStore, ProgramManager, startLine } from "./manager";
 import { KnownStates } from "./states";
 import type {
   Capability,
@@ -116,7 +116,7 @@ function world(
         find: type => entries[type],
         problems: {
           report: key => void reported.push(key),
-          resolve: key => void resolved.push(key),
+          forget: key => void resolved.push(key),
         },
         moveDevice: async (from, to) => {
           moved.push([from, to]);
@@ -268,7 +268,7 @@ describe("ProgramManager — start", () => {
             close: () => Promise.resolve(),
           }),
         }),
-        problems: { report: () => undefined, resolve: () => undefined },
+        problems: { report: () => undefined, forget: () => undefined },
         moveDevice: () => Promise.resolve(),
       },
       { intervalMs: 10_000, scope: "all", limit: 0 },
@@ -403,7 +403,7 @@ describe("ProgramManager — apply (changed rows while running)", () => {
             close: () => Promise.resolve(),
           }),
         }),
-        problems: { report: () => undefined, resolve: () => undefined },
+        problems: { report: () => undefined, forget: () => undefined },
         moveDevice: () => Promise.resolve(),
       },
       { intervalMs: 10_000, scope: "all", limit: 0 },
@@ -458,7 +458,7 @@ describe("ProgramManager — poll interval", () => {
             close: () => Promise.resolve(),
           }),
         }),
-        problems: { report: () => undefined, resolve: () => undefined },
+        problems: { report: () => undefined, forget: () => undefined },
         moveDevice: () => Promise.resolve(),
       },
       { intervalMs: 10_000, scope: "all", limit: 0 },
@@ -502,18 +502,43 @@ describe("ProgramManager — user writes", () => {
     expect(w.a.states.get(`${NS}.qbittorrent-nas.downloads.11112222.paused`)).toMatchObject({ val: false, ack: true });
   });
 
-  it("says in one info line how many download channels the tree settings took out (final review M4)", async () => {
-    const b = { snapshot: snap(0, [item("c1", "downloading"), item("c2", "downloading"), item("d1", "downloading")]) };
+  it("says on info what a changed tree setting took out at the start — later removals are routine (debug)", async () => {
+    const b = { snapshot: snap(0, [item("c1", "completed"), item("c2", "completed"), item("d1", "downloading")]) };
     const w = world({ h1: b });
+    const before = w.manager();
+    await before.start([row("qbittorrent", "a", "h1")]);
+    await flush();
+    await before.stop();
     const m = w.manager({ scope: "withoutCompleted" });
     await m.start([row("qbittorrent", "a", "h1")]);
     await flush();
-    b.snapshot = snap(0, [item("c1", "completed"), item("c2", "completed"), item("d1", "downloading")]);
+    const line = "qbittorrent-a: removed 2 download(s) from the object tree (tree settings)";
+    expect(w.a.logs.filter(l => l.level === "info").map(l => l.msg)).toContain(line);
+    b.snapshot = snap(0, [item("d1", "completed")]);
     await m.onUserWrite("qbittorrent-a.paused", true);
     await flush();
-    expect(w.a.logs.filter(l => l.level === "info").map(l => l.msg)).toContain(
-      "qbittorrent-a: removed 2 download(s) from the object tree (tree settings)",
-    );
+    const later = "qbittorrent-a: removed 1 download(s) from the object tree (tree settings)";
+    expect(w.a.logs.filter(l => l.msg === later).map(l => l.level)).toEqual(["debug"]);
+  });
+
+  it("keeps the start's info line for the first sync that succeeds, also after a failed first poll", async () => {
+    const b: { snapshot?: ProgramSnapshot; error?: Error } = {
+      snapshot: snap(0, [item("c1", "completed"), item("d1", "downloading")]),
+    };
+    const w = world({ h1: b as Behaviour });
+    const before = w.manager();
+    await before.start([row("qbittorrent", "a", "h1")]);
+    await flush();
+    await before.stop();
+    b.error = new UnreachableError("down");
+    const m = w.manager({ scope: "withoutCompleted" });
+    await m.start([row("qbittorrent", "a", "h1")]);
+    await flush();
+    delete b.error;
+    await m.onUserWrite("qbittorrent-a.paused", true);
+    await flush();
+    const line = "qbittorrent-a: removed 1 download(s) from the object tree (tree settings)";
+    expect(w.a.logs.filter(l => l.msg === line).map(l => l.level)).toEqual(["info"]);
   });
 
   it("hands scope and limit to the tree", async () => {
@@ -725,7 +750,7 @@ describe("ProgramManager — connection test and stop", () => {
             close: () => Promise.resolve(),
           }),
         }),
-        problems: { report: () => undefined, resolve: () => undefined },
+        problems: { report: () => undefined, forget: () => undefined },
         moveDevice: () => Promise.resolve(),
       },
       { intervalMs: 10_000, scope: "all", limit: 0 },
@@ -757,5 +782,83 @@ describe("ProgramManager — connection test and stop", () => {
     expect(w.a.val("summary.active")).toBe(0);
     expect(w.a.val("summary.downloading")).toBe(false);
     expect(w.a.val("summary.downloadSpeed")).toBeNull();
+  });
+});
+
+describe("ProgramManager — log lines of the start and of card changes", () => {
+  const infos = (w: ReturnType<typeof world>): string[] => w.a.logs.filter(l => l.level === "info").map(l => l.msg);
+
+  it("names at the start in one info line which programs are asked and which are switched off", async () => {
+    const w = world({ h1: { snapshot: snap(0) } });
+    await w.manager().start([row("qbittorrent", "a", "h1"), row("sabnzbd", "b", "h2", { enabled: false })]);
+    await flush();
+    expect(infos(w)).toEqual(["1 program(s) asked: qbittorrent-a — switched off: sabnzbd-b"]);
+  });
+
+  it("says at the start when no program is configured — and when every program is switched off", async () => {
+    expect(startLine([])).toBe("no program configured — add one on the settings page of the instance");
+    const w = world({});
+    await w.manager().start([row("qbittorrent", "a", "h1", { enabled: false })]);
+    expect(infos(w)).toEqual(["0 program(s) asked — switched off: qbittorrent-a"]);
+  });
+
+  it("writes the first answer of a program added on its card on info", async () => {
+    const w = world({ h1: { snapshot: snap(0) }, h2: { snapshot: snap(0) } });
+    const m = w.manager();
+    await m.start([row("qbittorrent", "a", "h1")]);
+    await flush();
+    await m.apply([row("qbittorrent", "a", "h1"), row("sabnzbd", "b", "h2")]);
+    await flush();
+    expect(infos(w)).toContain("sabnzbd-b: answering (SABnzbd 1.0)");
+    expect(infos(w).some(l => l.startsWith("qbittorrent-a: answering"))).toBe(false);
+  });
+
+  it("writes no answer line when the adapter itself stored the rows (learned My.JDownloader id)", async () => {
+    const w = world({ h1: { snapshot: snap(0) }, h9: { snapshot: snap(0) } });
+    const m = w.manager();
+    await m.start([row("qbittorrent", "a", "h1")]);
+    await flush();
+    await m.apply([row("qbittorrent", "a", "h9")], new Map(), false);
+    await flush();
+    expect(infos(w).some(l => l.includes("answering"))).toBe(false);
+  });
+
+  it("writes no answer line for a program the adapter moved to its new id — the move has its own line", async () => {
+    const w = world({ h1: { snapshot: snap(0) } });
+    const m = w.manager();
+    await m.start([row("qbittorrent", "a", "h1", { id: "qbittorrent-old" })]);
+    await flush();
+    await m.apply(
+      [row("qbittorrent", "a", "h1", { id: "qbittorrent-new" })],
+      new Map([["qbittorrent-old", "qbittorrent-new"]]),
+    );
+    await flush();
+    expect(infos(w).some(l => l.includes("answering"))).toBe(false);
+  });
+
+  it("says on info that a deleted program went and how many datapoints — also for one whose login was rejected", async () => {
+    const w = world({ h1: { error: new AuthError("401") } });
+    const m = w.manager();
+    await m.start([row("qbittorrent", "a", "h1")]);
+    await flush();
+    const states = [...w.a.objects].filter(([id, o]) => id.startsWith(`${NS}.qbittorrent-a.`) && o.type === "state");
+    await m.apply([]);
+    await flush();
+    expect(infos(w)).toContain(`qbittorrent-a: deleted — removed ${states.length} datapoint(s)`);
+    expect(states.length).toBeGreaterThan(0);
+    expect(w.resolved).toContain("auth:qbittorrent-a");
+    expect(infos(w).some(l => l.includes("asked again"))).toBe(false);
+  });
+
+  it("says on info that a program was switched off on its card — once, not again for a second change", async () => {
+    const w = world({ h1: { snapshot: snap(0) } });
+    const m = w.manager();
+    await m.start([row("qbittorrent", "a", "h1")]);
+    await flush();
+    await m.apply([row("qbittorrent", "a", "h1", { enabled: false })]);
+    await m.apply([row("qbittorrent", "a", "h1", { enabled: false, name: "renamed" })]);
+    expect(infos(w).filter(l => l.includes("switched off —"))).toEqual([
+      "qbittorrent-a: switched off — the program is no longer asked",
+    ]);
   });
 });

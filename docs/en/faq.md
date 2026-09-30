@@ -14,8 +14,10 @@ program's card asks it once and shows its answer. Some programs refuse callers t
 
 When a program refuses the login, the adapter writes a warning, shows an ioBroker notification and stops asking that
 program. qBittorrent and Transmission lock an address after several failed logins; asking again every few seconds
-would lock the ioBroker host out. Correct the access data on the program's card — the change applies at once, and
-the program is asked again.
+would lock the ioBroker host out. The warning says what to check on the card — and when the card holds no login at
+all, it says so: Transmission, for example, needs _The program asks for a login_ switched on in its dialog. Correct
+the access data on the program's card — the change applies at once, the program is asked again, and the log shows its
+answer.
 
 ## Should I use the JDownloader local API or My.JDownloader?
 
@@ -27,7 +29,7 @@ its rooms and functions.
 
 ## How often are the programs asked?
 
-Every program is asked every _Query interval_ seconds (default 10, from 2 seconds to 1 hour). A change you write — a
+Every program is asked every _Query interval_ seconds (default 10, from 10 seconds to 1 hour). A change you write — a
 pause, a limit, a new link — is sent right away, and the program is asked again right after. aria2 also reports
 changes on its own as they happen.
 
@@ -78,5 +80,5 @@ offline.
 
 ## pyLoad reports "too many requests"
 
-pyLoad allows 100 calls a minute, so the adapter asks it at most every 5 seconds, whatever the query interval says.
+pyLoad allows 100 calls a minute; the adapter needs four to six calls per query and asks at most every 10 seconds.
 If the message still appears, other tools ask the same pyLoad as well — raise the query interval or ask less there.

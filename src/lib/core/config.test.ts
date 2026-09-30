@@ -241,9 +241,11 @@ describe("sameProgram", () => {
 });
 
 describe("parsePollInterval", () => {
-  it("returns milliseconds and never less than 2 s", () => {
+  it("returns milliseconds and never less than 10 s — a value stored before 0.3.1 below that runs at 10 s", () => {
     expect(parsePollInterval(10)).toBe(10_000);
-    expect(parsePollInterval(1)).toBe(2_000);
+    expect(parsePollInterval(1)).toBe(10_000);
+    expect(parsePollInterval(9)).toBe(10_000);
+    expect(parsePollInterval(11)).toBe(11_000);
     expect(parsePollInterval("15")).toBe(15_000);
     expect(parsePollInterval(undefined)).toBe(10_000);
     expect(parsePollInterval(Number.NaN)).toBe(10_000);

@@ -147,14 +147,14 @@ export function sameProgram(a: Target, b: Target): boolean {
 
 /**
  * @param raw `native.pollInterval` in seconds
- * @returns the poll interval in ms, 2 s to 1 h, 10 s when unusable
+ * @returns the poll interval in ms, 10 s to 1 h (a stored value below 10 s runs at 10 s), 10 s when unusable
  */
 export function parsePollInterval(raw: unknown): number {
   const n = typeof raw === "string" ? Number(raw) : raw;
   if (typeof n !== "number" || !Number.isFinite(n)) {
     return 10_000;
   }
-  return Math.min(3600, Math.max(2, Math.round(n))) * 1000;
+  return Math.min(3600, Math.max(10, Math.round(n))) * 1000;
 }
 
 const TREE_SCOPES: readonly TreeScope[] = ["all", "withoutCompleted", "unfinished"];

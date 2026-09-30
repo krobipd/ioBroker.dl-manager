@@ -34,13 +34,14 @@ src/lib/core/move.ts             → moveObjects: Objekte + native, Werte mit ac
 src/lib/core/model.ts            → STATUSES, ACTIVE, ProgramDriver-Vertrag (poll/command/close, subscribe?, test?, minIntervalMs?)
 src/lib/core/datapoints.ts       → Fähigkeit → Datenpunkt (Programm- und Download-Ebene), einzige Datenpunkt-Tabelle
 src/lib/core/config.ts           → Zeilen → ProgramRow {id, scheme, enabled, cfg, problem, entry?}, legacyId (ID bis 0.2.0),
-                                   addressOf, programKey / sameProgram (Duplikat), Abfrage-Intervall 2 s–1 h
+                                   addressOf, programKey / sameProgram (Duplikat), Abfrage-Intervall 10 s–1 h
 src/lib/core/manager.ts          → ProgramManager: Runner je Programm, apply (Zeilen live: neu/weg/geändert/umgezogen),
                                    Summen (eine Warteschlange, nie zwei gleichzeitig), Nutzer-Schreibweiche,
                                    testProgram (eine Zeile)
 src/lib/core/devices.ts          → readDevices (nur Geräte mit Programmtyp, keine reservierte Wurzel), Offline-Stempel
 src/lib/core/visibility.ts       → rein: welche Downloads einen Kanal bekommen (treeScope, Rang, Obergrenze)
 src/lib/core/runner.ts           → Abfrage-Schleife je Programm, Anmelde-Sperre, pollNow nach jedem Befehl
+src/lib/core/login-hint.ts       → rein: was die Anmelde-Warnung je Anmeldeart sagt (Ursache, wenn die Karte keine Anmeldung trägt)
 src/lib/core/tree.ts             → ProgramTree: Gerät/Kanäle/Datenpunkte gegen den Schnappschuss abgleichen, itemKey
 src/lib/core/objects.ts          → KnownObjects: eigener Baum einmal gelesen, Objekte nur bei Unterschied schreiben (coveredBy)
 src/lib/core/states.ts           → KnownStates: EIN Wertespeicher, jeder Zustand im Speicher verglichen; forget (fremder
@@ -86,6 +87,7 @@ _Jede Entscheidung steht hier als Regel-Satz; Beleg, Messung und Verlauf stehen 
 20. **Eine Karte zeigt, sie steuert nichts** — kein `controls`-Schalter (krobi: die Admin braucht keine Steuerung); der Datenpunkt `paused` bleibt.
 21. **Die vier „zuletzt“-Werte stehen im Kanal `last`** (`last.finished`, `last.finishedTime`, `last.failed`, `last.failedTime`) unter jedem Programm und unter `summary`; bis 0.2.0 flach, der Start zieht sie einmal um.
 22. **My.JDownloader wird über die gespeicherte Konto-Id verbunden, der Name ist nur Rückfall für eine Zeile ohne Id** — eine Zeile aus 0.2.0 behält ihre alte ID (`idPending`), bis die erste Verbindung die Id nennt, dann zieht das Gerät live um.
+23. **Eine Kartenänderung meldet ihr Ergebnis genau einmal auf info, der Start eine Sammelzeile, sonst ist ein Ausfall ein Zustand (debug)** — antwortet (Produkt + Version), nicht erreichbar, ausgeschaltet oder gelöscht (mit Datenpunktzahl); dieselbe Warnung höchstens einmal je Stunde und Programm, auch über eine gute Abfrage hinweg; die Anmelde-Warnung nennt, was die Karte trägt (`login-hint.ts`); was der Baum aus dem Objektbaum nimmt, steht nur nach dem Start auf info; die Aufzeichnung kommt in keiner Zeile vor.
 
 ## Ein Programm hinzufügen
 

@@ -197,11 +197,7 @@ describe("pyLoad details", () => {
   });
 });
 
-describe("pyLoad limits of the service (final review M2, M3)", () => {
-  it("is asked at most every 5 s — a poll is four calls, pyLoad allows 100 a minute", () => {
-    expect(new PyDriver(cfg("http://nas:8000"), { ...timers, log }).minIntervalMs).toBe(5_000);
-  });
-
+describe("pyLoad limits of the service (final review M3)", () => {
   it("calls a 401 with a plain-text body a rejected login", async () => {
     const s = await startFixtureServer(() => ({ status: 401, body: "Unauthorized" }));
     try {

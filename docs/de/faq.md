@@ -18,8 +18,10 @@ sie nicht kennen:
 
 Weist ein Programm die Anmeldung ab, schreibt der Adapter eine Warnung, zeigt eine ioBroker-Benachrichtigung und fragt
 dieses Programm nicht mehr. qBittorrent und Transmission sperren eine Adresse nach mehreren Fehlversuchen; alle paar
-Sekunden neu zu fragen würde den ioBroker-Rechner aussperren. Korrigiere die Zugangsdaten auf der Karte des Programms —
-die Änderung gilt sofort, und das Programm wird wieder gefragt.
+Sekunden neu zu fragen würde den ioBroker-Rechner aussperren. Die Warnung sagt, was auf der Karte zu prüfen ist — und
+wenn die Karte gar keine Anmeldung trägt, sagt sie das: Transmission etwa braucht im Dialog das Häkchen _Das Programm
+verlangt eine Anmeldung_. Korrigiere die Zugangsdaten auf der Karte des Programms — die Änderung gilt sofort, das
+Programm wird wieder gefragt, und das Log zeigt seine Antwort.
 
 ## Lokale JDownloader-Schnittstelle oder My.JDownloader?
 
@@ -31,7 +33,7 @@ bestehenden JDownloader zwischen beiden um, behält er seine Räume und Funktion
 
 ## Wie oft werden die Programme gefragt?
 
-Jedes Programm wird alle _Abfrage-Intervall_ Sekunden gefragt (Standard 10, von 2 Sekunden bis 1 Stunde). Was du
+Jedes Programm wird alle _Abfrage-Intervall_ Sekunden gefragt (Standard 10, von 10 Sekunden bis 1 Stunde). Was du
 schreibst — eine Pause, ein Limit, ein neuer Link — geht sofort an das Programm, und es wird direkt danach neu gefragt.
 aria2 meldet Änderungen zusätzlich von selbst, sobald sie passieren.
 
@@ -86,6 +88,6 @@ es wird als nicht erreichbar angezeigt.
 
 ## pyLoad meldet „too many requests“
 
-pyLoad erlaubt 100 Anfragen pro Minute, deshalb fragt der Adapter es höchstens alle 5 Sekunden, egal was das
-Abfrage-Intervall sagt. Kommt die Meldung trotzdem, fragen weitere Werkzeuge dasselbe pyLoad — erhöhe das
-Abfrage-Intervall oder frage dort seltener.
+pyLoad erlaubt 100 Anfragen pro Minute; der Adapter braucht vier bis sechs je Abfrage und fragt höchstens alle 10
+Sekunden. Kommt die Meldung trotzdem, fragen weitere Werkzeuge dasselbe pyLoad — erhöhe das Abfrage-Intervall oder
+frage dort seltener.

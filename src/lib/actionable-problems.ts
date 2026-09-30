@@ -93,4 +93,14 @@ export class ActionableProblems {
     this.active.delete(key);
     this.host.logInfo(resolutionMessage ?? `Resolved: ${problem.title}`);
   }
+
+  /**
+   * Drop a problem without a line — the caller logs what happened instead (the program was deleted, or it starts
+   * anew and its first answer is logged).
+   *
+   * @param key the problem key to clear
+   */
+  forget(key: string): void {
+    this.active.delete(key);
+  }
 }

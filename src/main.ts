@@ -191,7 +191,7 @@ export class DownloadManagerAdapter extends utils.Adapter {
     });
     this.log.info(
       `${oldId} is now ${newId} — ${r.objects} object(s), ${r.enums} room/function entr${r.enums === 1 ? "y" : "ies"}, ` +
-        `${r.aliases} alias(es); ${r.recordings} recording(s) keep their history`,
+        `${r.aliases} alias(es)`,
     );
   }
 
@@ -238,9 +238,7 @@ export class DownloadManagerAdapter extends utils.Adapter {
     if (pairs.length) {
       const r = await moveObjects(this.mover, pairs);
       this.log.info(`${pairs.length} "last" value(s) moved into the "${LAST_CHANNEL}" channels`);
-      this.log.debug(
-        `last values: ${r.enums} room/function entries, ${r.aliases} alias(es), ${r.recordings} recording(s)`,
-      );
+      this.log.debug(`last values: ${r.enums} room/function entries, ${r.aliases} alias(es)`);
     }
   }
 
@@ -249,13 +247,14 @@ export class DownloadManagerAdapter extends utils.Adapter {
    * id gets its device id as soon as it has one.
    *
    * @param rows the rows (secrets readable)
+   * @param byCard whether a card change caused it — then the result goes to info
    * @returns when the rows are stored and running
    */
-  private saveRows(rows: readonly SettingsRow[]): Promise<void> {
+  private saveRows(rows: readonly SettingsRow[], byCard = true): Promise<void> {
     const run = this.rowsQueue.then(async () => {
       const settled = settleIds(rows, this.host ?? "", legacyId);
       await this.programs.write(settled.rows);
-      await this.manager?.apply(settled.rows, settled.moves);
+      await this.manager?.apply(settled.rows, settled.moves, byCard);
     });
     this.rowsQueue = run.catch(() => undefined);
     return run;
@@ -277,7 +276,7 @@ export class DownloadManagerAdapter extends utils.Adapter {
           return;
         }
         rows[i] = { ...rows[i], deviceId };
-        await this.saveRows(rows);
+        await this.saveRows(rows, false);
       } catch (err: unknown) {
         this.log.warn(`${programId}: could not store the My.JDownloader id (${errText(err)})`);
       }
@@ -392,7 +391,7 @@ export class DownloadManagerAdapter extends utils.Adapter {
         find: this.find,
         problems: {
           report: (key, title, action) => this.problems.report({ key, title, action }),
-          resolve: (key, message) => this.problems.resolve(key, message),
+          forget: key => this.problems.forget(key),
         },
         moveDevice: (oldId, newId) => this.moveDevice(oldId, newId),
         onDeviceId: (programId, deviceId) => this.learnDeviceId(programId, deviceId),
@@ -417,12 +416,16 @@ export class DownloadManagerAdapter extends utils.Adapter {
       }
       await this.known.load();
       await this.states.load();
+      this.log.debug(`start: own objects and values read`);
       await this.refreshManifestObjects();
       await this.settleDevices();
+      this.log.debug(`start: devices settled`);
       // subscribed before the start: a write that arrives while the programs start is forgotten like any other
       await this.subscribeStatesAsync("*");
       this.manager = this.makeManager();
-      await this.manager.start(await this.programs.read());
+      const rows = await this.programs.read();
+      this.log.debug(`start: ${rows.length} program row(s) in the store`);
+      await this.manager.start(rows);
     } catch (err: unknown) {
       this.log.error(`onReady failed: ${errText(err)}`);
     }

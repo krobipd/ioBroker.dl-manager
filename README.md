@@ -58,7 +58,7 @@ against those recorded answers.
 | Setting                                     | Meaning                                                                                                                                                                                                                               |
 | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Programs**                                | One card per program. **+** adds one: choose the program, and its dialog asks only for what that program needs — a name, address, port (empty = its default), its login and, under _Advanced_, HTTPS and path                         |
-| **Query interval**                          | How often every program is asked (seconds, default 10). My.JDownloader is asked at most every 30 seconds, pyLoad at most every 5 seconds                                                                                              |
+| **Query interval**                          | How often every program is asked (seconds, 10 to 3600, default 10). My.JDownloader is asked at most every 30 seconds                                                                                                                  |
 | **Downloads in the object tree**            | _All_ (default), _Without completed_ or _Only unfinished_ (no completed, no seeding). Failed downloads always stay. The program keeps every download, and the totals count all of them                                                |
 | **At most this many downloads per program** | Default 100, 0 = all. Above the limit, running and failed downloads keep their channel first, completed and seeding ones give it up first. More than 200 per program slow ioBroker down — the settings page and the log warn about it |
 
@@ -106,13 +106,13 @@ Only the datapoints a program really supports are created — pyLoad has no paus
 
 ## Troubleshooting
 
-| What you see                                            | What it means                                                                                                                                           |
-| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `online` is false, `error` shows a network text         | The program is not reachable from the ioBroker host — host, port, HTTPS, firewall                                                                       |
-| A warning "login rejected" and an ioBroker notification | The program refused the login. The adapter asks it no more (qBittorrent and Transmission lock an address after failed logins) until the settings change |
-| `error` is `Unknown`                                    | The program has not been asked yet, or the adapter is stopped                                                                                           |
-| A download disappears                                   | The program removed it, or the tree settings leave it out — its status is not shown, or the program has more downloads than the limit                   |
-| pyLoad reports "too many requests"                      | pyLoad allows 100 calls a minute — raise the query interval                                                                                             |
+| What you see                                            | What it means                                                                                                                                                                                     |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `online` is false, `error` shows a network text         | The program is not reachable from the ioBroker host — host, port, HTTPS, firewall                                                                                                                 |
+| A warning "login rejected" and an ioBroker notification | The program refused the login. The adapter asks it no more (qBittorrent and Transmission lock an address after failed logins) until its card changes; the warning names what to check on the card |
+| `error` is `Unknown`                                    | The program has not been asked yet, or the adapter is stopped                                                                                                                                     |
+| A download disappears                                   | The program removed it, or the tree settings leave it out — its status is not shown, or the program has more downloads than the limit                                                             |
+| pyLoad reports "too many requests"                      | pyLoad allows 100 calls a minute — raise the query interval                                                                                                                                       |
 
 The test button on a program's card asks the program once and shows its answer.
 
@@ -127,6 +127,10 @@ The test button on a program's card asks the program once and shows its answer.
 
 ### **WORK IN PROGRESS**
 
+- Changed: every change on a card now writes its result to the log — the program answers, is not reachable, was switched off, or was deleted with its datapoints
+- Fixed: the warning for a rejected login names what to check on the card and says so when the card holds no login at all, as with Transmission's login switch
+- Changed: a quieter log — one start line names the programs asked, the same failure warns once an hour, and routine removals from the tree no longer appear
+- Changed: the query interval now starts at 10 seconds; a smaller value stored before keeps working and simply runs at 10 seconds from now on
 - Fixed: when several programs answered at the same moment, the totals could briefly show an older speed or count
 
 ### 0.3.0 (2026-09-29)
