@@ -129,7 +129,6 @@ The test button on a program's card asks the program once and shows its answer.
 
 - Changed: after adding, editing, switching or deleting a program on its card you now see at once whether it worked — the program answers, is not reachable, or is gone
 - Fixed: the warning for a rejected login names what to check on the card and says so when the card holds no login at all, as with Transmission's login switch
-- Changed: a program that keeps failing no longer fills the log — the same error is reported at most once an hour, and finished downloads leave the tree silently
 - Changed: the query interval now starts at 10 seconds; a smaller value stored before keeps working and simply runs at 10 seconds from now on
 - Fixed: when several programs answered at the same moment, the totals could briefly show an older speed or count
 
