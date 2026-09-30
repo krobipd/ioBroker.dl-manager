@@ -6193,8 +6193,8 @@
     "native": {
       "type": "jdownloader-cloud",
       "nameSource": "api",
-      "idScheme": 3,
-      "address": "fixture@example.com/JD Fixture"
+      "address": "fixture@example.com/JD Fixture",
+      "idScheme": 3
     },
     "_id": "dl-manager.0.jdownloader-dev1"
   },
