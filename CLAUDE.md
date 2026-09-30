@@ -117,8 +117,8 @@ _Jede Entscheidung steht hier als Regel-Satz; Beleg, Messung und Verlauf stehen 
   Die Zeilen gehen wie bei 0.2.0 in `native.programs` (als ganzes Objekt geschrieben — `changeAdapterConfig` machte aus der
   Liste ein Objekt mit Zahlenschlüsseln), der Start zieht sie in den Speicher; Passwörter im Abzug maskiert, die
   Aufstiegs-Suite gibt dem gesäten Speicher-Objekt des Vorgängers die Fixture-Geheimnisse zurück (`restoreMaskedSecrets`,
-  Werkzeug-Runde 67) und leert davor den Datenordner der Instanz — der Harness leert pro Suite nur die Datenbank, eine
-  liegengebliebene `programs.json` würde die Übernahme des Objekts verdecken;
+  Werkzeug-Runde 67); jede Suite startet ohne den Datenordner der Instanz (`clearInstanceData`, Vorlage seit Runde 71 —
+  der Harness leert pro Suite nur die Datenbank, eine liegengebliebene `programs.json` verdeckte die Übernahme);
   `MOVES` (berechnet aus dem Vorgänger-Inventar) nennt die Umzüge von 0.3.0, deren Aufzeichnung ankommen muss.
 - **Paket-/Standard-Prüfung** `test/package.js`, `test/standards` (`iobroker-adapter-checks`), `test/self-explaining.json`
   (D08), `test/readable-values.json` (Werte-Prüfung).

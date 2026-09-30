@@ -410,6 +410,23 @@ async function resetInstanceNative(harness, native = FIXTURE_NATIVE) {
 }
 
 /**
+ * Round 71 (reported by dl-manager): @iobroker/testing clears only the database and the log directory before a suite;
+ * the instance's data folder (`utils.getAbsoluteInstanceDataDir`, `iobroker-data/<adapter>.0` under the test directory)
+ * survives every suite and every run. A file the fresh-install suite wrote was still there when the upgrade suite
+ * started, and hid the move of the seeded previous objects into that file — the suite stayed green without the move
+ * ever running. A fresh installation has no data folder, so each suite starts without one; the second start of
+ * `playControllerRestarts` keeps it, as a real host does.
+ *
+ * @param {import("@iobroker/testing").IntegrationTestHarness} harness
+ */
+function clearInstanceData(harness) {
+  if (typeof harness.testDir !== "string") {
+    throw new Error("the harness no longer carries testDir — clearInstanceData cannot find the instance data folder");
+  }
+  fs.rmSync(path.join(harness.testDir, "iobroker-data", `${ADAPTER}.0`), { recursive: true, force: true });
+}
+
+/**
  * js-controller 7.2.2 restarts an instance on EVERY change of its instance object while it runs (controller main.ts,
  * objects `change` handler: `stopInstance`, then `startInstance` after `stopTimeout` + 2.5 s) — whoever wrote it, the
  * adapter's own settings migration or device table included. The harness has no host; this plays it (round 64): the
@@ -531,14 +548,12 @@ async function seedPrevious(harness, previous) {
  * adapter can use. Empty where the dump masks nothing.
  * dl-manager: the program store object of 0.3.0/0.3.1 (`<ns>.programs`) — its rows get the fixture's secrets back as
  * typed (a row without `encrypted`, the form the adapter reads before it encrypts). Since 0.3.2 the programs live in
- * `programs.json` of the instance's data folder, and the start moves the seeded object there. The harness empties only
- * the database between suites, never the data folder: a file an earlier suite or run left would make the start skip
- * that move while every device still shows up — so the folder goes before the upgrade starts.
+ * `programs.json` of the instance's data folder, and the start moves the seeded object there (the suite starts without
+ * that folder, clearInstanceData).
  *
  * @param {import("@iobroker/testing").IntegrationTestHarness} harness
  */
 async function restoreMaskedSecrets(harness) {
-  fs.rmSync(path.join(harness.testDir, "iobroker-data", NS.slice(0, -1)), { recursive: true, force: true });
   const store = await harness.objects.getObjectAsync(STORE);
   if (!Array.isArray(store?.native?.rows)) {
     return;
@@ -577,6 +592,7 @@ tests.integration(ADAPTER_DIR, {
       before(async function () {
         this.timeout(120000);
         harness = getHarness();
+        clearInstanceData(harness);
         watch = await watchObjectWrites(harness);
         await resetInstanceNative(harness);
         await setSystemLanguage(harness, FIRST_LANGUAGE);
@@ -646,6 +662,7 @@ tests.integration(ADAPTER_DIR, {
       before(async function () {
         this.timeout(120000);
         harness = getHarness();
+        clearInstanceData(harness);
         await resetInstanceNative(harness);
         await setSystemLanguage(harness, SECOND_LANGUAGE);
         restarts = playControllerRestarts(harness, null, HOOK);
@@ -679,6 +696,7 @@ tests.integration(ADAPTER_DIR, {
         before(async function () {
           this.timeout(120000);
           harness = getHarness();
+          clearInstanceData(harness);
           watch = await watchObjectWrites(harness);
           // The harness registers its own before() (fresh DB) ahead of this one,
           // so the seed survives and the adapter starts on top of the OLD objects.
