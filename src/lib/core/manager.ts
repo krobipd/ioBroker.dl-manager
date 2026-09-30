@@ -216,7 +216,7 @@ export class ProgramManager {
           started.runner.announceNextResult(programInfo(row.cfg.type)?.label ?? row.cfg.type);
         }
         started.runner.start();
-      } else if (announce && !row.enabled && was?.enabled !== false) {
+      } else if (announce && !row.enabled) {
         this.a.log.info(`${row.id}: switched off — the program is no longer asked`);
       }
     }

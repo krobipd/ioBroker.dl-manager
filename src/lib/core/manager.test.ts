@@ -850,7 +850,7 @@ describe("ProgramManager — log lines of the start and of card changes", () => 
     expect(infos(w).some(l => l.includes("asked again"))).toBe(false);
   });
 
-  it("says on info that a program was switched off on its card — once, not again for a second change", async () => {
+  it("says on info that a program was switched off on its card — editing the switched-off card changes nothing", async () => {
     const w = world({ h1: { snapshot: snap(0) } });
     const m = w.manager();
     await m.start([row("qbittorrent", "a", "h1")]);
