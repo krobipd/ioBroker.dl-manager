@@ -36,7 +36,8 @@ src/lib/core/datapoints.ts       → Fähigkeit → Datenpunkt (Programm- und Do
 src/lib/core/config.ts           → Zeilen → ProgramRow {id, scheme, enabled, cfg, problem, entry?}, legacyId (ID bis 0.2.0),
                                    addressOf, programKey / sameProgram (Duplikat), Abfrage-Intervall 2 s–1 h
 src/lib/core/manager.ts          → ProgramManager: Runner je Programm, apply (Zeilen live: neu/weg/geändert/umgezogen),
-                                   Summen, Nutzer-Schreibweiche, testProgram (eine Zeile)
+                                   Summen (eine Warteschlange, nie zwei gleichzeitig), Nutzer-Schreibweiche,
+                                   testProgram (eine Zeile)
 src/lib/core/devices.ts          → readDevices (nur Geräte mit Programmtyp, keine reservierte Wurzel), Offline-Stempel
 src/lib/core/visibility.ts       → rein: welche Downloads einen Kanal bekommen (treeScope, Rang, Obergrenze)
 src/lib/core/runner.ts           → Abfrage-Schleife je Programm, Anmelde-Sperre, pollNow nach jedem Befehl
