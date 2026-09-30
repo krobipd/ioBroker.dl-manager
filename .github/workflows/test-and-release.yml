@@ -177,7 +177,9 @@ jobs:
       - name: Export the previous release's inventory for the upgrade suite
         run: |
           set -euo pipefail
-          tag=$(git describe --tags --abbrev=0 --match 'v[0-9]*' --exclude "$GITHUB_REF_NAME" 2>/dev/null || true)
+          # From HEAD^: the release commit carries its own new tag on the tag run AND on the main push
+          # of the same commit — excluding only the ref name compared the tree with itself on main.
+          tag=$(git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD^ 2>/dev/null || true)
           if [ -n "$tag" ] && git show "$tag:test/objects.inventory.json" > /tmp/inventory-previous.json 2>/dev/null; then
             echo "INVENTORY_PREVIOUS=/tmp/inventory-previous.json" >> "$GITHUB_ENV"
             echo "previous inventory: $tag"
