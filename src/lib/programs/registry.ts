@@ -30,7 +30,7 @@ export const PROGRAMS: readonly ProgramEntry[] = CATALOG.map(info => ({
 }));
 
 /**
- * @param type program type from the settings table
+ * @param type program type from a stored program row
  * @returns the registry entry, undefined for a type the adapter does not know
  */
 export function findProgram(type: string): ProgramEntry | undefined {

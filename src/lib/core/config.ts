@@ -9,7 +9,7 @@ export interface ProgramRow {
   id: string;
   /** The id follows the id scheme — false for a My.JDownloader row whose instance id is not known yet. */
   scheme: boolean;
-  /** Switched on in the settings. */
+  /** Switched on on its card. */
   enabled: boolean;
   /** Cleaned values. */
   cfg: ProgramConfig;

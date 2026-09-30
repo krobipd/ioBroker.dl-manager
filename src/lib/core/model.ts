@@ -190,7 +190,7 @@ export interface AdapterLog {
 /** A settings field a program cannot work without. */
 export type RequiredField = "host" | "username" | "password" | "apiKey" | "device";
 
-/** One row of the settings table, cleaned and with its secrets decrypted. */
+/** One stored program row, cleaned and with its secrets decrypted. */
 export interface ProgramConfig {
   /** Program type, e.g. `qbittorrent`. */
   type: string;
@@ -228,7 +228,7 @@ export interface DriverDeps extends HttpTimers {
 
 /** A program the adapter can talk to. */
 export interface ProgramEntry {
-  /** Program type as stored in the settings table. */
+  /** Program type as stored in a program row. */
   readonly type: string;
   /** Fields the row must fill. */
   readonly needs: readonly RequiredField[];
