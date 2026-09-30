@@ -36,6 +36,7 @@ const VOLATILE = ["ts", "from", "user", "acl"];
 // keeps the field and replaces its value with a marker. Here the secrets sit in the rows of the program store.
 const STORE = `${NS}programs`;
 const ENCRYPTED_ROW_FIELDS = ["password", "apiKey"];
+/** Round 67: the text a dump puts where the adapter stored a secret encrypted with its installation's secret. */
 const ENCRYPTED_MARKER = "<encrypted with the installation secret>";
 // Key order carries no meaning in an ioBroker object: extendObject keeps the key order an existing
 // object already has, while adapter-core's I18n.getTranslatedObject builds its own — the same eleven
@@ -522,13 +523,17 @@ async function seedPrevious(harness, previous) {
 }
 
 /**
- * dl-manager: the previous release's program store (`<ns>.programs`, since 0.3.0) comes out of the dump with its
- * secrets masked — no controller can read a cipher of another installation. After the seed its rows get the fixture's
- * secrets back, as typed (a row without `encrypted`), so the upgrade starts on a store that can log in.
+ * Round 67 (reported by dl-manager): adapter-specific like feedFixtures. The previous release's dump carries
+ * ENCRYPTED_MARKER wherever the adapter stored a secret encrypted with its installation's secret — no other controller
+ * can read that cipher. Put a working secret back into every such seeded object, the fixture's value in the form the
+ * adapter stores it (encrypted like the adapter does, e.g. with encryptPassword), so the upgrade starts on objects the
+ * adapter can use. Empty where the dump masks nothing.
+ * dl-manager: the program store (`<ns>.programs`, since 0.3.0) — its rows get the fixture's secrets back as typed (a row
+ * without `encrypted`, the form the adapter reads before it encrypts).
  *
  * @param {import("@iobroker/testing").IntegrationTestHarness} harness
  */
-async function restoreStoreSecrets(harness) {
+async function restoreMaskedSecrets(harness) {
   const store = await harness.objects.getObjectAsync(STORE);
   if (!Array.isArray(store?.native?.rows)) {
     return;
@@ -543,6 +548,18 @@ async function restoreStoreSecrets(harness) {
     return out;
   });
   await harness.objects.setObjectAsync(STORE, store);
+}
+
+/**
+ * Round 67: the objects of the namespace that still carry ENCRYPTED_MARKER — read raw from the database, never through
+ * dumpObjects (an adapter's dump masks again). Checked right after the restore, before the start: later the adapter may
+ * have rewritten or deleted the object, and a clean result would prove nothing about the seeded one.
+ *
+ * @param {import("@iobroker/testing").IntegrationTestHarness} harness
+ */
+async function maskedSecretsLeft(harness) {
+  const list = await harness.objects.getObjectList({ startkey: NS, endkey: `${NS}香` });
+  return list.rows.filter(row => JSON.stringify(row.value).includes(ENCRYPTED_MARKER)).map(row => row.id);
 }
 
 tests.integration(ADAPTER_DIR, {
@@ -652,6 +669,7 @@ tests.integration(ADAPTER_DIR, {
         let watch;
         let restarts;
         let verdictAt;
+        let maskedLeft;
         const previous = JSON.parse(fs.readFileSync(previousFile, "utf8"));
         before(async function () {
           this.timeout(120000);
@@ -660,7 +678,8 @@ tests.integration(ADAPTER_DIR, {
           // The harness registers its own before() (fresh DB) ahead of this one,
           // so the seed survives and the adapter starts on top of the OLD objects.
           await seedPrevious(harness, previous);
-          await restoreStoreSecrets(harness);
+          await restoreMaskedSecrets(harness);
+          maskedLeft = await maskedSecretsLeft(harness);
           await resetInstanceNative(harness);
           // The inventory was written in FIRST_LANGUAGE: labels an adapter localises itself (`states`)
           // only compare in the same language.
@@ -740,6 +759,14 @@ tests.integration(ADAPTER_DIR, {
           const current = JSON.parse(fs.readFileSync(INVENTORY, "utf8"));
           const lost = [...new Set(watch.deleted)].filter(id => id in previous && id in current);
           assert.deepStrictEqual(lost, [], `kept objects deleted during the upgrade:\n${lost.join("\n")}`);
+        });
+
+        it("starts on no masked secret from the previous dump", function () {
+          assert.deepStrictEqual(
+            maskedLeft,
+            [],
+            `seeded objects still carry ${ENCRYPTED_MARKER}:\n${maskedLeft.join("\n")}`,
+          );
         });
 
         it("a recording goes on only with its own datapoint", async function () {
