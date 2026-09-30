@@ -1,13 +1,18 @@
-import { tName } from "../i18n";
+import { errText } from "../err-text";
 
 /**
- * Where the programs live: `native.rows` of the adapter's own object `<ns>.programs`. Not the instance object — every
- * change there restarts the instance, and the settings page writes its own (older) copy back when it saves. Password
- * and API key are stored encrypted with the installation secret; the rest as typed.
+ * Where the programs live: `programs.json` in the instance's data folder (`iobroker-data/<ns>/`, declared as
+ * `common.dataFolder`, so every ioBroker backup carries it). Not the instance object — every change there restarts
+ * the instance, and the settings page writes its own (older) copy back when it saves — and not the object tree, where
+ * the rows showed up in every object export. Password and API key are stored encrypted with the installation secret;
+ * the rest as typed.
  */
 
-/** The store object, below the namespace. */
+/** The store object of 0.3.0 and 0.3.1, below the namespace — the start moves it into the file once. */
 export const STORE_ID = "programs";
+
+/** The file in the instance's data folder. */
+export const STORE_FILE = "programs.json";
 
 /** The fields that hold a secret. */
 const SECRET_FIELDS = ["password", "apiKey"] as const;
@@ -15,14 +20,12 @@ const SECRET_FIELDS = ["password", "apiKey"] as const;
 /** One stored settings row — fields the adapter does not know are kept. */
 export type SettingsRow = Record<string, unknown>;
 
-/** The adapter methods the store needs. */
+/** What the store needs from outside. */
 export interface StoreAdapter {
-  /** e.g. "dl-manager.0" */
-  namespace: string;
-  /** Reads an object by its full id. */
-  getForeignObjectAsync(id: string): Promise<ioBroker.Object | null | undefined>;
-  /** Replaces an object completely — a merge would keep the tail of a shorter list. */
-  setForeignObject(id: string, obj: ioBroker.SettableObject): Promise<unknown>;
+  /** Reads the store file — undefined while it does not exist. */
+  readText(): Promise<string | undefined>;
+  /** Replaces the store file as a whole, so a crash leaves either the old or the new file. */
+  writeText(text: string): Promise<void>;
   /** The adapter's encrypt (installation secret). */
   encrypt(value: string): string;
   /** The adapter's decrypt (installation secret). */
@@ -43,17 +46,22 @@ export class ProgramStore {
   /** @param a the adapter */
   public constructor(private readonly a: StoreAdapter) {}
 
-  private get fullId(): string {
-    return `${this.a.namespace}.${STORE_ID}`;
-  }
-
-  /** @returns the rows as stored (secrets encrypted), undefined while the store object does not exist */
+  /**
+   * @returns the rows as stored (secrets encrypted), undefined while the store file does not exist
+   * @throws {Error} when the file holds no readable JSON — the programs are never replaced by an empty list
+   */
   public async stored(): Promise<SettingsRow[] | undefined> {
-    const obj = await this.a.getForeignObjectAsync(this.fullId);
-    if (!obj) {
+    const text = await this.a.readText();
+    if (text === undefined) {
       return undefined;
     }
-    const rows: unknown = obj.native?.rows;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch (err: unknown) {
+      throw new Error(`${STORE_FILE} is no readable JSON — fix or remove it (${errText(err)})`);
+    }
+    const rows: unknown = isRow(parsed) ? parsed.rows : undefined;
     return Array.isArray(rows) ? rows.filter(isRow) : [];
   }
 
@@ -73,16 +81,31 @@ export class ProgramStore {
     const before = await this.stored();
     const byId = new Map((before ?? []).filter(r => typeof r.id === "string").map(r => [r.id as string, r]));
     const next = rows.map(r => this.seal(r, typeof r.id === "string" ? byId.get(r.id) : undefined));
-    // nothing to store and no store yet: the object comes with the first program
+    // nothing to store and no store yet: the file comes with the first program
     if (before ? canonical(before) === canonical(next) : !next.length) {
       return false;
     }
-    await this.a.setForeignObject(this.fullId, {
-      type: "meta",
-      common: { name: tName("programStore"), type: "meta.folder" },
-      native: { rows: next },
-    });
+    await this.a.writeText(`${JSON.stringify({ rows: next }, null, 2)}\n`);
     return true;
+  }
+
+  /**
+   * Takes over the rows of the store object of 0.3.0/0.3.1 exactly as they are stored — ciphertext and `encrypted`
+   * included, nothing is decrypted and encrypted again.
+   *
+   * @param rows `native.rows` of the old object
+   * @returns how many rows went into the file; undefined when the file already existed (a start that stopped between
+   *   writing the file and deleting the object)
+   */
+  public async adopt(rows: unknown): Promise<number | undefined> {
+    if ((await this.stored()) !== undefined) {
+      return undefined;
+    }
+    const list = Array.isArray(rows) ? rows.filter(isRow) : [];
+    if (list.length) {
+      await this.a.writeText(`${JSON.stringify({ rows: list }, null, 2)}\n`);
+    }
+    return list.length;
   }
 
   /**

@@ -1,5 +1,11 @@
+import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { vi } from "vitest";
 import { FakeAdapter } from "../test/helpers/fake-adapter";
+
+/** One data folder per adapter under test — removed after the run. */
+const dataDirs: string[] = [];
 
 // Stub the adapter-core base: the adapter's object and state calls land in an in-memory FakeAdapter, so the tests
 // read the result instead of counting mock calls.
@@ -7,6 +13,11 @@ vi.mock("@iobroker/adapter-core", () => {
   class Adapter {
     public namespace = "dl-manager.0";
     public adapterDir = "/tmp";
+    public dataDir = ((): string => {
+      const dir = mkdtempSync(join(tmpdir(), "dlm-main-test-"));
+      dataDirs.push(dir);
+      return dir;
+    })();
     public config: Record<string, unknown> = {};
     public store = new FakeAdapter("dl-manager.0");
     public log = this.store.log;
@@ -22,6 +33,7 @@ vi.mock("@iobroker/adapter-core", () => {
     public setForeignObject = (id: string, obj: ioBroker.SettableObject): Promise<void> =>
       this.store.setForeignObject(id, obj);
     public delObjectAsync = (id: string, o?: { recursive?: boolean }): Promise<void> => this.store.delObject(id, o);
+    public delForeignObjectAsync = (id: string): Promise<void> => this.store.delObject(id);
     public getObjectAsync = (id: string): Promise<ioBroker.Object | null> => this.store.getObject(id);
     public getObjectListAsync = (p: { startkey: string; endkey: string }): Promise<unknown> =>
       this.store.getObjectList(p);
@@ -64,6 +76,7 @@ vi.mock("@iobroker/adapter-core", () => {
   }
   return {
     Adapter,
+    getAbsoluteInstanceDataDir: (a: { dataDir: string }) => a.dataDir,
     I18n: {
       init: vi.fn(() => Promise.resolve()),
       getTranslatedObject: (k: string) => ({ en: k }),
@@ -82,18 +95,32 @@ interface Harness {
   sent: unknown[][];
   instanceObject: Record<string, unknown> | null;
   instanceWrites: unknown[];
+  dataDir: string;
 }
 
 const flush = (): Promise<void> => new Promise(resolve => setImmediate(resolve));
+/** The store object of 0.3.0/0.3.1 — the start moves it into the data folder. */
 const STORE = "dl-manager.0.programs";
+const storeFile = (h: Harness): string => join(h.dataDir, "programs.json");
+const hasStoreFile = (h: Harness): boolean => {
+  try {
+    readFileSync(storeFile(h));
+    return true;
+  } catch {
+    return false;
+  }
+};
 const rowsOf = (h: Harness): Record<string, unknown>[] =>
-  (h.store.objects.get(STORE)?.native.rows as Record<string, unknown>[] | undefined) ?? [];
-const seedRows = (h: Harness, rows: Record<string, unknown>[]): Promise<void> =>
-  h.store.setForeignObject(STORE, {
-    type: "meta",
-    common: { name: "programs", type: "meta.folder" },
-    native: { rows },
-  });
+  hasStoreFile(h) ? (JSON.parse(readFileSync(storeFile(h), "utf8")) as { rows: Record<string, unknown>[] }).rows : [];
+const seedRows = (h: Harness, rows: Record<string, unknown>[]): void =>
+  writeFileSync(storeFile(h), JSON.stringify({ rows }));
+const noStore = (h: Harness): void => rmSync(storeFile(h), { force: true });
+
+afterAll(() => {
+  for (const dir of dataDirs) {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 const SNAP: ProgramSnapshot = { status: { version: "4.6", paused: false, downloadBps: 0 }, items: [], complete: true };
 
 function make(pollResult: () => Promise<ProgramSnapshot> = () => Promise.resolve(SNAP)): {
@@ -128,7 +155,7 @@ function make(pollResult: () => Promise<ProgramSnapshot> = () => Promise.resolve
   };
   const adapter = new DownloadManagerAdapter({}, t => (t === "qbittorrent" ? entry : undefined));
   const h = adapter as unknown as Harness;
-  void seedRows(h, [{ id: "qbittorrent-nas", enabled: true, type: "qbittorrent", name: "NAS", host: "h1" }]);
+  seedRows(h, [{ id: "qbittorrent-nas", enabled: true, type: "qbittorrent", name: "NAS", host: "h1" }]);
   h.config.pollInterval = 10;
   return { h, polls: () => polls, closed: () => closed, configs };
 }
@@ -158,7 +185,7 @@ describe("DownloadManagerAdapter — start", () => {
         { id: "system.adapter.dl-manager.0", obj: { common: { supportedMessages: { stopInstance: null } } } },
       ]);
       expect(polls()).toBe(0);
-      expect(h.store.objectLog).toEqual([STORE]);
+      expect(h.store.objectLog).toEqual([]);
     }
   });
 
@@ -255,7 +282,7 @@ describe("DownloadManagerAdapter — start", () => {
 
   it("hands the program the secrets it stored encrypted", async () => {
     const { h, configs } = make();
-    await seedRows(h, [
+    seedRows(h, [
       { id: "qbittorrent-nas", type: "qbittorrent", host: "h1", password: "enc:p", apiKey: "enc:k", encrypted: true },
     ]);
     await h.handlers.get("ready")?.();
@@ -264,7 +291,7 @@ describe("DownloadManagerAdapter — start", () => {
 
   it("moves the programs out of the instance settings, secrets encrypted, and stops for the one restart", async () => {
     const { h, polls } = make();
-    h.store.objects.delete(STORE);
+    noStore(h);
     const legacy = [{ enabled: true, type: "qbittorrent", key: "nas", name: "NAS", host: "h1", password: "p" }];
     h.config.programs = legacy;
     h.instanceObject = { common: {}, native: { programs: legacy, pollInterval: 10 } };
@@ -283,7 +310,7 @@ describe("DownloadManagerAdapter — start", () => {
 
   it("gives a row from before 0.3.0 its id and moves its device — value, recording, room and the last values", async () => {
     const { h, polls } = make();
-    await seedRows(h, [{ enabled: true, type: "qbittorrent", key: "nas", name: "NAS", host: "h1" }]);
+    seedRows(h, [{ enabled: true, type: "qbittorrent", key: "nas", name: "NAS", host: "h1" }]);
     const old = "dl-manager.0.qbittorrent-nas";
     await h.store.setForeignObject(old, { type: "device", common: { name: "NAS" }, native: { type: "qbittorrent" } });
     await h.store.setForeignObject(`${old}.lastFinished`, {
@@ -400,12 +427,66 @@ describe("DownloadManagerAdapter — start", () => {
     ]);
   });
 
+  it("moves the store object of 0.3.x into the data folder as stored, deletes it and runs the programs", async () => {
+    const { h, polls } = make();
+    noStore(h);
+    const stored = {
+      id: "qbittorrent-nas",
+      enabled: true,
+      type: "qbittorrent",
+      host: "h1",
+      password: "enc:p",
+      encrypted: true,
+    };
+    await h.store.setForeignObject(STORE, {
+      type: "meta",
+      common: { name: "x", type: "meta.folder" },
+      native: { rows: [stored] },
+    });
+    await h.handlers.get("ready")?.();
+    // the start's id settling writes the rows once more in the store's own form — the stored cipher stays
+    expect(rowsOf(h)).toMatchObject([stored]);
+    expect(h.store.objects.has(STORE)).toBe(false);
+    expect(h.store.logs.filter(l => l.level === "info").map(l => l.msg)).toContain(
+      "1 program(s) moved from the object dl-manager.0.programs into the data folder of the instance",
+    );
+    expect(polls()).toBeGreaterThan(0);
+  });
+
+  it("only deletes the store object when the data folder holds the programs already (a start that stopped halfway)", async () => {
+    const { h } = make();
+    const inFile = rowsOf(h).map(r => r.id);
+    await h.store.setForeignObject(STORE, {
+      type: "meta",
+      common: { name: "x", type: "meta.folder" },
+      native: { rows: [{ id: "other" }] },
+    });
+    await h.handlers.get("ready")?.();
+    expect(rowsOf(h).map(r => r.id)).toEqual(inFile);
+    expect(h.store.objects.has(STORE)).toBe(false);
+    expect(h.store.logs.some(l => l.msg.includes("moved from the object"))).toBe(false);
+  });
+
+  it("stops the start at a store file that holds no readable JSON — and keeps the file", async () => {
+    const { h, polls } = make();
+    writeFileSync(storeFile(h), "{ broken");
+    await h.handlers.get("ready")?.();
+    expect(
+      h.store.logs
+        .filter(l => l.level === "error")
+        .map(l => l.msg)
+        .join(),
+    ).toContain("programs.json is no readable JSON");
+    expect(readFileSync(storeFile(h), "utf8")).toBe("{ broken");
+    expect(polls()).toBe(0);
+  });
+
   it("starts a fresh installation without programs — no store, no error", async () => {
     const { h, polls } = make();
-    h.store.objects.delete(STORE);
+    noStore(h);
     await h.handlers.get("ready")?.();
     expect(h.store.logs.filter(l => l.level === "error")).toEqual([]);
-    expect(h.store.objects.has(STORE)).toBe(false);
+    expect(hasStoreFile(h)).toBe(false);
     expect(h.store.val("info.programsTotal")).toBe(0);
     expect(polls()).toBe(0);
   });
@@ -430,15 +511,9 @@ describe("DownloadManagerAdapter — device manager", () => {
 
   it("reads the rows from the store with readable secrets, skipping what is no row", async () => {
     const { h } = make();
-    await seedRows(h, [
-      { type: "deluge", password: "enc:pw", encrypted: true },
-      null,
-      "x",
-      [1],
-      { type: "aria2" },
-    ] as never);
+    seedRows(h, [{ type: "deluge", password: "enc:pw", encrypted: true }, null, "x", [1], { type: "aria2" }] as never);
     expect(await hostOf(h).readRows()).toEqual([{ type: "deluge", password: "pw", apiKey: "" }, { type: "aria2" }]);
-    h.store.objects.delete(STORE);
+    noStore(h);
     expect(await hostOf(h).readRows()).toEqual([]);
     expect(hostOf(h).iobHost()).toBe("iobhost");
   });
@@ -464,25 +539,25 @@ describe("DownloadManagerAdapter — device manager", () => {
 
   it("writes nothing for an edit that changed nothing — a secret keeps its stored cipher", async () => {
     const { h } = make();
-    await seedRows(h, [
+    seedRows(h, [
       { id: "qbittorrent-nas", type: "qbittorrent", host: "h1", password: "enc:p", apiKey: "", encrypted: true },
     ]);
     await h.handlers.get("ready")?.();
-    h.store.objectLog.length = 0;
+    // the store file is replaced by a rename — a write gives it a new inode
+    const before = statSync(storeFile(h)).ino;
     await hostOf(h).saveRows(await hostOf(h).readRows());
-    expect(h.store.objectLog).not.toContain(STORE);
+    expect(statSync(storeFile(h)).ino).toBe(before);
   });
 
   it("stores the id My.JDownloader names; a waiting row of a local program gets its id at the start", async () => {
     const { h } = make();
-    await seedRows(h, [{ id: "qbittorrent-nas", idPending: true, enabled: true, type: "qbittorrent", host: "h1" }]);
+    seedRows(h, [{ id: "qbittorrent-nas", idPending: true, enabled: true, type: "qbittorrent", host: "h1" }]);
     await h.handlers.get("ready")?.();
     await flush();
     expect(rowsOf(h)).toMatchObject([{ id: "qbittorrent-h1" }]);
     (h as unknown as { learnDeviceId(p: string, d: string): void }).learnDeviceId("qbittorrent-h1", "abc");
-    await flush();
-    await flush();
-    expect(rowsOf(h)).toMatchObject([{ id: "qbittorrent-h1", deviceId: "abc" }]);
+    // the store file is written through the file system — wait for it, not for a fixed number of ticks
+    await vi.waitFor(() => expect(rowsOf(h)).toMatchObject([{ id: "qbittorrent-h1", deviceId: "abc" }]));
     expect(rowsOf(h)[0]).not.toHaveProperty("idPending");
     expect(h.store.objects.has("dl-manager.0.qbittorrent-nas")).toBe(false);
     expect(h.store.objects.has("dl-manager.0.qbittorrent-h1.online")).toBe(true);

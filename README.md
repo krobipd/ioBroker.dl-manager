@@ -125,6 +125,10 @@ The test button on a program's card asks the program once and shows its answer.
     ### **WORK IN PROGRESS**
 -->
 
+### **WORK IN PROGRESS**
+
+- Changed: your programs and their access data moved out of the object tree into a file of the instance, which every ioBroker backup includes — an object export no longer shows them
+
 ### 0.3.1 (2026-09-30)
 
 - Changed: after adding, editing, switching or deleting a program on its card you now see at once whether it worked — the program answers, is not reachable, or is gone

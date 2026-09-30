@@ -17,8 +17,9 @@ Kanal mit Einzel-Datenpunkten, Summen für Blockly.
 ## Architektur
 
 ```
-src/main.ts                      → Lebenszyklus: Instanzobjekt korrigieren (nur `stopInstance`) → I18n → Programme aus
-                                   `native.programs` in den Speicher (einmal) → native-/common-Schlüssel migrieren → Manifest-
+src/main.ts                      → Lebenszyklus: Instanzobjekt korrigieren (nur `stopInstance`) → I18n → Speicher-Objekt von
+                                   0.3.x in die Datei (einmal) → Programme aus `native.programs` in den Speicher (einmal) →
+                                   native-/common-Schlüssel migrieren → Manifest-
                                    Objekte auffrischen → settleDevices (Umzug fortsetzen, IDs vergeben, last-Umzug) →
                                    subscribeStates("*") → ProgramManager.start; saveRows (Speicher + apply, eine Warteschlange),
                                    learnDeviceId (My.JD-Id), onStateChange, onUnload → stop().finally(cb)
@@ -26,8 +27,9 @@ src/lib/device-management.ts     → DlDeviceManagement (dm-utils): Karten je Ze
                                    (Programmwahl → Dialog → bei My.JDownloader Instanzwahl), Bearbeiten, Löschen, Test, Ein/Aus;
                                    jede Änderung über `DmHost.saveRows`, kein Neustart
 src/lib/dm-forms.ts              → rein: Dialog-Schemas, Zeile ↔ Dialogdaten, Duplikat-Ausdruck
-src/lib/core/store.ts            → ProgramStore: `<ns>.programs` (meta.folder, `native.rows`), Passwort/API-Schlüssel mit
-                                   `encrypt()`, unveränderter Klartext behält seinen Chiffretext, kein leerer Speicher
+src/lib/core/store.ts            → ProgramStore: `programs.json` im Datenordner der Instanz (`common.dataFolder`, im Backup),
+                                   Passwort/API-Schlüssel mit `encrypt()`, unveränderter Klartext behält seinen Chiffretext,
+                                   kein leerer Speicher, unlesbares JSON hält den Start an; `adopt` übernimmt das Objekt von 0.3.x
 src/lib/core/device-id.ts        → Geräte-ID `<programm>-<stück>` (deviceIdFor, hostPiece, settleIds), ID_SCHEME = 3, RESERVED_IDS
 src/lib/core/move.ts             → moveObjects: Objekte + native, Werte mit ack/ts/lc/q, custom + aliasId, Aliase, EIN
                                    moveAllWithEnums, Kinder zuerst gelöscht, Journal `native.movingTo`, Marke idScheme
@@ -78,7 +80,7 @@ _Jede Entscheidung steht hier als Regel-Satz; Beleg, Messung und Verlauf stehen 
 11. **JDownloader über My.JDownloader ist ein eigener Programmtyp** (`jdownloader-cloud`) mit demselben Treiber und zweitem Transport, höchstens alle 30 s, ohne Push.
 12. **Fehlt dem Programm eine Programm-Pause, wird sie nachgebildet** (Transmission, aria2, qBittorrent < 5.3) — nur Laufende anhalten, genau diese fortsetzen, Stand übersteht den Neustart.
 13. **Ein Gerät zieht nur über `move.ts` um (Werte, Aufzeichnung mit `aliasId`, Räume/Funktionen, Aliase, Kinder zuerst gelöscht, Journal an der alten Wurzel)** — eine gelöschte Zeile nimmt ihr Gerät mit, eine ausgeschaltete behält es offline.
-14. **Die Programme richtet der Gerätemanager ein (dm-utils, Karten wie yamaha) und sie liegen im eigenen Objekt `<ns>.programs`, nie im Instanzobjekt** — jede Kartenänderung wird gespeichert und live übernommen (`ProgramManager.apply`), die Instanz startet nicht neu und die Einstellungsseite kann keine Programmliste zurückschreiben; je Programm ein Dialog nur mit dessen Feldern aus `catalog.ts`; Radio-Beschriftungen sind einfache Zeichenketten (`tText`), weil json-configs Radio-Zweig `label` roh rendert.
+14. **Die Programme richtet der Gerätemanager ein (dm-utils, Karten wie yamaha) und sie liegen in `programs.json` im Datenordner der Instanz (`common.dataFolder`, Teil jeder ioBroker-Sicherung), nie im Instanzobjekt und nicht im Objektbaum** — jede Kartenänderung wird gespeichert und live übernommen (`ProgramManager.apply`), die Instanz startet nicht neu und die Einstellungsseite kann keine Programmliste zurückschreiben; je Programm ein Dialog nur mit dessen Feldern aus `catalog.ts`; Radio-Beschriftungen sind einfache Zeichenketten (`tText`), weil json-configs Radio-Zweig `label` roh rendert.
 15. **Beliebig viele Einträge je Programm, doppelt ist dasselbe Programm** — gleiche Adresse (Host, tatsächlicher Port und Pfad, ohne Schema) oder gleiches My.JDownloader-Konto samt Instanz; der Dialog weist es ab, der Adapter fragt die zweite Zeile nicht (`same program as <id>`).
 16. **Die Geräte-ID vergibt der Adapter einmal beim Hinzufügen nach dem Schema yamaha/govee/homeconnect: `<programm>-<stück>` ohne Zugangsweg** — My.JDownloader die letzten 4 Zeichen der Konto-Id (belegt → ganze Id → Zähler), lokal der Rechner aus der Adresse (belegt → Port → Zähler, `localhost` = ioBroker-Host); gespeichert in der Zeile, nie neu berechnet, Marke `native.idScheme = 3`; der Name ist nur Anzeigename, ein ID-Feld gibt es nicht; die Karte zeigt die ID in den Details.
 17. **Ein Wertespeicher (`KnownStates`)** — jeder Zustand im Speicher verglichen; ein fremder Schreibvorgang (ack:false) und ein gelöschtes Objekt lassen ihn vergessen; abonniert wird vor dem Start.
@@ -114,7 +116,9 @@ _Jede Entscheidung steht hier als Regel-Satz; Beleg, Messung und Verlauf stehen 
   Programmtypen aus den Aufzeichnungen, Ergebnis `test/objects.inventory.json`; nur über `with-werkstatt-lock.py`.
   Die Zeilen gehen wie bei 0.2.0 in `native.programs` (als ganzes Objekt geschrieben — `changeAdapterConfig` machte aus der
   Liste ein Objekt mit Zahlenschlüsseln), der Start zieht sie in den Speicher; Passwörter im Abzug maskiert, die
-  Aufstiegs-Suite gibt dem gesäten Speicher des Vorgängers die Fixture-Geheimnisse zurück (`restoreMaskedSecrets`, Werkzeug-Runde 67);
+  Aufstiegs-Suite gibt dem gesäten Speicher-Objekt des Vorgängers die Fixture-Geheimnisse zurück (`restoreMaskedSecrets`,
+  Werkzeug-Runde 67) und leert davor den Datenordner der Instanz — der Harness leert pro Suite nur die Datenbank, eine
+  liegengebliebene `programs.json` würde die Übernahme des Objekts verdecken;
   `MOVES` (berechnet aus dem Vorgänger-Inventar) nennt die Umzüge von 0.3.0, deren Aufzeichnung ankommen muss.
 - **Paket-/Standard-Prüfung** `test/package.js`, `test/standards` (`iobroker-adapter-checks`), `test/self-explaining.json`
   (D08), `test/readable-values.json` (Werte-Prüfung).

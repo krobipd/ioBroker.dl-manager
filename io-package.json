@@ -161,6 +161,7 @@
       }
     ],
     "nogit": true,
+    "dataFolder": "dl-manager.%INSTANCE%",
     "messages": [
       {
         "condition": {

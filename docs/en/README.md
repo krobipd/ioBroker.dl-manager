@@ -40,8 +40,9 @@ network; otherwise use My.JDownloader.
 
 Every program can be added as often as you like. A second entry for the same program — the same address, or the same
 JDownloader of a My.JDownloader account — is refused. The switch on a card turns a program off without deleting its
-device; delete removes the device, never a file. Passwords and API keys are stored encrypted with the installation's
-secret in the adapter's object `dl-manager.0.programs`.
+device; delete removes the device, never a file. The programs are stored in `programs.json` in the instance's data folder
+(`iobroker-data/dl-manager.0/`, part of every ioBroker backup), not in the object tree; passwords and API keys are
+encrypted with the installation's secret.
 
 ## What you find in the object tree
 
@@ -76,7 +77,7 @@ actually stand in the tree.
 
 ## Updating from 0.2
 
-The first start of 0.3 moves the programs out of the instance settings into `dl-manager.0.programs` (the instance
+The first start of 0.3 moves the programs out of the instance settings into the adapter's program store (the instance
 restarts once), encrypts their passwords and gives every program its new object ID. Each device moves with its values,
 rooms, functions and aliases; a recording keeps its history under the old ID. A My.JDownloader program moves as soon
 as the account has named its JDownloader's id (the first successful connection). The last finished and failed

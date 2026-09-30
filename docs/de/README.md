@@ -41,8 +41,9 @@ Docker-Netz läuft; sonst nimm My.JDownloader.
 
 Jedes Programm lässt sich beliebig oft hinzufügen. Ein zweiter Eintrag für dasselbe Programm — dieselbe Adresse oder
 derselbe JDownloader eines My.JDownloader-Kontos — wird abgewiesen. Der Schalter auf einer Karte schaltet ein Programm
-ab, ohne sein Gerät zu löschen; Löschen entfernt das Gerät, nie eine Datei. Passwörter und API-Schlüssel liegen mit dem
-Geheimnis der Installation verschlüsselt im Objekt `dl-manager.0.programs` des Adapters.
+ab, ohne sein Gerät zu löschen; Löschen entfernt das Gerät, nie eine Datei. Die Programme liegen in `programs.json` im
+Datenordner der Instanz (`iobroker-data/dl-manager.0/`, Teil jeder ioBroker-Sicherung), nicht im Objektbaum; Passwörter
+und API-Schlüssel sind mit dem Geheimnis der Installation verschlüsselt.
 
 ## Was du im Objektbaum findest
 
@@ -80,7 +81,7 @@ langsam. Die Einstellungsseite zeigt dann eine Warnung, und das Log warnt einmal
 
 ## Aktualisierung von 0.2
 
-Der erste Start von 0.3 zieht die Programme aus den Instanz-Einstellungen in `dl-manager.0.programs` um (die Instanz
+Der erste Start von 0.3 zieht die Programme aus den Instanz-Einstellungen in den Programm-Speicher des Adapters um (die Instanz
 startet einmal neu), verschlüsselt ihre Passwörter und gibt jedem Programm seine neue Objekt-ID. Jedes Gerät zieht mit
 seinen Werten, Räumen, Funktionen und Aliasen um; eine Aufzeichnung behält ihren Verlauf unter der alten ID. Ein
 My.JDownloader-Programm zieht um, sobald das Konto die Kennung seines JDownloaders genannt hat (erste erfolgreiche

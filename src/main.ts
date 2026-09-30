@@ -1,5 +1,6 @@
 import * as utils from "@iobroker/adapter-core";
 import { I18n } from "@iobroker/adapter-core";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ActionableProblems } from "./lib/actionable-problems";
 import { legacyId, parseMaxDownloads, parsePollInterval, parseTreeScope } from "./lib/core/config";
@@ -9,7 +10,7 @@ import { ProgramManager, type ManagerAdapter } from "./lib/core/manager";
 import { moveObjects, type MoveAdapter } from "./lib/core/move";
 import { coveredBy, KnownObjects } from "./lib/core/objects";
 import { KnownStates } from "./lib/core/states";
-import { ProgramStore, type SettingsRow } from "./lib/core/store";
+import { ProgramStore, STORE_FILE, STORE_ID, type SettingsRow } from "./lib/core/store";
 import { LAST_CHANNEL, lastChannelObject } from "./lib/core/tree";
 import { deviceIcon } from "./lib/device-icons";
 import { DlDeviceManagement } from "./lib/device-management";
@@ -80,11 +81,8 @@ export class DownloadManagerAdapter extends utils.Adapter {
       setState: (id, state) => this.setState(id, state),
     });
     this.programs = new ProgramStore({
-      get namespace(): string {
-        return namespace();
-      },
-      getForeignObjectAsync: id => this.getForeignObjectAsync(id),
-      setForeignObject: (id, obj) => this.known.replace(id, obj),
+      readText: () => this.readStoreFile(),
+      writeText: text => this.writeStoreFile(text),
       encrypt: v => this.encrypt(v),
       decrypt: v => this.decrypt(v),
     });
@@ -135,6 +133,54 @@ export class DownloadManagerAdapter extends utils.Adapter {
     } catch (err: unknown) {
       this.log.debug(`Could not check the instance object ${id}: ${errText(err)}`);
       return false;
+    }
+  }
+
+  /** @returns the store file in the instance's data folder (`common.dataFolder`, part of every ioBroker backup) */
+  private get storeFile(): string {
+    return join(utils.getAbsoluteInstanceDataDir(this), STORE_FILE);
+  }
+
+  /** @returns the store file's text, undefined while it does not exist */
+  private async readStoreFile(): Promise<string | undefined> {
+    try {
+      return await readFile(this.storeFile, "utf8");
+    } catch (err: unknown) {
+      if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+        return undefined;
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * Replaces the store file: written next to it, then renamed over it — a crash leaves the old or the new file.
+   *
+   * @param text the new content
+   */
+  private async writeStoreFile(text: string): Promise<void> {
+    const file = this.storeFile;
+    await mkdir(join(file, ".."), { recursive: true });
+    await writeFile(`${file}.tmp`, text, "utf8");
+    await rename(`${file}.tmp`, file);
+  }
+
+  /**
+   * 0.3.0 and 0.3.1 kept the programs in the object `<ns>.programs`, where every object export showed them. They go
+   * into the data folder once — the file first, then the object goes; a start that stopped in between only deletes it.
+   */
+  private async moveStoreObject(): Promise<void> {
+    const id = `${this.namespace}.${STORE_ID}`;
+    const obj = await this.getForeignObjectAsync(id);
+    if (!obj) {
+      return;
+    }
+    const moved = await this.programs.adopt(obj.native?.rows);
+    await this.delForeignObjectAsync(id);
+    if (moved === undefined) {
+      this.log.debug(`${id} removed — the data folder holds the programs already`);
+    } else {
+      this.log.info(`${moved} program(s) moved from the object ${id} into the data folder of the instance`);
     }
   }
 
@@ -409,6 +455,7 @@ export class DownloadManagerAdapter extends utils.Adapter {
         return;
       }
       await I18n.init(join(this.adapterDir, "admin"), this);
+      await this.moveStoreObject();
       await this.takeOverPrograms();
       if (await migrateNativeKeys(this, NATIVE_KEY_MIGRATIONS, errText)) {
         return;

@@ -33,7 +33,8 @@ const FIRST_LANGUAGE = "en";
 const SECOND_LANGUAGE = "de";
 const VOLATILE = ["ts", "from", "user", "acl"];
 // Ciphertext from the installation secret differs per controller (CLAUDE_TEMPLATES.md, Objekt-Inventar) — the dump
-// keeps the field and replaces its value with a marker. Here the secrets sit in the rows of the program store.
+// keeps the field and replaces its value with a marker. Here the secrets sat in the rows of the program store object of
+// 0.3.0/0.3.1 — gone since 0.3.2 (the programs live in the data folder), but a previous release's dump still carries it.
 const STORE = `${NS}programs`;
 const ENCRYPTED_ROW_FIELDS = ["password", "apiKey"];
 /** Round 67: the text a dump puts where the adapter stored a secret encrypted with its installation's secret. */
@@ -528,12 +529,16 @@ async function seedPrevious(harness, previous) {
  * can read that cipher. Put a working secret back into every such seeded object, the fixture's value in the form the
  * adapter stores it (encrypted like the adapter does, e.g. with encryptPassword), so the upgrade starts on objects the
  * adapter can use. Empty where the dump masks nothing.
- * dl-manager: the program store (`<ns>.programs`, since 0.3.0) — its rows get the fixture's secrets back as typed (a row
- * without `encrypted`, the form the adapter reads before it encrypts).
+ * dl-manager: the program store object of 0.3.0/0.3.1 (`<ns>.programs`) — its rows get the fixture's secrets back as
+ * typed (a row without `encrypted`, the form the adapter reads before it encrypts). Since 0.3.2 the programs live in
+ * `programs.json` of the instance's data folder, and the start moves the seeded object there. The harness empties only
+ * the database between suites, never the data folder: a file an earlier suite or run left would make the start skip
+ * that move while every device still shows up — so the folder goes before the upgrade starts.
  *
  * @param {import("@iobroker/testing").IntegrationTestHarness} harness
  */
 async function restoreMaskedSecrets(harness) {
+  fs.rmSync(path.join(harness.testDir, "iobroker-data", NS.slice(0, -1)), { recursive: true, force: true });
   const store = await harness.objects.getObjectAsync(STORE);
   if (!Array.isArray(store?.native?.rows)) {
     return;
