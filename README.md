@@ -125,7 +125,7 @@ The test button on a program's card asks the program once and shows its answer.
     ### **WORK IN PROGRESS**
 -->
 
-### **WORK IN PROGRESS**
+### 0.3.2 (2026-09-30)
 
 - Changed: your programs and their access data moved out of the object tree into a file of the instance, which every ioBroker backup includes — an object export no longer shows them
 
@@ -156,14 +156,6 @@ The test button on a program's card asks the program once and shows its answer.
 ### 0.1.0 (2026-09-29)
 
 - New: first release — JDownloader 2, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 and pyLoad in one instance, with one channel per download
-
-### 0.0.1 (2026-09-29)
-
-- Changed: placeholder on npm that reserves the package name — install the first release instead
-
-[Older changelogs can be found there](CHANGELOG_OLD.md)
-
----
 
 ## Support
 

@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "dl-manager",
-    "version": "0.3.1",
+    "version": "0.3.2",
     "news": {
+      "0.3.2": {
+        "en": "Your programs and their access data moved out of the object tree into a file of the instance, which every ioBroker backup includes.",
+        "de": "Deine Programme samt Zugangsdaten liegen nicht mehr im Objektbaum, sondern in einer Datei der Instanz, die jede ioBroker-Sicherung enthält.",
+        "ru": "Ваши программы и их данные доступа перенесены из дерева объектов в файл экземпляра, который входит в каждую резервную копию ioBroker.",
+        "pt": "Os teus programas e os seus dados de acesso saíram da árvore de objetos para um ficheiro da instância, incluído em cada cópia do ioBroker.",
+        "nl": "Je programma's en hun toegangsgegevens staan niet meer in de objectboom, maar in een bestand van de instantie dat elke ioBroker-back-up bevat.",
+        "fr": "Vos programmes et leurs accès ont quitté l'arbre des objets pour un fichier de l'instance, inclus dans chaque sauvegarde ioBroker.",
+        "it": "I tuoi programmi e i relativi accessi sono passati dall'albero degli oggetti a un file dell'istanza, incluso in ogni backup di ioBroker.",
+        "es": "Tus programas y sus datos de acceso pasan del árbol de objetos a un archivo de la instancia, incluido en cada copia de seguridad de ioBroker.",
+        "pl": "Twoje programy i ich dane dostępu przeniesiono z drzewa obiektów do pliku instancji, który zawiera każda kopia zapasowa ioBroker.",
+        "uk": "Ваші програми та їхні дані доступу перенесено з дерева об'єктів у файл екземпляра, який входить до кожної резервної копії ioBroker.",
+        "zh-cn": "你的程序及其访问数据已从对象树移到实例的一个文件中，每个 ioBroker 备份都包含该文件。"
+      },
       "0.3.1": {
         "en": "After a change on a card you see at once whether the program answers, and a rejected login names what to check on the card. Query interval from 10 s.",
         "de": "Nach einer Kartenänderung siehst du sofort, ob das Programm antwortet; eine abgewiesene Anmeldung nennt, was auf der Karte zu prüfen ist. Intervall ab 10 s.",
