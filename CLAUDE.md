@@ -118,7 +118,10 @@ _Jede Entscheidung steht hier als Regel-Satz; Beleg, Messung und Verlauf stehen 
   Liste ein Objekt mit Zahlenschlüsseln), der Start zieht sie in den Speicher; Passwörter im Abzug maskiert, die
   Aufstiegs-Suite gibt dem gesäten Speicher-Objekt des Vorgängers die Fixture-Geheimnisse zurück (`restoreMaskedSecrets`,
   Werkzeug-Runde 67); jede Suite startet ohne den Datenordner der Instanz (`clearInstanceData`, Vorlage seit Runde 71 —
-  der Harness leert pro Suite nur die Datenbank, eine liegengebliebene `programs.json` verdeckte die Übernahme);
+  der Harness leert pro Suite nur die Datenbank, eine liegengebliebene `programs.json` verdeckte die Übernahme); ab einem
+  Vorgänger 0.3.2 trägt kein Abzug die Programme mehr — `restoreMaskedSecrets` schreibt dann `programs.json`, wie der
+  Vorgänger sie hinterließ (IDs, My.JD-Id `dev1`, Geheimnisse wie eingetippt), sonst richtete der Start die Programme
+  über den gesäten Geräten neu ein;
   `MOVES` (berechnet aus dem Vorgänger-Inventar) nennt die Umzüge von 0.3.0, deren Aufzeichnung ankommen muss.
 - **Paket-/Standard-Prüfung** `test/package.js`, `test/standards` (`iobroker-adapter-checks`), `test/self-explaining.json`
   (D08), `test/readable-values.json` (Werte-Prüfung).

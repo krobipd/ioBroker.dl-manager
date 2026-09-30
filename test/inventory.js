@@ -549,13 +549,27 @@ async function seedPrevious(harness, previous) {
  * dl-manager: the program store object of 0.3.0/0.3.1 (`<ns>.programs`) — its rows get the fixture's secrets back as
  * typed (a row without `encrypted`, the form the adapter reads before it encrypts). Since 0.3.2 the programs live in
  * `programs.json` of the instance's data folder, and the start moves the seeded object there (the suite starts without
- * that folder, clearInstanceData).
+ * that folder, clearInstanceData). From a previous release of 0.3.2 on, no dump carries the programs: the file is
+ * written here as that release left it — ids given, the My.JDownloader instance id learned, secrets as typed. Without
+ * it the start would set the programs up anew on top of the seeded devices, which no real installation does.
  *
  * @param {import("@iobroker/testing").IntegrationTestHarness} harness
  */
 async function restoreMaskedSecrets(harness) {
   const store = await harness.objects.getObjectAsync(STORE);
   if (!Array.isArray(store?.native?.rows)) {
+    const seeded = await harness.objects.getObjectAsync(`${NS}${DEVICES[0]}`);
+    if (seeded?.native?.idScheme !== 3) {
+      return;
+    }
+    const rows = FIXTURE_NATIVE.programs.map(({ key: _key, ...row }, i) => ({
+      ...row,
+      id: DEVICES[i],
+      ...(row.host ? {} : { deviceId: "dev1" }),
+    }));
+    const dir = path.join(harness.testDir, "iobroker-data", `${ADAPTER}.0`);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, "programs.json"), `${JSON.stringify({ rows }, null, 2)}\n`);
     return;
   }
   store.native.rows = store.native.rows.map(row => {
