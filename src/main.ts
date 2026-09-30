@@ -49,7 +49,7 @@ export class DownloadManagerAdapter extends utils.Adapter {
   private readonly states: KnownStates;
   /** The programs as cards in the admin (device manager) — it answers the `dm:*` messages itself. */
   private readonly deviceManagement: DlDeviceManagement;
-  /** Where the programs live (`<ns>.programs`). */
+  /** Where the programs live (`programs.json` in the instance's data folder). */
   private readonly programs: ProgramStore;
   /** Changes of the program rows, one after the other (dialogs and a learned My.JDownloader id). */
   private rowsQueue: Promise<void> = Promise.resolve();

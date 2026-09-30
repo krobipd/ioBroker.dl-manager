@@ -35,7 +35,7 @@ export type ProgramType =
 
 /** One program type. */
 export interface ProgramInfo {
-  /** Program type as stored in the program store (`<ns>.programs`, `native.rows[].type`). */
+  /** Program type as stored in the program store (`programs.json`, `rows[].type`). */
   readonly type: ProgramType;
   /** Product name, the same in every language. */
   readonly label: string;
