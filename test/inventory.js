@@ -290,6 +290,42 @@ const FIXTURE_NATIVE = {
   maxDownloads: 0,
 };
 
+/**
+ * Round 66 (reported by dl-manager): every datapoint of the previous release this release moves under a new id —
+ * previous full id → current full id (adapter-specific like FIXTURE_NATIVE, may be computed). The recording is the
+ * user's and goes on with the moved datapoint (krobi 2026-09-02); the upgrade suite checks that it arrived there.
+ * 0.3.0: a device from before (`<type>-fixture`) moves to the program and the machine it runs on, and the four last
+ * values into the `last` channel.
+ */
+const MOVES = (() => {
+  const file = process.env.INVENTORY_PREVIOUS;
+  const previous = file && fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : {};
+  const last = {
+    lastFinished: "last.finished",
+    lastFinishedTime: "last.finishedTime",
+    lastFailed: "last.failed",
+    lastFailedTime: "last.failedTime",
+  };
+  const devices = new Map(PROGRAM_ROWS.map(([type], i) => [`${NS}${type}-fixture`, `${NS}${DEVICES[i]}`]));
+  const out = {};
+  for (const id of Object.keys(previous)) {
+    let to = id;
+    for (const [from, next] of devices) {
+      if (to === from || to.startsWith(`${from}.`)) {
+        to = next + to.slice(from.length);
+      }
+    }
+    const leaf = to.slice(to.lastIndexOf(".") + 1);
+    if (last[leaf]) {
+      to = `${to.slice(0, to.lastIndexOf("."))}.${last[leaf]}`;
+    }
+    if (to !== id) {
+      out[id] = to;
+    }
+  }
+  return out;
+})();
+
 /** The adapter process gets the fetch hook — the test process keeps the real fetch. */
 const HOOK = path.join(__dirname, "fixture-hook.js");
 
@@ -348,31 +384,39 @@ async function dumpStates(harness) {
  * EXTENDS native — a key that an older version of this adapter wrote would survive and trigger the
  * start-up key migration and with it a host restart (played since round 64) in every suite. Null every key the
  * fixture does not know, then apply the fixture (null is the post-migration state of a renamed key).
+ * changeAdapterConfig encrypts the `encryptedNative` keys, but merges with alcalzone-shared `extend` (round 66, reported
+ * by dl-manager): a list goes element-wise into the one already there (the old tail stays, an empty list resets
+ * nothing), and under a new key it becomes an object with numeric keys. Every key but an encrypted one goes in again
+ * as a whole.
  *
  * @param {import("@iobroker/testing").IntegrationTestHarness} harness
+ * @param {Record<string, unknown>} native the instance's native for this start (FIXTURE_NATIVE, or one computed per run)
  */
-async function resetInstanceNative(harness) {
-  const instance = await harness.objects.getObjectAsync(`system.adapter.${ADAPTER}.0`);
+async function resetInstanceNative(harness, native = FIXTURE_NATIVE) {
+  const id = `system.adapter.${ADAPTER}.0`;
+  const instance = await harness.objects.getObjectAsync(id);
   const stale = {};
   for (const key of Object.keys(instance?.native ?? {})) {
-    if (!Object.hasOwn(FIXTURE_NATIVE, key)) stale[key] = null;
+    if (!Object.hasOwn(native, key)) stale[key] = null;
   }
-  // The fixture rows go in as 0.2.0 wrote them: secrets as typed. Written as a whole object — the harness's
-  // changeAdapterConfig merges a list into a key the manifest no longer declares as an object with numeric keys,
-  // which no admin ever stored.
-  await harness.objects.setObjectAsync(`system.adapter.${ADAPTER}.0`, {
-    ...instance,
-    native: { ...instance?.native, ...stale, ...FIXTURE_NATIVE },
-  });
+  await harness.changeAdapterConfig(ADAPTER, { native: { ...stale, ...native } });
+  const written = await harness.objects.getObjectAsync(id);
+  for (const [key, value] of Object.entries(native)) {
+    if (!written.encryptedNative?.includes(key)) written.native[key] = value;
+  }
+  await harness.objects.setObjectAsync(id, written);
 }
 
 /**
  * js-controller 7.2.2 restarts an instance on EVERY change of its instance object while it runs (controller main.ts,
  * objects `change` handler: `stopInstance`, then `startInstance` after `stopTimeout` + 2.5 s) — whoever wrote it, the
  * adapter's own settings migration or device table included. The harness has no host; this plays it (round 64): the
- * first change while the adapter runs stops it and starts it once more with the same hooks, so what the adapter did
- * after that write in the same start is cut off here as it is on a real host. A change after that restart is a finding:
- * on a host the instance would restart again, for good.
+ * adapter's first own write while it runs stops it and starts it once more with the same hooks, so what the adapter did
+ * after that write in the same start is cut off here as it is on a real host. An own write after that restart is a
+ * finding: on a host the instance would restart again, for good. Only the adapter's own writes count (round 66): the
+ * suite's resetInstanceNative writes before the start, but on a slow runner its event arrived after the start and
+ * stopped a start midway. Each step has a deadline: a harness call that never settles is logged the moment it misses it,
+ * and fails the suite in its own words where `await restarts.done` is the open wait (the upgrade suite's order).
  *
  * @param {import("@iobroker/testing").IntegrationTestHarness} harness
  * @param {object | null} watch the suite's write watcher (watchObjectWrites), null in a suite without one
@@ -380,8 +424,12 @@ async function resetInstanceNative(harness) {
  */
 function playControllerRestarts(harness, watch, ...hooks) {
   const restarts = { count: 0, again: [], done: Promise.resolve() };
-  harness.on("objectChange", id => {
-    if (id !== `system.adapter.${ADAPTER}.0` || !harness.isAdapterRunning()) {
+  harness.on("objectChange", (id, obj) => {
+    if (
+      id !== `system.adapter.${ADAPTER}.0` ||
+      obj?.from !== `system.adapter.${ADAPTER}.0` ||
+      !harness.isAdapterRunning()
+    ) {
       return;
     }
     if (restarts.count > 0) {
@@ -390,7 +438,11 @@ function playControllerRestarts(harness, watch, ...hooks) {
     }
     restarts.count++;
     restarts.done = (async () => {
-      await harness.stopAdapter();
+      await withinDeadline(
+        harness.stopAdapter(),
+        STOP_DEADLINE_MS,
+        "the adapter did not stop after it changed its instance object",
+      );
       watch?.newStart();
       // What the host does when the process exits: `alive` false (a start that still sees it true ends with
       // ADAPTER_ALREADY_RUNNING, exit code 7), then the start after stopTimeout + 2.5 s.
@@ -407,14 +459,46 @@ function playControllerRestarts(harness, watch, ...hooks) {
         !harness.didAdapterStop(),
         "@iobroker/testing changed its exit marker — the restart play needs a new form",
       );
-      await harness.startAdapterAndWait(false, adapterEnv(...hooks));
+      await withinDeadline(
+        harness.startAdapterAndWait(false, adapterEnv(...hooks)),
+        START_DEADLINE_MS,
+        "the adapter did not come back after the restart",
+      );
     })();
+    // Awaited by the suite later — a wait before that (feedFixtures) fails first on an adapter that hangs in its stop,
+    // so a missed deadline is logged the moment it happens (and never counts as an unhandled rejection).
+    restarts.done.catch(err => console.error(`restart play failed: ${err.message}`));
   });
   return restarts;
 }
 
+/**
+ * Round 66: the promise's value, or an error naming what hung once the deadline has passed.
+ *
+ * @param {Promise<unknown> | undefined} promise the harness call
+ * @param {number} ms the deadline
+ * @param {string} what what did not happen, in the failure message
+ */
+async function withinDeadline(promise, ms, what) {
+  let timer;
+  const expired = new Promise((_resolve, reject) => {
+    timer = setTimeout(() => reject(new Error(`${what} (deadline ${ms} ms)`)), ms);
+  });
+  try {
+    return await Promise.race([promise, expired]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /** Round 64: the host's wait before it starts a stopped instance again (controller main.ts, `stopTimeout || 500` + 2.5 s). */
 const RESTART_DELAY_MS = (require(path.join(ADAPTER_DIR, "io-package.json")).common.stopTimeout || 500) + 2500;
+/**
+ * Round 66: the restart's deadlines — stopTimeout, the 500 ms the adapter gives pending writes, and the exit; then a start
+ * as the harness waits for it (`alive` true). Both together stay far below the suites' before() timeout.
+ */
+const STOP_DEADLINE_MS = RESTART_DELAY_MS + 2500;
+const START_DEADLINE_MS = 30000;
 /** Round 64: the recording marker every seeded state carries in `common.custom`, naming the id it was seeded under. */
 const RECORDING = "inventory-recording.0";
 
@@ -433,35 +517,32 @@ async function seedPrevious(harness, previous) {
       obj.type === "state"
         ? { ...obj.common, custom: { ...obj.common?.custom, [RECORDING]: { enabled: true, origin: id } } }
         : obj.common;
-    await harness.objects.setObjectAsync(id, {
-      ...obj,
-      common,
-      ...(id === STORE ? { native: unmasked(obj.native) } : {}),
-    });
+    await harness.objects.setObjectAsync(id, { ...obj, common });
   }
 }
 
 /**
- * The previous release's program store as the dump keeps it has its secrets masked — no controller can read them. The
- * seed puts the fixture's secrets back, as typed (a row without `encrypted`), so the upgrade starts on a working store.
+ * dl-manager: the previous release's program store (`<ns>.programs`, since 0.3.0) comes out of the dump with its
+ * secrets masked — no controller can read a cipher of another installation. After the seed its rows get the fixture's
+ * secrets back, as typed (a row without `encrypted`), so the upgrade starts on a store that can log in.
  *
- * @param {Record<string, unknown>} native the store object's native from the previous inventory
- * @returns the native to seed
+ * @param {import("@iobroker/testing").IntegrationTestHarness} harness
  */
-function unmasked(native) {
-  const rows = Array.isArray(native?.rows) ? native.rows : [];
-  return {
-    ...native,
-    rows: rows.map(row => {
-      const fixture = PROGRAM_ROWS.find(([type]) => type === row.type)?.[2] ?? {};
-      const out = { ...row };
-      delete out.encrypted;
-      for (const field of ENCRYPTED_ROW_FIELDS) {
-        out[field] = row[field] === ENCRYPTED_MARKER ? (fixture[field] ?? "") : row[field];
-      }
-      return out;
-    }),
-  };
+async function restoreStoreSecrets(harness) {
+  const store = await harness.objects.getObjectAsync(STORE);
+  if (!Array.isArray(store?.native?.rows)) {
+    return;
+  }
+  store.native.rows = store.native.rows.map(row => {
+    const fixture = PROGRAM_ROWS.find(([type]) => type === row.type)?.[2] ?? {};
+    const out = { ...row };
+    delete out.encrypted;
+    for (const field of ENCRYPTED_ROW_FIELDS) {
+      out[field] = row[field] === ENCRYPTED_MARKER ? (fixture[field] ?? "") : row[field];
+    }
+    return out;
+  });
+  await harness.objects.setObjectAsync(STORE, store);
 }
 
 tests.integration(ADAPTER_DIR, {
@@ -579,6 +660,7 @@ tests.integration(ADAPTER_DIR, {
           // The harness registers its own before() (fresh DB) ahead of this one,
           // so the seed survives and the adapter starts on top of the OLD objects.
           await seedPrevious(harness, previous);
+          await restoreStoreSecrets(harness);
           await resetInstanceNative(harness);
           // The inventory was written in FIRST_LANGUAGE: labels an adapter localises itself (`states`)
           // only compare in the same language.
@@ -684,6 +766,12 @@ tests.integration(ADAPTER_DIR, {
           for (const [id, obj] of Object.entries(previous)) {
             if (obj.type === "state" && live[id]?.type === "state" && !carriers.get(id)?.includes(id)) {
               wrong.push(`${id}: its recording is gone although the datapoint lives on`);
+            }
+          }
+          // A state the release moves under a new id (MOVES) takes its recording along (krobi 2026-09-02).
+          for (const [from, to] of Object.entries(MOVES)) {
+            if (previous[from]?.type === "state" && !carriers.get(from)?.includes(to)) {
+              wrong.push(`${from} → ${to}: its recording did not move with the datapoint`);
             }
           }
           assert.deepStrictEqual(wrong, [], `recordings that left their datapoint:\n${wrong.join("\n")}`);
