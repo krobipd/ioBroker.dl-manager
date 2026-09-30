@@ -19,8 +19,6 @@ export interface ActionableProblem {
 export interface ActionableProblemsHost {
   /** Clear, user-facing warn line (first occurrence of a problem). */
   logWarn(message: string): void;
-  /** Resolution / positive-feedback line (problem cleared). */
-  logInfo(message: string): void;
   /**
    * Raise a persistent ioBroker notification carrying the message. Idempotent
    * from the caller's view — the platform caps duplicates via the category
@@ -35,7 +33,7 @@ export interface ActionableProblemsHost {
  *
  * Which problems belong here: error classes the USER must fix because they
  * never self-heal — rejected credentials. Transient classes (unreachable,
- * protocol errors) keep the warn-once-then-debug policy in `core/runner.ts`
+ * protocol errors) keep the runner's warn window (`core/runner.ts`: the same text once an hour)
  * and never reach this registry — enforced by where `report()` is wired
  * (only at the auth failure site), not by a runtime gate.
  *
@@ -45,12 +43,13 @@ export interface ActionableProblemsHost {
  *    notification-manager until the user acknowledges it).
  *  - **report** an already-active problem → no-op. No log/notification spam
  *    while it stays unresolved within a session.
- *  - **resolve** an active problem → a single positive `info` line. The
+ *  - **forget** a problem when its program's card changes → no line of its own:
+ *    the program's first answer after the change is logged instead. The
  *    notification is left for the user to acknowledge (ioBroker has no adapter
  *    API to clear one — using the platform as designed, no host-command hacks).
  *
- * Transient problems never reach here — they self-heal and keep the existing
- * warn-once-then-debug policy.
+ * Transient problems never reach here — they self-heal and keep the runner's
+ * warn window.
  */
 export class ActionableProblems {
   private readonly active = new Map<string, ActionableProblem>();
@@ -77,21 +76,6 @@ export class ActionableProblems {
     this.active.set(problem.key, problem);
     this.host.logWarn(line);
     this.host.notify(line);
-  }
-
-  /**
-   * Mark a problem resolved. Logs a single resolution line if it was active.
-   *
-   * @param key the problem key to clear
-   * @param resolutionMessage optional positive message; falls back to a default
-   */
-  resolve(key: string, resolutionMessage?: string): void {
-    const problem = this.active.get(key);
-    if (!problem) {
-      return;
-    }
-    this.active.delete(key);
-    this.host.logInfo(resolutionMessage ?? `Resolved: ${problem.title}`);
   }
 
   /**

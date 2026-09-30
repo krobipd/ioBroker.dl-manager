@@ -90,7 +90,6 @@ export class DownloadManagerAdapter extends utils.Adapter {
     });
     this.problems = new ActionableProblems({
       logWarn: m => this.log.warn(m),
-      logInfo: m => this.log.info(m),
       notify: m =>
         void this.registerNotification("dl-manager", "userActionRequired", m).catch((err: unknown) =>
           this.log.debug(`Could not raise a notification: ${errText(err)}`),
