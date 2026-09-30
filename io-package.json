@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "dl-manager",
-    "version": "0.3.0",
+    "version": "0.3.1",
     "news": {
+      "0.3.1": {
+        "en": "After a change on a card you see at once whether the program answers, and a rejected login names what to check on the card. Query interval from 10 s.",
+        "de": "Nach einer Kartenänderung siehst du sofort, ob das Programm antwortet; eine abgewiesene Anmeldung nennt, was auf der Karte zu prüfen ist. Intervall ab 10 s.",
+        "ru": "После изменения карточки сразу видно, отвечает ли программа; отклонённый вход называет, что проверить на карточке. Интервал опроса от 10 с.",
+        "pt": "Depois de alterar um cartão vês logo se o programa responde; um login recusado indica o que verificar no cartão. Intervalo de consulta a partir de 10 s.",
+        "nl": "Na een kaartwijziging zie je meteen of het programma antwoordt; een geweigerde login noemt wat op de kaart te controleren. Interval vanaf 10 s.",
+        "fr": "Après une modification de carte, on voit tout de suite si le programme répond ; un identifiant refusé indique quoi vérifier. Intervalle dès 10 s.",
+        "it": "Dopo una modifica alla scheda vedi subito se il programma risponde; un login rifiutato indica cosa controllare sulla scheda. Intervallo da 10 s.",
+        "es": "Tras un cambio en la tarjeta ves al instante si el programa responde; un inicio de sesión rechazado indica qué revisar en la tarjeta. Intervalo desde 10 s.",
+        "pl": "Po zmianie karty od razu widać, czy program odpowiada; odrzucone logowanie wskazuje, co sprawdzić na karcie. Interwał od 10 s.",
+        "uk": "Після зміни картки одразу видно, чи відповідає програма; відхилений вхід називає, що перевірити на картці. Інтервал від 10 с.",
+        "zh-cn": "修改卡片后可立即看到程序是否响应；登录被拒时会指出需在卡片上检查的内容。查询间隔从 10 秒起。"
+      },
       "0.3.0": {
         "en": "Saving a program card no longer hangs and applies at once. Device IDs now follow program and machine and move once; update scripts and VIS.",
         "de": "Speichern einer Programmkarte hängt nicht mehr und gilt sofort. Geräte-IDs folgen jetzt Programm und Rechner und ziehen einmal um; Skripte und VIS anpassen.",
