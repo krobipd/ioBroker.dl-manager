@@ -137,6 +137,33 @@ runDriverContract({
 });
 
 describe("qBittorrent driver", () => {
+  it("reads the version again after a failed query with an API key — an update of the program shows", async () => {
+    let version = "v5.0.0";
+    let down = false;
+    const s = await startFixtureServer(call => {
+      if (call.path === "/api/v2/app/version") {
+        return { body: version };
+      }
+      if (call.path === "/api/v2/sync/maindata") {
+        return down
+          ? { status: 500, body: "" }
+          : { body: { rid: 1, full_update: true, torrents: {}, server_state: {} } };
+      }
+      return { body: "" };
+    });
+    try {
+      const d = new QbDriver(cfg(s.baseUrl, { apiKey: "k", username: "", password: "" }), { ...timers, log });
+      expect((await d.poll()).status.version).toContain("5.0.0");
+      version = "v5.2.3";
+      down = true;
+      await expect(d.poll()).rejects.toThrow();
+      down = false;
+      expect((await d.poll()).status.version).toContain("5.2.3");
+    } finally {
+      await s.close();
+    }
+  });
+
   it("calls a 403 at login a banned address, once", async () => {
     const s = await qbServer("5.2.3", { banned: true });
     try {
@@ -273,6 +300,22 @@ describe("qBittorrent driver", () => {
       s.expireSession?.();
       s.failNextLogin();
       await expect(d.poll()).rejects.toThrow(AuthError);
+      await d.poll();
+      const syncs = s.calls.filter(c => c.path === "/api/v2/sync/maindata");
+      expect(syncs.at(-1)?.query).toBe("rid=0");
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("starts the sync over after a command whose new login failed", async () => {
+    const s = await qbServer();
+    try {
+      const d = new QbDriver(cfg(s.baseUrl), { ...timers, log });
+      await d.poll();
+      s.expireSession?.();
+      s.failNextLogin();
+      await expect(d.command({ kind: "pauseAll" })).rejects.toThrow(AuthError);
       await d.poll();
       const syncs = s.calls.filter(c => c.path === "/api/v2/sync/maindata");
       expect(syncs.at(-1)?.query).toBe("rid=0");

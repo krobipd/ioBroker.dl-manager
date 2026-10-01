@@ -49,7 +49,9 @@ async function ariaServer(): Promise<ContractServer> {
     const { method, params, id } = JSON.parse(call.body) as { method: string; params: unknown[]; id: string };
     if (method === "system.multicall") {
       const subs = params[0] as { methodName: string; params: unknown[] }[];
-      const result = subs.map(s => (s.params[0] === "token:good" ? [r("running", FILES[s.methodName])] : unauthorized));
+      const read = (name: string): unknown =>
+        name === "aria2.getVersion" ? r("auth", "version") : r("running", FILES[name]);
+      const result = subs.map(s => (s.params[0] === "token:good" ? [read(s.methodName)] : unauthorized));
       return { body: { jsonrpc: "2.0", id, result } };
     }
     if (params[0] !== "token:good") {
@@ -83,6 +85,30 @@ runDriverContract({
 });
 
 describe("aria2 driver", () => {
+  it("reads the version with every query — an updated aria2 shows its new one", async () => {
+    let version: string | undefined = "1.36.0";
+    const s = await startFixtureServer(call => {
+      const { method, params, id } = JSON.parse(call.body) as { method: string; params: unknown[]; id: string };
+      const answer = (m: string): unknown =>
+        m === "aria2.getVersion" ? { version } : m.startsWith("aria2.tell") ? [] : {};
+      if (method === "system.multicall") {
+        const subs = params[0] as { methodName: string }[];
+        return { body: { jsonrpc: "2.0", id, result: subs.map(x => [answer(x.methodName)]) } };
+      }
+      return { body: { jsonrpc: "2.0", id, result: answer(method) } };
+    });
+    try {
+      const d = new AriaDriver(cfg(s.baseUrl), { ...timers, log }, noSocket);
+      expect((await d.poll()).status.version).toBe("1.36.0");
+      version = "1.37.0";
+      expect((await d.poll()).status.version).toBe("1.37.0");
+      version = undefined;
+      expect((await d.poll()).status.version).toBe("");
+    } finally {
+      await s.close();
+    }
+  });
+
   it("drops a finished result from the list, removes a running download, and adds paused while held", async () => {
     const s = await ariaServer();
     try {
@@ -153,7 +179,9 @@ async function ariaSynth(lists: Record<string, unknown>): Promise<Awaited<Return
     const { method, params, id } = JSON.parse(call.body) as { method: string; params: unknown[]; id: string };
     if (method === "system.multicall") {
       const subs = params[0] as { methodName: string }[];
-      return { body: { jsonrpc: "2.0", id, result: subs.map(x => [lists[x.methodName] ?? []]) } };
+      const answer = (name: string): unknown =>
+        lists[name] ?? (name === "aria2.getVersion" ? { version: "1.37.0" } : []);
+      return { body: { jsonrpc: "2.0", id, result: subs.map(x => [answer(x.methodName)]) } };
     }
     return { body: { jsonrpc: "2.0", id, result: method === "aria2.getVersion" ? { version: "1.37.0" } : "OK" } };
   });
@@ -248,7 +276,11 @@ describe("aria2 details", () => {
   it("names a short multicall answer, a fault inside it and a 4xx", async () => {
     const answers: [(id: string) => unknown, number, RegExp][] = [
       [id => ({ jsonrpc: "2.0", id, result: [[{ version: "1" }]] }), 200, /unexpected shape/],
-      [id => ({ jsonrpc: "2.0", id, result: [[], [], [], { code: 1, message: "boom" }, []] }), 200, /failed: boom/],
+      [
+        id => ({ jsonrpc: "2.0", id, result: [[{}], [], [], [], { code: 1, message: "boom" }, []] }),
+        200,
+        /failed: boom/,
+      ],
       [id => ({ jsonrpc: "2.0", id }), 404, /HTTP 404/],
     ];
     for (const [body, status, err] of answers) {

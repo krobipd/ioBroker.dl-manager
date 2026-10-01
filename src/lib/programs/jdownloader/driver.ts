@@ -87,8 +87,20 @@ export class JdDriver implements ProgramDriver {
 
   /** @returns one complete query */
   public async poll(): Promise<ProgramSnapshot> {
+    try {
+      return await this.query();
+    } catch (err: unknown) {
+      // JDownloader may be restarting for an update: the next query asks its version again
+      this.version = null;
+      throw err;
+    }
+  }
+
+  /** @returns one complete query */
+  private async query(): Promise<ProgramSnapshot> {
     if (this.version === null) {
-      this.version = String(await this.api.call("/jd/version"));
+      const version = await this.api.call("/jd/version");
+      this.version = typeof version === "number" || typeof version === "string" ? String(version) : "";
     }
     const toolbar = await this.api.call("/toolbar/getStatus");
     const packages = await this.api.call("/downloadsV2/queryPackages", [PACKAGE_QUERY]);

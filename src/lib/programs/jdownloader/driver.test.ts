@@ -140,6 +140,35 @@ describe("JDownloader driver", () => {
     };
   };
 
+  it("reads the version again after a failed query — a JDownloader that updated itself shows its new one", async () => {
+    let version: unknown = 48000;
+    let down = false;
+    const api = fake(path => {
+      if (path === "/jd/version") {
+        return Promise.resolve(version);
+      }
+      if (down) {
+        return Promise.reject(new Error("restarting"));
+      }
+      return Promise.resolve(path === "/toolbar/getStatus" ? {} : []);
+    });
+    const d = new JdDriver(cfg("http://h:3128"), { ...timers, log }, api, null);
+    expect((await d.poll()).status.version).toBe("48000");
+    version = 48637;
+    down = true;
+    await expect(d.poll()).rejects.toThrow("restarting");
+    down = false;
+    expect((await d.poll()).status.version).toBe("48637");
+  });
+
+  it("shows no version when JDownloader answers neither a number nor a text", async () => {
+    const api = fake(path =>
+      Promise.resolve(path === "/jd/version" ? { odd: true } : path === "/toolbar/getStatus" ? {} : []),
+    );
+    const d = new JdDriver(cfg("http://h:3128"), { ...timers, log }, api, null);
+    expect((await d.poll()).status.version).toBe("");
+  });
+
   it("resumes a paused JD first, then starts the controller", async () => {
     const t = fake(path => Promise.resolve(path === "/downloadcontroller/getCurrentState" ? "PAUSE" : true));
     await new JdDriver(cfg("http://127.0.0.1:3128"), { ...timers, log }, t).command({ kind: "resumeAll" });

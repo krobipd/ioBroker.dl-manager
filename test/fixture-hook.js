@@ -163,7 +163,11 @@ const ARIA_READS = {
 function aria2(url, init) {
   const { method, params, id } = JSON.parse(String(init.body));
   if (method === "system.multicall") {
-    const result = params[0].map(s => [body("aria2", "1.37.0", "running", ARIA_READS[s.methodName]).result]);
+    const result = params[0].map(s =>
+      s.methodName === "aria2.getVersion"
+        ? [body("aria2", "1.37.0", "auth", "version").result]
+        : [body("aria2", "1.37.0", "running", ARIA_READS[s.methodName]).result],
+    );
     return json({ jsonrpc: "2.0", id, result });
   }
   if (method === "aria2.getVersion")

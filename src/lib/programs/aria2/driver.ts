@@ -4,7 +4,7 @@ import { ProtocolError } from "../../core/errors";
 import type { Capability, Command, ProgramDriver, ProgramSnapshot, DriverDeps, ProgramConfig } from "../../core/model";
 import { AriaClient, nodeSocket, type SocketFactory } from "./client";
 import { toSnapshot } from "./map";
-import { asRecords } from "../../core/units";
+import { asRecord, asRecords } from "../../core/units";
 
 /** Pause before reconnecting the push channel. */
 const RECONNECT_MS = 30_000;
@@ -27,7 +27,6 @@ export class AriaDriver implements ProgramDriver {
   public readonly extras = [];
   private readonly client: AriaClient;
   private readonly pause: EmulatedPause;
-  private version = "";
   private running: string[] = [];
   private stopped = new Set<string>();
 
@@ -47,11 +46,9 @@ export class AriaDriver implements ProgramDriver {
 
   /** @returns one complete query (one multicall) */
   public async poll(): Promise<ProgramSnapshot> {
-    if (!this.version) {
-      const v = (await this.client.call("aria2.getVersion")) as { version?: unknown } | null;
-      this.version = typeof v?.version === "string" ? v.version : "";
-    }
-    const [active, waiting, stopped, stat, option] = await this.client.multicall([
+    // the version comes with every query — an updated aria2 shows its new one at once, at no extra request
+    const [version, active, waiting, stopped, stat, option] = await this.client.multicall([
+      ["aria2.getVersion", []],
       ["aria2.tellActive", []],
       ["aria2.tellWaiting", [0, 1000]],
       ["aria2.tellStopped", [0, 1000]],
@@ -63,7 +60,10 @@ export class AriaDriver implements ProgramDriver {
     this.stopped = new Set(gids(asRecords(stopped)));
     const all = [...asRecords(active), ...asRecords(waiting), ...asRecords(stopped)];
     const paused = await this.pause.observe(new Set(this.running), new Set(gids(all)));
-    return toSnapshot(this.version, all, stat, option, paused, m => this.deps.log.debug(m));
+    const reported = asRecord(version).version;
+    return toSnapshot(typeof reported === "string" ? reported : "", all, stat, option, paused, m =>
+      this.deps.log.debug(m),
+    );
   }
 
   /** @param cmd the command */

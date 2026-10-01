@@ -60,6 +60,8 @@ export class QbDriver implements ProgramDriver {
   private readonly maindata = new MaindataState();
   private readonly pause: EmulatedPause;
   private version = "";
+  /** A query failed — the program may have restarted for an update, so the next query reads its version again. */
+  private versionStale = false;
 
   /**
    * @param cfg the settings row
@@ -75,8 +77,19 @@ export class QbDriver implements ProgramDriver {
 
   /** @returns one complete query */
   public async poll(): Promise<ProgramSnapshot> {
-    if (this.client.needsLogin || !this.version) {
+    try {
+      return await this.query();
+    } catch (err: unknown) {
+      this.versionStale = true;
+      throw err;
+    }
+  }
+
+  /** @returns one complete query */
+  private async query(): Promise<ProgramSnapshot> {
+    if (this.client.needsLogin || !this.version || this.versionStale) {
       this.version = (await this.client.get("app/version")).text.trim();
+      this.versionStale = false;
       this.maindata.reset();
     }
     this.maindata.apply((await this.client.get(`sync/maindata?rid=${this.maindata.rid}`)).json());
