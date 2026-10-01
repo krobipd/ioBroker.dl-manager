@@ -547,29 +547,14 @@ async function seedPrevious(harness, previous) {
  * adapter stores it (encrypted like the adapter does, e.g. with encryptPassword), so the upgrade starts on objects the
  * adapter can use. Empty where the dump masks nothing.
  * dl-manager: the program store object of 0.3.0/0.3.1 (`<ns>.programs`) — its rows get the fixture's secrets back as
- * typed (a row without `encrypted`, the form the adapter reads before it encrypts). Since 0.3.2 the programs live in
- * `programs.json` of the instance's data folder, and the start moves the seeded object there (the suite starts without
- * that folder, clearInstanceData). From a previous release of 0.3.2 on, no dump carries the programs: the file is
- * written here as that release left it — ids given, the My.JDownloader instance id learned, secrets as typed. Without
- * it the start would set the programs up anew on top of the seeded devices, which no real installation does.
+ * typed (a row without `encrypted`, the form the adapter reads before it encrypts). The start moves the seeded object
+ * into `programs.json` of the instance's data folder.
  *
  * @param {import("@iobroker/testing").IntegrationTestHarness} harness
  */
 async function restoreMaskedSecrets(harness) {
   const store = await harness.objects.getObjectAsync(STORE);
   if (!Array.isArray(store?.native?.rows)) {
-    const seeded = await harness.objects.getObjectAsync(`${NS}${DEVICES[0]}`);
-    if (seeded?.native?.idScheme !== 3) {
-      return;
-    }
-    const rows = FIXTURE_NATIVE.programs.map(({ key: _key, ...row }, i) => ({
-      ...row,
-      id: DEVICES[i],
-      ...(row.host ? {} : { deviceId: "dev1" }),
-    }));
-    const dir = path.join(harness.testDir, "iobroker-data", `${ADAPTER}.0`);
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, "programs.json"), `${JSON.stringify({ rows }, null, 2)}\n`);
     return;
   }
   store.native.rows = store.native.rows.map(row => {
@@ -582,6 +567,38 @@ async function restoreMaskedSecrets(harness) {
     return out;
   });
   await harness.objects.setObjectAsync(STORE, store);
+}
+
+/**
+ * Round 75 (reported by dl-manager): adapter-specific like feedFixtures. The previous release's dump carries objects
+ * only; what that release kept in the instance data folder (utils.getAbsoluteInstanceDataDir — a store file, a cache,
+ * a credential file) is not in it, and clearInstanceData has just emptied the folder. Write here what the previous
+ * release left there for the fixture setup, in its format, into the instance data folder under the harness test
+ * directory (the same folder clearInstanceData empties), so the upgrade starts where a real installation stands.
+ * Empty only where the adapter declares no common.dataFolder (it writes nothing there); with the declaration B02
+ * requires a body.
+ * dl-manager: from a previous release of 0.3.2 on, the programs live in `programs.json` and no dump carries them — the
+ * file is written as that release left it (ids given, the My.JDownloader instance id learned, secrets as typed).
+ * Without it the start would set the programs up anew on top of the seeded devices, which no real installation does. A
+ * previous release that still had the store object (0.3.0/0.3.1) or no ids yet left no file.
+ *
+ * @param {import("@iobroker/testing").IntegrationTestHarness} harness
+ * @param {object} previous the previous release's dump
+ */
+async function seedInstanceData(harness, previous) {
+  const store = previous[STORE];
+  const seeded = previous[`${NS}${DEVICES[0]}`];
+  if (Array.isArray(store?.native?.rows) || seeded?.native?.idScheme !== 3) {
+    return;
+  }
+  const rows = FIXTURE_NATIVE.programs.map(({ key: _key, ...row }, i) => ({
+    ...row,
+    id: DEVICES[i],
+    ...(row.host ? {} : { deviceId: "dev1" }),
+  }));
+  const dir = path.join(harness.testDir, "iobroker-data", `${ADAPTER}.0`);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, "programs.json"), `${JSON.stringify({ rows }, null, 2)}\n`);
 }
 
 /**
@@ -715,6 +732,7 @@ tests.integration(ADAPTER_DIR, {
           // The harness registers its own before() (fresh DB) ahead of this one,
           // so the seed survives and the adapter starts on top of the OLD objects.
           await seedPrevious(harness, previous);
+          await seedInstanceData(harness, previous);
           await restoreMaskedSecrets(harness);
           maskedLeft = await maskedSecretsLeft(harness);
           await resetInstanceNative(harness);
@@ -883,6 +901,11 @@ after(function () {
       .filter(([id]) => READ_ONLY.has(id))
       .map(([id, n]) => `${id} ×${n}`),
   );
+  const single = reports.flatMap(r =>
+    Object.entries(r.single)
+      .filter(([id]) => READ_ONLY.has(id))
+      .map(([id, n]) => `${id} ×${n}`),
+  );
   fs.rmSync(RESOURCE_DIR, { recursive: true, force: true });
   assert.ok(starts.length > 0, "no adapter start loaded the resource probe — a start without adapterEnv()");
   assert.deepStrictEqual(silent, [], "adapter processes that never reached their exit (killed or crashed)");
@@ -891,5 +914,10 @@ after(function () {
     reread,
     [],
     `read-only states read back from the database while nothing changed:\n${reread.join("\n")}`,
+  );
+  assert.deepStrictEqual(
+    single,
+    [],
+    `read-only states read one by one from the database (one bulk getStatesAsync at the start, then compare in memory):\n${single.join("\n")}`,
   );
 });
