@@ -184,8 +184,12 @@ describe("ProgramManager — start", () => {
     const w = world({});
     await w.manager().start([row("qbittorrent", "a", ""), row("emule", "b", "h")]);
     expect(w.drivers).toHaveLength(0);
-    expect(w.a.val("qbittorrent-a.error")).toBe("host missing");
-    expect(w.a.val("emule-b.error")).toBe("unknown program type: emule");
+    // the reason is the fleet's one word — what is wrong with the card goes to the log and onto the card
+    expect(w.a.val("qbittorrent-a.error")).toBe("Unknown");
+    expect(w.a.val("emule-b.error")).toBe("Unknown");
+    const warned = w.a.logs.filter(l => l.level === "warn").map(l => l.msg);
+    expect(warned.some(m => m.startsWith("qbittorrent-a: host missing"))).toBe(true);
+    expect(warned.some(m => m.startsWith("emule-b: unknown program type: emule"))).toBe(true);
     expect(w.a.val("info.programsTotal")).toBe(2);
   });
 
@@ -214,6 +218,8 @@ describe("ProgramManager — start", () => {
     expect(w.a.val("sabnzbd-off.error")).toBe("Unknown");
     expect(w.a.val("info.programsTotal")).toBe(1);
     expect(w.a.val("info.programsAllOnline")).toBe(true);
+    // a switched-off program is no row that cannot run — no warning about it
+    expect(w.a.logs.filter(l => l.level === "warn" && l.msg.startsWith("sabnzbd-off"))).toEqual([]);
   });
 
   it("treats only top-level devices as programs and stamps no value into a missing object", async () => {

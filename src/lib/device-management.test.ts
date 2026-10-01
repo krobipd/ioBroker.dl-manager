@@ -210,6 +210,23 @@ describe("cards", () => {
     ]);
   });
 
+  it("warns with what is wrong with the card — its datapoint only says Unknown", async () => {
+    const { dm } = make(
+      [
+        { ...qbRow, host: "" },
+        { ...jdRow, host: "", enabled: false },
+      ],
+      [],
+      {
+        "qbittorrent-nas.error": "Unknown",
+        "jdownloader-keller.error": "Unknown",
+      },
+    );
+    const [broken, off] = await cards(dm);
+    expect(broken.status.warning).toBe("host missing");
+    expect(off.status.warning).toBeUndefined();
+  });
+
   it("switches a program on and off from its card", async () => {
     const { dm, host } = make([qbRow, jdRow]);
     const [qb] = await cards(dm);

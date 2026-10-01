@@ -232,16 +232,15 @@ export class ProgramTree {
 
   /**
    * A settings row that cannot run (unknown type, missing field): only the device, `online` and `error` — no
-   * datapoints of a program that is never asked.
-   *
-   * @param problem why the row cannot run
+   * datapoints of a program that is never asked. The program was never asked, so the reason is the fleet's `Unknown`;
+   * what is wrong with the row goes to the log and onto its card.
    */
-  public async ensureBareDevice(problem: string): Promise<void> {
+  public async ensureBareDevice(): Promise<void> {
     await this.writeDevice();
     for (const d of PROGRAM_DATAPOINTS.filter(x => x.id === "online" || x.id === "error")) {
       await this.adapter.extendObject(`${this.dev}.${d.id}`, this.stateObject(d));
     }
-    await this.markOffline(problem);
+    await this.markOffline("Unknown");
   }
 
   /**

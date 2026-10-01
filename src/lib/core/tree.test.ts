@@ -123,6 +123,16 @@ describe("ProgramTree — device", () => {
     expect(a.val("qbittorrent-nas.version")).toBe("5.2.3");
   });
 
+  it("marks a program offline through the value memory — a second mark writes nothing", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a);
+    await t.sync(snap([]));
+    await t.markOffline("timeout");
+    const writes = a.stateWrites;
+    await t.markOffline("timeout");
+    expect(a.stateWrites).toBe(writes);
+  });
+
   it("markOffline sets online false and the reason", async () => {
     const a = new FakeAdapter(NS);
     const t = await makeTree(a);
@@ -132,14 +142,14 @@ describe("ProgramTree — device", () => {
     expect(a.val("qbittorrent-nas.error")).toBe("fetch failed (ECONNREFUSED)");
   });
 
-  it("shows a row that cannot run as a bare device with its problem", async () => {
+  it("shows a row that cannot run as a bare device, offline with the reason Unknown", async () => {
     const a = new FakeAdapter(NS);
     const t = new ProgramTree(a, "emule-x", "eMule", { type: "emule", capabilities: new Set(), extras: [] }, ALL);
-    await t.ensureBareDevice("unknown program type: emule");
+    await t.ensureBareDevice();
     const ids = [...a.objects.keys()].filter(k => k.startsWith(`${NS}.emule-x`)).sort();
     expect(ids).toEqual([`${NS}.emule-x`, `${NS}.emule-x.error`, `${NS}.emule-x.online`]);
     expect(a.val("emule-x.online")).toBe(false);
-    expect(a.val("emule-x.error")).toBe("unknown program type: emule");
+    expect(a.val("emule-x.error")).toBe("Unknown");
   });
 
   it("stores the program address on the device", async () => {

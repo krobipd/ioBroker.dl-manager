@@ -240,7 +240,7 @@ export class ProgramManager {
     const name = row.cfg.name || row.id;
     if (!row.entry) {
       const bare = { type: row.cfg.type, capabilities: new Set<never>(), extras: [] };
-      await new ProgramTree(this.a, row.id, name, bare, this.opts, row.scheme).ensureBareDevice(row.problem);
+      await new ProgramTree(this.a, row.id, name, bare, this.opts, row.scheme).ensureBareDevice();
       this.a.log.warn(`${row.id}: ${row.problem} — check the program in the adapter settings`);
       return undefined;
     }

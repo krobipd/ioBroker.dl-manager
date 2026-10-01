@@ -150,8 +150,10 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
       this.host.hasObject(`${id}.freeSpace`),
       this.host.readState(`${id}.error`),
     ]);
-    // the admin draws a warning for every text — `Unknown` (nothing asked yet, switched off) is none
-    const problem = typeof error === "string" && error !== "" && error !== "Unknown" ? error : undefined;
+    // the admin draws a warning for every text — `Unknown` (nothing asked yet, switched off) is none; a row that
+    // cannot run says what is wrong with it, its datapoint only says Unknown
+    const problem =
+      row.problem || (typeof error === "string" && error !== "" && error !== "Unknown" ? error : undefined);
     const label = programLabel(row.cfg.type) || row.cfg.type;
     const manufacturer =
       row.cfg.type === "jdownloader-cloud"
