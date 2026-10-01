@@ -44,6 +44,7 @@
   "dmAddress": "Endereço",
   "dmAdvanced": "Definições avançadas",
   "dmApiKey": "Chave de API",
+  "dmChanged": "Este programa foi alterado ou removido enquanto o diálogo estava aberto — abra novamente o seu cartão.",
   "dmCloud": "%s · My.JDownloader",
   "dmDefault": "vazio = %s",
   "dmDelete": "Eliminar",

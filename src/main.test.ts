@@ -482,7 +482,7 @@ describe("DownloadManagerAdapter — start", () => {
 describe("DownloadManagerAdapter — device manager", () => {
   interface Host {
     readRows(): Promise<Record<string, unknown>[]>;
-    saveRows(rows: Record<string, unknown>[]): Promise<void>;
+    updateRows(change: (rows: Record<string, unknown>[]) => Record<string, unknown>[] | undefined): Promise<void>;
     hasObject(relId: string): Promise<boolean>;
     readState(relId: string): Promise<ioBroker.StateValue | undefined>;
     test(row: Record<string, unknown>): Promise<unknown>;
@@ -532,7 +532,7 @@ describe("DownloadManagerAdapter — device manager", () => {
     await h.handlers.get("ready")?.();
     await flush();
     const rows = await hostOf(h).readRows();
-    await hostOf(h).saveRows([
+    await hostOf(h).updateRows(() => [
       ...rows,
       { id: "qbittorrent-h2", enabled: true, type: "qbittorrent", host: "h2", password: "x" },
     ]);
@@ -541,9 +541,35 @@ describe("DownloadManagerAdapter — device manager", () => {
     expect(rowsOf(h)[1]).toMatchObject({ id: "qbittorrent-h2", password: "enc:x", encrypted: true });
     expect(polls()).toBe(2);
     expect(h.store.objects.has("dl-manager.0.qbittorrent-h2")).toBe(true);
-    await hostOf(h).saveRows(rows.map(r => ({ ...r, enabled: false })));
+    await hostOf(h).updateRows(() => rows.map(r => ({ ...r, enabled: false })));
     expect(closed()).toBe(2);
     expect(h.store.objects.has("dl-manager.0.qbittorrent-h2")).toBe(false);
+  });
+
+  it("runs one row change after the other, each on the rows the change before stored", async () => {
+    const { h } = make();
+    await h.handlers.get("ready")?.();
+    await flush();
+    const adding =
+      (id: string, host: string) =>
+      (rows: Record<string, unknown>[]): Record<string, unknown>[] => [
+        ...rows,
+        { id, enabled: true, type: "qbittorrent", host, password: "x" },
+      ];
+    await Promise.all([
+      hostOf(h).updateRows(adding("qbittorrent-ha", "ha")),
+      hostOf(h).updateRows(adding("qbittorrent-hb", "hb")),
+    ]);
+    expect(rowsOf(h).map(r => r.id)).toEqual(expect.arrayContaining(["qbittorrent-ha", "qbittorrent-hb"]));
+  });
+
+  it("stores nothing when a change finds nothing to change", async () => {
+    const { h } = make();
+    seedRows(h, [{ id: "qbittorrent-nas", type: "qbittorrent", host: "h1", password: "p" }]);
+    await h.handlers.get("ready")?.();
+    const before = statSync(storeFile(h)).ino;
+    await hostOf(h).updateRows(() => undefined);
+    expect(statSync(storeFile(h)).ino).toBe(before);
   });
 
   it("writes nothing for an edit that changed nothing — a secret keeps its stored cipher", async () => {
@@ -554,7 +580,7 @@ describe("DownloadManagerAdapter — device manager", () => {
     await h.handlers.get("ready")?.();
     // the store file is replaced by a rename — a write gives it a new inode
     const before = statSync(storeFile(h)).ino;
-    await hostOf(h).saveRows(await hostOf(h).readRows());
+    await hostOf(h).updateRows(rows => rows);
     expect(statSync(storeFile(h)).ino).toBe(before);
   });
 

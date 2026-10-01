@@ -25,7 +25,11 @@ interface Ctx {
 function context(...forms: unknown[]): Ctx {
   let closed = 0;
   return {
-    showForm: vi.fn(() => Promise.resolve(forms.shift())),
+    // an answer given as a function runs when the user answers — what other writers did meanwhile goes in there
+    showForm: vi.fn(() => {
+      const answer = forms.shift();
+      return Promise.resolve(typeof answer === "function" ? (answer as () => unknown)() : answer);
+    }),
     showMessage: vi.fn(() => Promise.resolve()),
     showConfirmation: vi.fn(() => Promise.resolve(true)),
     openProgress: vi.fn(() =>
@@ -76,7 +80,11 @@ function make(
   values: Record<string, ioBroker.StateValue> = {},
 ): {
   dm: Internals;
-  host: DmHost & { written: Record<string, unknown>[][] };
+  host: DmHost & {
+    written: Record<string, unknown>[][];
+    rows: () => Record<string, unknown>[];
+    replace: (rows: Record<string, unknown>[]) => void;
+  };
   timers: (() => void)[];
   errors: string[];
   devices: Mock;
@@ -94,10 +102,18 @@ function make(
   const tested = vi.fn((): Promise<TestResult> => Promise.resolve({ ok: true, version: "4.6", downloads: 2 }));
   const host = {
     written: [] as Record<string, unknown>[][],
+    rows: () => structuredClone(stored),
+    // another writer (a second admin tab, a learned My.JDownloader id) changes the store
+    replace: (next: Record<string, unknown>[]) => {
+      stored = structuredClone(next);
+    },
     readRows: () => Promise.resolve(structuredClone(stored)),
-    saveRows: (next: readonly Record<string, unknown>[]) => {
-      host.written.push(structuredClone([...next]));
-      stored = structuredClone([...next]);
+    updateRows: (change: (rows: Record<string, unknown>[]) => Record<string, unknown>[] | undefined) => {
+      const next = change(structuredClone(stored));
+      if (next) {
+        host.written.push(structuredClone(next));
+        stored = structuredClone(next);
+      }
       return Promise.resolve();
     },
     hasObject: (relId: string) => Promise.resolve(objects.includes(relId)),
@@ -189,8 +205,10 @@ describe("cards", () => {
     expect(host.written[0].map(r => r.enabled)).toEqual([false, true]);
     await action(qb, "enable/disable").handler("qbittorrent-nas", context());
     expect(host.written[1].map(r => r.enabled)).toEqual([true, true]);
-    await action(qb, "enable/disable").handler("qbittorrent-gone", context());
+    const gone = context();
+    await action(qb, "enable/disable").handler("qbittorrent-gone", gone);
     expect(host.written).toHaveLength(2);
+    expect(gone.showMessage).not.toHaveBeenCalled();
   });
 
   it("shows pause and free space only where the program has them — as states, never as a control", async () => {
@@ -445,6 +463,34 @@ describe("editing a program", () => {
     expect(host.written).toEqual([]);
   });
 
+  it("keeps a card another tab deleted while this dialog was open", async () => {
+    const { dm, host } = make([qbRow, jdRow]);
+    const [qb] = await cards(dm);
+    const ctx = context(() => {
+      host.replace([qbRow]);
+      return { name: "NAS 2", host: "h1", username: "admin", password: "pw", login: "user" };
+    });
+    await action(qb, "edit").handler("qbittorrent-nas", ctx);
+    expect(host.rows().map(r => r.id)).toEqual(["qbittorrent-nas"]);
+    expect(host.rows()[0]).toMatchObject({ name: "NAS 2" });
+  });
+
+  it("writes nothing back over a row whose id changed while its dialog was open", async () => {
+    const pending = { ...cloudRow, id: "jdownloader-tom", idPending: true, deviceId: "" };
+    const { dm, host } = make([pending]);
+    const [card] = await cards(dm);
+    const ctx = context(
+      () => {
+        host.replace([cloudRow]);
+        return { name: "JD Tom 2", mode: "cloud", username: "me@x.de", password: "pw" };
+      },
+      { device: "bbbb2222" },
+    );
+    expect(await action(card, "edit").handler("jdownloader-tom", ctx)).toEqual({ refresh: "devices" });
+    expect(host.rows()).toEqual([cloudRow]);
+    expect(ctx.showMessage).toHaveBeenCalledWith("dmChanged");
+  });
+
   it("does not count the edited row as its own duplicate", async () => {
     const { dm, host } = make([qbRow]);
     const [qb] = await cards(dm);
@@ -469,18 +515,9 @@ describe("deleting and testing", () => {
     expect(host.written).toEqual([]);
   });
 
-  it("shows a delete whose settings cannot be read as a message", async () => {
-    const { dm, host } = make([qbRow]);
-    const [qb] = await cards(dm);
-    host.readRows = () => Promise.reject(new Error("db down"));
-    const ctx = context();
-    expect(await action(qb, "delete").handler("qbittorrent-nas", ctx)).toEqual({ refresh: "devices" });
-    expect(ctx.showMessage).toHaveBeenCalledWith({ key: "dmActionFailed", args: ["db down"] });
-  });
-
-  it("shows a delete the store did not take as a message", async () => {
+  it("shows a delete the store could not read or take as a message", async () => {
     const { dm, host, errors } = make([qbRow]);
-    host.saveRows = () => Promise.reject(new Error("db down"));
+    host.updateRows = () => Promise.reject(new Error("db down"));
     const [qb] = await cards(dm);
     const ctx = context();
     expect(await action(qb, "delete").handler("qbittorrent-nas", ctx)).toEqual({ refresh: "devices" });

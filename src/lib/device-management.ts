@@ -38,8 +38,11 @@ import { findProgram } from "./programs/registry";
 export interface DmHost {
   /** The program rows (`store.ts`, secrets readable), read fresh. */
   readRows(): Promise<SettingsRow[]>;
-  /** Stores the program rows and takes them over at once — the instance does not restart. */
-  saveRows(rows: readonly SettingsRow[]): Promise<void>;
+  /**
+   * Changes the program rows: `change` gets them read fresh, after every change before it, and returns the rows to store
+   * and take over at once (the instance does not restart) — or undefined to store nothing.
+   */
+  updateRows(change: (rows: SettingsRow[]) => SettingsRow[] | undefined): Promise<void>;
   /** @returns whether this instance has an object with this id (below the namespace) */
   hasObject(relId: string): Promise<boolean>;
   /** @returns the value of an own state (id below the namespace), undefined when it has none */
@@ -75,7 +78,7 @@ const GLYPH = {
 
 /**
  * The programs as cards of the ioBroker device manager: add, edit, delete, switch and test a program. Every change is
- * stored and taken over at once (`DmHost.saveRows`) — no restart, so each answer reaches the admin. The card shows the
+ * stored and taken over at once (`DmHost.updateRows`) — no restart, so each answer reaches the admin. The card shows the
  * program's state; it controls nothing (krobi: the admin needs no control).
  */
 export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
@@ -340,8 +343,10 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
     const rows = await this.host.readRows();
     const index = cardId === undefined ? -1 : rows.findIndex(r => this.idOf(r) === cardId);
     const previous = index >= 0 ? rows[index] : undefined;
-    const others = rows.filter((_, i) => i !== index);
-    const parsed = parsePrograms(others, findProgram);
+    const parsed = parsePrograms(
+      rows.filter((_, i) => i !== index),
+      findProgram,
+    );
     const opened: ProgramForm = previous
       ? rowToForm(previous)
       : { ...emptyForm(type), name: this.suggestedName(type, rows) };
@@ -358,37 +363,60 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
       return false;
     }
     const form = formFromData(answer, opened);
-    const stored = storedType(type, form);
     let device: JdChoice | undefined;
-    if (stored === "jdownloader-cloud") {
+    if (storedType(type, form) === "jdownloader-cloud") {
       device = await this.pickJdDevice(ctx, form, parsed, previous);
       if (device === undefined) {
         return false;
       }
     }
-    // an edited row keeps its id; a new one gets it from the machine or the My.JDownloader instance
-    const id =
-      (previous && this.idOf(previous)) ||
-      deviceIdFor(
-        idSourceOf(formToRow(type, form, "", {}, device)),
-        new Set(parsed.map(r => r.id)),
-        this.host.iobHost(),
-      ) ||
-      "";
-    const row = formToRow(type, form, id, previous, device);
-    const [candidate] = parsePrograms([row], findProgram);
-    const twin = parsed.find(o => o.enabled && !o.problem && sameProgram(o.cfg, candidate.cfg));
-    if (twin && candidate.enabled) {
-      await ctx.showMessage(tName("dmDuplicate", twin.cfg.name || twin.id, addressOf(twin.cfg)));
+    // the dialog waited for the user: what it stores goes onto the rows as they are now, never onto the ones it opened with
+    const outcome: { changed: boolean; twin?: ProgramRow } = { changed: false };
+    await this.host.updateRows(now => {
+      const at = cardId === undefined ? -1 : now.findIndex(r => this.idOf(r) === cardId);
+      if (cardId !== undefined && at < 0) {
+        outcome.changed = true;
+        return undefined;
+      }
+      const others = parsePrograms(
+        now.filter((_, i) => i !== at),
+        findProgram,
+      );
+      // an edited row keeps its id; a new one gets it from the machine or the My.JDownloader instance
+      const id =
+        (at >= 0 && this.idOf(now[at])) ||
+        deviceIdFor(
+          idSourceOf(formToRow(type, form, "", {}, device)),
+          new Set(others.map(r => r.id)),
+          this.host.iobHost(),
+        ) ||
+        "";
+      const row = formToRow(type, form, id, at >= 0 ? now[at] : undefined, device);
+      const [candidate] = parsePrograms([row], findProgram);
+      outcome.twin = candidate.enabled
+        ? others.find(o => o.enabled && !o.problem && sameProgram(o.cfg, candidate.cfg))
+        : undefined;
+      if (outcome.twin) {
+        return undefined;
+      }
+      const next = [...now];
+      if (at >= 0) {
+        next[at] = row;
+      } else {
+        next.push(row);
+      }
+      return next;
+    });
+    if (outcome.changed) {
+      await ctx.showMessage(tName("dmChanged"));
+      return true;
+    }
+    if (outcome.twin) {
+      await ctx.showMessage(
+        tName("dmDuplicate", outcome.twin.cfg.name || outcome.twin.id, addressOf(outcome.twin.cfg)),
+      );
       return false;
     }
-    const next = [...rows];
-    if (index >= 0) {
-      next[index] = row;
-    } else {
-      next.push(row);
-    }
-    await this.host.saveRows(next);
     return true;
   }
 
@@ -445,11 +473,10 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
    * @returns the card to remove
    */
   private async deleteProgram(cardId: string): Promise<{ delete: string }> {
-    const rows = await this.host.readRows();
-    const next = rows.filter(r => this.idOf(r) !== cardId);
-    if (next.length !== rows.length) {
-      await this.host.saveRows(next);
-    }
+    await this.host.updateRows(rows => {
+      const next = rows.filter(r => this.idOf(r) !== cardId);
+      return next.length !== rows.length ? next : undefined;
+    });
     return { delete: cardId };
   }
 
@@ -460,12 +487,15 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
    * @returns the cards reload
    */
   private async toggleEnabled(cardId: string): Promise<{ refresh: "devices" }> {
-    const rows = await this.host.readRows();
-    const index = rows.findIndex(r => this.idOf(r) === cardId);
-    if (index >= 0) {
-      rows[index] = { ...rows[index], enabled: rows[index].enabled === false };
-      await this.host.saveRows(rows);
-    }
+    await this.host.updateRows(rows => {
+      const index = rows.findIndex(r => this.idOf(r) === cardId);
+      if (index < 0) {
+        return undefined;
+      }
+      const next = [...rows];
+      next[index] = { ...rows[index], enabled: rows[index].enabled === false };
+      return next;
+    });
     return { refresh: "devices" };
   }
 

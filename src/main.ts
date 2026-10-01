@@ -105,7 +105,7 @@ export class DownloadManagerAdapter extends utils.Adapter {
   private dmHost(): DmHost {
     return {
       readRows: () => this.programs.read(),
-      saveRows: rows => this.saveRows(rows),
+      updateRows: change => this.updateRows(change),
       hasObject: relId => Promise.resolve(this.known.get(relId) !== undefined),
       readState: async relId => (await this.getStateAsync(relId))?.val ?? undefined,
       test: row => (this.manager ?? this.makeManager()).testProgram(row),
@@ -271,16 +271,21 @@ export class DownloadManagerAdapter extends utils.Adapter {
   }
 
   /**
-   * Stores changed program rows and takes them over at once — no restart. A row still waiting for its My.JDownloader
-   * id gets its device id as soon as it has one.
+   * Changes the program rows and takes them over at once — no restart. Read, change, store and apply run as one step after
+   * the step before: a dialog that waited for its user changes the rows as they are now, and a row still waiting for its
+   * My.JDownloader id gets its device id as soon as it has one.
    *
-   * @param rows the rows (secrets readable)
+   * @param change gets the rows (secrets readable), returns the rows to store or undefined to store nothing
    * @param byCard whether a card change caused it — then the result goes to info
    * @returns when the rows are stored and running
    */
-  private saveRows(rows: readonly SettingsRow[], byCard = true): Promise<void> {
+  private updateRows(change: (rows: SettingsRow[]) => SettingsRow[] | undefined, byCard = true): Promise<void> {
     const run = this.rowsQueue.then(async () => {
-      const settled = settleIds(rows, this.host ?? "", legacyId);
+      const next = change(await this.programs.read());
+      if (!next) {
+        return;
+      }
+      const settled = settleIds(next, this.host ?? "", legacyId);
       await this.programs.write(settled.rows);
       await this.manager?.apply(settled.rows, settled.moves, byCard);
     });
@@ -298,13 +303,15 @@ export class DownloadManagerAdapter extends utils.Adapter {
   private learnDeviceId(programId: string, deviceId: string): void {
     void (async () => {
       try {
-        const rows = await this.programs.read();
-        const i = rows.findIndex(r => r.id === programId);
-        if (i < 0 || rows[i].deviceId === deviceId) {
-          return;
-        }
-        rows[i] = { ...rows[i], deviceId };
-        await this.saveRows(rows, false);
+        await this.updateRows(rows => {
+          const i = rows.findIndex(r => r.id === programId);
+          if (i < 0 || rows[i].deviceId === deviceId) {
+            return undefined;
+          }
+          const next = [...rows];
+          next[i] = { ...rows[i], deviceId };
+          return next;
+        }, false);
       } catch (err: unknown) {
         this.log.warn(`${programId}: could not store the My.JDownloader id (${errText(err)})`);
       }

@@ -44,6 +44,7 @@
   "dmAddress": "地址",
   "dmAdvanced": "高级设置",
   "dmApiKey": "API 密钥",
+  "dmChanged": "对话框打开期间此程序已被更改或删除——请重新打开它的卡片。",
   "dmCloud": "%s · My.JDownloader",
   "dmDefault": "留空 = %s",
   "dmDelete": "删除",

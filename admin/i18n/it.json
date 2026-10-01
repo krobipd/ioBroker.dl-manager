@@ -44,6 +44,7 @@
   "dmAddress": "Indirizzo",
   "dmAdvanced": "Impostazioni avanzate",
   "dmApiKey": "Chiave API",
+  "dmChanged": "Questo programma è stato modificato o rimosso mentre la finestra era aperta — riapri la sua scheda.",
   "dmCloud": "%s · My.JDownloader",
   "dmDefault": "vuoto = %s",
   "dmDelete": "Elimina",

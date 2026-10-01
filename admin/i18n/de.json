@@ -44,6 +44,7 @@
   "dmAddress": "Adresse",
   "dmAdvanced": "Erweiterte Einstellungen",
   "dmApiKey": "API-Schlüssel",
+  "dmChanged": "Dieses Programm wurde geändert oder entfernt, während der Dialog offen war — die Karte bitte neu öffnen.",
   "dmCloud": "%s · My.JDownloader",
   "dmDefault": "leer = %s",
   "dmDelete": "Löschen",

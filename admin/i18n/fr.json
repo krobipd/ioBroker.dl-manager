@@ -44,6 +44,7 @@
   "dmAddress": "Adresse",
   "dmAdvanced": "Paramètres avancés",
   "dmApiKey": "Clé API",
+  "dmChanged": "Ce programme a été modifié ou supprimé pendant que la boîte de dialogue était ouverte — rouvrez sa carte.",
   "dmCloud": "%s · My.JDownloader",
   "dmDefault": "vide = %s",
   "dmDelete": "Supprimer",
