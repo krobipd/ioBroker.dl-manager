@@ -1,5 +1,4 @@
 import { RESERVED_IDS } from "./device-id";
-import type { AdapterLog } from "./model";
 
 /** The devices of the instance and the offline stamp before anything runs. */
 
@@ -19,18 +18,10 @@ export interface DeviceNative {
 export interface DevicesAdapter {
   /** e.g. "dl-manager.0" */
   namespace: string;
-  /** The adapter log. */
-  log: AdapterLog;
-  /** Reads an own object (id below the namespace). */
-  getObject(id: string): Promise<ioBroker.Object | null | undefined>;
+  /** An own object as the adapter holds it (read once at start) — no database read. */
+  knownObject(id: string): unknown;
   /** Reads objects by pattern and type. */
   getForeignObjects(pattern: string, type: ioBroker.ObjectType): Promise<Record<string, ioBroker.Object>>;
-  /** Reads an object by its full id (enums). */
-  getForeignObjectAsync(id: string): Promise<ioBroker.Object | null | undefined>;
-  /** Replaces an object completely — needed where a merge would keep stale list entries (enums, pause store). */
-  setForeignObject(id: string, obj: ioBroker.SettableObject): Promise<unknown>;
-  /** Deletes an object (and with `recursive` its children and their values). */
-  delObject(id: string, opts: { recursive: boolean }): Promise<unknown>;
   /** Writes a state only when it changes. */
   setStateChanged(id: string, state: ioBroker.SettableState): Promise<unknown>;
 }
@@ -68,7 +59,7 @@ export async function readDevices(a: DevicesAdapter): Promise<Map<string, Device
  */
 export async function stampOffline(a: DevicesAdapter, deviceIds: Iterable<string>): Promise<void> {
   for (const id of deviceIds) {
-    if (await a.getObject(`${id}.online`)) {
+    if (a.knownObject(`${id}.online`)) {
       await a.setStateChanged(`${id}.online`, { val: false, ack: true });
       await a.setStateChanged(`${id}.error`, { val: "Unknown", ack: true });
     }

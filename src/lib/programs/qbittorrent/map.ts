@@ -1,5 +1,5 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
-import { asRecord, epochMs, eta, nonNegative, num } from "../../core/units";
+import { asRecord, epochMs, eta, nonNegative } from "../../core/units";
 
 /** A torrent of `sync/maindata` — only the fields the adapter reads. */
 export interface QbTorrent {
@@ -154,7 +154,6 @@ export function toSnapshot(
   const items: DownloadItem[] = Object.entries(m.torrents).map(([hash, t]) => {
     const raw = typeof t.state === "string" ? t.state : "unknown";
     const status = mapQbState(raw, debug);
-    const ratio = num(t.ratio);
     let error = "";
     if (status === "failed") {
       error = raw === "missingFiles" ? "files missing" : t.has_tracker_error === true ? "tracker error" : "error";
@@ -167,7 +166,7 @@ export function toSnapshot(
       doneBytes: nonNegative(t.completed),
       speedBps: nonNegative(t.dlspeed),
       uploadBps: nonNegative(t.upspeed),
-      ratio: nonNegative(ratio),
+      ratio: nonNegative(t.ratio),
       etaSeconds: eta(t.eta, [8640000]),
       addedMs: epochMs(t.added_on),
       finishedMs: epochMs(t.completion_on),

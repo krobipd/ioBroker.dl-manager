@@ -3,7 +3,7 @@
 declare global {
   namespace ioBroker {
     interface AdapterConfig {
-      /** One row per program, written by the device-manager dialog (read through `core/config.ts`, never trusted as typed). */
+      /** The program rows of 0.1.0 and 0.2.0 — the start moves them into programs.json once (`takeOverPrograms`). */
       programs: unknown;
       /** Seconds between two polls of one program. */
       pollInterval: number;

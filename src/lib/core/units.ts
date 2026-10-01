@@ -40,6 +40,29 @@ export function fromMBps(mbps: unknown): number {
 }
 
 /**
+ * Bytes per second → a limit in the program's KiB/s. A set limit stays at least 1 — 0 would switch it off.
+ *
+ * @param bps a positive limit in bytes per second
+ * @param unit bytes per KiB of the program (1024, or 1000 where the program says so)
+ * @returns the limit in the program's unit
+ */
+export function toKiB(bps: number, unit = 1024): number {
+  return Math.max(1, Math.round(bps / unit));
+}
+
+/**
+ * A limit in the program's KiB/s → bytes per second.
+ *
+ * @param v the program's value
+ * @param unit bytes per KiB of the program (1024, or 1000 where the program says so)
+ * @returns bytes per second, 0 = no limit (also for 0 or a negative value)
+ */
+export function fromKiB(v: unknown, unit = 1024): number {
+  const n = num(v);
+  return n !== null && n > 0 ? Math.round(n * unit) : 0;
+}
+
+/**
  * Progress in percent with one decimal, capped at 100.
  *
  * @param done bytes done

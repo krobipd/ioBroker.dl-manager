@@ -1,5 +1,5 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
-import { asRecord, doneOf, epochMs, eta, nonNegative, num } from "../../core/units";
+import { asRecord, doneOf, epochMs, eta, fromKiB, nonNegative, num } from "../../core/units";
 
 /** A torrent of `torrent_get`, keys in snake_case (legacy answers are converted by snakeKeys). */
 export interface TrTorrent {
@@ -173,7 +173,7 @@ export function toSnapshot(
   debug: (msg: string) => void,
 ): ProgramSnapshot {
   const unit = speedUnit(session);
-  const limit = (value: unknown, enabled: unknown): number => (enabled === true ? (nonNegative(value) ?? 0) * unit : 0);
+  const limit = (value: unknown, enabled: unknown): number => (enabled === true ? fromKiB(value, unit) : 0);
   const items: DownloadItem[] = [];
   for (const raw of torrents) {
     const t = asRecord(raw) as TrTorrent;
@@ -183,7 +183,6 @@ export function toSnapshot(
     const { status, error } = trStatus(t, debug);
     const size = nonNegative(t.size_when_done);
     const left = nonNegative(t.left_until_done);
-    const ratio = num(t.upload_ratio);
     items.push({
       key: t.hash_string,
       name: typeof t.name === "string" ? t.name : t.hash_string,
@@ -192,7 +191,7 @@ export function toSnapshot(
       doneBytes: doneOf(size, left),
       speedBps: nonNegative(t.rate_download),
       uploadBps: nonNegative(t.rate_upload),
-      ratio: nonNegative(ratio),
+      ratio: nonNegative(t.upload_ratio),
       etaSeconds: eta(t.eta, []),
       addedMs: epochMs(t.added_date),
       finishedMs: epochMs(t.done_date),

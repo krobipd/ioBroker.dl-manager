@@ -1,6 +1,7 @@
 import type { JsonFormSchema } from "@iobroker/dm-utils";
 import { tName, tText, type I18nKey } from "./i18n";
-import { CATALOG, catalogEntry, type ProgramInfo, type ProgramType } from "./programs/catalog";
+import { CATALOG, catalogEntry, programInfo, type ProgramInfo, type ProgramType } from "./programs/catalog";
+import type { ProgramConfig } from "./core/model";
 
 /**
  * The settings dialogs of the device manager, and the conversion between a program row (`store.ts`) and the data a
@@ -101,7 +102,7 @@ export function rowToForm(row: SettingsRow): ProgramForm {
     host: textOf(row.host),
     port,
     // what the program logs in with today: both clients take a stored API key first
-    login: apiKey || (row.type === "pyload" && !username) ? "key" : "user",
+    login: apiKey || (programInfo(textOf(row.type))?.login === "keyOrUser" && !username) ? "key" : "user",
     needLogin: username !== "",
     username,
     password: textOf(row.password),
@@ -196,12 +197,8 @@ export function formToRow(
   const stored = storedType(type, form);
   const login = catalogEntry(stored).login;
   const port = Number(form.port);
-  const row: SettingsRow = {
-    ...previous,
-    id,
-    enabled: form.enabled,
-    type: stored,
-    name: form.name.trim(),
+  // every connection field of a program, emptied — the compiler names one added to ProgramConfig and missing here
+  const blank: Omit<ProgramConfig, "type" | "name"> = {
     host: "",
     port: 0,
     https: false,
@@ -212,6 +209,7 @@ export function formToRow(
     device: "",
     deviceId: "",
   };
+  const row: SettingsRow = { ...previous, id, enabled: form.enabled, type: stored, name: form.name.trim(), ...blank };
   if (login === "account") {
     return {
       ...row,

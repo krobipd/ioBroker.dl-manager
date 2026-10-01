@@ -26,7 +26,8 @@ export function ownId(namespace: string, id: string): string {
 }
 
 /**
- * Device id of a program: `<type>-<user key>`. The user key comes from the program row (set once when the program is added).
+ * The device id a program had up to 0.2.0: `<type>-<user key>` — only `legacyId` still builds it, to find the device a
+ * row from then moves away from.
  *
  * @param type program type from the registry
  * @param userKey the key of the program row

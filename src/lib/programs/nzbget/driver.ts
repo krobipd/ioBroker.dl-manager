@@ -11,6 +11,7 @@ import type {
 import { RETRY_EXTRA } from "../retry-extra";
 import { NzbClient } from "./client";
 import { toSnapshot } from "./map";
+import { toKiB } from "../../core/units";
 
 /** Download a failed job again (`HistoryRedownload`). */
 const EXTRAS: readonly ExtraDefinition[] = [RETRY_EXTRA];
@@ -90,7 +91,7 @@ export class NzbDriver implements ProgramDriver {
         return;
       case "setSpeedLimit":
         // rate() takes KB/s (1024), status() reports B/s
-        await this.client.call("rate", [cmd.bps > 0 ? Math.max(1, Math.round(cmd.bps / 1024)) : 0]);
+        await this.client.call("rate", [cmd.bps > 0 ? toKiB(cmd.bps) : 0]);
         return;
       case "extra":
         if (cmd.name === "retry" && cmd.key) {

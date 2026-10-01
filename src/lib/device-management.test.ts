@@ -5,7 +5,7 @@ vi.mock("./i18n", () => ({
   tText: (key: string) => `plain:${key}`,
 }));
 
-import type { TestResult } from "./core/manager";
+import type { TestResult } from "./core/connection-test";
 import { DlDeviceManagement, testText, type DmHost } from "./device-management";
 import { applyRuleOf } from "./dm-forms";
 

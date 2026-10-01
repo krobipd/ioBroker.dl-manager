@@ -1,4 +1,5 @@
 import { programInfo } from "../programs/catalog";
+import { legacyId, portOf, str } from "./config";
 import { sanitize } from "./ids";
 
 /**
@@ -114,15 +115,13 @@ export function deviceIdFor(src: IdSource, taken: ReadonlySet<string>, iobHost: 
   return candidates.find(free) ?? counted(candidates[1], free);
 }
 
-const text = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
-
 /**
  * @param row a stored program row
  * @returns what decides its device id
  */
 export function idSourceOf(row: Record<string, unknown>): IdSource {
-  const port = typeof row.port === "number" && Number.isInteger(row.port) && row.port > 0 ? row.port : 0;
-  return { type: text(row.type), host: text(row.host), port, deviceId: text(row.deviceId) };
+  const port = portOf(row.port);
+  return { type: str(row.type), host: str(row.host), port, deviceId: str(row.deviceId) };
 }
 
 /**
@@ -132,23 +131,21 @@ export function idSourceOf(row: Record<string, unknown>): IdSource {
  *
  * @param rows the stored rows
  * @param iobHost the name of the ioBroker host this instance runs on
- * @param legacyId the device id a row had up to 0.2.0
  * @returns the rows with their ids, and old device id → new device id of each device to move
  */
 export function settleIds(
   rows: readonly Record<string, unknown>[],
   iobHost: string,
-  legacyId: (row: Record<string, unknown>) => string,
 ): { rows: Record<string, unknown>[]; moves: Map<string, string> } {
   const open = (r: Record<string, unknown>): boolean => typeof r.id !== "string" || !r.id || r.idPending === true;
   // every id in use now — a stored one, or the old id of a device still to move
-  const taken = new Set(rows.map(r => (open(r) && !text(r.id) ? legacyId(r) : text(r.id))));
+  const taken = new Set(rows.map(r => (open(r) && !str(r.id) ? legacyId(r) : str(r.id))));
   const moves = new Map<string, string>();
   const out = rows.map(r => {
     if (!open(r)) {
       return r;
     }
-    const oldId = text(r.id) || legacyId(r);
+    const oldId = str(r.id) || legacyId(r);
     // the row's own old id is no clash — its device may keep it
     const others = new Set([...taken].filter(id => id !== oldId));
     const fresh = deviceIdFor(idSourceOf(r), others, iobHost);

@@ -8,7 +8,7 @@ import type {
   DriverDeps,
   ProgramConfig,
 } from "../../core/model";
-import { asRecord, asRecords } from "../../core/units";
+import { asRecord, asRecords, toKiB } from "../../core/units";
 import { RETRY_EXTRA } from "../retry-extra";
 import { SabClient } from "./client";
 import { toSnapshot } from "./map";
@@ -115,7 +115,7 @@ export class SabDriver implements ProgramDriver {
         await this.client.call({
           mode: "config",
           name: "speedlimit",
-          value: cmd.bps > 0 ? `${Math.max(1, Math.round(cmd.bps / 1024))}K` : "0",
+          value: cmd.bps > 0 ? `${toKiB(cmd.bps)}K` : "0",
         });
         return;
       case "extra":

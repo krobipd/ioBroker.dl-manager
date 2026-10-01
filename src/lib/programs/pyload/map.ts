@@ -1,5 +1,5 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
-import { asRecord, asRecords, nonNegative, num } from "../../core/units";
+import { asRecord, asRecords, fromKiB, nonNegative, num } from "../../core/units";
 
 /** A file of a pyLoad package (`get_queue_data` → `links`). */
 export interface PyFile {
@@ -175,7 +175,7 @@ export function toSnapshot(
       version,
       paused: s.pause === true,
       downloadBps: nonNegative(s.speed),
-      ...(limit ? { speedLimitBps: limit.on && limit.kib > 0 ? Math.round(limit.kib * 1024) : 0 } : {}),
+      ...(limit ? { speedLimitBps: limit.on ? fromKiB(limit.kib) : 0 } : {}),
       freeSpaceBytes: nonNegative(free),
     },
     items,

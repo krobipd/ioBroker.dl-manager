@@ -7,7 +7,8 @@ vi.mock("@iobroker/adapter-core", () => ({
 
 import { FakeAdapter } from "../../../test/helpers/fake-adapter";
 import { AuthError, UnreachableError } from "./errors";
-import { objectPauseStore, ProgramManager, startLine } from "./manager";
+import { objectPauseStore } from "./emulated-pause";
+import { ProgramManager, startLine } from "./manager";
 import { KnownStates } from "./states";
 import type {
   Capability,
@@ -20,6 +21,7 @@ import type {
   ProgramSnapshot,
 } from "./model";
 import type { TreeOptions } from "./tree";
+import { testProgram, type TestResult } from "./connection-test";
 
 const NS = "dl-manager.0";
 const flush = (): Promise<void> => new Promise(resolve => setImmediate(resolve));
@@ -57,6 +59,7 @@ function world(
   a: FakeAdapter;
   drivers: FakeDriver[];
   manager: (opts?: Partial<TreeOptions>) => ProgramManager;
+  test: (raw: unknown) => Promise<TestResult>;
   reported: string[];
   resolved: string[];
   moved: [string, string][];
@@ -108,6 +111,8 @@ function world(
     sabnzbd: entry("sabnzbd"),
     "jdownloader-cloud": entry("jdownloader-cloud"),
   };
+  const test = (raw: unknown): Promise<TestResult> =>
+    testProgram(raw, type => entries[type], { setTimeout: () => undefined, clearTimeout: () => undefined, log: a.log });
   const manager = (opts: Partial<TreeOptions> = {}): ProgramManager =>
     new ProgramManager(
       {
@@ -132,7 +137,7 @@ function world(
       },
       { intervalMs: 10_000, scope: opts.scope ?? "all", limit: opts.limit ?? 0 },
     );
-  return { a, drivers, manager, reported, resolved, moved, learned };
+  return { a, drivers, manager, test, reported, resolved, moved, learned };
 }
 
 const row = (
@@ -685,7 +690,7 @@ describe("objectPauseStore", () => {
 describe("ProgramManager — connection test and stop", () => {
   it("asks the program once, closes the test driver and reports version and downloads", async () => {
     const w = world({ h1: { snapshot: snap(0, [item("x", "queued")]) } });
-    expect(await w.manager().testProgram(row("qbittorrent", "a", "h1"))).toEqual({
+    expect(await w.test(row("qbittorrent", "a", "h1"))).toEqual({
       ok: true,
       version: "1.0",
       downloads: 1,
@@ -699,69 +704,59 @@ describe("ProgramManager — connection test and stop", () => {
       h2: { error: new UnreachableError("ECONNREFUSED") },
       h3: { error: new Error("odd answer") },
     });
-    const m = w.manager();
-    expect(await m.testProgram(row("sabnzbd", "b", "h1"))).toEqual({
+    expect(await w.test(row("sabnzbd", "b", "h1"))).toEqual({
       ok: false,
       kind: "auth",
       text: "401 Unauthorized",
     });
-    expect(await m.testProgram(row("sabnzbd", "b", "h2"))).toEqual({
+    expect(await w.test(row("sabnzbd", "b", "h2"))).toEqual({
       ok: false,
       kind: "unreachable",
       text: "ECONNREFUSED",
     });
-    expect(await m.testProgram(row("sabnzbd", "b", "h3"))).toEqual({ ok: false, kind: "other", text: "odd answer" });
+    expect(await w.test(row("sabnzbd", "b", "h3"))).toEqual({ ok: false, kind: "other", text: "odd answer" });
     expect(w.drivers.every(d => d.closed)).toBe(true);
   });
 
   it("reports a row that cannot run without asking anything", async () => {
     const w = world({});
-    expect(await w.manager().testProgram(row("qbittorrent", "c", ""))).toEqual({
+    expect(await w.test(row("qbittorrent", "c", ""))).toEqual({
       ok: false,
       kind: "setup",
       text: "host missing",
     });
-    expect(await w.manager().testProgram(row("emule", "c", "h1"))).toEqual({
+    expect(await w.test(row("emule", "c", "h1"))).toEqual({
       ok: false,
       kind: "setup",
       text: "unknown program type: emule",
     });
-    expect(await w.manager().testProgram(null)).toEqual({ ok: false, kind: "setup", text: "program type missing" });
+    expect(await w.test(null)).toEqual({ ok: false, kind: "setup", text: "program type missing" });
     expect(w.drivers).toEqual([]);
   });
 
   it("tests a switched-off row all the same", async () => {
     const w = world({ h1: { snapshot: snap(0) } });
-    expect(await w.manager().testProgram(row("qbittorrent", "a", "h1", { enabled: false }))).toMatchObject({
+    expect(await w.test(row("qbittorrent", "a", "h1", { enabled: false }))).toMatchObject({
       ok: true,
     });
   });
 
   it("uses a driver's own quiet check instead of a poll when it has one", async () => {
-    const w = world({ h1: { snapshot: snap(0) } });
-    const m = new ProgramManager(
-      {
-        adapter: w.a,
-        timers: { setTimeout: () => undefined, clearTimeout: () => undefined },
-        find: () => ({
-          type: "sabnzbd",
-          needs: ["host"],
-          create: (): ProgramDriver => ({
-            type: "sabnzbd",
-            capabilities: new Set(),
-            extras: [],
-            poll: () => Promise.reject(new Error("must not poll")),
-            test: () => Promise.resolve("5.1.3"),
-            command: () => Promise.resolve(),
-            close: () => Promise.resolve(),
-          }),
-        }),
-        problems: { report: () => undefined, forget: () => undefined },
-        moveDevice: () => Promise.resolve(),
-      },
-      { intervalMs: 10_000, scope: "all", limit: 0 },
-    );
-    expect(await m.testProgram(row("sabnzbd", "b", "h1"))).toEqual({ ok: true, version: "5.1.3" });
+    const find = (): ProgramEntry => ({
+      type: "sabnzbd",
+      needs: ["host"],
+      create: (): ProgramDriver => ({
+        type: "sabnzbd",
+        capabilities: new Set(),
+        extras: [],
+        poll: () => Promise.reject(new Error("must not poll")),
+        test: () => Promise.resolve("5.1.3"),
+        command: () => Promise.resolve(),
+        close: () => Promise.resolve(),
+      }),
+    });
+    const deps = { setTimeout: () => undefined, clearTimeout: () => undefined, log: new FakeAdapter(NS).log };
+    expect(await testProgram(row("sabnzbd", "b", "h1"), find, deps)).toEqual({ ok: true, version: "5.1.3" });
   });
 
   it("stop closes every driver, marks every program Unknown and the adapter disconnected", async () => {

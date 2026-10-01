@@ -3,7 +3,7 @@ import { I18n } from "@iobroker/adapter-core";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ActionableProblems } from "./lib/actionable-problems";
-import { legacyId, parseMaxDownloads, parsePollInterval, parseTreeScope } from "./lib/core/config";
+import { parseMaxDownloads, parsePollInterval, parseTreeScope } from "./lib/core/config";
 import { settleIds } from "./lib/core/device-id";
 import { readDevices } from "./lib/core/devices";
 import { ProgramManager, type ManagerAdapter } from "./lib/core/manager";
@@ -21,6 +21,8 @@ import { migrateNativeKeys, type NativeKeyMigration } from "./lib/native-key-mig
 import { listMyJdDevices } from "./lib/programs/jdownloader/cloud";
 import type { ProgramEntry } from "./lib/core/model";
 import { findProgram } from "./lib/programs/registry";
+import type { HttpTimers } from "./lib/core/http";
+import { testProgram } from "./lib/core/connection-test";
 
 /** Native keys earlier versions declared and this one dropped (fleet helper `native-key-migration`). */
 const NATIVE_KEY_MIGRATIONS: NativeKeyMigration[] = [
@@ -109,12 +111,8 @@ export class DownloadManagerAdapter extends utils.Adapter {
       updateRows: change => this.updateRows(change),
       hasObject: relId => Promise.resolve(this.known.get(relId) !== undefined),
       readState: relId => Promise.resolve(this.states.get(relId)),
-      test: row => (this.manager ?? this.makeManager()).testProgram(row),
-      listJdDevices: (email, password) =>
-        listMyJdDevices(email, password, {
-          setTimeout: (cb, ms) => this.setTimeout(cb, ms),
-          clearTimeout: t => this.clearTimeout(t),
-        }),
+      test: row => testProgram(row, this.find, { ...this.timers, log: this.log }),
+      listJdDevices: (email, password) => listMyJdDevices(email, password, this.timers),
       icon: deviceIcon,
       iobHost: () => this.host ?? "",
     };
@@ -193,18 +191,14 @@ export class DownloadManagerAdapter extends utils.Adapter {
       namespace: this.namespace,
       log: this.log,
       getObjectList: params => this.getObjectListAsync(params),
-      getForeignObjects: (pattern, type) =>
-        this.getForeignObjectsAsync(pattern, type) as Promise<Record<string, ioBroker.Object>>,
+      getForeignObjects: (pattern, type) => this.foreignObjects(pattern, type),
       getForeignObjectAsync: id => this.getForeignObjectAsync(id),
       setForeignObject: (id, obj) => (own(id) ? this.known.replace(id, obj) : this.setForeignObject(id, obj)),
       extendForeignObject: (id, patch) =>
         own(id) ? this.known.extend(id, patch) : this.extendForeignObjectAsync(id, patch),
       getForeignStates: pattern => this.getForeignStatesAsync(pattern),
       setForeignState: (id, state) => this.states.set(id, state),
-      delForeignObject: async id => {
-        await this.known.remove(id, { recursive: false });
-        this.states.remove(id, { recursive: false });
-      },
+      delForeignObject: id => this.forgetObject(id, { recursive: false }),
     };
   }
 
@@ -236,7 +230,7 @@ export class DownloadManagerAdapter extends utils.Adapter {
       }
     }
     const stored = await this.programs.read();
-    const { rows, moves } = settleIds(stored, this.host ?? "", legacyId);
+    const { rows, moves } = settleIds(stored, this.host ?? "");
     for (const [oldId, newId] of moves) {
       if (devices.has(oldId)) {
         await this.moveDevice(oldId, newId);
@@ -286,7 +280,7 @@ export class DownloadManagerAdapter extends utils.Adapter {
       if (!next) {
         return;
       }
-      const settled = settleIds(next, this.host ?? "", legacyId);
+      const settled = settleIds(next, this.host ?? "");
       await this.programs.write(settled.rows);
       await this.manager?.apply(settled.rows, settled.moves, byCard);
     });
@@ -393,6 +387,34 @@ export class DownloadManagerAdapter extends utils.Adapter {
     }
   }
 
+  /** The adapter's timers — they are cleared when the adapter stops. */
+  private get timers(): HttpTimers {
+    return { setTimeout: (cb, ms) => this.setTimeout(cb, ms), clearTimeout: t => this.clearTimeout(t) };
+  }
+
+  /**
+   * Reads objects by pattern and type.
+   *
+   * @param pattern e.g. `dl-manager.0.*`
+   * @param type the object type
+   * @returns full id → object
+   */
+  private foreignObjects(pattern: string, type: ioBroker.ObjectType): Promise<Record<string, ioBroker.Object>> {
+    return this.getForeignObjectsAsync(pattern, type) as Promise<Record<string, ioBroker.Object>>;
+  }
+
+  /**
+   * Deletes an own object and forgets it in the object and the value memory — js-controller deletes its value with it.
+   *
+   * @param id own or full id
+   * @param opts delete the children too
+   * @param opts.recursive whether the children go as well
+   */
+  private async forgetObject(id: string, opts: { recursive: boolean }): Promise<void> {
+    await this.known.remove(id, opts);
+    this.states.remove(id, opts);
+  }
+
   /** @returns the object and state access of the program manager */
   private managerAdapter(): ManagerAdapter {
     return {
@@ -400,14 +422,9 @@ export class DownloadManagerAdapter extends utils.Adapter {
       log: this.log,
       extendObject: (id, obj) => this.known.extend(id, obj),
       setForeignObject: (id, obj) => this.known.replace(id, obj),
-      delObject: async (id, opts) => {
-        await this.known.remove(id, opts);
-        this.states.remove(id, opts);
-      },
-      getObject: id => this.getObjectAsync(id),
+      delObject: (id, opts) => this.forgetObject(id, opts),
       knownObject: id => this.known.get(id),
-      getForeignObjects: (pattern, type) =>
-        this.getForeignObjectsAsync(pattern, type) as Promise<Record<string, ioBroker.Object>>,
+      getForeignObjects: (pattern, type) => this.foreignObjects(pattern, type),
       getForeignObjectAsync: id => this.getForeignObjectAsync(id),
       knownValue: id => this.states.get(id),
       setState: (id, state) => this.states.set(id, state),
@@ -419,10 +436,7 @@ export class DownloadManagerAdapter extends utils.Adapter {
     return new ProgramManager(
       {
         adapter: this.managerAdapter(),
-        timers: {
-          setTimeout: (cb, ms) => this.setTimeout(cb, ms),
-          clearTimeout: t => this.clearTimeout(t),
-        },
+        timers: this.timers,
         find: this.find,
         problems: {
           report: (key, title, action) => this.problems.report({ key, title, action }),

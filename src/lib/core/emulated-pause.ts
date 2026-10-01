@@ -116,3 +116,40 @@ export class EmulatedPause {
     await this.store.save(next);
   }
 }
+
+/** The object access an emulated pause needs to keep its state. */
+export interface PauseObjectAdapter {
+  /** Reads an object by its full id. */
+  getForeignObjectAsync(id: string): Promise<ioBroker.Object | null | undefined>;
+  /** Replaces an object completely — a merge would keep stale keys in the list. */
+  setForeignObject(id: string, obj: ioBroker.SettableObject): Promise<unknown>;
+}
+
+/**
+ * The emulated pause of one program keeps its state in the `native` of that program's `paused` datapoint — written
+ * only on a change, read back after a restart (plan § 5.3). Nothing is stored while the object does not exist.
+ *
+ * @param adapter object access
+ * @param id full id of the `paused` datapoint
+ * @returns the store
+ */
+export function objectPauseStore(adapter: PauseObjectAdapter, id: string): PauseStore {
+  return {
+    load: async () => {
+      const saved: unknown = (await adapter.getForeignObjectAsync(id))?.native?.emulatedPause;
+      const s = saved && typeof saved === "object" ? (saved as Partial<PauseState>) : {};
+      return {
+        paused: s.paused === true,
+        keys: Array.isArray(s.keys) ? s.keys.filter((k): k is string => typeof k === "string") : [],
+      };
+    },
+    save: async state => {
+      const obj = await adapter.getForeignObjectAsync(id);
+      if (!obj) {
+        return;
+      }
+      obj.native = { ...obj.native, emulatedPause: { paused: state.paused, keys: [...state.keys] } };
+      await adapter.setForeignObject(id, obj);
+    },
+  };
+}

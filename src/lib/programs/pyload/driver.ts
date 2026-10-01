@@ -3,6 +3,7 @@ import { ProtocolError } from "../../core/errors";
 import type { Capability, Command, ProgramDriver, ProgramSnapshot, DriverDeps, ProgramConfig } from "../../core/model";
 import { PyClient } from "./client";
 import { toSnapshot } from "./map";
+import { toKiB } from "../../core/units";
 
 /** Polls between two reads of the speed limit — a poll is four calls, pyLoad allows 100 a minute. */
 const LIMIT_EVERY = 10;
@@ -89,7 +90,7 @@ export class PyDriver implements ProgramDriver {
           await this.client.post("set_config_value", {
             category: "download",
             option: "max_speed",
-            value: Math.max(1, Math.round(cmd.bps / 1024)),
+            value: toKiB(cmd.bps),
           });
         }
         await this.client.post("set_config_value", { category: "download", option: "limit_speed", value: cmd.bps > 0 });

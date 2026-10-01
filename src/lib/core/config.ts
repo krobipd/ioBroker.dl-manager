@@ -27,7 +27,19 @@ const FIELD_TEXT: Readonly<Record<RequiredField, string>> = {
   device: "device missing",
 };
 
-const str = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
+/**
+ * @param v a stored field
+ * @returns the text without surrounding blanks, empty for anything else
+ */
+export const str = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
+
+/**
+ * @param v a stored port
+ * @returns the port, 0 (the program's default) for anything that is no port
+ */
+export function portOf(v: unknown): number {
+  return typeof v === "number" && Number.isInteger(v) && v > 0 && v < 65536 ? v : 0;
+}
 
 /**
  * @param id a stored device id
@@ -64,7 +76,7 @@ export function parsePrograms(raw: unknown, find: (type: string) => ProgramEntry
       continue;
     }
     const o = r as Record<string, unknown>;
-    const port = typeof o.port === "number" && Number.isInteger(o.port) && o.port > 0 && o.port < 65536 ? o.port : 0;
+    const port = portOf(o.port);
     const cfg: ProgramConfig = {
       type: str(o.type),
       name: str(o.name),

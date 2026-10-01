@@ -11,7 +11,7 @@ import {
 } from "@iobroker/dm-utils";
 import { addressOf, blocksAddress, parsePrograms, sameProgram, type ProgramRow, programKey } from "./core/config";
 import { deviceIdFor, idSourceOf } from "./core/device-id";
-import type { TestResult } from "./core/manager";
+import type { TestResult } from "./core/connection-test";
 import {
   applyRuleOf,
   dialogType,

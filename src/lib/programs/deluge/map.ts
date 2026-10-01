@@ -1,5 +1,5 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
-import { asRecord, epochMs, eta, nonNegative, num } from "../../core/units";
+import { asRecord, epochMs, eta, fromKiB, nonNegative, num } from "../../core/units";
 
 /** A torrent of `web.update_ui`. */
 export interface DlTorrent {
@@ -127,11 +127,6 @@ export function mapDlStatus(raw: string | number, debug: (msg: string) => void):
   return dlStatus(dlTorrentFromRaw(String(raw)), debug).status;
 }
 
-const kib = (v: unknown): number => {
-  const n = num(v);
-  return n !== null && n > 0 ? Math.round(n * 1024) : 0;
-};
-
 /**
  * One poll into the common model.
  *
@@ -155,7 +150,6 @@ export function toSnapshot(
   const items: DownloadItem[] = Object.entries(asRecord(u.torrents)).map(([hash, raw]) => {
     const t = asRecord(raw) as DlTorrent;
     const { status, error } = dlStatus(t, debug);
-    const ratio = num(t.ratio);
     return {
       key: hash,
       name: typeof t.name === "string" ? t.name : hash,
@@ -164,7 +158,7 @@ export function toSnapshot(
       doneBytes: nonNegative(t.total_done),
       speedBps: nonNegative(t.download_payload_rate),
       uploadBps: nonNegative(t.upload_payload_rate),
-      ratio: nonNegative(ratio),
+      ratio: nonNegative(t.ratio),
       etaSeconds: eta(t.eta, [0]),
       addedMs: epochMs(t.time_added),
       finishedMs: epochMs(t.completed_time),
@@ -178,8 +172,8 @@ export function toSnapshot(
       paused,
       downloadBps: nonNegative(stats.download_rate),
       uploadBps: nonNegative(stats.upload_rate),
-      speedLimitBps: kib(cfg.max_download_speed),
-      uploadLimitBps: kib(cfg.max_upload_speed),
+      speedLimitBps: fromKiB(cfg.max_download_speed),
+      uploadLimitBps: fromKiB(cfg.max_upload_speed),
       freeSpaceBytes: nonNegative(stats.free_space),
     },
     items,

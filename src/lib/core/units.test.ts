@@ -5,6 +5,7 @@ import {
   doneOf,
   epochMs,
   eta,
+  fromKiB,
   fromMBps,
   hiLo,
   nonNegative,
@@ -12,10 +13,23 @@ import {
   percent,
   round2,
   toGB,
+  toKiB,
   toMBps,
 } from "./units";
 
 describe("units", () => {
+  it("turns a limit into the program's KiB/s and back, a set limit at least 1", () => {
+    expect(toKiB(2_000_000)).toBe(1953);
+    expect(toKiB(2_000_000, 1000)).toBe(2000);
+    expect(toKiB(100)).toBe(1);
+    expect(fromKiB(1953)).toBe(1_999_872);
+    expect(fromKiB("2000", 1000)).toBe(2_000_000);
+    expect(fromKiB(1.5)).toBe(1536);
+    for (const off of [0, -1, null, undefined, "x"]) {
+      expect(fromKiB(off)).toBe(0);
+    }
+  });
+
   it("converts speeds to MB/s with two decimals", () => {
     expect(toMBps(11_800_000)).toBe(11.8);
     expect(toMBps(40_000)).toBe(0.04);

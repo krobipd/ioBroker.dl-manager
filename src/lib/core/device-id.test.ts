@@ -1,4 +1,3 @@
-import { legacyId } from "./config";
 import { deviceIdFor, hostPiece, ID_SCHEME, programPart, RESERVED_IDS, settleIds } from "./device-id";
 
 const none = new Set<string>();
@@ -104,7 +103,6 @@ describe("settleIds", () => {
         { type: "qbittorrent", key: "keller", host: "10.0.0.2", port: 8081 },
       ],
       "iob",
-      legacyId,
     );
     expect(rows).toEqual([
       { type: "transmission", host: "nas", id: "transmission-nas" },
@@ -124,21 +122,20 @@ describe("settleIds", () => {
         { type: "qbittorrent", key: "", host: "nas" },
       ],
       "iob",
-      legacyId,
     );
     expect(rows.map(r => r.id)).toEqual(["qbittorrent-nas", "qbittorrent-other", "qbittorrent-nas-8080-2"]);
     expect(moves.get("qbittorrent")).toBe("qbittorrent-nas-8080-2");
   });
 
   it("keeps a My.JDownloader row on its old id until the account names the instance's id", () => {
-    const first = settleIds([{ type: "jdownloader-cloud", key: "", username: "me@x", device: "PC" }], "iob", legacyId);
+    const first = settleIds([{ type: "jdownloader-cloud", key: "", username: "me@x", device: "PC" }], "iob");
     expect(first.rows).toEqual([
       { type: "jdownloader-cloud", username: "me@x", device: "PC", id: "jdownloader-cloud", idPending: true },
     ]);
     expect(first.moves.size).toBe(0);
-    const again = settleIds(first.rows, "iob", legacyId);
+    const again = settleIds(first.rows, "iob");
     expect(again.rows).toEqual(first.rows);
-    const named = settleIds([{ ...first.rows[0], deviceId: "abcd1234" }], "iob", legacyId);
+    const named = settleIds([{ ...first.rows[0], deviceId: "abcd1234" }], "iob");
     expect(named.rows).toEqual([
       { type: "jdownloader-cloud", username: "me@x", device: "PC", deviceId: "abcd1234", id: "jdownloader-1234" },
     ]);
@@ -146,7 +143,7 @@ describe("settleIds", () => {
   });
 
   it("moves nothing when the new id is the old one", () => {
-    const { rows, moves } = settleIds([{ type: "aria2", key: "iob", host: "localhost" }], "iob", legacyId);
+    const { rows, moves } = settleIds([{ type: "aria2", key: "iob", host: "localhost" }], "iob");
     expect(rows[0].id).toBe("aria2-iob");
     expect(moves.size).toBe(0);
   });

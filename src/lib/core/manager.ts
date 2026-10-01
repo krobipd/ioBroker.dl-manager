@@ -4,9 +4,8 @@ import { routeState, type RouteTarget } from "./commands";
 import { addressOf, parsePrograms, type ProgramRow } from "./config";
 import { RESERVED_IDS } from "./device-id";
 import { readDevices, stampOffline, type DevicesAdapter } from "./devices";
-import { type PauseState, type PauseStore } from "./emulated-pause";
+import { objectPauseStore, type PauseObjectAdapter } from "./emulated-pause";
 import { programInfo } from "../programs/catalog";
-import { classify } from "./errors";
 import { loginHint } from "./login-hint";
 import type { Command, DriverDeps, ProgramDriver, ProgramEntry } from "./model";
 import { redact } from "./redact";
@@ -17,41 +16,7 @@ import { toMBps } from "./units";
 import { Serial } from "./serial";
 
 /** The adapter methods the manager uses on top of the tree's. */
-export interface ManagerAdapter extends TreeAdapter, DevicesAdapter {}
-
-/**
- * The emulated pause of one program keeps its state in the `native` of that program's `paused` datapoint — written
- * only on a change, read back after a restart (plan § 5.3). Nothing is stored while the object does not exist.
- *
- * @param adapter object access
- * @param id full id of the `paused` datapoint
- * @returns the store
- */
-export function objectPauseStore(adapter: ManagerAdapter, id: string): PauseStore {
-  return {
-    load: async () => {
-      const saved: unknown = (await adapter.getForeignObjectAsync(id))?.native?.emulatedPause;
-      const s = saved && typeof saved === "object" ? (saved as Partial<PauseState>) : {};
-      return {
-        paused: s.paused === true,
-        keys: Array.isArray(s.keys) ? s.keys.filter((k): k is string => typeof k === "string") : [],
-      };
-    },
-    save: async state => {
-      const obj = await adapter.getForeignObjectAsync(id);
-      if (!obj) {
-        return;
-      }
-      obj.native = { ...obj.native, emulatedPause: { paused: state.paused, keys: [...state.keys] } };
-      await adapter.setForeignObject(id, obj);
-    },
-  };
-}
-
-/** What a connection test found. */
-export type TestResult =
-  | { ok: true; version: string; downloads?: number }
-  | { ok: false; kind: "setup" | "auth" | "unreachable" | "other"; text: string };
+export interface ManagerAdapter extends TreeAdapter, DevicesAdapter, PauseObjectAdapter {}
 
 /** Everything the manager needs from outside. */
 export interface ManagerDeps {
@@ -305,32 +270,6 @@ export class ProgramManager {
       }
     } catch (err: unknown) {
       this.a.log.warn(`${route.program}: ${what} failed — ${redact(errText(err))}`);
-    }
-  }
-
-  /**
-   * The card's connection test: builds a driver for one settings row, asks the program once and closes the driver.
-   * A switched-off row is tested all the same — the user asked for it.
-   *
-   * @param raw one program row (secrets readable)
-   * @returns what the program answered
-   */
-  public async testProgram(raw: unknown): Promise<TestResult> {
-    const [row] = parsePrograms([raw && typeof raw === "object" ? { ...raw, enabled: true } : raw], this.deps.find);
-    if (!row?.entry) {
-      return { ok: false, kind: "setup", text: row?.problem || "program type missing" };
-    }
-    const driver = row.entry.create(row.cfg, this.driverDeps());
-    try {
-      if (driver.test) {
-        return { ok: true, version: await driver.test() };
-      }
-      const snap = await driver.poll();
-      return { ok: true, version: snap.status.version, downloads: snap.items.length };
-    } catch (err: unknown) {
-      return { ok: false, kind: classify(err), text: redact(errText(err)) };
-    } finally {
-      await driver.close().catch(() => undefined);
     }
   }
 

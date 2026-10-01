@@ -1,6 +1,6 @@
 import { EmulatedPause, memoryPauseStore } from "../../core/emulated-pause";
 import { ProtocolError } from "../../core/errors";
-import { asRecords } from "../../core/units";
+import { asRecords, toKiB } from "../../core/units";
 import type { Capability, Command, ProgramDriver, ProgramSnapshot, DriverDeps, ProgramConfig } from "../../core/model";
 import { TrClient } from "./client";
 import { speedUnit, toSnapshot } from "./map";
@@ -81,7 +81,7 @@ export class TrDriver implements ProgramDriver {
 
   /** @param cmd the command */
   public async command(cmd: Command): Promise<void> {
-    const kb = (bps: number): number => Math.max(1, Math.round(bps / this.unit));
+    const kb = (bps: number): number => toKiB(bps, this.unit);
     switch (cmd.kind) {
       case "pause":
         await this.client.call("torrent_stop", { ids: [cmd.key] });
