@@ -91,13 +91,11 @@ describe("JDownloader local transport", () => {
     ).rejects.toThrow(/DownloadSpeedLimit/);
     expect([...JD_METHODS].sort()).toEqual(
       [
-        "/config/get",
         "/config/set",
         "/downloadcontroller/getCurrentState",
         "/downloadcontroller/pause",
         "/downloadcontroller/start",
         "/downloadcontroller/stop",
-        "/downloadsV2/forceDownload",
         "/downloadsV2/queryLinks",
         "/downloadsV2/queryPackages",
         "/downloadsV2/removeLinks",
@@ -225,12 +223,13 @@ describe("JDownloader driver", () => {
 describe("JDownloader limits and transports", () => {
   const GS = "org.jdownloader.settings.GeneralSettings";
 
-  it("allows the config interface only for the two limit keys of GeneralSettings, reading as well as writing", () => {
+  it("allows writing the config only for the two limit keys of GeneralSettings, and never reading it", () => {
     expect(() => checkJdCall("/config/set", ["org.other.Settings", null, "DownloadSpeedLimit", 1])).toThrow(
       ProtocolError,
     );
-    expect(() => checkJdCall("/config/get", [GS, null, "DefaultDownloadFolder"])).toThrow(ProtocolError);
-    expect(() => checkJdCall("/config/get", [GS, null, "DownloadSpeedLimit"])).not.toThrow();
+    expect(() => checkJdCall("/config/set", [GS, null, "DefaultDownloadFolder", 1])).toThrow(ProtocolError);
+    expect(() => checkJdCall("/config/set", [GS, null, "DownloadSpeedLimit", 1])).not.toThrow();
+    expect(() => checkJdCall("/config/get", [GS, null, "DownloadSpeedLimit"])).toThrow(/not a method the adapter uses/);
   });
 
   it("calls a 4xx answer of the local API a protocol error", async () => {

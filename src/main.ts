@@ -9,6 +9,7 @@ import { readDevices } from "./lib/core/devices";
 import { ProgramManager, type ManagerAdapter } from "./lib/core/manager";
 import { moveObjects, type MoveAdapter } from "./lib/core/move";
 import { coveredBy, KnownObjects } from "./lib/core/objects";
+import { Serial } from "./lib/core/serial";
 import { KnownStates } from "./lib/core/states";
 import { ProgramStore, STORE_FILE, STORE_ID, type SettingsRow } from "./lib/core/store";
 import { LAST_CHANNEL, lastChannelObject } from "./lib/core/tree";
@@ -55,7 +56,7 @@ export class DownloadManagerAdapter extends utils.Adapter {
   /** Where the programs live (`programs.json` in the instance's data folder). */
   private readonly programs: ProgramStore;
   /** Changes of the program rows, one after the other (dialogs and a learned My.JDownloader id). */
-  private rowsQueue: Promise<void> = Promise.resolve();
+  private readonly rowChanges = new Serial();
 
   /**
    * @param options Adapter options
@@ -280,7 +281,7 @@ export class DownloadManagerAdapter extends utils.Adapter {
    * @returns when the rows are stored and running
    */
   private updateRows(change: (rows: SettingsRow[]) => SettingsRow[] | undefined, byCard = true): Promise<void> {
-    const run = this.rowsQueue.then(async () => {
+    return this.rowChanges.run(async () => {
       const next = change(await this.programs.read());
       if (!next) {
         return;
@@ -289,8 +290,6 @@ export class DownloadManagerAdapter extends utils.Adapter {
       await this.programs.write(settled.rows);
       await this.manager?.apply(settled.rows, settled.moves, byCard);
     });
-    this.rowsQueue = run.catch(() => undefined);
-    return run;
   }
 
   /**

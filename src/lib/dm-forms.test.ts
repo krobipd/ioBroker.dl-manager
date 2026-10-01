@@ -17,6 +17,7 @@ import {
   programKeyExpression,
   rowToForm,
   storedType,
+  type DialogType,
   type ProgramForm,
 } from "./dm-forms";
 import { catalogEntry, type ProgramType } from "./programs/catalog";
@@ -277,7 +278,7 @@ describe("radio groups — the admin renders their labels as they are", () => {
 });
 
 describe("programForm — only the fields of the program", () => {
-  const fields = (type: ProgramType): string[] => Object.keys(itemsOf(programForm(type, ctx))).sort();
+  const fields = (type: DialogType): string[] => Object.keys(itemsOf(programForm(type, ctx))).sort();
   const common = ["advanced", "enabled", "hint", "host", "https", "name", "path", "port", "taken"];
 
   it("gives every program exactly its login fields", () => {

@@ -15,6 +15,7 @@ import type { TestResult } from "./core/manager";
 import {
   applyRuleOf,
   dialogType,
+  type DialogType,
   emptyForm,
   formFromData,
   formToRow,
@@ -347,7 +348,7 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
    * @param cardId the card being edited, none for a new row
    * @returns whether the rows were stored
    */
-  private async programDialog(ctx: ActionContext, type: ProgramType, cardId?: string): Promise<boolean> {
+  private async programDialog(ctx: ActionContext, type: DialogType, cardId?: string): Promise<boolean> {
     const rows = await this.host.readRows();
     const index = cardId === undefined ? -1 : rows.findIndex(r => this.idOf(r) === cardId);
     const previous = index >= 0 ? rows[index] : undefined;

@@ -48,8 +48,14 @@ export interface ProgramForm {
   enabled: boolean;
 }
 
+/** The program types a dialog is for — My.JDownloader is a mode of the JDownloader dialog. */
+export type DialogType = Exclude<ProgramType, "jdownloader-cloud">;
+
+/** A program a dialog is offered for. */
+type Offered = ProgramInfo & { type: DialogType };
+
 /** The program types the dialog offers — My.JDownloader is a switch inside the JDownloader dialog. */
-export const OFFERED: readonly ProgramInfo[] = CATALOG.filter(p => p.type !== "jdownloader-cloud");
+export const OFFERED: readonly Offered[] = CATALOG.filter((p): p is Offered => p.type !== "jdownloader-cloud");
 
 /** Per program: the hint the dialog shows under its fields. */
 const HINT: Readonly<Record<ProgramType, I18nKey>> = {
@@ -75,7 +81,7 @@ export const textOf = (v: unknown): string => (typeof v === "string" ? v : typeo
  * @returns the program type the dialog shows for it (both JDownloader connections share one dialog), undefined for a
  *   type the adapter does not know
  */
-export function dialogType(row: SettingsRow): ProgramType | undefined {
+export function dialogType(row: SettingsRow): DialogType | undefined {
   return row.type === "jdownloader-cloud" ? "jdownloader" : OFFERED.find(p => p.type === row.type)?.type;
 }
 
@@ -303,18 +309,26 @@ export interface FormContext {
 }
 
 /**
+ * A field check: the field holds more than blanks, unless the field is hidden.
+ *
+ * @param hidden the field's `hidden` expression
+ * @param field the field in the dialog data, e.g. `data.name`
+ * @returns the validator expression
+ */
+const requiredUnless = (hidden: string, field: string): string => `(${hidden}) || !!String(${field}||'').trim()`;
+
+/**
  * The program dialog: only the fields of this program.
  *
  * @param type the dialog's program
  * @param ctx the other rows
  * @returns the schema
  */
-export function programForm(type: ProgramType, ctx: FormContext): JsonFormSchema {
+export function programForm(type: DialogType, ctx: FormContext): JsonFormSchema {
   const info = catalogEntry(type);
   const jd = type === "jdownloader";
   const cloud = "data.mode==='cloud'";
   const local = jd ? `data.mode!=='cloud'` : "true";
-  const required = (condition: string, field: string): string => `!(${condition}) || !!String(${field}||'').trim()`;
   const items: Record<string, unknown> = {};
   if (jd) {
     items.mode = {
@@ -333,48 +347,38 @@ export function programForm(type: ProgramType, ctx: FormContext): JsonFormSchema
     type: "text",
     label: tName("dmName"),
     help: tName("dmNameHelp"),
-    validator: "!!String(data.name||'').trim()",
-    validatorErrorText: tName("dmRequired"),
-    validatorNoSaveOnError: true,
+    validator: requiredUnless("false", "data.name"),
     newLine: true,
     sm: 12,
     md: 6,
   };
   // a switched-off entry asks nothing, so its address is free for it (decision 15)
   const taken = `(data.enabled !== false && ${literal(ctx.takenKeys)}.includes(${programKeyExpression(info)}))`;
-  if (info.login !== "account") {
-    items.host = {
-      type: "text",
-      label: tName("dmHost"),
-      hidden: `!(${local})`,
-      validator: `!(${local}) || (/^[^\\s/]+$/.test(String(data.host||'').trim()) && !${taken})`,
-      validatorErrorText: tName("dmHostInvalid"),
-      validatorNoSaveOnError: true,
-      newLine: true,
-      sm: 12,
-      md: 6,
-    };
-    items.port = {
-      type: "text",
-      label: tName("dmPort"),
-      placeholder: String(info.port),
-      help: tName("dmDefault", info.port),
-      hidden: `!(${local})`,
-      validator: `!(${local}) || !String(data.port||'').trim() || (/^\\d+$/.test(String(data.port).trim()) && Number(data.port) > 0 && Number(data.port) < 65536)`,
-      validatorErrorText: tName("dmPortInvalid"),
-      validatorNoSaveOnError: true,
-      sm: 12,
-      md: 6,
-    };
-  }
-  if (jd || info.login === "account") {
+  items.host = {
+    type: "text",
+    label: tName("dmHost"),
+    hidden: `!(${local})`,
+    validator: `!(${local}) || (/^[^\\s/]+$/.test(String(data.host||'').trim()) && !${taken})`,
+    newLine: true,
+    sm: 12,
+    md: 6,
+  };
+  items.port = {
+    type: "text",
+    label: tName("dmPort"),
+    placeholder: String(info.port),
+    help: tName("dmDefault", info.port),
+    hidden: `!(${local})`,
+    validator: `!(${local}) || !String(data.port||'').trim() || (/^\\d+$/.test(String(data.port).trim()) && Number(data.port) > 0 && Number(data.port) < 65536)`,
+    sm: 12,
+    md: 6,
+  };
+  if (jd) {
     items.username = {
       type: "text",
       label: tName("dmEmail"),
       hidden: `!(${cloud})`,
       validator: `!(${cloud}) || /^\\S+@\\S+\\.\\S+$/.test(String(data.username||'').trim())`,
-      validatorErrorText: tName("dmEmailInvalid"),
-      validatorNoSaveOnError: true,
       newLine: true,
       sm: 12,
       md: 6,
@@ -383,47 +387,41 @@ export function programForm(type: ProgramType, ctx: FormContext): JsonFormSchema
       type: "password",
       label: tName("dmPassword"),
       hidden: `!(${cloud})`,
-      validator: required(cloud, "data.password"),
-      validatorErrorText: tName("dmRequired"),
-      validatorNoSaveOnError: true,
+      validator: requiredUnless(`!(${cloud})`, "data.password"),
       sm: 12,
       md: 6,
     };
   }
   Object.assign(items, loginItems(info));
   items.advanced = { type: "checkbox", label: tName("dmAdvanced"), newLine: true, sm: 12 };
-  if (info.login !== "account") {
-    items.https = {
-      type: "checkbox",
-      label: tName(type === "aria2" ? "dmWss" : "dmHttps"),
-      hidden: `!data.advanced || !(${local})`,
-      newLine: true,
-      sm: 12,
-      md: 4,
-    };
-    items.path = {
-      type: "text",
-      label: tName("dmPath"),
-      placeholder: info.path || "/",
-      help: info.path ? tName("dmDefault", info.path) : tName("dmPathHelp"),
-      hidden: `!data.advanced || !(${local})`,
-      sm: 12,
-      md: 4,
-    };
-  }
+  items.https = {
+    type: "checkbox",
+    label: tName(type === "aria2" ? "dmWss" : "dmHttps"),
+    hidden: `!data.advanced || !(${local})`,
+    newLine: true,
+    sm: 12,
+    md: 4,
+  };
+  items.path = {
+    type: "text",
+    label: tName("dmPath"),
+    placeholder: info.path || "/",
+    help: info.path ? tName("dmDefault", info.path) : tName("dmPathHelp"),
+    hidden: `!data.advanced || !(${local})`,
+    sm: 12,
+    md: 4,
+  };
   items.enabled = { type: "checkbox", label: tName("dmEnabled"), newLine: true, sm: 12 };
-  if (info.login !== "account") {
-    // the field's own error text is not shown in a device-manager dialog — say it where it is read
-    items.taken = {
-      type: "infoBox",
-      boxType: "warning",
-      closeable: false,
-      text: tName("dmHostTaken"),
-      hidden: `!(${local}) || !${taken}`,
-      newLine: true,
-      sm: 12,
-    };
-  }
+  // the field's own error text is not shown in a device-manager dialog — say it where it is read
+  items.taken = {
+    type: "infoBox",
+    boxType: "warning",
+    closeable: false,
+    text: tName("dmHostTaken"),
+    hidden: `!(${local}) || !${taken}`,
+    newLine: true,
+    sm: 12,
+  };
   items.hint = {
     type: "infoBox",
     boxType: "info",
@@ -459,9 +457,7 @@ function loginItems(info: ProgramInfo): Record<string, unknown> {
       hidden,
       ...(userRequired
         ? {
-            validator: `(${hidden}) || !!String(data.username||'').trim()`,
-            validatorErrorText: tName("dmRequired"),
-            validatorNoSaveOnError: true,
+            validator: requiredUnless(hidden, "data.username"),
           }
         : {}),
       newLine: true,
@@ -478,9 +474,7 @@ function loginItems(info: ProgramInfo): Record<string, unknown> {
       ...(help ? { help: tName(help) } : {}),
       ...(isRequired
         ? {
-            validator: `(${hidden}) || !!String(data.apiKey||'').trim()`,
-            validatorErrorText: tName("dmRequired"),
-            validatorNoSaveOnError: true,
+            validator: requiredUnless(hidden, "data.apiKey"),
           }
         : {}),
       newLine: true,
@@ -511,8 +505,6 @@ function loginItems(info: ProgramInfo): Record<string, unknown> {
           type: "password",
           label: tName("dmWebPassword"),
           validator: "!!String(data.password||'')",
-          validatorErrorText: tName("dmRequired"),
-          validatorNoSaveOnError: true,
           newLine: true,
           sm: 12,
           md: 6,

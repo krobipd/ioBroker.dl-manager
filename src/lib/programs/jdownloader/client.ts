@@ -20,13 +20,11 @@ export const JD_METHODS: ReadonlySet<string> = new Set([
   "/downloadsV2/setEnabled",
   "/downloadsV2/resumeLinks",
   "/downloadsV2/removeLinks",
-  "/downloadsV2/forceDownload",
   "/downloadcontroller/start",
   "/downloadcontroller/stop",
   "/downloadcontroller/pause",
   "/downloadcontroller/getCurrentState",
   "/toolbar/getStatus",
-  "/config/get",
   "/config/set",
   "/linkgrabberv2/addLinks",
   "/jd/version",
@@ -34,7 +32,7 @@ export const JD_METHODS: ReadonlySet<string> = new Set([
   "/events/listen",
 ]);
 
-/** Settings the adapter may read or write through `config/get|set`. */
+/** Settings the adapter may write through `config/set`. */
 const CONFIG_KEYS = new Set(["DownloadSpeedLimit", "DownloadSpeedLimitEnabled"]);
 /** The settings interface the adapter may touch (the speed limit only). */
 export const GENERAL_SETTINGS = "org.jdownloader.settings.GeneralSettings";
@@ -49,10 +47,7 @@ export function checkJdCall(path: string, params: readonly unknown[]): void {
   if (!JD_METHODS.has(path)) {
     throw new ProtocolError(`jdownloader: ${path} is not a method the adapter uses`);
   }
-  if (
-    (path === "/config/set" || path === "/config/get") &&
-    (params[0] !== GENERAL_SETTINGS || !CONFIG_KEYS.has(String(params[2])))
-  ) {
+  if (path === "/config/set" && (params[0] !== GENERAL_SETTINGS || !CONFIG_KEYS.has(String(params[2])))) {
     throw new ProtocolError(
       "jdownloader: config access is limited to DownloadSpeedLimit and DownloadSpeedLimitEnabled",
     );

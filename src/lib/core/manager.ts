@@ -14,6 +14,7 @@ import { ProgramRunner, type RunnerDeps } from "./runner";
 import { computeSummary, type SummaryInput } from "./summary";
 import { ProgramTree, writeLastEvents, type ProgramEvents, type TreeAdapter, type TreeScope } from "./tree";
 import { toMBps } from "./units";
+import { Serial } from "./serial";
 
 /** The adapter methods the manager uses on top of the tree's. */
 export interface ManagerAdapter extends TreeAdapter, DevicesAdapter {}
@@ -116,9 +117,9 @@ export class ProgramManager {
   private readonly running = new Map<string, Running>();
   private stopped = false;
   /** Changes of the rows, one after the other. */
-  private queue: Promise<void> = Promise.resolve();
+  private readonly changes = new Serial();
   /** Summary writes, one after the other. */
-  private summaryQueue: Promise<void> = Promise.resolve();
+  private readonly summaries = new Serial();
   /** Programs started with the adapter whose first successful sync is still to come. */
   private readonly firstSync = new Set<string>();
 
@@ -173,9 +174,7 @@ export class ProgramManager {
    * @returns when the change is through
    */
   public apply(raw: unknown, moves: ReadonlyMap<string, string> = new Map(), byCard = true): Promise<void> {
-    const run = this.queue.then(() => this.applyNow(raw, moves, byCard));
-    this.queue = run.catch(() => undefined);
-    return run;
+    return this.changes.run(() => this.applyNow(raw, moves, byCard));
   }
 
   private async applyNow(raw: unknown, moves: ReadonlyMap<string, string>, byCard: boolean): Promise<void> {
@@ -329,12 +328,7 @@ export class ProgramManager {
       const snap = await driver.poll();
       return { ok: true, version: snap.status.version, downloads: snap.items.length };
     } catch (err: unknown) {
-      const kind = classify(err);
-      return {
-        ok: false,
-        kind: kind === "auth" || kind === "unreachable" ? kind : "other",
-        text: redact(errText(err)),
-      };
+      return { ok: false, kind: classify(err), text: redact(errText(err)) };
     } finally {
       await driver.close().catch(() => undefined);
     }
@@ -343,7 +337,7 @@ export class ProgramManager {
   /** Stops every runner (they mark their program Unknown) and marks the adapter disconnected. */
   public async stop(): Promise<void> {
     this.stopped = true;
-    await this.queue;
+    await this.changes.idle();
     await Promise.allSettled([...this.running.values()].map(r => r.runner.stop()));
     this.running.clear();
     // nothing runs any more: every count and speed goes to nothing, the connection markers to false
@@ -451,9 +445,7 @@ export class ProgramManager {
    * @returns when this summary is written
    */
   private writeSummary(): Promise<void> {
-    const run = this.summaryQueue.then(() => this.writeSummaryNow());
-    this.summaryQueue = run.catch(() => undefined);
-    return run;
+    return this.summaries.run(() => this.writeSummaryNow());
   }
 
   private async writeSummaryNow(): Promise<void> {
