@@ -27,6 +27,8 @@ export const JD_METHODS: ReadonlySet<string> = new Set([
   "/toolbar/getStatus",
   "/config/set",
   "/linkgrabberv2/addLinks",
+  "/linkgrabberv2/queryLinks",
+  "/linkgrabberv2/moveToDownloadlist",
   "/jd/version",
   "/events/subscribe",
   "/events/listen",

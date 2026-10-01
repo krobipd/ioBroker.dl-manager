@@ -133,6 +133,7 @@ The test button on a program's card asks the program once and shows its answer.
 - Fixed: an updated JDownloader, qBittorrent or aria2 shows its new version without restarting the adapter
 - Fixed: the details of a card open even when the program settings cannot be read
 - Fixed: an empty entry in a Transmission or SABnzbd list no longer stops the query
+- Fixed: a download added while JDownloader is paused no longer starts all its downloads again
 - Changed: a card that cannot run shows what is wrong on the card; its `error` datapoint says `Unknown`
 - Changed: a program that is down behind a reverse proxy counts as not reachable
 - Changed: a new instance starts switched off until you set it up

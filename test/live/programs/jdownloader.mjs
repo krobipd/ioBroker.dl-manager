@@ -29,6 +29,7 @@ export function prepare(work, tag) {
   ]);
   // a file of its own for the autostart probe — JD would take a second link to an URL it already holds as a duplicate
   writeFileSync(join(work, "seed", "probe.bin"), payload(2 * MiB, 98));
+  writeFileSync(join(work, "seed", "held.bin"), payload(2 * MiB, 97));
   // The image copies /defaults/cfg only when /config/cfg is missing, and its init script edits files of it — so the
   // defaults are taken out of the image and the settings below are laid over them.
   const image = `jlesage/jdownloader-2:${tag}`;
@@ -242,6 +243,45 @@ export async function record(_ctx) {
   const afterProbe = await call("/downloadcontroller/getCurrentState");
   w("open-points", "state-after-autostart-add-while-stopped", afterProbe);
   console.log(`jdownloader: controller after an autostart add while stopped: ${afterProbe.json().data}`);
+  // the adapter's way since then: while the controller is held, add without autostart and move the crawled links into
+  // the download list — the download must show up and the controller stay stopped
+  await call("/downloadcontroller/stop");
+  await waitFor(
+    "stopped again",
+    async () => /STOPPED_STATE|IDLE/.test(await data("/downloadcontroller/getCurrentState")),
+    60_000,
+  );
+  const held = await call("/linkgrabberv2/addLinks", [
+    { links: "http://seed:8080/held.bin", autostart: false, assignJobID: true, packageName: "held" },
+  ]);
+  w("commands", "add-links-held", held);
+  const heldJob = held.json().data?.id;
+  const crawled = await waitFor(
+    "held link crawled",
+    async () => {
+      const l = await data("/linkgrabberv2/queryLinks", [{ jobUUIDs: [heldJob] }]);
+      return Array.isArray(l) && l.length ? l : undefined;
+    },
+    30_000,
+  );
+  w("open-points", "linkgrabber-held", await call("/linkgrabberv2/queryLinks", [{ jobUUIDs: [heldJob] }]));
+  w(
+    "commands",
+    "move-to-downloadlist-held",
+    await call("/linkgrabberv2/moveToDownloadlist", [
+      crawled.map(l => l.uuid),
+      [...new Set(crawled.map(l => l.packageUUID))],
+    ]),
+  );
+  const inList = await waitFor(
+    "held link in the download list",
+    async () => (await links()).some(x => x.jobUUID === heldJob),
+    30_000,
+  ).catch(() => false);
+  await new Promise(resolve => setTimeout(resolve, 5000));
+  const afterHeld = await call("/downloadcontroller/getCurrentState");
+  w("open-points", "state-after-held-add", afterHeld);
+  console.log(`jdownloader: held add — in the download list: ${inList}, controller: ${afterHeld.json().data}`);
   w("commands", "start", await call("/downloadcontroller/start"));
 
   // extraction (best effort: a stored zip extracts fast)

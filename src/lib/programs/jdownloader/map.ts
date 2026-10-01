@@ -206,6 +206,14 @@ export const statusTable = [
 const PAUSED_STATES = new Set(["PAUSE", "STOPPING", "STOPPED_STATE"]);
 
 /**
+ * @param state `downloadcontroller/getCurrentState`
+ * @returns whether the download controller is held (paused or stopped)
+ */
+export function isHeld(state: unknown): boolean {
+  return typeof state === "string" && PAUSED_STATES.has(state);
+}
+
+/**
  * The coarse status from the package's own booleans — only when its link list is missing.
  *
  * @param p the package of `queryPackages`
@@ -270,7 +278,7 @@ export function toSnapshot(
   return {
     status: {
       version,
-      paused: PAUSED_STATES.has(state),
+      paused: isHeld(state),
       downloadBps: nonNegative(t.speed),
       speedLimitBps: state !== "PAUSE" && t.limit === true ? (nonNegative(t.limitspeed) ?? 0) : 0,
     },
