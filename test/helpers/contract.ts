@@ -1,6 +1,6 @@
-import { AuthError, ProtocolError } from "../../src/lib/core/errors";
+import { AuthError, ProtocolError, UnreachableError } from "../../src/lib/core/errors";
 import { STATUSES, type Capability, type Command, type ProgramDriver, type Status } from "../../src/lib/core/model";
-import type { FixtureServer, RecordedCall } from "./fixture-server";
+import { startFixtureServer, type FixtureServer, type RecordedCall } from "./fixture-server";
 
 /** The fixture server of one driver, with the hooks the contract needs. */
 export interface ContractServer extends FixtureServer {
@@ -81,6 +81,17 @@ export function runDriverContract(c: ContractCase): void {
     });
     afterEach(async () => {
       await server.close();
+    });
+
+    it("calls a reverse proxy that answers 502 for a program that is down unreachable", async () => {
+      const proxy = await startFixtureServer(() => ({ status: 502, body: "Bad Gateway" }));
+      const driver = c.makeDriver(proxy.baseUrl, { good: true });
+      try {
+        await expect(driver.poll()).rejects.toBeInstanceOf(UnreachableError);
+      } finally {
+        await driver.close();
+        await proxy.close();
+      }
     });
 
     it("maps every researched raw status to its common status, silently", () => {

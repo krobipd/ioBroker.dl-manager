@@ -126,6 +126,30 @@ describe("HttpClient", () => {
     await expect(new HttpClient(timers).request({ method: "GET", url: s.url })).rejects.toThrow(ProtocolError);
   });
 
+  it("calls 502, 503 and 504 — a proxy in front of a program that is down — unreachable", async () => {
+    for (const status of [502, 503, 504]) {
+      const s = await serve((_req, _b, res) => {
+        res.statusCode = status;
+        res.end("Bad Gateway");
+      });
+      server = s.server;
+      const err: unknown = await new HttpClient(timers).request({ method: "GET", url: s.url }).catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(UnreachableError);
+      expect(String(err)).toContain(`HTTP ${status}`);
+      await new Promise<void>(resolve => s.server.close(() => resolve()));
+      server = undefined;
+    }
+  });
+
+  it("hands a 500 to the program's client — JDownloader answers its own errors with it", async () => {
+    const s = await serve((_req, _b, res) => {
+      res.statusCode = 500;
+      res.end('{"type":"INTERNAL_SERVER_ERROR"}');
+    });
+    server = s.server;
+    expect((await new HttpClient(timers).request({ method: "GET", url: s.url })).status).toBe(500);
+  });
+
   it("gives up after the deadline as unreachable", async () => {
     const s = await serve(() => undefined);
     server = s.server;

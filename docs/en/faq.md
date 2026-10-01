@@ -4,7 +4,8 @@
 
 `error` on the program's device says why. A network text (refused, timeout, no route) means the ioBroker host cannot
 reach the program: check host, port, the HTTPS switch and a firewall between the two. The test button on the
-program's card asks it once and shows its answer. Some programs refuse callers they do not know:
+program's card asks it once and shows its answer. A reverse proxy in front of the program that answers 502, 503 or 504
+counts as not reachable as well — the program behind it is down. Some programs refuse callers they do not know:
 
 - **SABnzbd** answers only host names on its `host_whitelist` — enter the IP address, or add the name there.
 - **Transmission** answers only addresses on its `rpc-whitelist` — add the ioBroker host, or switch the whitelist off.

@@ -4,8 +4,9 @@
 
 `error` am Gerät des Programms sagt, warum. Ein Netzwerk-Text (abgewiesen, Zeitüberschreitung, keine Route) heißt, der
 ioBroker-Rechner erreicht das Programm nicht: Host, Port, den HTTPS-Schalter und eine Firewall dazwischen prüfen. Der
-Test-Knopf auf der Karte des Programms fragt es einmal und zeigt seine Antwort. Manche Programme weisen Anfragen ab, die
-sie nicht kennen:
+Test-Knopf auf der Karte des Programms fragt es einmal und zeigt seine Antwort. Antwortet ein Reverse-Proxy vor dem
+Programm mit 502, 503 oder 504, gilt es ebenfalls als nicht erreichbar — das Programm dahinter läuft nicht. Manche
+Programme weisen Anfragen ab, die sie nicht kennen:
 
 - **SABnzbd** antwortet nur Hostnamen aus seiner `host_whitelist` — die IP-Adresse eintragen oder den Namen dort
   hinzufügen.

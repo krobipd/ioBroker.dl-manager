@@ -139,6 +139,10 @@ export class HttpClient {
     if (res.status >= 300 && res.status < 400) {
       throw new ProtocolError(`redirected (${res.status}) — check host, port and path`);
     }
+    // a reverse proxy in front of a program that is down answers with these — the program is not reachable, a state
+    if (res.status === 502 || res.status === 503 || res.status === 504) {
+      throw new UnreachableError(`HTTP ${res.status} ${res.statusText}`.trim());
+    }
     for (const line of res.headers.getSetCookie()) {
       const pair = line.split(";")[0];
       const eq = pair.indexOf("=");
