@@ -17,15 +17,15 @@ Kanal mit Einzel-Datenpunkten, Summen für Blockly.
 ## Architektur
 
 ```
-src/main.ts                      → Lebenszyklus: Instanzobjekt korrigieren (nur `stopInstance`) → I18n → Speicher-Objekt von
-                                   0.3.x in die Datei (einmal) → Programme aus `native.programs` in den Speicher (einmal) →
-                                   native-/common-Schlüssel migrieren → Manifest-
-                                   Objekte auffrischen → settleDevices (Umzug fortsetzen, IDs vergeben, last-Umzug) →
-                                   subscribeStates("*") → ProgramManager.start; saveRows (Speicher + apply, eine Warteschlange),
-                                   learnDeviceId (My.JD-Id), onStateChange, onUnload → stop().finally(cb)
+src/main.ts                      → Lebenszyklus: I18n (erste Anweisung) → Speicher-Objekt von 0.3.x in die Datei (einmal) →
+                                   Programme aus `native.programs` in den Speicher (einmal) → native-/common-Schlüssel
+                                   migrieren → Objekt- und Wertespeicher laden → Manifest-Objekte auffrischen → settleDevices
+                                   (Umzug fortsetzen, IDs vergeben, last-Umzug) → Gerätemanager bauen → subscribeStates("*")
+                                   → ProgramManager.start; updateRows (frisch lesen, ändern, speichern, apply — ein Schritt in
+                                   `Serial`), learnDeviceId (My.JD-Id), onStateChange, onUnload → stop().finally(cb)
 src/lib/device-management.ts     → DlDeviceManagement (dm-utils): Karten je Zeile, Details (Objekt-ID), Hinzufügen
                                    (Programmwahl → Dialog → bei My.JDownloader Instanzwahl), Bearbeiten, Löschen, Test, Ein/Aus;
-                                   jede Änderung über `DmHost.saveRows`, kein Neustart
+                                   jede Änderung über `DmHost.updateRows` auf den Zeilen von jetzt, kein Neustart
 src/lib/dm-forms.ts              → rein: Dialog-Schemas, Zeile ↔ Dialogdaten, Duplikat-Ausdruck
 src/lib/core/store.ts            → ProgramStore: `programs.json` im Datenordner der Instanz (`common.dataFolder`, im Backup),
                                    Passwort/API-Schlüssel mit `encrypt()`, unveränderter Klartext behält seinen Chiffretext,
@@ -38,19 +38,22 @@ src/lib/core/datapoints.ts       → Fähigkeit → Datenpunkt (Programm- und Do
 src/lib/core/config.ts           → Zeilen → ProgramRow {id, scheme, enabled, cfg, problem, entry?}, legacyId (ID bis 0.2.0),
                                    addressOf, programKey / sameProgram (Duplikat), Abfrage-Intervall 10 s–1 h
 src/lib/core/manager.ts          → ProgramManager: Runner je Programm, apply (Zeilen live: neu/weg/geändert/umgezogen),
-                                   Summen (eine Warteschlange, nie zwei gleichzeitig), Nutzer-Schreibweiche,
-                                   testProgram (eine Zeile)
+                                   Summen (eine Warteschlange, nie zwei gleichzeitig), Nutzer-Schreibweiche
+src/lib/core/connection-test.ts  → testProgram: der Test-Knopf einer Karte (eine Zeile, ein Treiber, einmal gefragt)
+src/lib/core/serial.ts           → Serial: Aufgaben nacheinander (Zeilenänderungen, Summen)
 src/lib/core/devices.ts          → readDevices (nur Geräte mit Programmtyp, keine reservierte Wurzel), Offline-Stempel
 src/lib/core/visibility.ts       → rein: welche Downloads einen Kanal bekommen (treeScope, Rang, Obergrenze)
 src/lib/core/runner.ts           → Abfrage-Schleife je Programm, Anmelde-Sperre, pollNow nach jedem Befehl
 src/lib/core/login-hint.ts       → rein: was die Anmelde-Warnung je Anmeldeart sagt (Ursache, wenn die Karte keine Anmeldung trägt)
 src/lib/core/tree.ts             → ProgramTree: Gerät/Kanäle/Datenpunkte gegen den Schnappschuss abgleichen, itemKey
-src/lib/core/objects.ts          → KnownObjects: eigener Baum einmal gelesen, Objekte nur bei Unterschied schreiben (coveredBy)
-src/lib/core/states.ts           → KnownStates: EIN Wertespeicher, jeder Zustand im Speicher verglichen; forget (fremder
-                                   Schreibvorgang), remove (gelöschtes Objekt)
+src/lib/known-objects.ts         → Flotten-Master (byte-gleich): KnownObjects, eigener Baum einmal gelesen, Objekte nur bei
+                                   Unterschied schreiben (coveredBy, mergedWith wie js-controller)
+src/lib/core/states.ts           → KnownStates: EIN Wertespeicher, jeder Zustand im Speicher verglichen; get (Karte, Baum),
+                                   forget (fremder Schreibvorgang), remove (gelöschtes Objekt)
 src/lib/core/summary.ts          → info.* und summary.* aus allen Programmen
 src/lib/core/commands.ts         → routeState: Datenpunkt-Id → pauseAll / Befehl an Programm / ignorieren
-src/lib/core/http.ts             → HttpClient: Timeout über Adapter-Timer, Cookies, keine Weiterleitungen, multipart
+src/lib/core/http.ts             → HttpClient: Timeout über Adapter-Timer, Cookies, keine Weiterleitungen, multipart,
+                                   502/503/504 = nicht erreichbar
 src/lib/core/emulated-pause.ts   → nachgebildete Programm-Pause (PauseStore im native des paused-Objekts)
 src/lib/core/{errors,ids,units,redact}.ts → Fehlerklassen, Kennungen, Einheiten + Lesehelfer der Antworten, Geheimnisse
 src/lib/programs/catalog.ts      → die EINZIGE Programmliste: Typ, Name, Familie, Standard-Port/-Pfad, Anmeldeart → needsOf,
@@ -58,8 +61,8 @@ src/lib/programs/catalog.ts      → die EINZIGE Programmliste: Typ, Name, Famil
 src/lib/programs/registry.ts     → Katalog + Treiber (DRIVERS) → PROGRAMS, findProgram
 src/lib/programs/<typ>/          → client.ts (Transport + Anmeldung), map.ts (Rohantwort → Modell, Status-Tabelle),
                                    driver.ts (Fähigkeiten, Extras, Befehle)
-src/lib/enum-carry.ts            → Kopie aus .consistency-master (byte-gleich halten)
-src/lib/{actionable-problems,device-icons,i18n,native-key-migration,err-text}.ts → Flotten-Muster
+src/lib/{enum-carry,known-objects,err-text,native-key-migration}.ts → Kopien aus .consistency-master (byte-gleich)
+src/lib/{actionable-problems,device-icons,i18n}.ts → Flotten-Muster
 admin/jsonConfig.json, admin/icons/*.svg → Einstellungsseite (Gerätemanager + Allgemein + Spenden), Piktogramme je Familie
 ```
 
@@ -83,13 +86,15 @@ _Jede Entscheidung steht hier als Regel-Satz; Beleg, Messung und Verlauf stehen 
 14. **Die Programme richtet der Gerätemanager ein (dm-utils, Karten wie yamaha) und sie liegen in `programs.json` im Datenordner der Instanz (`common.dataFolder`, Teil jeder ioBroker-Sicherung), nie im Instanzobjekt und nicht im Objektbaum** — jede Kartenänderung wird gespeichert und live übernommen (`ProgramManager.apply`), die Instanz startet nicht neu und die Einstellungsseite kann keine Programmliste zurückschreiben; je Programm ein Dialog nur mit dessen Feldern aus `catalog.ts`; Radio-Beschriftungen sind einfache Zeichenketten (`tText`), weil json-configs Radio-Zweig `label` roh rendert.
 15. **Beliebig viele Einträge je Programm, doppelt ist dasselbe Programm** — gleiche Adresse (Host, tatsächlicher Port und Pfad, ohne Schema) oder gleiches My.JDownloader-Konto samt Instanz; der Dialog weist es ab, der Adapter fragt die zweite Zeile nicht (`same program as <id>`).
 16. **Die Geräte-ID vergibt der Adapter einmal beim Hinzufügen nach dem Schema yamaha/govee/homeconnect: `<programm>-<stück>` ohne Zugangsweg** — My.JDownloader die letzten 4 Zeichen der Konto-Id (belegt → ganze Id → Zähler), lokal der Rechner aus der Adresse (belegt → Port → Zähler, `localhost` = ioBroker-Host); gespeichert in der Zeile, nie neu berechnet, Marke `native.idScheme = 3`; der Name ist nur Anzeigename, ein ID-Feld gibt es nicht; die Karte zeigt die ID in den Details.
-17. **Ein Wertespeicher (`KnownStates`)** — jeder Zustand im Speicher verglichen; ein fremder Schreibvorgang (ack:false) und ein gelöschtes Objekt lassen ihn vergessen; abonniert wird vor dem Start.
-18. **Eine Karte warnt nur bei einem echten Fehler** — `Unknown` und leer zeichnen kein Warndreieck (dm-gui zeigt jeden Text).
+17. **Ein Wertespeicher (`KnownStates`)** — jeder Zustand im Speicher verglichen und auch dort gelesen (Karte, Baum), nie einzeln aus der Datenbank; ein fremder Schreibvorgang (ack:false) und ein gelöschtes Objekt lassen ihn vergessen; abonniert wird vor dem Start.
+18. **Eine Karte warnt nur bei einem echten Fehler** — eine Zeile, die nicht laufen kann, mit ihrem Problem (ihr `error` sagt `Unknown`), sonst mit dem Text des Programms; `Unknown` und leer zeichnen kein Warndreieck (dm-gui zeigt jeden Text).
 19. **Ein Gerätemanager-Dialog sperrt OK über `applyDisabledRule` aus allen Feldprüfungen (`applyRuleOf`)** — `validatorNoSaveOnError` und `validatorErrorText` wirken dort nicht; eine belegte Adresse erklärt ein Warnkasten im Dialog; kein Feld-Ausdruck enthält das Wort `return` (json-config läuft ihn sonst ohne eigenes `return`), eingebettete Werte gehen durch `literal()`.
 20. **Eine Karte zeigt, sie steuert nichts** — kein `controls`-Schalter (krobi: die Admin braucht keine Steuerung); der Datenpunkt `paused` bleibt.
 21. **Die vier „zuletzt“-Werte stehen im Kanal `last`** (`last.finished`, `last.finishedTime`, `last.failed`, `last.failedTime`) unter jedem Programm und unter `summary`; bis 0.2.0 flach, der Start zieht sie einmal um.
 22. **My.JDownloader wird über die gespeicherte Konto-Id verbunden, der Name ist nur Rückfall für eine Zeile ohne Id** — eine Zeile aus 0.2.0 behält ihre alte ID (`idPending`), bis die erste Verbindung die Id nennt, dann zieht das Gerät live um.
 23. **Eine Kartenänderung meldet ihr Ergebnis genau einmal auf info, der Start eine Sammelzeile, sonst ist ein Ausfall ein Zustand (debug)** — antwortet (Produkt + Version), nicht erreichbar, ausgeschaltet oder gelöscht (mit Datenpunktzahl); dieselbe Warnung höchstens einmal je Stunde und Programm, auch über eine gute Abfrage hinweg; die Anmelde-Warnung nennt, was die Karte trägt (`login-hint.ts`); was der Baum aus dem Objektbaum nimmt, steht nur nach dem Start auf info; die Aufzeichnung kommt in keiner Zeile vor.
+24. **Programmzeilen ändern sich nur über `updateRows`** — frisch lesen, ändern, speichern und übernehmen in einem Schritt nacheinander; ein Dialog, dessen Karte sich inzwischen geändert hat oder weg ist, speichert nichts und sagt es.
+25. **HTTP 502, 503 und 504 heißen „nicht erreichbar“** — ein Reverse-Proxy vor einem Programm, das nicht läuft; 500 entscheidet jeder Client selbst (JDownloader meldet damit eigene Fehler).
 
 ## Ein Programm hinzufügen
 
@@ -119,8 +124,8 @@ _Jede Entscheidung steht hier als Regel-Satz; Beleg, Messung und Verlauf stehen 
   Aufstiegs-Suite gibt dem gesäten Speicher-Objekt des Vorgängers die Fixture-Geheimnisse zurück (`restoreMaskedSecrets`,
   Werkzeug-Runde 67); jede Suite startet ohne den Datenordner der Instanz (`clearInstanceData`, Vorlage seit Runde 71 —
   der Harness leert pro Suite nur die Datenbank, eine liegengebliebene `programs.json` verdeckte die Übernahme); ab einem
-  Vorgänger 0.3.2 trägt kein Abzug die Programme mehr — `restoreMaskedSecrets` schreibt dann `programs.json`, wie der
-  Vorgänger sie hinterließ (IDs, My.JD-Id `dev1`, Geheimnisse wie eingetippt), sonst richtete der Start die Programme
+  Vorgänger 0.3.2 trägt kein Abzug die Programme mehr — `seedInstanceData` (Runde 75) schreibt dann `programs.json`, wie
+  der Vorgänger sie hinterließ (IDs, My.JD-Id `dev1`, Geheimnisse wie eingetippt), sonst richtete der Start die Programme
   über den gesäten Geräten neu ein;
   `MOVES` (berechnet aus dem Vorgänger-Inventar) nennt die Umzüge von 0.3.0, deren Aufzeichnung ankommen muss.
 - **Paket-/Standard-Prüfung** `test/package.js`, `test/standards` (`iobroker-adapter-checks`), `test/self-explaining.json`

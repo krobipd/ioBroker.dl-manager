@@ -90,7 +90,6 @@ or in the same Docker network. Through My.JDownloader you log in with your accou
 ```
 dl-manager.0
 ├── info                     connection, programsTotal, programsOnline, programsAllOnline
-├── programs                 the program settings (the adapter's own store, not a datapoint)
 ├── summary                  downloading, active, queued, downloadSpeed, uploadSpeed, pauseAll
 │   └── last                 finished, finishedTime, failed, failedTime
 └── <program>-<piece>        e.g. qbittorrent-nas
@@ -126,6 +125,17 @@ The test button on a program's card asks the program once and shows its answer.
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
+
+### **WORK IN PROGRESS**
+
+- Fixed: saving a card while a second admin tab changed the programs could bring back a deleted card or undo a learned My.JDownloader connection
+- Fixed: a switched-off program no longer blocks its address when you add the same program again
+- Fixed: an updated JDownloader, qBittorrent or aria2 shows its new version without restarting the adapter
+- Fixed: the details of a card open even when the program settings cannot be read
+- Fixed: an empty entry in a Transmission or SABnzbd list no longer stops the query
+- Changed: a card that cannot run shows what is wrong on the card; its `error` datapoint says `Unknown`
+- Changed: a program that is down behind a reverse proxy counts as not reachable
+- Changed: a new instance starts switched off until you set it up
 
 ### 0.3.2 (2026-09-30)
 
