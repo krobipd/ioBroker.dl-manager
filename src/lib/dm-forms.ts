@@ -340,7 +340,8 @@ export function programForm(type: ProgramType, ctx: FormContext): JsonFormSchema
     sm: 12,
     md: 6,
   };
-  const taken = `${literal(ctx.takenKeys)}.includes(${programKeyExpression(info)})`;
+  // a switched-off entry asks nothing, so its address is free for it (decision 15)
+  const taken = `(data.enabled !== false && ${literal(ctx.takenKeys)}.includes(${programKeyExpression(info)}))`;
   if (info.login !== "account") {
     items.host = {
       type: "text",

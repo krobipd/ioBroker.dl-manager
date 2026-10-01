@@ -92,7 +92,7 @@ export function parsePrograms(raw: unknown, find: (type: string) => ProgramEntry
         problem = `device id ${id} is used twice`;
       } else {
         const missing = entry.needs.find(f => !cfg[f]);
-        const twin = missing ? undefined : rows.find(o => o.enabled && !o.problem && sameProgram(o.cfg, cfg));
+        const twin = missing ? undefined : rows.find(o => blocksAddress(o) && sameProgram(o.cfg, cfg));
         problem = missing ? FIELD_TEXT[missing] : twin ? `same program as ${twin.id}` : "";
       }
     }
@@ -143,6 +143,17 @@ export function programKey(cfg: Target): string {
  */
 export function sameProgram(a: Target, b: Target): boolean {
   return programKey(a) === programKey(b);
+}
+
+/**
+ * A row that holds its program for itself: it is switched on and can run. A switched-off row or one with a problem
+ * asks nothing, so a second entry for the same program may run (decision 15).
+ *
+ * @param row a parsed row
+ * @returns whether no other enabled row may reach the same program
+ */
+export function blocksAddress(row: ProgramRow): boolean {
+  return row.enabled && !row.problem;
 }
 
 /**

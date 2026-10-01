@@ -11,6 +11,10 @@ import { applyRuleOf } from "./dm-forms";
 
 const NS = "dl-manager.0";
 
+/** Answers a browser sends although the dialog's rule would hold OK back — the handler has to check again. */
+const UNCHECKED = new WeakSet<object>();
+const unchecked = <T extends object>(answer: T): T => (UNCHECKED.add(answer), answer);
+
 interface Ctx {
   showForm: Mock;
   showMessage: Mock;
@@ -25,10 +29,18 @@ interface Ctx {
 function context(...forms: unknown[]): Ctx {
   let closed = 0;
   return {
-    // an answer given as a function runs when the user answers — what other writers did meanwhile goes in there
-    showForm: vi.fn(() => {
-      const answer = forms.shift();
-      return Promise.resolve(typeof answer === "function" ? (answer as () => unknown)() : answer);
+    // an answer given as a function runs when the user answers — what other writers did meanwhile goes in there; the
+    // dialog's applyDisabledRule runs on the data as the device manager does: while it holds, OK cannot be pressed
+    showForm: vi.fn((_schema: unknown, opts?: { data?: Record<string, unknown>; applyDisabledRule?: string }) => {
+      const given = forms.shift();
+      const answer = typeof given === "function" ? (given as () => unknown)() : given;
+      if (answer && typeof answer === "object" && !UNCHECKED.has(answer) && opts?.applyDisabledRule) {
+        const data = { ...opts.data, ...(answer as Record<string, unknown>) };
+        if (new Function("data", `return ${opts.applyDisabledRule}`)(data)) {
+          return Promise.resolve(undefined);
+        }
+      }
+      return Promise.resolve(answer);
     }),
     showMessage: vi.fn(() => Promise.resolve()),
     showConfirmation: vi.fn(() => Promise.resolve(true)),
@@ -315,7 +327,7 @@ describe("adding a program", () => {
 
   it("refuses a second entry for the same program, whatever the dialog let through", async () => {
     const { dm, host } = make([qbRow]);
-    const ctx = context({ type: "qbittorrent" }, { name: "Other", host: "H1", port: "8080", login: "user" });
+    const ctx = context({ type: "qbittorrent" }, unchecked({ name: "Other", host: "H1", port: "8080", login: "user" }));
     expect(await add(dm)(ctx)).toEqual({ refresh: false });
     expect(ctx.showMessage).toHaveBeenCalledWith({ key: "dmDuplicate", args: ["NAS", "http://h1:8080"] });
     expect(host.written).toEqual([]);
@@ -339,7 +351,16 @@ describe("adding a program", () => {
     const run = (expr: string | undefined, data: object): unknown => new Function("data", `return (${expr});`)(data);
     expect(run(items.host.validator, { host: "h1" })).toBe(false);
     expect(run(items.host.validator, { host: "h1", port: "9000" })).toBe(true);
+    expect(run(items.host.validator, { host: "h1", enabled: false })).toBe(true);
     expect(items.key).toBeUndefined();
+  });
+
+  it("hands the dialog no address of a switched-off program", async () => {
+    const { dm } = make([{ ...qbRow, enabled: false }]);
+    const ctx = context({ type: "qbittorrent" }, undefined);
+    await add(dm)(ctx);
+    const items = (ctx.showForm.mock.calls[1][0] as { items: Record<string, { validator?: string }> }).items;
+    expect(new Function("data", `return (${items.host.validator});`)({ host: "h1" })).toBe(true);
   });
 
   it("gives a second program on the same machine the port, then a counter — never an id another row holds", async () => {
@@ -407,6 +428,12 @@ describe("adding a JDownloader over My.JDownloader", () => {
     const ctx = context({ type: "jdownloader" }, { ...cloudForm, username: "ME@X.DE" });
     await add(dm)(ctx);
     expect(ctx.showMessage).toHaveBeenCalledWith("dmNoDevices");
+  });
+
+  it("offers the instance of a switched-off My.JDownloader entry", async () => {
+    const { dm, host } = make([{ ...cloudRow, enabled: false }]);
+    await add(dm)(context({ type: "jdownloader" }, cloudForm, { device: "bbbb2222" }));
+    expect(host.written).toHaveLength(1);
   });
 
   it("never takes an instance another row asks, even when that row still carries an older name of it", async () => {

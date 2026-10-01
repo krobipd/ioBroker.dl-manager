@@ -9,7 +9,7 @@ import {
   type InstanceDetails,
   type JsonFormSchema,
 } from "@iobroker/dm-utils";
-import { addressOf, parsePrograms, sameProgram, type ProgramRow, programKey } from "./core/config";
+import { addressOf, blocksAddress, parsePrograms, sameProgram, type ProgramRow, programKey } from "./core/config";
 import { deviceIdFor, idSourceOf } from "./core/device-id";
 import type { TestResult } from "./core/manager";
 import {
@@ -351,7 +351,7 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
       ? rowToForm(previous)
       : { ...emptyForm(type), name: this.suggestedName(type, rows) };
     const schema = programForm(type, {
-      takenKeys: parsed.filter(r => r.cfg.host).map(r => programKey(r.cfg)),
+      takenKeys: parsed.filter(r => blocksAddress(r) && r.cfg.host).map(r => programKey(r.cfg)),
     });
     const answer = await ctx.showForm(schema, {
       title: tName(previous ? "dmEditTitle" : "dmAddTitle", previous ? opened.name : programLabel(type)),
@@ -394,7 +394,7 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
       const row = formToRow(type, form, id, at >= 0 ? now[at] : undefined, device);
       const [candidate] = parsePrograms([row], findProgram);
       outcome.twin = candidate.enabled
-        ? others.find(o => o.enabled && !o.problem && sameProgram(o.cfg, candidate.cfg))
+        ? others.find(o => blocksAddress(o) && sameProgram(o.cfg, candidate.cfg))
         : undefined;
       if (outcome.twin) {
         return undefined;
@@ -447,9 +447,10 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
     }
     await progress.close();
     const mine = others.filter(
-      r => r.cfg.type === "jdownloader-cloud" && r.cfg.username.toLowerCase() === email.toLowerCase(),
+      r =>
+        blocksAddress(r) && r.cfg.type === "jdownloader-cloud" && r.cfg.username.toLowerCase() === email.toLowerCase(),
     );
-    // an instance another row asks is taken — by its id, or by its name for a row that has no id yet
+    // an instance another enabled row asks is taken — by its id, or by its name for a row that has no id yet
     const free = devices.filter(
       d => !mine.some(r => (r.cfg.deviceId ? r.cfg.deviceId === d.id : r.cfg.device === d.name)),
     );
