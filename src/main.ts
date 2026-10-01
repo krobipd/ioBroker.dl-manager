@@ -8,7 +8,7 @@ import { settleIds } from "./lib/core/device-id";
 import { readDevices } from "./lib/core/devices";
 import { ProgramManager, type ManagerAdapter } from "./lib/core/manager";
 import { moveObjects, type MoveAdapter } from "./lib/core/move";
-import { coveredBy, KnownObjects } from "./lib/core/objects";
+import { coveredBy, KnownObjects } from "./lib/known-objects";
 import { Serial } from "./lib/core/serial";
 import { KnownStates } from "./lib/core/states";
 import { ProgramStore, STORE_FILE, STORE_ID, type SettingsRow } from "./lib/core/store";
@@ -70,15 +70,7 @@ export class DownloadManagerAdapter extends utils.Adapter {
   ) {
     super({ ...options, name: "dl-manager" });
     const namespace = (): string => this.namespace;
-    this.known = new KnownObjects({
-      get namespace(): string {
-        return namespace();
-      },
-      extendObject: (id, obj) => this.extendObject(id, obj),
-      setForeignObject: (id, obj) => this.setForeignObject(id, obj),
-      delObject: (id, opts) => this.delObjectAsync(id, opts),
-      getObjectList: params => this.getObjectListAsync(params),
-    });
+    this.known = new KnownObjects(this);
     this.states = new KnownStates({
       get namespace(): string {
         return namespace();

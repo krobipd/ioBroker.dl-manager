@@ -133,6 +133,32 @@ export class FakeAdapter {
   }
 
   /**
+   * The …Async name the fleet's KnownObjects master calls.
+   *
+   * @param params the range
+   * @param params.startkey first id
+   * @param params.endkey last id
+   * @returns copies of the objects in the range
+   */
+  public getObjectListAsync(params: {
+    startkey: string;
+    endkey: string;
+  }): Promise<{ rows: { id: string; value: ioBroker.Object }[] }> {
+    return this.getObjectList(params);
+  }
+
+  /**
+   * The …Async name the fleet's KnownObjects master calls.
+   *
+   * @param id own or full id
+   * @param opts delete options
+   * @param opts.recursive delete children too
+   */
+  public delObjectAsync(id: string, opts?: { recursive?: boolean }): Promise<void> {
+    return this.delObject(id, opts);
+  }
+
+  /**
    * Reads a copy of an object by its full id (no namespace added).
    *
    * @param id full id

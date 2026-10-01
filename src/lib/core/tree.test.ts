@@ -7,7 +7,7 @@ vi.mock("@iobroker/adapter-core", () => ({
 
 import { FakeAdapter } from "../../../test/helpers/fake-adapter";
 import type { Capability, DownloadItem, ExtraDefinition, ProgramSnapshot } from "./model";
-import { KnownObjects } from "./objects";
+import { KnownObjects } from "../known-objects";
 import { ProgramTree, type TreeOptions } from "./tree";
 import { KnownStates } from "./states";
 
