@@ -13,7 +13,7 @@ import { KnownStates } from "./lib/core/states";
 import { ProgramStore, STORE_FILE, STORE_ID, type SettingsRow } from "./lib/core/store";
 import { LAST_CHANNEL, lastChannelObject } from "./lib/core/tree";
 import { deviceIcon } from "./lib/device-icons";
-import { DlDeviceManagement } from "./lib/device-management";
+import { DlDeviceManagement, type DmHost } from "./lib/device-management";
 import { errText } from "./lib/err-text";
 import { tDesc, tName } from "./lib/i18n";
 import { migrateNativeKeys, type NativeKeyMigration } from "./lib/native-key-migration";
@@ -47,8 +47,11 @@ export class DownloadManagerAdapter extends utils.Adapter {
   private readonly known: KnownObjects;
   /** The own states, read once at start — read-only ones are compared in memory. */
   private readonly states: KnownStates;
-  /** The programs as cards in the admin (device manager) — it answers the `dm:*` messages itself. */
-  private readonly deviceManagement: DlDeviceManagement;
+  /**
+   * The programs as cards in the admin (device manager) — it answers the `dm:*` messages itself. Built in `onReady` once
+   * I18n and the known tree and values are there: dm-utils listens for messages from its constructor on.
+   */
+  private deviceManagement: DlDeviceManagement | null = null;
   /** Where the programs live (`programs.json` in the instance's data folder). */
   private readonly programs: ProgramStore;
   /** Changes of the program rows, one after the other (dialogs and a learned My.JDownloader id). */
@@ -93,7 +96,14 @@ export class DownloadManagerAdapter extends utils.Adapter {
           this.log.debug(`Could not raise a notification: ${errText(err)}`),
         ),
     });
-    this.deviceManagement = new DlDeviceManagement(this, {
+    this.on("ready", this.onReady.bind(this));
+    this.on("stateChange", this.onStateChange.bind(this));
+    this.on("unload", this.onUnload.bind(this));
+  }
+
+  /** @returns what the device manager needs of the adapter */
+  private dmHost(): DmHost {
+    return {
       readRows: () => this.programs.read(),
       saveRows: rows => this.saveRows(rows),
       hasObject: relId => Promise.resolve(this.known.get(relId) !== undefined),
@@ -106,34 +116,7 @@ export class DownloadManagerAdapter extends utils.Adapter {
         }),
       icon: deviceIcon,
       iobHost: () => this.host ?? "",
-    });
-    this.on("ready", this.onReady.bind(this));
-    this.on("stateChange", this.onStateChange.bind(this));
-    this.on("unload", this.onUnload.bind(this));
-  }
-
-  /**
-   * Removes a leftover `stopInstance` from `common.supportedMessages` of this instance's own object — with it the host
-   * kills the process and `onUnload` never runs (fleet rule). The key itself stays: its `deviceManager` entry switches
-   * the message reception on.
-   *
-   * @returns true when the correction was written; the host restarts the instance, the caller stops.
-   */
-  private async correctInstanceObject(): Promise<boolean> {
-    const id = `system.adapter.${this.namespace}`;
-    try {
-      const obj = await this.getForeignObjectAsync(id);
-      const supported = obj?.common?.supportedMessages as Record<string, unknown> | null | undefined;
-      if (supported?.stopInstance === undefined || supported.stopInstance === null) {
-        return false;
-      }
-      this.log.info("Correcting a leftover setting from an earlier version — this instance restarts once");
-      await this.extendForeignObjectAsync(id, { common: { supportedMessages: { stopInstance: null } } });
-      return true;
-    } catch (err: unknown) {
-      this.log.debug(`Could not check the instance object ${id}: ${errText(err)}`);
-      return false;
-    }
+    };
   }
 
   /** @returns the store file in the instance's data folder (`common.dataFolder`, part of every ioBroker backup) */
@@ -451,9 +434,6 @@ export class DownloadManagerAdapter extends utils.Adapter {
 
   private async onReady(): Promise<void> {
     try {
-      if (await this.correctInstanceObject()) {
-        return;
-      }
       await I18n.init(join(this.adapterDir, "admin"), this);
       await this.moveStoreObject();
       await this.takeOverPrograms();
@@ -466,6 +446,7 @@ export class DownloadManagerAdapter extends utils.Adapter {
       await this.refreshManifestObjects();
       await this.settleDevices();
       this.log.debug(`start: devices settled`);
+      this.deviceManagement = new DlDeviceManagement(this, this.dmHost());
       // subscribed before the start: a write that arrives while the programs start is forgotten like any other
       await this.subscribeStatesAsync("*");
       this.manager = this.makeManager();

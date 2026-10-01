@@ -8,6 +8,8 @@
 
 Monitors and controls your download programs from ioBroker — [JDownloader 2](https://jdownloader.org/), [qBittorrent](https://www.qbittorrent.org/), [Transmission](https://transmissionbt.com/), [Deluge](https://deluge-torrent.org/), [SABnzbd](https://sabnzbd.org/), [NZBGet](https://nzbget.com/), [aria2](https://aria2.github.io/) and [pyLoad](https://pyload.net/) — in one instance.
 
+[🇺🇸 Documentation](./docs/en/README.md) · [🇩🇪 Dokumentation](./docs/de/README.md)
+
 ---
 
 ## Features

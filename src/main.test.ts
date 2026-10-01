@@ -96,6 +96,8 @@ interface Harness {
   instanceObject: Record<string, unknown> | null;
   instanceWrites: unknown[];
   dataDir: string;
+  getObjectListAsync(p: { startkey: string; endkey: string }): Promise<unknown>;
+  getStatesAsync(p: string): Promise<Record<string, ioBroker.State>>;
 }
 
 const flush = (): Promise<void> => new Promise(resolve => setImmediate(resolve));
@@ -175,19 +177,6 @@ describe("DownloadManagerAdapter — start", () => {
     [...h.store.objects]
       .filter(([id, o]) => o.type === "channel" && id.includes(".downloads."))
       .map(([, o]) => o.native.key);
-
-  it("removes only a leftover stopInstance entry — deviceManager stays — and stops for the restart", async () => {
-    for (const leftover of [true, false]) {
-      const { h, polls } = make();
-      h.instanceObject = { common: { supportedMessages: { deviceManager: true, stopInstance: leftover } }, native: {} };
-      await h.handlers.get("ready")?.();
-      expect(h.instanceWrites).toEqual([
-        { id: "system.adapter.dl-manager.0", obj: { common: { supportedMessages: { stopInstance: null } } } },
-      ]);
-      expect(polls()).toBe(0);
-      expect(h.store.objectLog).toEqual([]);
-    }
-  });
 
   it("drops the old messagebox switch and stops for the restart", async () => {
     const { h, polls } = make();
@@ -347,14 +336,12 @@ describe("DownloadManagerAdapter — start", () => {
     expect(polls()).toBe(1);
   });
 
-  it("starts normally with the device manager entry and no stopInstance, or a stopInstance already nulled", async () => {
-    for (const supported of [{ deviceManager: true }, { deviceManager: true, stopInstance: null }, null]) {
-      const { h, polls } = make();
-      h.instanceObject = { common: { supportedMessages: supported }, native: {} };
-      await h.handlers.get("ready")?.();
-      expect(h.instanceWrites).toEqual([]);
-      expect(polls()).toBe(1);
-    }
+  it("starts without touching its instance object when nothing is left over", async () => {
+    const { h, polls } = make();
+    h.instanceObject = { common: { supportedMessages: { deviceManager: true } }, native: {} };
+    await h.handlers.get("ready")?.();
+    expect(h.instanceWrites).toEqual([]);
+    expect(polls()).toBe(1);
   });
 
   it("keeps finished downloads with the default tree settings", async () => {
@@ -501,12 +488,34 @@ describe("DownloadManagerAdapter — device manager", () => {
     test(row: Record<string, unknown>): Promise<unknown>;
     iobHost(): string;
   }
-  const hostOf = (h: Harness): Host => (h as unknown as { deviceManagement: { host: Host } }).deviceManagement.host;
+  const hostOf = (h: Harness): Host => (h as unknown as { dmHost(): Host }).dmHost();
 
-  it("takes the dm messages through the device manager — the adapter itself answers none", () => {
+  it("takes the dm messages through the device manager — the adapter itself answers none", async () => {
     const { h } = make();
+    await h.handlers.get("ready")?.();
     expect(h.handlers.has("message")).toBe(true);
     expect(h.sent).toEqual([]);
+  });
+
+  it("listens for dm messages only once I18n, the known tree and the known values are there", async () => {
+    const { h } = make();
+    expect(h.handlers.has("message")).toBe(false);
+    const seen: boolean[] = [];
+    const objects = h.getObjectListAsync;
+    const states = h.getStatesAsync;
+    h.getObjectListAsync = p => (seen.push(h.handlers.has("message")), objects(p));
+    h.getStatesAsync = p => (seen.push(h.handlers.has("message")), states(p));
+    await h.handlers.get("ready")?.();
+    expect(seen.length).toBeGreaterThanOrEqual(2);
+    expect(seen.every(listening => !listening)).toBe(true);
+    expect(h.handlers.has("message")).toBe(true);
+  });
+
+  it("builds no device manager when the start stops for a restart", async () => {
+    const { h } = make();
+    h.instanceObject = { common: { messagebox: true, supportedMessages: { deviceManager: true } }, native: {} };
+    await h.handlers.get("ready")?.();
+    expect(h.handlers.has("message")).toBe(false);
   });
 
   it("reads the rows from the store with readable secrets, skipping what is no row", async () => {

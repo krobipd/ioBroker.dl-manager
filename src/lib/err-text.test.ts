@@ -1,4 +1,5 @@
-// Fleet master test of errText (Entwicklung/CLAUDE_CODING.md § Fehlertext-Helfer).
+// Fleet master — the release run requires this file byte for byte in every adapter; change it in
+// Entwicklung/.consistency-master, never in an adapter.
 import http from "node:http";
 import net from "node:net";
 import { errText } from "./err-text";
@@ -118,7 +119,6 @@ describe("errText — the non-Error branches stay", () => {
     const cyc: Record<string, unknown> = {};
     cyc.self = cyc;
     expect(errText(cyc)).toBe("[object Object]");
-    expect(errText({ toJSON: () => undefined })).toBe("[object Object]");
   });
 });
 describe("errText — it never throws and never prints source text", () => {

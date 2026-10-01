@@ -149,7 +149,7 @@
     "icon": "dl-manager.svg",
     "extIcon": "https://raw.githubusercontent.com/krobipd/ioBroker.dl-manager/main/admin/dl-manager.svg",
     "readme": "https://github.com/krobipd/ioBroker.dl-manager/blob/main/README.md",
-    "enabled": true,
+    "enabled": false,
     "tier": 3,
     "loglevel": "info",
     "mode": "daemon",
