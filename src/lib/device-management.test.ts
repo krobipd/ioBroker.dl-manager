@@ -263,6 +263,16 @@ describe("cards", () => {
     ]);
   });
 
+  it("answers the details of a card whose settings cannot be read with its object ID, and logs why", async () => {
+    const { dm, host, errors } = make([cloudRow]);
+    host.readRows = () => Promise.reject(new Error("db down"));
+    const details = await dm.getDeviceDetails("jdownloader-2222");
+    expect(Object.values(details.schema.items).map(i => i.text)).toEqual([
+      { key: "dmDetailsId", args: [`${NS}.jdownloader-2222`] },
+    ]);
+    expect(errors.join("\n")).toMatch(/db down/);
+  });
+
   it("shows two rows with one device id as one card, and the name falls back to the id", async () => {
     const { dm } = make([
       { ...qbRow, name: "" },

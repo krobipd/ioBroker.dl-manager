@@ -260,7 +260,13 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
    * @returns the details panel
    */
   protected async getDeviceDetails(id: string): Promise<DeviceDetails<string>> {
-    const row = parsePrograms(await this.host.readRows(), findProgram).find(r => r.id === id);
+    // dm-utils sends no answer for a handler that throws — the details window would wait for ever
+    let row: ProgramRow | undefined;
+    try {
+      row = parsePrograms(await this.host.readRows(), findProgram).find(r => r.id === id);
+    } catch (err: unknown) {
+      this.log.error(`device manager: the details of ${id} could not read the settings (${errText(err)})`);
+    }
     const line = (text: ioBroker.StringOrTranslated): Record<string, unknown> => ({
       type: "staticText",
       text,
