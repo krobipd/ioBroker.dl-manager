@@ -27,6 +27,8 @@ export function prepare(work, tag) {
     join(work, "seed", "archive.zip"),
     inner,
   ]);
+  // a file of its own for the autostart probe — JD would take a second link to an URL it already holds as a duplicate
+  writeFileSync(join(work, "seed", "probe.bin"), payload(2 * MiB, 98));
   // The image copies /defaults/cfg only when /config/cfg is missing, and its init script edits files of it — so the
   // defaults are taken out of the image and the settings below are laid over them.
   const image = `jlesage/jdownloader-2:${tag}`;
@@ -233,6 +235,13 @@ export async function record(_ctx) {
     60_000,
   );
   await snapshot("stopped");
+  // open point (api-jdownloader.md § 7.5): does an add with autostart start a stopped controller? The adapter's pauseAll
+  // is /downloadcontroller/stop, and its add sends autostart: true.
+  await add("probe", "probe.bin");
+  await new Promise(resolve => setTimeout(resolve, 5000));
+  const afterProbe = await call("/downloadcontroller/getCurrentState");
+  w("open-points", "state-after-autostart-add-while-stopped", afterProbe);
+  console.log(`jdownloader: controller after an autostart add while stopped: ${afterProbe.json().data}`);
   w("commands", "start", await call("/downloadcontroller/start"));
 
   // extraction (best effort: a stored zip extracts fast)
