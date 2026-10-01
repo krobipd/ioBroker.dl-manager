@@ -107,7 +107,7 @@ export class DownloadManagerAdapter extends utils.Adapter {
       readRows: () => this.programs.read(),
       updateRows: change => this.updateRows(change),
       hasObject: relId => Promise.resolve(this.known.get(relId) !== undefined),
-      readState: async relId => (await this.getStateAsync(relId))?.val ?? undefined,
+      readState: relId => Promise.resolve(this.states.get(relId)),
       test: row => (this.manager ?? this.makeManager()).testProgram(row),
       listJdDevices: (email, password) =>
         listMyJdDevices(email, password, {
@@ -406,10 +406,11 @@ export class DownloadManagerAdapter extends utils.Adapter {
         this.states.remove(id, opts);
       },
       getObject: id => this.getObjectAsync(id),
+      knownObject: id => this.known.get(id),
       getForeignObjects: (pattern, type) =>
         this.getForeignObjectsAsync(pattern, type) as Promise<Record<string, ioBroker.Object>>,
       getForeignObjectAsync: id => this.getForeignObjectAsync(id),
-      getState: id => this.getStateAsync(id),
+      knownValue: id => this.states.get(id),
       setState: (id, state) => this.states.set(id, state),
       setStateChanged: (id, state) => this.states.put(id, state),
     };

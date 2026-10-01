@@ -46,6 +46,14 @@ export class KnownStates {
   }
 
   /**
+   * @param id own or full id
+   * @returns the value as this instance knows it, undefined for a state it holds no value of
+   */
+  public get(id: string): ioBroker.StateValue | undefined {
+    return this.last.get(this.full(id))?.val;
+  }
+
+  /**
    * Writes a state only when it differs from what this instance knows of it.
    *
    * @param id own or full id

@@ -272,9 +272,9 @@ describe("ProgramTree — downloads", () => {
       extendObject: (id: string, obj: ioBroker.PartialObject) => known.extend(id, obj),
       setForeignObject: (id: string, obj: ioBroker.SettableObject) => known.replace(id, obj),
       delObject: (id: string, o: { recursive: boolean }) => known.remove(id, o),
-      getObject: (id: string) => a.getObject(id),
+      knownObject: (id: string) => known.get(id),
       getForeignObjects: (p: string, ty: ioBroker.ObjectType) => a.getForeignObjects(p, ty),
-      getState: (id: string) => a.getState(id),
+      knownValue: (id: string) => a.knownValue(id),
       setState: (id: string, s: ioBroker.SettableState) => a.setState(id, s),
       setStateChanged: (id: string, s: ioBroker.SettableState) => a.setStateChanged(id, s),
     };
@@ -496,6 +496,18 @@ describe("ProgramTree — keys the 0.0.1 placeholder left on its objects", () =>
 });
 
 describe("ProgramTree — finished and failed events", () => {
+  it("takes the startup baseline and the device from what the adapter holds — no single database read", async () => {
+    const a = new FakeAdapter(NS);
+    a.states.set(`${DEV}.last.finishedTime`, { val: 5000, ack: true } as ioBroker.State);
+    const reads: string[] = [];
+    const state = a.getState.bind(a);
+    const object = a.getObject.bind(a);
+    a.getState = id => (reads.push(id), state(id));
+    a.getObject = id => (reads.push(id), object(id));
+    await makeTree(a);
+    expect(reads).toEqual([]);
+  });
+
   it("fires finished on the transition, not on the startup baseline", async () => {
     const a = new FakeAdapter(NS);
     a.states.set(`${DEV}.last.finishedTime`, { val: 5000, ack: true } as ioBroker.State);

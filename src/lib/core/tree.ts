@@ -23,12 +23,12 @@ export interface TreeAdapter {
   extendObject(id: string, obj: ioBroker.PartialObject): Promise<unknown>;
   /** Deletes an object (and with `recursive` its children and their values). */
   delObject(id: string, opts: { recursive: boolean }): Promise<unknown>;
-  /** Reads an object (own namespace or full id). */
-  getObject(id: string): Promise<ioBroker.Object | null | undefined>;
+  /** An own object as the adapter holds it (read once at start) — no database read. */
+  knownObject(id: string): unknown;
   /** Reads objects by pattern and type. */
   getForeignObjects(pattern: string, type: ioBroker.ObjectType): Promise<Record<string, ioBroker.Object>>;
-  /** Reads a state. */
-  getState(id: string): Promise<ioBroker.State | null | undefined>;
+  /** The value of an own state as the adapter holds it (read once at start) — no database read. */
+  knownValue(id: string): ioBroker.StateValue | undefined;
   /** Writes a state. */
   setState(id: string, state: ioBroker.SettableState): Promise<unknown>;
   /** Writes a state only when the value or ack changed. */
@@ -179,10 +179,10 @@ export class ProgramTree {
       });
     }
     this.ids = new ItemIds(stored);
-    const removed: unknown = (await this.adapter.getObject(this.dev))?.native?.removed;
-    this.leftRemoved = removed !== undefined && removed !== null;
-    const last = await this.adapter.getState(`${this.dev}.${LAST_CHANNEL}.finishedTime`);
-    this.baselineFinished = typeof last?.val === "number" ? last.val : null;
+    const device = this.adapter.knownObject(this.dev) as { native?: { removed?: unknown } } | undefined;
+    this.leftRemoved = device?.native?.removed !== undefined && device.native.removed !== null;
+    const last = this.adapter.knownValue(`${this.dev}.${LAST_CHANNEL}.finishedTime`);
+    this.baselineFinished = typeof last === "number" ? last : null;
   }
 
   /**

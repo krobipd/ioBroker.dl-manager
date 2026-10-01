@@ -98,6 +98,7 @@ interface Harness {
   dataDir: string;
   getObjectListAsync(p: { startkey: string; endkey: string }): Promise<unknown>;
   getStatesAsync(p: string): Promise<Record<string, ioBroker.State>>;
+  getStateAsync(id: string): Promise<ioBroker.State | null>;
 }
 
 const flush = (): Promise<void> => new Promise(resolve => setImmediate(resolve));
@@ -516,6 +517,17 @@ describe("DownloadManagerAdapter — device manager", () => {
     h.instanceObject = { common: { messagebox: true, supportedMessages: { deviceManager: true } }, native: {} };
     await h.handlers.get("ready")?.();
     expect(h.handlers.has("message")).toBe(false);
+  });
+
+  it("reads a card's warning from the value memory — no single read of an own state", async () => {
+    const { h } = make();
+    await h.handlers.get("ready")?.();
+    await flush();
+    const asked: string[] = [];
+    const read = h.getStateAsync;
+    h.getStateAsync = id => (asked.push(id), read(id));
+    expect(await hostOf(h).readState("qbittorrent-nas.error")).toBe(h.store.val("qbittorrent-nas.error"));
+    expect(asked).toEqual([]);
   });
 
   it("reads the rows from the store with readable secrets, skipping what is no row", async () => {

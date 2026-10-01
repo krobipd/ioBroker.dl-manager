@@ -202,6 +202,22 @@ export class FakeAdapter {
   }
 
   /**
+   * @param id own or full id
+   * @returns the object as held — what the adapter's object memory gives without a database read
+   */
+  public knownObject(id: string): unknown {
+    return this.objects.get(this.full(id));
+  }
+
+  /**
+   * @param id own or full id
+   * @returns the value as held — what the adapter's value memory gives without a database read
+   */
+  public knownValue(id: string): ioBroker.StateValue | undefined {
+    return this.val(id);
+  }
+
+  /**
    * @param id state id without namespace
    * @returns the value or undefined
    */
