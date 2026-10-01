@@ -4,7 +4,6 @@ import type { Capability, Command, ProgramDriver, ProgramSnapshot, DriverDeps, P
 import { GENERAL_SETTINGS, jdBaseUrl, JdLocalTransport, type JdTransport } from "./client";
 import { JdCloudTransport } from "./cloud";
 import { isHeld, toSnapshot } from "./map";
-import { asRecord, asRecords } from "../../core/units";
 
 const PACKAGE_QUERY = {
   bytesLoaded: true,
@@ -41,9 +40,9 @@ const LINK_QUERY = {
 const LISTEN_TIMEOUT_MS = 35_000;
 /** Pause before the next subscription after a failed one. */
 const RESUBSCRIBE_MS = 30_000;
-/** How often an add to a held controller asks the link grabber for the crawled link, and how long it waits between. */
-const CRAWL_ATTEMPTS = 10;
-const CRAWL_WAIT_MS = 1_000;
+/** How often an add to a held controller looks whether JDownloader started it again, and how long it waits between. */
+const START_ATTEMPTS = 10;
+const START_WAIT_MS = 1_000;
 
 /** JDownloader 2: a download is a package; the transport is local (Deprecated API) or My.JDownloader (Task 17). */
 export class JdDriver implements ProgramDriver {
@@ -118,37 +117,32 @@ export class JdDriver implements ProgramDriver {
   }
 
   /**
-   * Adds a link. JDownloader starts a held controller again for a link added with autostart (measured 2026-10-01,
-   * v26.09.1) — so while the controller is held, the link goes in without it and is moved into the download list once
-   * the crawler knows it: the download is there, the pause holds.
+   * Adds a link. JDownloader starts a held controller again for every link that reaches its download list
+   * (`LinkgrabberAutoStartEnabled`, on by default, no API parameter turns it off — measured 2026-10-01, v26.09.1) — so a
+   * controller that was held is held again the same way once it has started: the download is in the list, the pause holds.
    *
    * @param url the link
    */
   private async add(url: string): Promise<void> {
-    if (!isHeld(await this.api.call("/downloadcontroller/getCurrentState"))) {
-      await this.api.call("/linkgrabberv2/addLinks", [{ links: url, autostart: true, assignJobID: true }]);
+    const before = await this.api.call("/downloadcontroller/getCurrentState");
+    await this.api.call("/linkgrabberv2/addLinks", [{ links: url, autostart: true, assignJobID: true }]);
+    if (!isHeld(before)) {
       return;
     }
-    const job = asRecord(
-      await this.api.call("/linkgrabberv2/addLinks", [{ links: url, autostart: false, assignJobID: true }]),
-    ).id;
-    for (let attempt = 0; attempt < CRAWL_ATTEMPTS; attempt++) {
-      const links = asRecords(await this.api.call("/linkgrabberv2/queryLinks", [{ jobUUIDs: [job] }]));
-      if (links.length) {
-        await this.api.call("/linkgrabberv2/moveToDownloadlist", [
-          links.map(l => l.uuid),
-          [...new Set(links.map(l => l.packageUUID))],
-        ]);
+    for (let attempt = 0; attempt < START_ATTEMPTS; attempt++) {
+      if (!isHeld(await this.api.call("/downloadcontroller/getCurrentState"))) {
+        await (before === "PAUSE"
+          ? this.api.call("/downloadcontroller/pause", [true])
+          : this.api.call("/downloadcontroller/stop"));
         return;
       }
       await new Promise<void>(resolve => {
         // the adapter refuses a timer while it stops — then there is nothing left to wait for
-        if (this.deps.setTimeout(resolve, CRAWL_WAIT_MS) === undefined) {
+        if (this.deps.setTimeout(resolve, START_WAIT_MS) === undefined) {
           resolve();
         }
       });
     }
-    throw new ProtocolError("jdownloader: the link was not crawled in time — it waits in the link grabber");
   }
 
   /** @param cmd the command */

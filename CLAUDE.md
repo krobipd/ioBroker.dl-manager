@@ -95,7 +95,7 @@ _Jede Entscheidung steht hier als Regel-Satz; Beleg, Messung und Verlauf stehen 
 23. **Eine Kartenänderung meldet ihr Ergebnis genau einmal auf info, der Start eine Sammelzeile, sonst ist ein Ausfall ein Zustand (debug)** — antwortet (Produkt + Version), nicht erreichbar, ausgeschaltet oder gelöscht (mit Datenpunktzahl); dieselbe Warnung höchstens einmal je Stunde und Programm, auch über eine gute Abfrage hinweg; die Anmelde-Warnung nennt, was die Karte trägt (`login-hint.ts`); was der Baum aus dem Objektbaum nimmt, steht nur nach dem Start auf info; die Aufzeichnung kommt in keiner Zeile vor.
 24. **Programmzeilen ändern sich nur über `updateRows`** — frisch lesen, ändern, speichern und übernehmen in einem Schritt nacheinander; ein Dialog, dessen Karte sich inzwischen geändert hat oder weg ist, speichert nichts und sagt es.
 25. **HTTP 502, 503 und 504 heißen „nicht erreichbar“** — ein Reverse-Proxy vor einem Programm, das nicht läuft; 500 entscheidet jeder Client selbst (JDownloader meldet damit eigene Fehler).
-26. **Ein Download, der zu einem angehaltenen JDownloader kommt, geht ohne `autostart` in den Linkgrabber und per `moveToDownloadlist` in die Liste** — `autostart` startete den angehaltenen Controller wieder (gemessen 2026-10-01); die Pause hält, der Download ist da.
+26. **Startet ein neuer Download einen angehaltenen JDownloader, hält der Treiber ihn sofort wieder an, wie er war (stop bzw. pause)** — JDownloader startet bei jedem Link in der Downloadliste (`LinkgrabberAutoStartEnabled`, ab Werk an, per API nicht abschaltbar, auch `moveToDownloadlist`; gemessen 2026-10-01); die Pause hält, der Download steht in der Liste.
 
 ## Ein Programm hinzufügen
 

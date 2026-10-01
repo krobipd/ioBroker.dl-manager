@@ -105,8 +105,6 @@ describe("JDownloader local transport", () => {
         "/events/subscribe",
         "/jd/version",
         "/linkgrabberv2/addLinks",
-        "/linkgrabberv2/moveToDownloadlist",
-        "/linkgrabberv2/queryLinks",
         "/toolbar/getStatus",
       ].sort(),
     );
@@ -175,57 +173,56 @@ describe("JDownloader driver", () => {
     expect(t.calls).toEqual(["/downloadcontroller/getCurrentState", "/linkgrabberv2/addLinks"]);
   });
 
-  it("keeps a held controller held: adds without autostart and moves the crawled link into the download list", async () => {
-    let asked = 0;
-    const sent: [string, unknown[]][] = [];
-    const t = fake((path, params) => {
-      sent.push([path, params]);
+  it("holds a stopped controller again once the added link has started it", async () => {
+    let state = "STOPPED_STATE";
+    const t = fake(path => {
       if (path === "/downloadcontroller/getCurrentState") {
-        return Promise.resolve("STOPPED_STATE");
+        const now = state;
+        state = "RUNNING";
+        return Promise.resolve(now);
       }
-      if (path === "/linkgrabberv2/addLinks") {
-        return Promise.resolve({ id: 7 });
-      }
-      if (path === "/linkgrabberv2/queryLinks") {
-        asked++;
-        return Promise.resolve(
-          asked < 2
-            ? []
-            : [
-                { uuid: 11, packageUUID: 10 },
-                { uuid: 12, packageUUID: 10 },
-              ],
-        );
-      }
-      return Promise.resolve("");
+      return Promise.resolve(path === "/linkgrabberv2/addLinks" ? { id: 7 } : true);
     });
     const now = {
       setTimeout: (cb: () => void): ioBroker.Timeout => (cb(), 1 as unknown as ioBroker.Timeout),
       clearTimeout: () => undefined,
     };
     await new JdDriver(cfg("http://127.0.0.1:3128"), { ...now, log }, t).command({ kind: "add", url: "http://x/a" });
-    expect(sent.find(([p]) => p === "/linkgrabberv2/addLinks")?.[1]).toEqual([
-      { links: "http://x/a", autostart: false, assignJobID: true },
+    expect(t.calls).toEqual([
+      "/downloadcontroller/getCurrentState",
+      "/linkgrabberv2/addLinks",
+      "/downloadcontroller/getCurrentState",
+      "/downloadcontroller/stop",
     ]);
-    expect(sent.find(([p]) => p === "/linkgrabberv2/queryLinks")?.[1]).toEqual([{ jobUUIDs: [7] }]);
-    expect(sent.at(-1)).toEqual(["/linkgrabberv2/moveToDownloadlist", [[11, 12], [10]]]);
-    expect(t.calls).not.toContain("/downloadcontroller/start");
   });
 
-  it("says so when a link added to a held controller is not crawled in time", async () => {
-    const t = fake(path =>
-      Promise.resolve(
-        path === "/downloadcontroller/getCurrentState" ? "PAUSE" : path === "/linkgrabberv2/addLinks" ? { id: 7 } : [],
-      ),
-    );
+  it("pauses a paused controller again, and leaves it alone while JDownloader does not start it", async () => {
+    let state = "PAUSE";
+    const sent: [string, unknown[]][] = [];
+    const t = fake((path, params) => {
+      sent.push([path, params]);
+      if (path === "/downloadcontroller/getCurrentState") {
+        const now = state;
+        state = "RUNNING";
+        return Promise.resolve(now);
+      }
+      return Promise.resolve(true);
+    });
     const now = {
       setTimeout: (cb: () => void): ioBroker.Timeout => (cb(), 1 as unknown as ioBroker.Timeout),
       clearTimeout: () => undefined,
     };
-    await expect(
-      new JdDriver(cfg("http://127.0.0.1:3128"), { ...now, log }, t).command({ kind: "add", url: "http://x/a" }),
-    ).rejects.toThrow(/link grabber/);
-    expect(t.calls.filter(p => p === "/linkgrabberv2/queryLinks")).toHaveLength(10);
+    await new JdDriver(cfg("http://127.0.0.1:3128"), { ...now, log }, t).command({ kind: "add", url: "http://x/a" });
+    expect(sent.at(-1)).toEqual(["/downloadcontroller/pause", [true]]);
+    const quiet = fake(path =>
+      Promise.resolve(path === "/downloadcontroller/getCurrentState" ? "STOPPED_STATE" : true),
+    );
+    await new JdDriver(cfg("http://127.0.0.1:3128"), { ...now, log }, quiet).command({
+      kind: "add",
+      url: "http://x/b",
+    });
+    expect(quiet.calls.filter(p => p === "/downloadcontroller/getCurrentState")).toHaveLength(11);
+    expect(quiet.calls).not.toContain("/downloadcontroller/stop");
   });
 
   it("resumes a paused JD first, then starts the controller", async () => {
