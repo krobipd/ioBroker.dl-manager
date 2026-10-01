@@ -240,6 +240,17 @@ describe("ProgramManager — start", () => {
     expect(w.a.objects.has(`${NS}.summary`)).toBe(true);
   });
 
+  it("stamps nothing into a program device that has no online datapoint", async () => {
+    const w = world({ h1: { snapshot: snap(0) } });
+    await w.a.setForeignObject(`${NS}.qbittorrent-bare`, {
+      type: "device",
+      common: { name: "bare" },
+      native: { type: "qbittorrent" },
+    });
+    await w.manager().start([row("qbittorrent", "nas", "h1")]);
+    expect(w.a.orphanWrites.filter(id => id.includes("qbittorrent-bare"))).toEqual([]);
+  });
+
   it("writes the summary one poll after the other — the last value written is the current one, none twice", async () => {
     const a = new FakeAdapter(NS);
     // polls that end together, and a database that answers each write at its own pace: two summaries would otherwise
@@ -757,6 +768,30 @@ describe("ProgramManager — connection test and stop", () => {
     });
     const deps = { setTimeout: () => undefined, clearTimeout: () => undefined, log: new FakeAdapter(NS).log };
     expect(await testProgram(row("sabnzbd", "b", "h1"), find, deps)).toEqual({ ok: true, version: "5.1.3" });
+  });
+
+  it("stop waits for a change of the rows that is under way — no program starts after it", async () => {
+    const w = world({ h1: { snapshot: snap(0) }, h2: { snapshot: snap(0) } });
+    const m = w.manager();
+    await m.start([row("qbittorrent", "a", "h1")]);
+    await flush();
+    let release = (): void => undefined;
+    const held = new Promise<void>(resolve => (release = resolve));
+    const extend = w.a.extendObject.bind(w.a);
+    let holding = true;
+    w.a.extendObject = async (id, obj) => {
+      if (holding && id.includes("qbittorrent-b")) {
+        holding = false;
+        await held;
+      }
+      return extend(id, obj);
+    };
+    const applying = m.apply([row("qbittorrent", "a", "h1"), row("qbittorrent", "b", "h2")]);
+    await vi.waitFor(() => expect(holding).toBe(false));
+    const stopping = m.stop();
+    release();
+    await Promise.all([applying, stopping]);
+    expect(w.drivers.every(d => d.closed)).toBe(true);
   });
 
   it("stop closes every driver, marks every program Unknown and the adapter disconnected", async () => {

@@ -273,6 +273,20 @@ describe("aria2 details", () => {
     }
   });
 
+  it("names the fault of a single call — a command aria2 refuses fails", async () => {
+    const s = await startFixtureServer(call => {
+      const { id } = JSON.parse(call.body) as { id: string };
+      return { body: { jsonrpc: "2.0", id, error: { code: 1, message: "GID 123 is not found" } } };
+    });
+    try {
+      await expect(
+        new AriaDriver(cfg(s.baseUrl), { ...timers, log }, noSocket).command({ kind: "pause", key: "123" }),
+      ).rejects.toThrow(/GID 123 is not found/);
+    } finally {
+      await s.close();
+    }
+  });
+
   it("names a short multicall answer, a fault inside it and a 4xx", async () => {
     const answers: [(id: string) => unknown, number, RegExp][] = [
       [id => ({ jsonrpc: "2.0", id, result: [[{ version: "1" }]] }), 200, /unexpected shape/],

@@ -93,6 +93,14 @@ describe("ProgramStore", () => {
     expect(rows()[0].password).toBe("enc3:new");
   });
 
+  it("writes nothing for the same row with its fields in another order", async () => {
+    const { store, writes } = make();
+    await store.write([{ id: "a", name: "n", password: "pw", apiKey: "k" }]);
+    const [row] = await store.read();
+    await store.write([Object.fromEntries(Object.entries(row).reverse())]);
+    expect(writes()).toBe(1);
+  });
+
   it("encrypts again when the row is another one, even with the same secret", async () => {
     const { store, rows } = make();
     await store.write([{ id: "a", password: "pw" }]);
