@@ -138,6 +138,22 @@ describe("SABnzbd details", () => {
     expect((await firstUrl(() => d.poll())).startsWith("http://nas:8080/sab/api?")).toBe(true);
   });
 
+  it("skips an empty entry in the queue instead of failing the query", async () => {
+    const s = await startFixtureServer(call => {
+      const mode = new URLSearchParams(call.query).get("mode");
+      if (mode === "queue") {
+        return { body: { queue: { slots: [null, { nzo_id: "a", status: "Downloading", filename: "x" }] } } };
+      }
+      return { body: mode === "history" ? { history: { slots: [] } } : { status: {} } };
+    });
+    try {
+      const snap = await new SabDriver(cfg(s.baseUrl), { ...timers, log }).poll();
+      expect(snap.items.map(i => i.key)).toEqual(["a"]);
+    } finally {
+      await s.close();
+    }
+  });
+
   it("calls a 4xx and status false protocol errors with SABnzbd's reason", async () => {
     for (const [answer, err] of [
       [{ status: 404, body: {} }, /HTTP 404/],

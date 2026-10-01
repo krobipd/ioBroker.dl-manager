@@ -8,6 +8,7 @@ import type {
   DriverDeps,
   ProgramConfig,
 } from "../../core/model";
+import { asRecord, asRecords } from "../../core/units";
 import { RETRY_EXTRA } from "../retry-extra";
 import { SabClient } from "./client";
 import { toSnapshot } from "./map";
@@ -52,8 +53,7 @@ export class SabDriver implements ProgramDriver {
 
   /** @returns one complete query */
   public async poll(): Promise<ProgramSnapshot> {
-    const q = (await this.client.call({ mode: "queue" })).queue;
-    const queue = q && typeof q === "object" ? (q as Record<string, unknown>) : {};
+    const queue = asRecord((await this.client.call({ mode: "queue" })).queue);
     const h = (
       await this.client.call({ mode: "history", limit: HISTORY_LIMIT, last_history_update: this.historyUpdate })
     ).history;
@@ -63,8 +63,7 @@ export class SabDriver implements ProgramDriver {
       const update = hist.last_history_update;
       this.historyUpdate = typeof update === "number" || typeof update === "string" ? String(update) : "0";
     }
-    const slots = Array.isArray(queue.slots) ? (queue.slots as Record<string, unknown>[]) : [];
-    this.inQueue = new Set(slots.map(s => String(s.nzo_id)));
+    this.inQueue = new Set(asRecords(queue.slots).map(s => String(s.nzo_id)));
     const status = (await this.client.call({ mode: "status", skip_dashboard: "1" })).status;
     const ppPause = (status as { pp_pause_event?: unknown } | null | undefined)?.pp_pause_event === true;
     return toSnapshot(queue, this.history, m => this.deps.log.debug(m), ppPause);

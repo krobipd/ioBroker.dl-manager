@@ -147,6 +147,16 @@ const bodies = (s: { calls: RecordedCall[] }, method: string): Record<string, un
     .map(b => b.params ?? {});
 
 describe("Transmission driver details", () => {
+  it("skips an empty entry in the torrent list instead of failing the query", async () => {
+    const s = await trSynth({ torrent_get: { torrents: [null, { hash_string: "h1", status: 4, name: "x" }] } });
+    try {
+      const snap = await new TrDriver(cfg(s.baseUrl), { ...timers, log }).poll();
+      expect(snap.items.map(i => i.key)).toEqual(["h1"]);
+    } finally {
+      await s.close();
+    }
+  });
+
   it("asks the default port and path, adds the slash to a bare path, sends basic auth only with a user", async () => {
     const d = (over: Partial<ProgramConfig>): TrDriver =>
       new TrDriver({ ...cfg("http://nas:1"), port: 0, ...over }, { ...timers, log });
