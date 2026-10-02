@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "dl-manager",
-    "version": "0.3.2",
+    "version": "0.4.0",
     "news": {
+      "0.4.0": {
+        "en": "Card changes no longer undo each other, a switched-off program frees its address and updated programs show their new version. New instances start switched off.",
+        "de": "Kartenänderungen heben sich nicht mehr auf, ein ausgeschaltetes Programm gibt seine Adresse frei, aktualisierte Programme zeigen ihre neue Version. Neue Instanzen starten aus.",
+        "ru": "Изменения карточек больше не отменяют друг друга, выключенная программа освобождает адрес, обновлённые программы показывают новую версию. Новые экземпляры стартуют выключенными.",
+        "pt": "As alterações de cartões já não se anulam, um programa desligado liberta o endereço e programas atualizados mostram a nova versão. Novas instâncias começam desligadas.",
+        "nl": "Kaartwijzigingen heffen elkaar niet meer op, een uitgeschakeld programma geeft zijn adres vrij en bijgewerkte programma's tonen hun versie. Nieuwe instanties starten uit.",
+        "fr": "Les modifications de cartes ne s'annulent plus, un programme désactivé libère son adresse et un programme mis à jour montre sa version. Les nouvelles instances démarrent éteintes.",
+        "it": "Le modifiche alle schede non si annullano più, un programma spento libera l'indirizzo e i programmi aggiornati mostrano la nuova versione. Le nuove istanze partono spente.",
+        "es": "Los cambios en tarjetas ya no se anulan, un programa apagado libera su dirección y los programas actualizados muestran su nueva versión. Las instancias nuevas arrancan apagadas.",
+        "pl": "Zmiany kart już się nie znoszą, wyłączony program zwalnia adres, a zaktualizowane programy pokazują nową wersję. Nowe instancje startują wyłączone.",
+        "uk": "Зміни карток більше не скасовують одна одну, вимкнена програма звільняє адресу, оновлені програми показують нову версію. Нові екземпляри стартують вимкненими.",
+        "zh-cn": "卡片更改不再相互覆盖，关闭的程序会释放其地址，更新后的程序显示新版本。新实例启动时处于关闭状态。"
+      },
       "0.3.2": {
         "en": "Your programs and their access data moved out of the object tree into a file of the instance, which every ioBroker backup includes.",
         "de": "Deine Programme samt Zugangsdaten liegen nicht mehr im Objektbaum, sondern in einer Datei der Instanz, die jede ioBroker-Sicherung enthält.",

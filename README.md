@@ -126,7 +126,7 @@ The test button on a program's card asks the program once and shows its answer.
     ### **WORK IN PROGRESS**
 -->
 
-### **WORK IN PROGRESS**
+### 0.4.0 (2026-10-02)
 
 - Fixed: saving a card while a second admin tab changed the programs could bring back a deleted card or undo a learned My.JDownloader connection
 - Fixed: a switched-off program no longer blocks its address when you add the same program again
@@ -165,10 +165,6 @@ The test button on a program's card asks the program once and shows its answer.
 - New: a second entry for the same program (same address, or same My.JDownloader device) is refused
 - Changed: switching a JDownloader between local and My.JDownloader keeps its rooms and functions
 - Fixed: a download that showed up again could show empty values until something about it changed
-
-### 0.1.0 (2026-09-29)
-
-- New: first release — JDownloader 2, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 and pyLoad in one instance, with one channel per download
 
 [Older changelogs can be found there](CHANGELOG_OLD.md)
 
