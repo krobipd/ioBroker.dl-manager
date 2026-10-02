@@ -52,6 +52,15 @@ describe("parsePrograms", () => {
     });
   });
 
+  it("reads a field without its surrounding blanks, and a field that holds no text as missing", () => {
+    const [row] = parsePrograms(
+      [{ enabled: true, type: "sabnzbd", id: "sabnzbd-nas", host: " nas.local ", apiKey: 42 }],
+      find,
+    );
+    expect(row.cfg.host).toBe("nas.local");
+    expect(row.problem).toBe("API key missing");
+  });
+
   it("names the missing field of an incomplete row", () => {
     const rows = parsePrograms(
       [

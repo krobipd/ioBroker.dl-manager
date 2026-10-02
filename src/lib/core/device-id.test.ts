@@ -142,6 +142,18 @@ describe("settleIds", () => {
     expect([...named.moves]).toEqual([["jdownloader-cloud", "jdownloader-1234"]]);
   });
 
+  it("keeps a waiting My.JDownloader row on the id it has, never on the one the old scheme would give it", () => {
+    const { rows, moves } = settleIds(
+      [
+        { type: "jdownloader-cloud", username: "a@x", device: "PC", id: "jdownloader-cloud", idPending: true },
+        { type: "jdownloader-cloud", username: "b@x", device: "NAS", id: "jdownloader-cloud-2", idPending: true },
+      ],
+      "iob",
+    );
+    expect(rows.map(r => r.id)).toEqual(["jdownloader-cloud", "jdownloader-cloud-2"]);
+    expect(moves.size).toBe(0);
+  });
+
   it("moves nothing when the new id is the old one", () => {
     const { rows, moves } = settleIds([{ type: "aria2", key: "iob", host: "localhost" }], "iob");
     expect(rows[0].id).toBe("aria2-iob");
