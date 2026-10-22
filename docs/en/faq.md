@@ -61,8 +61,9 @@ second one. `summary.last.finishedTime` holds the time. `summary.last.failed` wo
 ## `paused` on Transmission, aria2 or an older qBittorrent
 
 These programs have no pause for the whole program. The adapter stops the downloads that are running, remembers exactly
-those and starts exactly those again when you set `paused` back to false. A download you paused yourself stays paused.
-If you start one of the stopped downloads in the program itself, the adapter's pause ends.
+those and starts exactly those again when you set `paused` back to false — together with the downloads you added through
+ioBroker during the pause. A download you paused yourself stays paused. If you start one of the stopped downloads in the
+program itself, the adapter's pause ends.
 
 ## Why is there no `speed` on SABnzbd or NZBGet downloads?
 

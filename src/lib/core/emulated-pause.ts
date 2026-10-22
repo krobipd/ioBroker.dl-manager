@@ -31,12 +31,17 @@ export function memoryPauseStore(initial: PauseState = { paused: false, keys: []
 
 /**
  * A global pause for programs that do not have one (Transmission, aria2, qBittorrent < 5.3 — plan § 5.3): stop what
- * runs, remember exactly those, resume exactly those. A download the user starts in the program itself ends it.
+ * runs, remember exactly those, resume exactly those — and the downloads added stopped while it holds. A download the
+ * user starts in the program itself ends it.
  */
 export class EmulatedPause {
   private state: PauseState | null = null;
   /** The poll right after a pause may still list the downloads as running (aria2 unregisters from trackers first). */
   private settling = false;
+  /** Downloads added stopped whose key the program did not name — the next new stopped ones are theirs. */
+  private expected = 0;
+  /** Every key of the last poll, to tell a new download. */
+  private listed: ReadonlySet<string> | null = null;
 
   /** @param store where the state survives a restart */
   public constructor(private readonly store: PauseStore) {}
@@ -48,16 +53,31 @@ export class EmulatedPause {
 
   /**
    * @param running keys of the downloads that run or wait now
-   * @param stop stops these downloads in the program
+   * @param stop stops these downloads in the program and returns the ones it stopped (one may have ended meanwhile)
    */
-  public async pause(running: readonly string[], stop: (keys: string[]) => Promise<void>): Promise<void> {
+  public async pause(running: readonly string[], stop: (keys: string[]) => Promise<string[]>): Promise<void> {
     const s = await this.load();
-    const add = running.filter(k => !s.keys.includes(k));
+    let add = running.filter(k => !s.keys.includes(k));
     if (add.length) {
-      await stop(add);
+      add = await stop(add);
     }
     this.settling = true;
     await this.write({ paused: true, keys: [...s.keys, ...add] });
+  }
+
+  /** @param key a download the adapter added stopped because it holds the program paused — resumed with the others */
+  public async hold(key: string): Promise<void> {
+    const s = await this.load();
+    if (s.paused && !s.keys.includes(key)) {
+      await this.write({ paused: true, keys: [...s.keys, key] });
+    }
+  }
+
+  /** A download was added stopped, but the program names no key (qBittorrent loads a link later): a later poll does. */
+  public async holdNext(): Promise<void> {
+    if ((await this.load()).paused) {
+      this.expected++;
+    }
   }
 
   /** @param start starts these downloads in the program */
@@ -70,7 +90,8 @@ export class EmulatedPause {
   }
 
   /**
-   * One poll's view: ends the pause when the user started a remembered download himself, forgets gone ones.
+   * One poll's view: ends the pause when the user started a remembered download himself, forgets gone ones, takes
+   * new stopped ones the adapter added without a key.
    *
    * @param running keys that run or wait now
    * @param listed every key the program lists (omit when unknown)
@@ -78,6 +99,8 @@ export class EmulatedPause {
    */
   public async observe(running: ReadonlySet<string>, listed?: ReadonlySet<string>): Promise<boolean> {
     const s = await this.load();
+    const before = this.listed;
+    this.listed = listed ?? null;
     if (!s.paused) {
       return false;
     }
@@ -88,8 +111,13 @@ export class EmulatedPause {
       return false;
     }
     const kept = listed ? s.keys.filter(k => listed.has(k)) : s.keys;
-    if (kept.length !== s.keys.length) {
-      await this.write({ paused: true, keys: kept });
+    const added =
+      this.expected && listed && before
+        ? [...listed].filter(k => !before.has(k) && !running.has(k) && !kept.includes(k)).slice(0, this.expected)
+        : [];
+    this.expected -= added.length;
+    if (kept.length !== s.keys.length || added.length) {
+      await this.write({ paused: true, keys: [...kept, ...added] });
     }
     return true;
   }
@@ -111,6 +139,9 @@ export class EmulatedPause {
       s.keys.every((k, i) => k === next.keys[i])
     ) {
       return;
+    }
+    if (!next.paused) {
+      this.expected = 0;
     }
     this.state = next;
     await this.store.save(next);

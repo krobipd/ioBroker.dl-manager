@@ -1,6 +1,6 @@
 import { EmulatedPause, memoryPauseStore } from "../../core/emulated-pause";
 import { ProtocolError } from "../../core/errors";
-import { asRecords, toKiB } from "../../core/units";
+import { asRecord, asRecords, toKiB } from "../../core/units";
 import type { Capability, Command, ProgramDriver, ProgramSnapshot, DriverDeps, ProgramConfig } from "../../core/model";
 import { TrClient } from "./client";
 import { speedUnit, toSnapshot } from "./map";
@@ -92,15 +92,20 @@ export class TrDriver implements ProgramDriver {
       case "remove":
         await this.client.call("torrent_remove", { ids: [cmd.key], delete_local_data: false });
         return;
-      case "add":
-        await this.client.call("torrent_add", {
-          filename: cmd.url,
-          ...((await this.pause.isPaused()) ? { paused: true } : {}),
-        });
+      case "add": {
+        const held = await this.pause.isPaused();
+        const res = await this.client.call("torrent_add", { filename: cmd.url, ...(held ? { paused: true } : {}) });
+        // a duplicate is a torrent Transmission already had — the user's, never held by the pause
+        const added = asRecord(res.torrent_added).hash_string;
+        if (held && typeof added === "string") {
+          await this.pause.hold(added);
+        }
         return;
+      }
       case "pauseAll":
         await this.pause.pause(this.running, async keys => {
           await this.client.call("torrent_stop", { ids: keys });
+          return keys;
         });
         return;
       case "resumeAll":

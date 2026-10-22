@@ -68,8 +68,9 @@ fehlgeschlagene Downloads.
 ## `paused` bei Transmission, aria2 oder einem älteren qBittorrent
 
 Diese Programme haben keine Pause für das ganze Programm. Der Adapter hält die laufenden Downloads an, merkt sich genau
-diese und startet genau diese wieder, wenn du `paused` auf falsch setzt. Ein Download, den du selbst angehalten hast,
-bleibt angehalten. Startest du einen der angehaltenen Downloads im Programm selbst, endet die Pause des Adapters.
+diese und startet genau diese wieder, wenn du `paused` auf falsch setzt — zusammen mit den Downloads, die du während der
+Pause über ioBroker hinzugefügt hast. Ein Download, den du selbst angehalten hast, bleibt angehalten. Startest du einen
+der angehaltenen Downloads im Programm selbst, endet die Pause des Adapters.
 
 ## Warum gibt es bei SABnzbd- und NZBGet-Downloads kein `speed`?
 

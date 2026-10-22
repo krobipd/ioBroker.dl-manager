@@ -196,6 +196,33 @@ describe("Transmission driver details", () => {
     }
   });
 
+  it("resumes a torrent added during the pause with the others, never one it already had (review B6)", async () => {
+    const state: Record<string, unknown> = {
+      torrent_get: {
+        torrents: [
+          { hash_string: "a", status: 4 },
+          { hash_string: "mine", status: 0 },
+        ],
+      },
+      torrent_add: { torrent_added: { hash_string: "n", id: 3, name: "n" } },
+    };
+    const s = await trSynth(state);
+    const store = memoryPauseStore();
+    try {
+      const d = new TrDriver(cfg(s.baseUrl), { ...timers, log, pauseStore: store });
+      await d.poll();
+      await d.command({ kind: "pauseAll" });
+      await d.command({ kind: "add", url: "magnet:?xt=new" });
+      state.torrent_add = { torrent_duplicate: { hash_string: "mine", id: 2, name: "mine" } };
+      await d.command({ kind: "add", url: "magnet:?xt=mine" });
+      expect(await store.load()).toEqual({ paused: true, keys: ["a", "n"] });
+      await d.command({ kind: "resumeAll" });
+      expect(bodies(s, "torrent_start")).toEqual([{ ids: ["a", "n"] }]);
+    } finally {
+      await s.close();
+    }
+  });
+
   it("switches a limit off without overwriting it, and never sends a limit below 1", async () => {
     const s = await trSynth({});
     try {

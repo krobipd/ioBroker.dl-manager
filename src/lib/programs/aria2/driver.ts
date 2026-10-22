@@ -59,7 +59,9 @@ export class AriaDriver implements ProgramDriver {
     this.running = [...gids(asRecords(active)), ...gids(asRecords(waiting).filter(e => e.status !== "paused"))];
     this.stopped = new Set(gids(asRecords(stopped)));
     const all = [...asRecords(active), ...asRecords(waiting), ...asRecords(stopped)];
-    const paused = await this.pause.observe(new Set(this.running), new Set(gids(all)));
+    // a finished download cannot be resumed — only active and waiting ones stay in the pause
+    const resumable = new Set(gids([...asRecords(active), ...asRecords(waiting)]));
+    const paused = await this.pause.observe(new Set(this.running), resumable);
     const reported = asRecord(version).version;
     return toSnapshot(typeof reported === "string" ? reported : "", all, stat, option, paused, m =>
       this.deps.log.debug(m),
@@ -79,21 +81,20 @@ export class AriaDriver implements ProgramDriver {
         // a finished or failed one only leaves the result list; a running one is removed (files stay)
         await this.client.call(this.stopped.has(cmd.key) ? "aria2.removeDownloadResult" : "aria2.remove", [cmd.key]);
         return;
-      case "add":
-        await this.client.call("aria2.addUri", [[cmd.url], (await this.pause.isPaused()) ? { pause: "true" } : {}]);
+      case "add": {
+        const held = await this.pause.isPaused();
+        const gid = await this.client.call("aria2.addUri", [[cmd.url], held ? { pause: "true" } : {}]);
+        if (held && typeof gid === "string") {
+          await this.pause.hold(gid);
+        }
         return;
+      }
       case "pauseAll":
-        await this.pause.pause(this.running, async keys => {
-          for (const k of keys) {
-            await this.client.call("aria2.pause", [k]);
-          }
-        });
+        await this.pause.pause(this.running, keys => this.eachGid("aria2.pause", keys));
         return;
       case "resumeAll":
         await this.pause.resume(async keys => {
-          for (const k of keys) {
-            await this.client.call("aria2.unpause", [k]);
-          }
+          await this.eachGid("aria2.unpause", keys);
         });
         return;
       case "setSpeedLimit":
@@ -105,6 +106,31 @@ export class AriaDriver implements ProgramDriver {
       default:
         throw new ProtocolError("aria2: command not supported");
     }
+  }
+
+  /**
+   * aria2 pauses one gid per call; one that ended meanwhile is refused and skipped — only all refused is a failure.
+   *
+   * @param method `aria2.pause` or `aria2.unpause`
+   * @param gids the downloads
+   * @returns the gids aria2 took
+   */
+  private async eachGid(method: string, gids: string[]): Promise<string[]> {
+    const done: string[] = [];
+    let failure: Error | undefined = undefined;
+    for (const gid of gids) {
+      try {
+        await this.client.call(method, [gid]);
+        done.push(gid);
+      } catch (err: unknown) {
+        failure ??= err instanceof Error ? err : new Error(errText(err));
+        this.deps.log.debug(`aria2: ${method} ${gid} refused: ${errText(err)}`);
+      }
+    }
+    if (failure !== undefined && !done.length) {
+      throw failure;
+    }
+    return done;
   }
 
   /** Aborts what is still waiting. */

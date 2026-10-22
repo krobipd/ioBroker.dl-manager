@@ -169,12 +169,16 @@ describe("aria2 driver", () => {
 });
 
 /**
- * aria2 whose lists the test sets; every other call answers OK.
+ * aria2 whose lists the test sets; every other call answers OK, `aria2.addUri` with the gid `n1`.
  *
  * @param lists result per multicall method
+ * @param refused calls aria2 refuses, as `<method> <gid>`
  * @returns the running server
  */
-async function ariaSynth(lists: Record<string, unknown>): Promise<Awaited<ReturnType<typeof startFixtureServer>>> {
+async function ariaSynth(
+  lists: Record<string, unknown>,
+  refused: readonly string[] = [],
+): Promise<Awaited<ReturnType<typeof startFixtureServer>>> {
   return startFixtureServer(call => {
     const { method, params, id } = JSON.parse(call.body) as { method: string; params: unknown[]; id: string };
     if (method === "system.multicall") {
@@ -183,7 +187,14 @@ async function ariaSynth(lists: Record<string, unknown>): Promise<Awaited<Return
         lists[name] ?? (name === "aria2.getVersion" ? { version: "1.37.0" } : []);
       return { body: { jsonrpc: "2.0", id, result: subs.map(x => [answer(x.methodName)]) } };
     }
-    return { body: { jsonrpc: "2.0", id, result: method === "aria2.getVersion" ? { version: "1.37.0" } : "OK" } };
+    if (refused.includes(`${method} ${String(params[1])}`)) {
+      return {
+        status: 400,
+        body: { jsonrpc: "2.0", id, error: { code: 1, message: `GID#${String(params[1])} cannot be paused now` } },
+      };
+    }
+    const result = method === "aria2.getVersion" ? { version: "1.37.0" } : method === "aria2.addUri" ? "n1" : "OK";
+    return { body: { jsonrpc: "2.0", id, result } };
   });
 }
 
@@ -268,6 +279,65 @@ describe("aria2 details", () => {
       lists["aria2.tellActive"] = [];
       await d.poll();
       expect(await store.load()).toEqual({ paused: true, keys: ["w"] });
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("resumes a download added during the pause with the others (review B6)", async () => {
+    const lists: Record<string, unknown> = { "aria2.tellActive": [{ gid: "a", status: "active" }] };
+    const s = await ariaSynth(lists);
+    const store = memoryPauseStore();
+    try {
+      const d = new AriaDriver(cfg(s.baseUrl), { ...timers, log, pauseStore: store }, noSocket);
+      await d.poll();
+      await d.command({ kind: "pauseAll" });
+      await d.command({ kind: "add", url: "http://x/y.bin" });
+      expect(await store.load()).toEqual({ paused: true, keys: ["a", "n1"] });
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("keeps the downloads it paused when one ended meanwhile, and fails only when none could be paused (review B7)", async () => {
+    const lists: Record<string, unknown> = {
+      "aria2.tellActive": [
+        { gid: "a", status: "active" },
+        { gid: "done", status: "active" },
+        { gid: "b", status: "active" },
+      ],
+    };
+    const s = await ariaSynth(lists, ["aria2.pause done", "aria2.pause c"]);
+    const store = memoryPauseStore();
+    try {
+      const d = new AriaDriver(cfg(s.baseUrl), { ...timers, log, pauseStore: store }, noSocket);
+      await d.poll();
+      await d.command({ kind: "pauseAll" });
+      expect(await store.load()).toEqual({ paused: true, keys: ["a", "b"] });
+      const lone = memoryPauseStore();
+      lists["aria2.tellActive"] = [{ gid: "c", status: "active" }];
+      const other = new AriaDriver(cfg(s.baseUrl), { ...timers, log, pauseStore: lone }, noSocket);
+      await other.poll();
+      await expect(other.command({ kind: "pauseAll" })).rejects.toThrow(/cannot be paused now/);
+      expect(await lone.load()).toEqual({ paused: false, keys: [] });
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("forgets a remembered download that finished, so the resume does not fail on it (review B7)", async () => {
+    const lists: Record<string, unknown> = {
+      "aria2.tellWaiting": [{ gid: "a", status: "paused" }],
+      "aria2.tellStopped": [{ gid: "f", status: "complete" }],
+    };
+    const s = await ariaSynth(lists, ["aria2.unpause f"]);
+    const store = memoryPauseStore({ paused: true, keys: ["a", "f"] });
+    try {
+      const d = new AriaDriver(cfg(s.baseUrl), { ...timers, log, pauseStore: store }, noSocket);
+      await d.poll();
+      expect(await store.load()).toEqual({ paused: true, keys: ["a"] });
+      await d.command({ kind: "resumeAll" });
+      expect(await store.load()).toEqual({ paused: false, keys: [] });
     } finally {
       await s.close();
     }

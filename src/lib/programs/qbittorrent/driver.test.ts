@@ -2,6 +2,7 @@ import { runDriverContract, type ContractServer } from "../../../../test/helpers
 import { startFixtureServer, type RecordedCall } from "../../../../test/helpers/fixture-server";
 import { loadFixture } from "../../../../test/helpers/fixtures";
 import { firstUrl } from "../../../../test/helpers/first-url";
+import { memoryPauseStore } from "../../core/emulated-pause";
 import { AuthError, ProtocolError } from "../../core/errors";
 import type { ProgramConfig } from "../../core/model";
 import { QbDriver } from "./driver";
@@ -221,6 +222,36 @@ describe("qBittorrent driver", () => {
       await d.command({ kind: "add", url: "magnet:?xt=urn:btih:abc" });
       const add = s.calls.find(c => c.path === "/api/v2/torrents/add");
       expect(add?.body).toContain('name="stopped"');
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("resumes a torrent added during the pause with the others once a poll lists it (review B6)", async () => {
+    const torrents: Record<string, { name: string; state: string }> = { a: { name: "a", state: "downloading" } };
+    const s = await startFixtureServer(call => {
+      if (call.path === "/api/v2/auth/login") {
+        return { status: 204, body: "", headers: { "set-cookie": "SID=abc; HttpOnly" } };
+      }
+      if (call.path === "/api/v2/app/version") {
+        return { body: "v5.2.3" };
+      }
+      if (call.path === "/api/v2/sync/maindata") {
+        return { body: { rid: 1, full_update: true, torrents, server_state: {} } };
+      }
+      return { body: "" };
+    });
+    const store = memoryPauseStore();
+    try {
+      const d = new QbDriver(cfg(s.baseUrl), { ...timers, log, pauseStore: store });
+      await d.poll();
+      await d.command({ kind: "pauseAll" });
+      torrents.a.state = "stoppedDL";
+      await d.command({ kind: "add", url: "https://x/y.torrent" });
+      await d.poll();
+      torrents.n = { name: "n", state: "stoppedDL" };
+      await d.poll();
+      expect(await store.load()).toEqual({ paused: true, keys: ["a", "n"] });
     } finally {
       await s.close();
     }

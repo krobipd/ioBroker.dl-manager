@@ -121,6 +121,10 @@ export class QbDriver implements ProgramDriver {
         const held = (await this.pause.isPaused()) && !this.hasSessionPause();
         const stopped = held ? { [major >= 5 ? "stopped" : "paused"]: "true" } : {};
         await this.client.post("torrents/add", { urls: cmd.url, ...stopped }, true);
+        if (held) {
+          // qBittorrent loads a link after it answers — the poll that lists the new torrent hands it to the pause
+          await this.pause.holdNext();
+        }
         return;
       }
       case "pauseAll":
@@ -130,6 +134,7 @@ export class QbDriver implements ProgramDriver {
         }
         await this.pause.pause([...qbRunning(this.maindata)], async keys => {
           await this.client.post(stop, { hashes: keys.join("|") });
+          return keys;
         });
         return;
       case "resumeAll":
