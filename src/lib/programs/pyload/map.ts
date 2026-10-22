@@ -25,7 +25,7 @@ export const statusTable = [
   [7, "downloading"],
   [8, "failed"],
   [9, "paused"],
-  [10, "postprocessing"],
+  [10, "queued"],
   [11, "queued"],
   [12, "downloading"],
   [13, "postprocessing"],
@@ -73,7 +73,8 @@ export function packageStatus(
   if (has(12, 7)) {
     return { status: "downloading", error: "" };
   }
-  if (has(13, 10)) {
+  // 10 decrypting resolves the links before the download — it waits like 2 and 3 (`core/datatypes/enums.py`)
+  if (has(13)) {
     return { status: "postprocessing", error: "" };
   }
   if (codes.length > 0 && codes.every(c => c === 0 || c === 4)) {

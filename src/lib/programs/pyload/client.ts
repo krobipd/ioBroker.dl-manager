@@ -12,6 +12,8 @@ export class PyClient {
   private readonly http: HttpClient;
   private readonly base: string;
   private readonly headers: Record<string, string>;
+  /** What a rejected login says — the API key only when the card logs in with one. */
+  private readonly refused: string;
 
   /**
    * @param cfg the settings row
@@ -23,6 +25,7 @@ export class PyClient {
       !cfg.apiKey && cfg.username ? { basicAuth: { user: cfg.username, pass: cfg.password } } : {},
     );
     this.headers = cfg.apiKey ? { "x-api-key": cfg.apiKey } : {};
+    this.refused = cfg.apiKey ? "the API key was refused" : "login rejected";
     this.base = `${baseUrl(cfg, catalogEntry("pyload"))}/api`;
   }
 
@@ -64,7 +67,7 @@ export class PyClient {
       } catch {
         err = undefined; // a proxy or an older pyLoad answers plain text
       }
-      throw new AuthError(`pyload: ${typeof err === "string" ? err : `HTTP ${res.status}`} — check the API key`);
+      throw new AuthError(`pyload: ${this.refused} (${typeof err === "string" ? err : `HTTP ${res.status}`})`);
     }
     if (res.status === 429) {
       throw new UnreachableError("pyload: too many requests (pyLoad allows 100 a minute) — raise the poll interval");

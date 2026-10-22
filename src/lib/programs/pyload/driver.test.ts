@@ -237,4 +237,20 @@ describe("pyLoad limits of the service (final review M3)", () => {
       await s.close();
     }
   });
+
+  it("names the API key only when the card logs in with one (review B18)", async () => {
+    const s = await startFixtureServer(() => ({ status: 401, body: { error: "Unauthorized" } }));
+    try {
+      await expect(new PyDriver(cfg(s.baseUrl, "bad"), { ...timers, log }).poll()).rejects.toThrow(/API key/);
+      const user = { ...cfg(s.baseUrl, ""), username: "pyload", password: "bad" };
+      const got = await new PyDriver(user, { ...timers, log }).poll().then(
+        () => "resolved",
+        (e: unknown) => String(e),
+      );
+      expect(got).toMatch(/pyload: login rejected/);
+      expect(got).not.toMatch(/API key/);
+    } finally {
+      await s.close();
+    }
+  });
 });

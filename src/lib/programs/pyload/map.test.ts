@@ -43,6 +43,9 @@ describe("pyLoad status of a package", () => {
       error: "boom",
     });
     expect(packageStatus([f(0), f(4)], () => undefined).status).toBe("completed");
+    // decrypting resolves the links before the download — the package waits, nothing is post-processed (review B17)
+    expect(packageStatus([f(0), f(10)], () => undefined).status).toBe("queued");
+    expect(packageStatus([f(10), f(13)], () => undefined).status).toBe("postprocessing");
   });
 });
 
