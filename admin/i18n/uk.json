@@ -63,6 +63,7 @@
   "dmIndDownloading": "Завантаження",
   "dmIndFreeSpace": "Вільне місце",
   "dmIndPaused": "Призупинено",
+  "dmInvalid": "Не збережено: поле діалогу заповнено неправильно — відкрийте діалог знову.",
   "dmJdCloud": "Через My.JDownloader",
   "dmJdLocal": "Локальна мережа",
   "dmJdMode": "Підключення",

@@ -63,6 +63,7 @@
   "dmIndDownloading": "Téléchargement en cours",
   "dmIndFreeSpace": "Espace libre",
   "dmIndPaused": "En pause",
+  "dmInvalid": "Non enregistré : un champ de la boîte de dialogue n'est pas rempli correctement — rouvrez la boîte de dialogue.",
   "dmJdCloud": "Via My.JDownloader",
   "dmJdLocal": "Réseau local",
   "dmJdMode": "Connexion",

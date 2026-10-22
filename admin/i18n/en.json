@@ -63,6 +63,7 @@
   "dmIndDownloading": "Downloading",
   "dmIndFreeSpace": "Free space",
   "dmIndPaused": "Paused",
+  "dmInvalid": "Not stored: a field of the dialog is not filled in correctly — open the dialog again.",
   "dmJdCloud": "Through My.JDownloader",
   "dmJdLocal": "Local network",
   "dmJdMode": "Connection",

@@ -63,6 +63,7 @@
   "dmIndDownloading": "Pobieranie",
   "dmIndFreeSpace": "Wolne miejsce",
   "dmIndPaused": "Wstrzymane",
+  "dmInvalid": "Nie zapisano: pole okna nie jest poprawnie wypełnione — otwórz okno ponownie.",
   "dmJdCloud": "Przez My.JDownloader",
   "dmJdLocal": "Sieć lokalna",
   "dmJdMode": "Połączenie",

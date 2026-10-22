@@ -63,6 +63,7 @@
   "dmIndDownloading": "正在下载",
   "dmIndFreeSpace": "可用空间",
   "dmIndPaused": "已暂停",
+  "dmInvalid": "未保存：对话框中的某个字段填写不正确——请重新打开对话框。",
   "dmJdCloud": "通过 My.JDownloader",
   "dmJdLocal": "本地网络",
   "dmJdMode": "连接方式",

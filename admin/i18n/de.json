@@ -63,6 +63,7 @@
   "dmIndDownloading": "Lädt gerade",
   "dmIndFreeSpace": "Freier Speicher",
   "dmIndPaused": "Pausiert",
+  "dmInvalid": "Nicht gespeichert: ein Feld des Dialogs ist nicht richtig ausgefüllt — den Dialog bitte neu öffnen.",
   "dmJdCloud": "Über My.JDownloader",
   "dmJdLocal": "Lokal im Netz",
   "dmJdMode": "Verbindung",

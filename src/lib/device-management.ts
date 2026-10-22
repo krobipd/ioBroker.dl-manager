@@ -21,6 +21,7 @@ import {
   formFromData,
   formToRow,
   OFFERED,
+  passesChecks,
   pickJdDeviceForm,
   pickProgramForm,
   programForm,
@@ -343,7 +344,8 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
 
   /**
    * The program dialog, for a new row or the row of a card; My.JDownloader adds the step that chooses the
-   * JDownloader of the account. Checks again what the dialog checked (a browser may skip it), then stores.
+   * JDownloader of the account. Checks again what the dialog checked (a browser may skip it) and that no other row asks
+   * the program, then stores.
    *
    * @param ctx the action context
    * @param type the dialog's program
@@ -371,6 +373,11 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
       applyDisabledRule: applyRuleOf(schema),
     });
     if (!answer) {
+      return false;
+    }
+    // the address another row asks is judged below on the rows as they are then, not on the ones the dialog opened with
+    if (!passesChecks(programForm(type, { takenKeys: [] }), { ...opened, ...answer })) {
+      await ctx.showMessage(tName("dmInvalid"));
       return false;
     }
     const form = formFromData(answer, opened);

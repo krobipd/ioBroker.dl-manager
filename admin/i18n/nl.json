@@ -63,6 +63,7 @@
   "dmIndDownloading": "Bezig met downloaden",
   "dmIndFreeSpace": "Vrije ruimte",
   "dmIndPaused": "Gepauzeerd",
+  "dmInvalid": "Niet opgeslagen: een veld van het dialoogvenster is niet correct ingevuld — open het dialoogvenster opnieuw.",
   "dmJdCloud": "Via My.JDownloader",
   "dmJdLocal": "Lokaal netwerk",
   "dmJdMode": "Verbinding",

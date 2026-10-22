@@ -378,6 +378,26 @@ describe("adding a program", () => {
     expect(host.written).toEqual([]);
   });
 
+  it("refuses what the dialog's field checks refuse, when a browser skipped them", async () => {
+    const answers = [
+      { name: " ", host: "h1" },
+      { name: "A", host: "h1/x" },
+      { name: "A", host: "h1:8080" },
+      { name: "A", host: "h1", port: "abc" },
+      { name: "A", host: "h1", port: "70000" },
+    ];
+    for (const answer of answers) {
+      const { dm, host } = make();
+      const ctx = context({ type: "qbittorrent" }, unchecked(answer));
+      expect(await add(dm)(ctx)).toEqual({ refresh: false });
+      expect(ctx.showMessage).toHaveBeenCalledWith("dmInvalid");
+      expect(host.written).toEqual([]);
+    }
+    const { dm, host } = make();
+    await add(dm)(context({ type: "qbittorrent" }, unchecked({ name: "A", host: "h1", port: "8080" })));
+    expect(host.written).toHaveLength(1);
+  });
+
   it("allows the same address once the other row is switched off, and a switched-off twin", async () => {
     const off = make([{ ...qbRow, enabled: false }]);
     await add(off.dm)(context({ type: "qbittorrent" }, { name: "Other", host: "h1" }));

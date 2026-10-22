@@ -63,6 +63,7 @@
   "dmIndDownloading": "A transferir",
   "dmIndFreeSpace": "Espaço livre",
   "dmIndPaused": "Em pausa",
+  "dmInvalid": "Não guardado: um campo do diálogo não está preenchido corretamente — abra o diálogo novamente.",
   "dmJdCloud": "Através do My.JDownloader",
   "dmJdLocal": "Rede local",
   "dmJdMode": "Ligação",

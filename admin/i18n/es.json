@@ -63,6 +63,7 @@
   "dmIndDownloading": "Descargando",
   "dmIndFreeSpace": "Espacio libre",
   "dmIndPaused": "En pausa",
+  "dmInvalid": "No guardado: un campo del diálogo no está rellenado correctamente — abre el diálogo de nuevo.",
   "dmJdCloud": "A través de My.JDownloader",
   "dmJdLocal": "Red local",
   "dmJdMode": "Conexión",

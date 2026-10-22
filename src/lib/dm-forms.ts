@@ -546,6 +546,22 @@ export function applyRuleOf(schema: JsonFormSchema): string {
 }
 
 /**
+ * The dialog's field checks once more on the server — a browser may skip the OK rule. The rule runs as the device
+ * manager runs it, on the dialog data; the data is an argument, never part of the code.
+ *
+ * @param schema a dialog schema
+ * @param data the dialog data
+ * @returns whether every field check passes
+ */
+export function passesChecks(schema: JsonFormSchema, data: Record<string, unknown>): boolean {
+  try {
+    return !(new Function("data", `return ${applyRuleOf(schema)}`) as (d: unknown) => unknown)(data);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * The My.JDownloader step: which JDownloader of the account this entry asks.
  *
  * @param devices the account's JDownloader instances not set up yet
