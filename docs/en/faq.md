@@ -30,9 +30,9 @@ its rooms and functions.
 
 ## How often are the programs asked?
 
-Every program is asked every _Query interval_ seconds (default 10, from 10 seconds to 1 hour). A change you write — a
-pause, a limit, a new link — is sent right away, and the program is asked again right after. aria2 also reports
-changes on its own as they happen.
+Every program is asked as often as _Query interval (seconds)_ says (default 10, from 10 seconds to 1 hour). A change
+you write — a pause, a limit, a new link — is sent right away, and the program is asked again right after. aria2 and a
+local JDownloader also report changes on their own as they happen (not over My.JDownloader).
 
 ## Does `remove` delete my files?
 
@@ -41,14 +41,16 @@ No. `remove` takes the download off the program's list; the files stay on disk. 
 ## A finished download stays in the object tree
 
 It stays as long as the program lists it and the tree settings show it. Set _Downloads in the object tree_ to
-_Without completed_ to leave completed downloads out, or to _Only unfinished_ to leave seeding torrents out as well.
+_Without completed_ to leave completed downloads out, or to _Only unfinished (no completed, no seeding)_ to leave
+seeding torrents out as well.
 Failed downloads always stay — they need you. The program keeps every download either way.
 
 ## A download is missing from the object tree
 
 Either its status is not shown (_Downloads in the object tree_), or the program has more downloads than _At most this
-many downloads per program_ allows: then the running, failed, paused and queued ones keep their channel before seeding
-and completed ones. Raise the limit or set it to 0 for all — above 200 per program the object tree gets slow.
+many downloads per program in the object tree_ allows: then the running, failed, paused and queued ones keep their
+channel before seeding and completed ones. Raise the limit or set it to 0 for all — above 200 per program the object
+tree gets slow.
 
 ## I want a message when a download is done
 

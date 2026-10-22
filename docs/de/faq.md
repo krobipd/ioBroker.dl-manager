@@ -34,9 +34,10 @@ bestehenden JDownloader zwischen beiden um, behält er seine Räume und Funktion
 
 ## Wie oft werden die Programme gefragt?
 
-Jedes Programm wird alle _Abfrage-Intervall_ Sekunden gefragt (Standard 10, von 10 Sekunden bis 1 Stunde). Was du
-schreibst — eine Pause, ein Limit, ein neuer Link — geht sofort an das Programm, und es wird direkt danach neu gefragt.
-aria2 meldet Änderungen zusätzlich von selbst, sobald sie passieren.
+Jedes Programm wird so oft gefragt, wie _Abfrage-Intervall (Sekunden)_ sagt (Standard 10, von 10 Sekunden bis 1
+Stunde). Was du schreibst — eine Pause, ein Limit, ein neuer Link — geht sofort an das Programm, und es wird direkt
+danach neu gefragt. aria2 und ein lokaler JDownloader melden Änderungen zusätzlich von selbst, sobald sie passieren
+(nicht über My.JDownloader).
 
 ## Löscht `remove` meine Dateien?
 
@@ -46,15 +47,16 @@ Dateien.
 ## Ein fertiger Download bleibt im Objektbaum
 
 Er bleibt, solange das Programm ihn führt und die Einstellungen ihn zeigen. Stelle _Downloads im Objektbaum_ auf
-_Ohne fertige_, um fertige Downloads wegzulassen, oder auf _Nur unfertige_, um auch weiterverteilte Torrents wegzulassen.
+_Ohne fertige_, um fertige Downloads wegzulassen, oder auf _Nur unfertige (ohne fertige und seedende)_, um auch
+weiterverteilte Torrents wegzulassen.
 Fehlgeschlagene Downloads bleiben immer — sie brauchen dich. Das Programm behält in jedem Fall alle Downloads.
 
 ## Ein Download fehlt im Objektbaum
 
 Entweder wird sein Status nicht gezeigt (_Downloads im Objektbaum_), oder das Programm hat mehr Downloads, als
-_Höchstens so viele Downloads je Programm_ erlaubt: dann behalten laufende, fehlgeschlagene, pausierte und wartende
-ihren Kanal vor weiterverteilten und fertigen. Erhöhe die Grenze oder setze 0 für alle — über 200 je Programm wird der
-Objektbaum langsam.
+_Höchstens so viele Downloads je Programm im Objektbaum_ erlaubt: dann behalten laufende, fehlgeschlagene, pausierte und
+wartende ihren Kanal vor weiterverteilten und fertigen. Erhöhe die Grenze oder setze 0 für alle — über 200 je Programm
+wird der Objektbaum langsam.
 
 ## Ich will eine Nachricht, wenn ein Download fertig ist
 

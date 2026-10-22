@@ -65,12 +65,12 @@ nachbearbeitet, wird weiterverteilt, fertig, fehlgeschlagen.
 Zwei Einstellungen bestimmen, welche Downloads einen eigenen Kanal bekommen. Das Programm behält in jedem Fall alle
 Downloads, und die Summen (`summary.*`, die Zähler des Programms und `last.finished`) zählen immer jeden Download.
 
-- **Downloads im Objektbaum:** _Alle_ (Vorgabe), _Ohne fertige_ oder _Nur unfertige_ — die letzte Stufe lässt auch
-  weiterverteilte Torrents weg. Fehlgeschlagene Downloads bleiben immer, sie brauchen dich.
-- **Höchstens so viele Downloads je Programm:** Vorgabe 100, 0 = alle. Hat ein Programm mehr, behalten zuerst die
-  laufenden ihren Kanal, dann fehlgeschlagene, pausierte und wartende, die in der Warteschlange, weiterverteilte und
-  fertige — innerhalb jeder Gruppe die neuesten zuerst. Ein Download, der seinen Kanal verliert, bekommt ihn zurück,
-  sobald wieder Platz ist.
+- **Downloads im Objektbaum:** _Alle_ (Vorgabe), _Ohne fertige_ oder _Nur unfertige (ohne fertige und seedende)_ —
+  die letzte Stufe lässt auch weiterverteilte Torrents weg. Fehlgeschlagene Downloads bleiben immer, sie brauchen dich.
+- **Höchstens so viele Downloads je Programm im Objektbaum:** Vorgabe 100, 0 = alle. Hat ein Programm mehr, behalten
+  zuerst die laufenden ihren Kanal, dann fehlgeschlagene, pausierte und wartende, die in der Warteschlange,
+  weiterverteilte und fertige — innerhalb jeder Gruppe die neuesten zuerst. Ein Download, der seinen Kanal verliert,
+  bekommt ihn zurück, sobald wieder Platz ist.
 
 Jeder Download legt bis zu 15 Objekte an, deren Werte sich bei jeder Abfrage ändern können. Mit 0 oder mehr als 200
 Downloads je Programm werden es schnell Tausende; das belastet die ioBroker-Datenbank und macht den Objektbaum im Admin

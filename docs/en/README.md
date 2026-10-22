@@ -62,11 +62,11 @@ completed, failed.
 Two settings decide which downloads get their own channel. The program keeps every download either way, and the totals
 (`summary.*`, the program's own counters and `last.finished`) always count all of them.
 
-- **Downloads in the object tree:** _All_ (the default), _Without completed_, or _Only unfinished_ — the last one also
-  leaves out seeding torrents. Failed downloads always stay, they need you.
-- **At most this many downloads per program:** 100 by default, 0 = all. When a program has more, the running ones keep
-  their channel first, then failed, paused and waiting, queued, seeding and completed ones — the newest first within
-  each group. A download that loses its channel gets it back as soon as there is room again.
+- **Downloads in the object tree:** _All_ (the default), _Without completed_, or _Only unfinished (no completed, no
+  seeding)_ — the last one also leaves out seeding torrents. Failed downloads always stay, they need you.
+- **At most this many downloads per program in the object tree:** 100 by default, 0 = all. When a program has more, the
+  running ones keep their channel first, then failed, paused and waiting, queued, seeding and completed ones — the
+  newest first within each group. A download that loses its channel gets it back as soon as there is room again.
 
 Every download creates up to 15 objects whose values can change with every poll. With 0 or more than 200 downloads per
 program that quickly adds up to thousands, which puts a load on the ioBroker database and slows the object tree in the
