@@ -56,6 +56,35 @@ async function nzbServer(version = "26.3"): Promise<ContractServer> {
   });
 }
 
+describe("NZBGet version", () => {
+  it("reads the version again after a failed query — an update of the program shows (review B15)", async () => {
+    let version = "24.8";
+    let down = false;
+    const s = await startFixtureServer(call => {
+      const method = (JSON.parse(call.body) as { method: string }).method;
+      if (method === "version") {
+        return { body: { version: "1.1", id: 1, result: version } };
+      }
+      if (down) {
+        return { status: 500, body: "" };
+      }
+      const name = method === "status" ? "status" : method === "listgroups" ? "listgroups" : "history";
+      return { body: loadFixture("nzbget", "26.3", "running", name).body };
+    });
+    try {
+      const d = new NzbDriver(cfg(s.baseUrl, "good"), { ...timers, log });
+      expect((await d.poll()).status.version).toBe("24.8");
+      version = "26.3";
+      down = true;
+      await expect(d.poll()).rejects.toThrow();
+      down = false;
+      expect((await d.poll()).status.version).toBe("26.3");
+    } finally {
+      await s.close();
+    }
+  });
+});
+
 runDriverContract({
   type: "nzbget",
   server: () => nzbServer(),

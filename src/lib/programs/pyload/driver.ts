@@ -1,5 +1,6 @@
 import { errText } from "../../err-text";
 import { ProtocolError } from "../../core/errors";
+import { ProgramVersion } from "../../core/version";
 import type { Capability, Command, ProgramDriver, ProgramSnapshot, DriverDeps, ProgramConfig } from "../../core/model";
 import { PyClient } from "./client";
 import { toSnapshot } from "./map";
@@ -37,7 +38,7 @@ export class PyDriver implements ProgramDriver {
   ]);
   public readonly extras = [];
   private readonly client: PyClient;
-  private version = "";
+  private readonly version = new ProgramVersion();
   private limit: { on: boolean; kib: number } | null = null;
   private polls = 0;
 
@@ -53,11 +54,21 @@ export class PyDriver implements ProgramDriver {
   }
 
   /** @returns one complete query */
-  public async poll(): Promise<ProgramSnapshot> {
-    if (!this.version) {
-      const v = await this.client.get("get_server_version");
-      this.version = typeof v === "string" ? v : "";
-    }
+  public poll(): Promise<ProgramSnapshot> {
+    return this.version.poll(
+      async () => {
+        const v = await this.client.get("get_server_version");
+        return typeof v === "string" ? v : "";
+      },
+      version => this.query(version),
+    );
+  }
+
+  /**
+   * @param version the program's version
+   * @returns one complete query
+   */
+  private async query(version: string): Promise<ProgramSnapshot> {
     const server = await this.client.get("status_server");
     const queue = await this.client.get("get_queue_data");
     const active = await this.client.get("status_downloads");
@@ -65,7 +76,7 @@ export class PyDriver implements ProgramDriver {
     if (this.polls++ % LIMIT_EVERY === 0) {
       await this.readLimit();
     }
-    return toSnapshot(this.version, server, queue, active, free, this.limit, m => this.deps.log.debug(m));
+    return toSnapshot(version, server, queue, active, free, this.limit, m => this.deps.log.debug(m));
   }
 
   /** @param cmd the command */

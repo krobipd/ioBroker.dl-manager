@@ -1,4 +1,5 @@
 import { ProtocolError } from "../../core/errors";
+import { ProgramVersion } from "../../core/version";
 import type {
   Capability,
   Command,
@@ -32,7 +33,7 @@ export class NzbDriver implements ProgramDriver {
   ]);
   public readonly extras = EXTRAS;
   private readonly client: NzbClient;
-  private version = "";
+  private readonly version = new ProgramVersion();
   private inQueue = new Set<string>();
 
   /**
@@ -47,18 +48,28 @@ export class NzbDriver implements ProgramDriver {
   }
 
   /** @returns one complete query */
-  public async poll(): Promise<ProgramSnapshot> {
-    if (!this.version) {
-      const v = await this.client.call("version");
-      this.version = typeof v === "string" ? v : "";
-    }
+  public poll(): Promise<ProgramSnapshot> {
+    return this.version.poll(
+      async () => {
+        const v = await this.client.call("version");
+        return typeof v === "string" ? v : "";
+      },
+      version => this.query(version),
+    );
+  }
+
+  /**
+   * @param version the program's version
+   * @returns one complete query
+   */
+  private async query(version: string): Promise<ProgramSnapshot> {
     const status = await this.client.call("status");
     const groups = await this.client.call("listgroups", [0]);
     const history = await this.client.call("history", [false]);
     this.inQueue = new Set(
       (Array.isArray(groups) ? groups : []).map(g => String((g as { NZBID?: unknown } | null)?.NZBID)),
     );
-    return toSnapshot(this.version, status, groups, history, m => this.deps.log.debug(m));
+    return toSnapshot(version, status, groups, history, m => this.deps.log.debug(m));
   }
 
   /** @param cmd the command */

@@ -1,5 +1,6 @@
 import { errText } from "../../err-text";
 import { ProtocolError } from "../../core/errors";
+import { ProgramVersion } from "../../core/version";
 import type { Capability, Command, ProgramDriver, ProgramSnapshot, DriverDeps, ProgramConfig } from "../../core/model";
 import { GENERAL_SETTINGS, jdBaseUrl, JdLocalTransport, type JdTransport } from "./client";
 import { JdCloudTransport } from "./cloud";
@@ -63,7 +64,7 @@ export class JdDriver implements ProgramDriver {
   public readonly extras = [];
   private readonly api: JdTransport;
   private readonly events: JdTransport | null;
-  private version: string | null = null;
+  private readonly version = new ProgramVersion();
 
   /**
    * @param cfg the settings row
@@ -89,22 +90,21 @@ export class JdDriver implements ProgramDriver {
   }
 
   /** @returns one complete query */
-  public async poll(): Promise<ProgramSnapshot> {
-    try {
-      return await this.query();
-    } catch (err: unknown) {
-      // JDownloader may be restarting for an update: the next query asks its version again
-      this.version = null;
-      throw err;
-    }
+  public poll(): Promise<ProgramSnapshot> {
+    return this.version.poll(
+      async () => {
+        const version = await this.api.call("/jd/version");
+        return typeof version === "number" || typeof version === "string" ? String(version) : "";
+      },
+      version => this.query(version),
+    );
   }
 
-  /** @returns one complete query */
-  private async query(): Promise<ProgramSnapshot> {
-    if (this.version === null) {
-      const version = await this.api.call("/jd/version");
-      this.version = typeof version === "number" || typeof version === "string" ? String(version) : "";
-    }
+  /**
+   * @param version the program's version
+   * @returns one complete query
+   */
+  private async query(version: string): Promise<ProgramSnapshot> {
     const toolbar = await this.api.call("/toolbar/getStatus");
     const packages = await this.api.call("/downloadsV2/queryPackages", [PACKAGE_QUERY]);
     let links: unknown = null;
@@ -113,7 +113,7 @@ export class JdDriver implements ProgramDriver {
     } catch (err: unknown) {
       this.deps.log.debug(`jdownloader: link list failed, packages only: ${errText(err)}`);
     }
-    return toSnapshot(this.version, toolbar, packages, links, m => this.deps.log.debug(m));
+    return toSnapshot(version, toolbar, packages, links, m => this.deps.log.debug(m));
   }
 
   /**

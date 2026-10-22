@@ -65,6 +65,37 @@ async function pyServer(opts: { limited?: boolean } = {}): Promise<ContractServe
   });
 }
 
+describe("pyLoad version", () => {
+  it("reads the version again after a failed query — an update of the program shows (review B15)", async () => {
+    let version = "0.5.0b3";
+    let down = false;
+    const s = await startFixtureServer(call => {
+      const fn = call.path.replace(/^\/api\//, "");
+      if (fn === "get_server_version") {
+        return { body: JSON.stringify(version), headers: { "content-type": "application/json" } };
+      }
+      if (down) {
+        return { status: 500, body: "" };
+      }
+      if (fn === "get_config_value") {
+        return { body: -1 };
+      }
+      return { body: loadFixture("pyload", "0.5.0", "running", fn.replace(/_/g, "-")).body };
+    });
+    try {
+      const d = new PyDriver(cfg(s.baseUrl, "good"), { ...timers, log });
+      expect((await d.poll()).status.version).toBe("0.5.0b3");
+      version = "0.5.0";
+      down = true;
+      await expect(d.poll()).rejects.toThrow();
+      down = false;
+      expect((await d.poll()).status.version).toBe("0.5.0");
+    } finally {
+      await s.close();
+    }
+  });
+});
+
 runDriverContract({
   type: "pyload",
   server: () => pyServer(),
