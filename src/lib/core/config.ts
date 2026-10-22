@@ -58,6 +58,14 @@ export function legacyId(raw: Record<string, unknown>): string {
 }
 
 /**
+ * @param raw a stored row
+ * @returns its device id: the stored one, else the one a row up to 0.2.0 had
+ */
+export function rowId(raw: Record<string, unknown>): string {
+  return sanitizeId(str(raw.id)) || legacyId(raw);
+}
+
+/**
  * Reads the program rows (secrets readable, see `store.ts`). Every row that has a type becomes a row here — an
  * unusable one carries its problem, so its device can show it.
  *
@@ -90,7 +98,7 @@ export function parsePrograms(raw: unknown, find: (type: string) => ProgramEntry
       device: str(o.device),
       deviceId: str(o.deviceId),
     };
-    const id = sanitizeId(str(o.id)) || legacyId(o);
+    const id = rowId(o);
     const enabled = o.enabled !== false;
     let problem = "";
     let entry: ProgramEntry | undefined;

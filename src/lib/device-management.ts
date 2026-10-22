@@ -9,7 +9,7 @@ import {
   type InstanceDetails,
   type JsonFormSchema,
 } from "@iobroker/dm-utils";
-import { addressOf, blocksAddress, parsePrograms, type ProgramRow, programKey, twinOf } from "./core/config";
+import { addressOf, blocksAddress, parsePrograms, type ProgramRow, programKey, rowId, twinOf } from "./core/config";
 import { deviceIdFor, idSourceOf } from "./core/device-id";
 import { sameRow } from "./core/store";
 import type { TestResult } from "./core/connection-test";
@@ -590,7 +590,7 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
    * @returns its device id (= card id) — the one the card was built with
    */
   private idOf(row: SettingsRow): string {
-    return parsePrograms([row], findProgram)[0]?.id ?? "";
+    return rowId(row);
   }
 
   /**
