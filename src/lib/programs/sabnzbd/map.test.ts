@@ -33,6 +33,9 @@ describe("SABnzbd snapshot from the recorded answers", () => {
       expect(byName.stopped.status).toBe("paused");
       expect(byName.small).toMatchObject({ status: "completed", sizeBytes: 2097152, doneBytes: 2097152 });
       expect(byName.small.finishedMs).toBeGreaterThan(1e12);
+      // the history keeps when the job was added — `added` does not go blank when it finishes (review B14)
+      expect(byName.small.addedMs).toBeGreaterThan(1e12);
+      expect(byName.small.addedMs).toBeLessThanOrEqual(byName.small.finishedMs ?? 0);
       expect(byName.broken.status).toBe("failed");
       expect(byName.broken.error).toMatch(/Not on your server/);
       expect(byName["http://seed:8080/missing.nzb"].error).toMatch(/File not on server/);

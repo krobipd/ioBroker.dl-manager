@@ -126,7 +126,7 @@ export function toSnapshot(
       doneBytes: scaled(h.downloaded, 1) ?? bytes,
       speedBps: null,
       etaSeconds: null,
-      addedMs: null,
+      addedMs: epochMs(h.time_added),
       finishedMs: status === "completed" || status === "failed" ? epochMs(h.completed) : null,
       category: category(h.category),
       error: status === "failed" ? asText(h.fail_message) : "",
