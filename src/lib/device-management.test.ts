@@ -227,6 +227,24 @@ describe("cards", () => {
     expect(off.status.warning).toBeUndefined();
   });
 
+  it("does not switch on a second row of a program that runs, and says which row has it (B13)", async () => {
+    const twin = { ...qbRow, id: "qbittorrent-nas-2", name: "NAS again", enabled: false };
+    const { dm, host } = make([qbRow, twin]);
+    const card = (await cards(dm)).find(c => c.id === "qbittorrent-nas-2")!;
+    const ctx = context();
+    expect(await action(card, "enable/disable").handler("qbittorrent-nas-2", ctx)).toEqual({ refresh: "devices" });
+    expect(host.written).toEqual([]);
+    expect(ctx.showMessage).toHaveBeenCalledWith({ key: "dmDuplicate", args: ["NAS", "http://h1:8080"] });
+  });
+
+  it("switches off a second row of a program even while the first one runs", async () => {
+    const twin = { ...qbRow, id: "qbittorrent-nas-2", name: "NAS again" };
+    const { dm, host } = make([qbRow, twin]);
+    const card = (await cards(dm)).find(c => c.id === "qbittorrent-nas-2")!;
+    await action(card, "enable/disable").handler("qbittorrent-nas-2", context());
+    expect(host.written[0].map(r => r.enabled)).toEqual([true, false]);
+  });
+
   it("switches a program on and off from its card", async () => {
     const { dm, host } = make([qbRow, jdRow]);
     const [qb] = await cards(dm);
@@ -529,6 +547,18 @@ describe("editing a program", () => {
     expect(host.rows()[0]).toMatchObject({ name: "NAS 2" });
   });
 
+  it("writes nothing over a card another tab changed while this dialog was open (B3)", async () => {
+    const { dm, host } = make([qbRow, jdRow]);
+    const [qb] = await cards(dm);
+    const ctx = context(() => {
+      host.replace([{ ...qbRow, enabled: false, password: "new" }, jdRow]);
+      return { name: "NAS 2", host: "h1", username: "admin", password: "pw", login: "user" };
+    });
+    expect(await action(qb, "edit").handler("qbittorrent-nas", ctx)).toEqual({ refresh: "devices" });
+    expect(host.rows()[0]).toMatchObject({ name: "NAS", enabled: false, password: "new" });
+    expect(ctx.showMessage).toHaveBeenCalledWith("dmChanged");
+  });
+
   it("writes nothing back over a row whose id changed while its dialog was open", async () => {
     const pending = { ...cloudRow, id: "jdownloader-tom", idPending: true, deviceId: "" };
     const { dm, host } = make([pending]);
@@ -550,6 +580,15 @@ describe("editing a program", () => {
     const [qb] = await cards(dm);
     await action(qb, "edit").handler("qbittorrent-nas", context({ name: "NAS", host: "h1" }));
     expect(host.written).toHaveLength(1);
+  });
+
+  it("stores a switched-off second entry of a program that runs — it asks nothing (decision 15)", async () => {
+    const twin = { ...qbRow, id: "qbittorrent-nas-2", name: "NAS again", enabled: false };
+    const { dm, host } = make([qbRow, twin]);
+    const card = (await cards(dm)).find(c => c.id === "qbittorrent-nas-2")!;
+    await action(card, "edit").handler("qbittorrent-nas-2", context({ name: "NAS spare", host: "h1" }));
+    expect(host.written).toHaveLength(1);
+    expect(host.rows()[1]).toMatchObject({ name: "NAS spare", enabled: false });
   });
 });
 

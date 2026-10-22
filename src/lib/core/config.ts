@@ -104,7 +104,7 @@ export function parsePrograms(raw: unknown, find: (type: string) => ProgramEntry
         problem = `device id ${id} is used twice`;
       } else {
         const missing = entry.needs.find(f => !cfg[f]);
-        const twin = missing ? undefined : rows.find(o => blocksAddress(o) && sameProgram(o.cfg, cfg));
+        const twin = missing ? undefined : twinOf(cfg, rows);
         problem = missing ? FIELD_TEXT[missing] : twin ? `same program as ${twin.id}` : "";
       }
     }
@@ -155,6 +155,15 @@ export function programKey(cfg: Target): string {
  */
 export function sameProgram(a: Target, b: Target): boolean {
   return programKey(a) === programKey(b);
+}
+
+/**
+ * @param cfg a row that is to run
+ * @param others the rows parsed so far
+ * @returns the row that already holds the same program (decision 15), if any
+ */
+export function twinOf(cfg: Target, others: readonly ProgramRow[]): ProgramRow | undefined {
+  return others.find(o => blocksAddress(o) && sameProgram(o.cfg, cfg));
 }
 
 /**

@@ -41,6 +41,13 @@ const isRow = (r: unknown): r is SettingsRow => !!r && typeof r === "object" && 
 const canonical = (rows: readonly SettingsRow[]): string =>
   JSON.stringify(rows.map(r => Object.fromEntries(Object.entries(r).sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)))));
 
+/**
+ * @param a a row
+ * @param b another row
+ * @returns whether both hold the same fields and values, whatever their order
+ */
+export const sameRow = (a: SettingsRow, b: SettingsRow): boolean => canonical([a]) === canonical([b]);
+
 /** The program rows, read and written as a whole. */
 export class ProgramStore {
   /** @param a the adapter */

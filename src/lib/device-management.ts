@@ -9,8 +9,9 @@ import {
   type InstanceDetails,
   type JsonFormSchema,
 } from "@iobroker/dm-utils";
-import { addressOf, blocksAddress, parsePrograms, sameProgram, type ProgramRow, programKey } from "./core/config";
+import { addressOf, blocksAddress, parsePrograms, type ProgramRow, programKey, twinOf } from "./core/config";
 import { deviceIdFor, idSourceOf } from "./core/device-id";
+import { sameRow } from "./core/store";
 import type { TestResult } from "./core/connection-test";
 import {
   applyRuleOf,
@@ -225,7 +226,8 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
         {
           // the switch the admin draws for `enabled`
           id: ACTIONS.ENABLE_DISABLE,
-          handler: (cardId, ctx) => this.guard(ctx, () => this.toggleEnabled(cardId), { refresh: "devices" as const }),
+          handler: (cardId, ctx) =>
+            this.guard(ctx, () => this.toggleEnabled(cardId, ctx), { refresh: "devices" as const }),
         },
         {
           id: "test",
@@ -379,11 +381,12 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
         return false;
       }
     }
-    // the dialog waited for the user: what it stores goes onto the rows as they are now, never onto the ones it opened with
+    // the dialog waited for the user: what it stores goes onto the rows as they are now, never onto the ones it opened
+    // with — a card another tab changed or deleted meanwhile stores nothing
     const outcome: { changed: boolean; twin?: ProgramRow } = { changed: false };
     await this.host.updateRows(now => {
       const at = cardId === undefined ? -1 : now.findIndex(r => this.idOf(r) === cardId);
-      if (cardId !== undefined && at < 0) {
+      if (cardId !== undefined && (at < 0 || !previous || !sameRow(now[at], previous))) {
         outcome.changed = true;
         return undefined;
       }
@@ -402,9 +405,7 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
         "";
       const row = formToRow(type, form, id, at >= 0 ? now[at] : undefined, device);
       const [candidate] = parsePrograms([row], findProgram);
-      outcome.twin = candidate.enabled
-        ? others.find(o => blocksAddress(o) && sameProgram(o.cfg, candidate.cfg))
-        : undefined;
+      outcome.twin = candidate.enabled ? twinOf(candidate.cfg, others) : undefined;
       if (outcome.twin) {
         return undefined;
       }
@@ -494,18 +495,38 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
    * The card's on/off switch: the program is asked or not — its device stays either way.
    *
    * @param cardId the card
+   * @param ctx the action context
    * @returns the cards reload
    */
-  private async toggleEnabled(cardId: string): Promise<{ refresh: "devices" }> {
+  private async toggleEnabled(cardId: string, ctx: ActionContext): Promise<{ refresh: "devices" }> {
+    let twin: ProgramRow | undefined;
     await this.host.updateRows(rows => {
       const index = rows.findIndex(r => this.idOf(r) === cardId);
       if (index < 0) {
         return undefined;
       }
+      const row = { ...rows[index], enabled: rows[index].enabled === false };
+      // switched on, a second row of a running program would stop that one ("same program as …")
+      const [candidate] = parsePrograms([row], findProgram);
+      twin = candidate.enabled
+        ? twinOf(
+            candidate.cfg,
+            parsePrograms(
+              rows.filter((_, i) => i !== index),
+              findProgram,
+            ),
+          )
+        : undefined;
+      if (twin) {
+        return undefined;
+      }
       const next = [...rows];
-      next[index] = { ...rows[index], enabled: rows[index].enabled === false };
+      next[index] = row;
       return next;
     });
+    if (twin) {
+      await ctx.showMessage(tName("dmDuplicate", twin.cfg.name || twin.id, addressOf(twin.cfg)));
+    }
     return { refresh: "devices" };
   }
 
