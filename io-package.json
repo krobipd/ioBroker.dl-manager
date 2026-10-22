@@ -258,29 +258,29 @@
       "scope": "dl-manager",
       "name": {
         "en": "Download Manager",
-        "de": "Download Manager",
-        "ru": "Download Manager",
-        "pt": "Download Manager",
-        "nl": "Download Manager",
-        "fr": "Download Manager",
-        "it": "Download Manager",
-        "es": "Download Manager",
-        "pl": "Download Manager",
-        "uk": "Download Manager",
-        "zh-cn": "Download Manager"
+        "de": "Download-Manager",
+        "ru": "Менеджер загрузок",
+        "pt": "Gestor de downloads",
+        "nl": "Downloadmanager",
+        "fr": "Gestionnaire de téléchargements",
+        "it": "Gestore download",
+        "es": "Gestor de descargas",
+        "pl": "Menedżer pobierania",
+        "uk": "Менеджер завантажень",
+        "zh-cn": "下载管理器"
       },
       "description": {
         "en": "Download Manager adapter",
         "de": "Download-Manager-Adapter",
-        "ru": "Адаптер Download Manager",
-        "pt": "Adaptador Download Manager",
-        "nl": "Download Manager-adapter",
-        "fr": "Adaptateur Download Manager",
-        "it": "Adattatore Download Manager",
-        "es": "Adaptador Download Manager",
-        "pl": "Adapter Download Manager",
-        "uk": "Адаптер Download Manager",
-        "zh-cn": "Download Manager 适配器"
+        "ru": "Адаптер менеджера загрузок",
+        "pt": "Adaptador do gestor de downloads",
+        "nl": "Downloadmanager-adapter",
+        "fr": "Adaptateur du gestionnaire de téléchargements",
+        "it": "Adattatore gestore download",
+        "es": "Adaptador del gestor de descargas",
+        "pl": "Adapter menedżera pobierania",
+        "uk": "Адаптер менеджера завантажень",
+        "zh-cn": "下载管理器适配器"
       },
       "categories": [
         {
