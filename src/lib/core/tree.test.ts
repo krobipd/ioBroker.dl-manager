@@ -190,6 +190,13 @@ describe("ProgramTree — downloads", () => {
     expect(a.val("qbittorrent-nas.downloads.11112222.paused")).toBe(false);
   });
 
+  it("leaves eta empty while a torrent seeds — the program counts to its seed goal, not to the download's end (review B16)", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a);
+    await t.sync(snap([item("aaaa11112222", { status: "seeding", etaSeconds: 3600 })]));
+    expect(a.val("qbittorrent-nas.downloads.11112222.eta")).toBeNull();
+  });
+
   it("gives status labels as plain strings in the system language, never equal to the key", async () => {
     const a = new FakeAdapter(NS);
     const t = await makeTree(a);

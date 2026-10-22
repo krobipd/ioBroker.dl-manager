@@ -67,22 +67,22 @@ selbst angehalten hast, bleibt angehalten. Das Gemerkte übersteht einen Neustar
 Ein Download ist, was du hinzugefügt hast: ein JDownloader- oder pyLoad-Paket, ein Torrent, ein NZB-Auftrag, ein
 aria2-Download.
 
-| Datenpunkt    | Typ           | Zugriff | JD  | qBt | TR  | DE  | SAB | NZB | a2  | pyL | Bedeutung                                                                           |
-| ------------- | ------------- | ------- | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | ----------------------------------------------------------------------------------- |
-| `status`      | string        | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Einer der Status-Werte unten.                                                       |
-| `progress`    | number (%)    | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Fortschritt.                                                                        |
-| `size`        | number (GB)   | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Größe.                                                                              |
-| `downloaded`  | number (GB)   | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Heruntergeladen.                                                                    |
-| `speed`       | number (MB/s) | r       |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  ✓  | Geschwindigkeit.                                                                    |
-| `uploadSpeed` | number (MB/s) | r       |  –  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  –  | Upload-Geschwindigkeit.                                                             |
-| `ratio`       | number        | r       |  –  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  –  | Hochgeladene Menge geteilt durch heruntergeladene Menge.                            |
-| `eta`         | number (s)    | r       |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  ✓  | Sekunden, bis der Download fertig ist; leer, wenn das Programm es nicht sagen kann. |
-| `added`       | number        | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  |  –  | Wann der Download hinzugefügt wurde.                                                |
-| `finished`    | number        | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  | Wann der Download fertig wurde.                                                     |
-| `category`    | string        | r       |  –  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  | Die Kategorie oder das Label, das du dem Download im Programm gegeben hast.         |
-| `error`       | string        | r       |  ✓  |  –  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Fehlermeldung des Programms; leer, solange alles in Ordnung ist.                    |
-| `paused`      | boolean       | rw      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  –  | Wahr hält diesen Download an, falsch setzt ihn fort.                                |
-| `remove`      | boolean       | w       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Entfernt den Download aus der Liste des Programms; die Dateien bleiben erhalten.    |
+| Datenpunkt    | Typ           | Zugriff | JD  | qBt | TR  | DE  | SAB | NZB | a2  | pyL | Bedeutung                                                                                                                   |
+| ------------- | ------------- | ------- | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | --------------------------------------------------------------------------------------------------------------------------- |
+| `status`      | string        | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Einer der Status-Werte unten.                                                                                               |
+| `progress`    | number (%)    | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Fortschritt.                                                                                                                |
+| `size`        | number (GB)   | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Größe.                                                                                                                      |
+| `downloaded`  | number (GB)   | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Heruntergeladen.                                                                                                            |
+| `speed`       | number (MB/s) | r       |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  ✓  | Geschwindigkeit.                                                                                                            |
+| `uploadSpeed` | number (MB/s) | r       |  –  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  –  | Upload-Geschwindigkeit.                                                                                                     |
+| `ratio`       | number        | r       |  –  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  –  | Hochgeladene Menge geteilt durch heruntergeladene Menge.                                                                    |
+| `eta`         | number (s)    | r       |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  ✓  | Sekunden, bis der Download fertig ist; leer, solange ein Torrent weiterverteilt wird oder das Programm es nicht sagen kann. |
+| `added`       | number        | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  |  –  | Wann der Download hinzugefügt wurde.                                                                                        |
+| `finished`    | number        | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  | Wann der Download fertig wurde.                                                                                             |
+| `category`    | string        | r       |  –  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  | Die Kategorie oder das Label, das du dem Download im Programm gegeben hast.                                                 |
+| `error`       | string        | r       |  ✓  |  –  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Fehlermeldung des Programms; leer, solange alles in Ordnung ist.                                                            |
+| `paused`      | boolean       | rw      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  –  | Wahr hält diesen Download an, falsch setzt ihn fort.                                                                        |
+| `remove`      | boolean       | w       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Entfernt den Download aus der Liste des Programms; die Dateien bleiben erhalten.                                            |
 
 SABnzbd und NZBGet melden Geschwindigkeit und Restzeit nur für das ganze Programm, nicht je Download.
 

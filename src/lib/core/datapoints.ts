@@ -228,7 +228,8 @@ export const ITEM_DATAPOINTS: readonly DatapointDef<DownloadItem>[] = [
   }),
   ir({
     id: "eta",
-    value: i => i.etaSeconds,
+    // a seeding torrent's program counts to its seed goal (Transmission RPC spec) — no download end to show
+    value: i => (i.status === "seeding" ? null : i.etaSeconds),
     type: "number",
     role: "value.timer",
     unit: "s",

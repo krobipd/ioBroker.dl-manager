@@ -66,22 +66,22 @@ yourself stays paused. The memory survives an adapter restart.
 
 A download is what you added: a JDownloader or pyLoad package, a torrent, an NZB job, an aria2 download.
 
-| Datapoint     | Type          | Access | JD  | qBt | TR  | DE  | SAB | NZB | a2  | pyL | Meaning                                                                     |
-| ------------- | ------------- | ------ | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | --------------------------------------------------------------------------- |
-| `status`      | string        | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | One of the status values below.                                             |
-| `progress`    | number (%)    | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Progress.                                                                   |
-| `size`        | number (GB)   | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Size.                                                                       |
-| `downloaded`  | number (GB)   | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Downloaded.                                                                 |
-| `speed`       | number (MB/s) | r      |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  ✓  | Speed.                                                                      |
-| `uploadSpeed` | number (MB/s) | r      |  –  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  –  | Upload speed.                                                               |
-| `ratio`       | number        | r      |  –  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  –  | Uploaded amount divided by downloaded amount.                               |
-| `eta`         | number (s)    | r      |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  ✓  | Seconds until the download is complete; empty when the program cannot tell. |
-| `added`       | number        | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  |  –  | When the download was added.                                                |
-| `finished`    | number        | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  | When the download finished.                                                 |
-| `category`    | string        | r      |  –  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  | The category or label you gave the download in the program.                 |
-| `error`       | string        | r      |  ✓  |  –  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Error message of the program; empty while all is well.                      |
-| `paused`      | boolean       | rw     |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  –  | True pauses this download, false resumes it.                                |
-| `remove`      | boolean       | w      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Removes the download from the program's list; the files stay on disk.       |
+| Datapoint     | Type          | Access | JD  | qBt | TR  | DE  | SAB | NZB | a2  | pyL | Meaning                                                                                              |
+| ------------- | ------------- | ------ | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | ---------------------------------------------------------------------------------------------------- |
+| `status`      | string        | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | One of the status values below.                                                                      |
+| `progress`    | number (%)    | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Progress.                                                                                            |
+| `size`        | number (GB)   | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Size.                                                                                                |
+| `downloaded`  | number (GB)   | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Downloaded.                                                                                          |
+| `speed`       | number (MB/s) | r      |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  ✓  | Speed.                                                                                               |
+| `uploadSpeed` | number (MB/s) | r      |  –  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  –  | Upload speed.                                                                                        |
+| `ratio`       | number        | r      |  –  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  –  | Uploaded amount divided by downloaded amount.                                                        |
+| `eta`         | number (s)    | r      |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  ✓  | Seconds until the download is complete; empty while a torrent seeds or when the program cannot tell. |
+| `added`       | number        | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  |  –  | When the download was added.                                                                         |
+| `finished`    | number        | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  | When the download finished.                                                                          |
+| `category`    | string        | r      |  –  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  | The category or label you gave the download in the program.                                          |
+| `error`       | string        | r      |  ✓  |  –  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Error message of the program; empty while all is well.                                               |
+| `paused`      | boolean       | rw     |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  –  | True pauses this download, false resumes it.                                                         |
+| `remove`      | boolean       | w      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Removes the download from the program's list; the files stay on disk.                                |
 
 SABnzbd and NZBGet report speed and time left only for the whole program, not per download.
 
