@@ -236,6 +236,10 @@ describe("My.JDownloader failures", () => {
       [f => (f.devices = [{ name: "PC" }]), /not found/],
       [f => (f.device = { status: 403, type: "AUTH_FAILED" }), AuthError],
       [f => (f.device = { status: 403, type: "OFFLINE" }), /device is offline/],
+      // a 200 that does not decrypt or parse is the service's fault, named — never OpenSSL's or JSON's bare words (review B20)
+      [f => (f.connectAnswer = "not encrypted at all"), /jdownloader-cloud: \/my\/connect answered nothing readable/],
+      [f => (f.deviceAnswer = "{ broken"), /jdownloader-cloud: \/jd\/version answered nothing readable/],
+      [f => (f.deviceAnswer = "null"), /jdownloader-cloud: \/jd\/version answered nothing readable/],
       // the session refused again after a reconnect — named, never a bare "Error" (review B11)
       [f => (f.device = { status: 403, type: "TOKEN_INVALID" }), /jdownloader-cloud: .*TOKEN_INVALID/],
     ];

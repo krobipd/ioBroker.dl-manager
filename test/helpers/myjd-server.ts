@@ -32,6 +32,10 @@ export interface MyJdFaults {
   listdevices?: { status: number; type: string };
   /** The device list instead of the one named device. */
   devices?: unknown[];
+  /** `/my/connect` answers 200 with this body, as it is (not encrypted). */
+  connectAnswer?: string;
+  /** Every device call answers 200 with this text, encrypted with the device token. */
+  deviceAnswer?: string;
 }
 
 /**
@@ -84,6 +88,9 @@ export async function startMyJdServer(opts: {
       if (!signed(call, login)) {
         return failure(403, "AUTH_FAILED");
       }
+      if (faults.connectAnswer !== undefined) {
+        return { body: faults.connectAnswer };
+      }
       serverToken = null;
       const session = newSession();
       return { body: jdEncrypt(login, JSON.stringify(faults.noToken ? { rid } : { ...session, rid })) };
@@ -121,6 +128,9 @@ export async function startMyJdServer(opts: {
     if (deviceFailure) {
       const plain = JSON.stringify({ src: "DEVICE", type: deviceFailure.type });
       return { status: deviceFailure.status, body: faults.encryptErrors ? jdEncrypt(deviceToken, plain) : plain };
+    }
+    if (faults.deviceAnswer !== undefined) {
+      return { body: jdEncrypt(deviceToken, faults.deviceAnswer) };
     }
     const req = JSON.parse(jdDecrypt(deviceToken, call.body)) as { url: string; params: unknown[]; rid: number };
     if (req.rid <= lastRid) {

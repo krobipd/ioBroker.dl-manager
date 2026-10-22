@@ -1,5 +1,6 @@
 import { createCipheriv, createDecipheriv, createHash, createHmac } from "node:crypto";
 import { AuthError, ProtocolError, UnreachableError } from "../../core/errors";
+import { errText } from "../../err-text";
 import { HttpClient, type HttpResponse, type HttpTimers } from "../../core/http";
 import type { ProgramConfig } from "../../core/model";
 import { checkJdCall, type JdTransport } from "./client";
@@ -67,6 +68,26 @@ export function jdEncrypt(token: Buffer, text: string): string {
 export function jdDecrypt(token: Buffer, data: string): string {
   const d = createDecipheriv("aes-128-cbc", token.subarray(16, 32), token.subarray(0, 16));
   return Buffer.concat([d.update(Buffer.from(data.trim(), "base64")), d.final()]).toString("utf8");
+}
+
+/**
+ * @param key the key the answer is encrypted with
+ * @param text the answer of a 200
+ * @param path the call, for the error
+ * @returns the answer's object
+ * @throws {ProtocolError} when it does not decrypt or holds no object — the service's fault, named
+ */
+function openAnswer(key: Buffer, text: string, path: string): Record<string, unknown> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(jdDecrypt(key, text));
+  } catch (err: unknown) {
+    throw new ProtocolError(`jdownloader-cloud: ${path} answered nothing readable (${errText(err)})`);
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new ProtocolError(`jdownloader-cloud: ${path} answered nothing readable (no object)`);
+  }
+  return parsed as Record<string, unknown>;
 }
 
 /**
@@ -189,7 +210,7 @@ export class JdCloudTransport implements JdTransport {
       }
       throw new ProtocolError(`jdownloader-cloud: ${path} answered HTTP ${res.status} ${type}`);
     }
-    return JSON.parse(jdDecrypt(key, res.text)) as Record<string, unknown>;
+    return openAnswer(key, res.text, path);
   }
 
   private adopt(answer: Record<string, unknown>, serverBase: Buffer): Session {
@@ -308,7 +329,7 @@ export class JdCloudTransport implements JdTransport {
       }
       throw new ProtocolError(`jdownloader-cloud: ${path} answered HTTP ${res.status} ${type}`);
     }
-    return (JSON.parse(jdDecrypt(s.device, res.text)) as { data?: unknown } | null)?.data;
+    return openAnswer(s.device, res.text, path).data;
   }
 }
 
