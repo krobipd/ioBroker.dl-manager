@@ -1,6 +1,6 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
 import { unknownStatus } from "../../core/status";
-import { asRecord, asRecords, asText, doneOf, hiLo, num } from "../../core/units";
+import { asRecord, asRecords, asText, doneOf, epochMs, hiLo, num } from "../../core/units";
 
 const PP = [
   "PP_QUEUED",
@@ -130,7 +130,6 @@ export function toSnapshot(
       continue;
     }
     const s = mapNzbStatus(`h:${raw}`, debug);
-    const time = num(h.HistoryTime);
     items.push({
       key: String(id),
       name: asText(h.Name) || String(id),
@@ -139,7 +138,7 @@ export function toSnapshot(
       doneBytes: hiLo(h.DownloadedSizeHi, h.DownloadedSizeLo),
       speedBps: null,
       etaSeconds: null,
-      finishedMs: time !== null && time > 0 ? time * 1000 : null,
+      finishedMs: epochMs(h.HistoryTime),
       category: asText(h.Category),
       error: s === "failed" ? raw : "",
     });

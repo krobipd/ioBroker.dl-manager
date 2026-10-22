@@ -3,6 +3,7 @@ import { AuthError, ProtocolError, UnreachableError } from "../../core/errors";
 import { errText } from "../../err-text";
 import { HttpClient, type HttpResponse, type HttpTimers } from "../../core/http";
 import type { ProgramConfig } from "../../core/model";
+import { asText } from "../../core/units";
 import { checkJdCall, type JdTransport } from "./client";
 
 /** The adapter's own app key — the web interface's prefix would trigger special behaviour in `config/set`. */
@@ -109,10 +110,7 @@ export function adaptParams(params: readonly unknown[]): unknown[] {
  * @returns the error type of My.JDownloader's body (plain or encrypted), empty when unreadable
  */
 function errorType(res: HttpResponse, token: Buffer | null): string {
-  const read = (text: string): string => {
-    const t = (JSON.parse(text) as { type?: unknown } | null)?.type;
-    return typeof t === "string" ? t : "";
-  };
+  const read = (text: string): string => asText((JSON.parse(text) as { type?: unknown } | null)?.type);
   try {
     return read(res.text);
   } catch {
@@ -230,7 +228,7 @@ export class JdCloudTransport implements JdTransport {
    */
   public async listDevices(): Promise<JdDevice[]> {
     return (await this.devices())
-      .map(d => ({ id: typeof d.id === "string" ? d.id : "", name: typeof d.name === "string" ? d.name : "" }))
+      .map(d => ({ id: asText(d.id), name: asText(d.name) }))
       .filter(d => d.id !== "" && d.name !== "");
   }
 

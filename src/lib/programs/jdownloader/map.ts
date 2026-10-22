@@ -1,5 +1,5 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
-import { asText, eta, nonNegative, sizeOf } from "../../core/units";
+import { asRecord, asText, eta, nonNegative, sizeOf } from "../../core/units";
 
 /** One entry of `advancedStatus` — only the machine-readable id is read. */
 interface JdStatusEntry {
@@ -67,7 +67,7 @@ const EXTRACTION = new Set([
 
 const idOf = (l: JdLink, key: string): string => {
   const id = l.advancedStatus?.[key]?.id;
-  return typeof id === "string" ? id : "";
+  return asText(id);
 };
 
 /**
@@ -246,7 +246,7 @@ export function toSnapshot(
   links: unknown,
   debug: (msg: string) => void,
 ): ProgramSnapshot {
-  const t = toolbar && typeof toolbar === "object" ? (toolbar as Record<string, unknown>) : {};
+  const t = asRecord(toolbar);
   const state = asText(t.state);
   const linkList = Array.isArray(links) ? (links as JdLink[]).filter(l => l && typeof l === "object") : null;
   const items: DownloadItem[] = [];

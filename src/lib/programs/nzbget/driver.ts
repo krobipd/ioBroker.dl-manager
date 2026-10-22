@@ -12,7 +12,7 @@ import type {
 import { RETRY_EXTRA } from "../retry-extra";
 import { NzbClient } from "./client";
 import { toSnapshot } from "./map";
-import { toKiB } from "../../core/units";
+import { asRecords, asText, toKiB } from "../../core/units";
 
 /** Download a failed job again (`HistoryRedownload`). */
 const EXTRAS: readonly ExtraDefinition[] = [RETRY_EXTRA];
@@ -50,10 +50,7 @@ export class NzbDriver implements ProgramDriver {
   /** @returns one complete query */
   public poll(): Promise<ProgramSnapshot> {
     return this.version.poll(
-      async () => {
-        const v = await this.client.call("version");
-        return typeof v === "string" ? v : "";
-      },
+      async () => asText(await this.client.call("version")),
       version => this.query(version),
     );
   }
@@ -66,9 +63,7 @@ export class NzbDriver implements ProgramDriver {
     const status = await this.client.call("status");
     const groups = await this.client.call("listgroups", [0]);
     const history = await this.client.call("history", [false]);
-    this.inQueue = new Set(
-      (Array.isArray(groups) ? groups : []).map(g => String((g as { NZBID?: unknown } | null)?.NZBID)),
-    );
+    this.inQueue = new Set(asRecords(groups).map(g => String(g.NZBID)));
     return toSnapshot(version, status, groups, history, m => this.deps.log.debug(m));
   }
 

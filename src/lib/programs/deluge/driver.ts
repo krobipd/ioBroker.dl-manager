@@ -51,6 +51,7 @@ export class DlDriver implements ProgramDriver {
 
   /** @param cmd the command */
   public async command(cmd: Command): Promise<void> {
+    // Deluge takes KiB/s as a float (−1 = off) — not toKiB, which rounds for the programs that take whole numbers
     const kib = (bps: number): number => (bps > 0 ? bps / 1024 : -1);
     switch (cmd.kind) {
       case "pause":

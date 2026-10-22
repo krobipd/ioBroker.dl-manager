@@ -1,6 +1,6 @@
 import { EmulatedPause, memoryPauseStore } from "../../core/emulated-pause";
 import { ProtocolError } from "../../core/errors";
-import { asRecord, asRecords, toKiB } from "../../core/units";
+import { asRecord, asRecords, asText, toKiB } from "../../core/units";
 import type { Capability, Command, ProgramDriver, ProgramSnapshot, DriverDeps, ProgramConfig } from "../../core/model";
 import { TrClient } from "./client";
 import { speedUnit, toSnapshot } from "./map";
@@ -68,7 +68,7 @@ export class TrDriver implements ProgramDriver {
     const got = await this.client.call("torrent_get", { fields: FIELDS });
     const session = await this.client.call("session_get");
     const stats = await this.client.call("session_stats");
-    const dir = typeof session.download_dir === "string" ? session.download_dir : "";
+    const dir = asText(session.download_dir);
     const free = dir ? await this.client.call("free_space", { path: dir }) : {};
     this.unit = speedUnit(session);
     const torrents = asRecords(got.torrents);

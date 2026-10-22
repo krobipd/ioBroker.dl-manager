@@ -1,6 +1,7 @@
 import { AuthError, ProtocolError } from "../../core/errors";
 import { HttpClient, type HttpTimers } from "../../core/http";
 import type { ProgramConfig } from "../../core/model";
+import { asText } from "../../core/units";
 import { baseUrl, catalogEntry } from "../catalog";
 
 /** The part of a WebSocket the push channel uses (Node 22 has one built in). */
@@ -102,7 +103,7 @@ export class AriaClient {
   }
 
   private raise(method: string, f: { code?: unknown; message?: unknown }): never {
-    const message = typeof f.message === "string" ? f.message : "";
+    const message = asText(f.message);
     if (message === "Unauthorized") {
       throw new AuthError("aria2: the RPC secret was refused");
     }

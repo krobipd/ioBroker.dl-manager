@@ -1,6 +1,6 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
 import { statusFrom } from "../../core/status";
-import { asRecord, asText, doneOf, epochMs, num } from "../../core/units";
+import { asRecord, asRecords, asText, doneOf, epochMs, num } from "../../core/units";
 
 const MiB = 1024 * 1024;
 const GiB = 1024 * MiB;
@@ -74,8 +74,7 @@ export function toSnapshot(
   const paused = held && !ppPause;
   const byKey = new Map<string, DownloadItem>();
   let firstDownloading = true;
-  for (const raw of Array.isArray(queue.slots) ? queue.slots : []) {
-    const s = asRecord(raw);
+  for (const s of asRecords(queue.slots)) {
     const key = asText(s.nzo_id);
     if (!key) {
       continue;

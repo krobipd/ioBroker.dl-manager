@@ -1,6 +1,6 @@
 import { RATIO_INFINITE, type DownloadItem, type ProgramSnapshot, type Status } from "../../core/model";
 import { unknownStatus } from "../../core/status";
-import { asRecord, epochMs, eta, fromKiB, nonNegative, num, sizeOf } from "../../core/units";
+import { asRecord, asText, epochMs, eta, fromKiB, nonNegative, num, sizeOf } from "../../core/units";
 
 /** A torrent of `web.update_ui`. */
 export interface DlTorrent {
@@ -110,7 +110,7 @@ export function dlStatus(t: DlTorrent, debug: (msg: string) => void): { status: 
     case "Moving":
       return { status: "postprocessing", error: "" };
     case "Error":
-      return { status: "failed", error: typeof t.message === "string" ? t.message : "" };
+      return { status: "failed", error: asText(t.message) };
     default:
       return { status: unknownStatus("deluge", t.state, debug), error: "" };
   }
@@ -163,7 +163,7 @@ export function toSnapshot(
       etaSeconds: eta(t.eta, [0]),
       addedMs: epochMs(t.time_added),
       finishedMs: epochMs(t.completed_time),
-      category: typeof t.label === "string" ? t.label : "",
+      category: asText(t.label),
       error,
     };
   });

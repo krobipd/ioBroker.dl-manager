@@ -1,6 +1,6 @@
 import { RATIO_INFINITE, type DownloadItem, type ProgramSnapshot, type Status } from "../../core/model";
 import { statusFrom } from "../../core/status";
-import { asRecord, epochMs, eta, nonNegative, sizeOf } from "../../core/units";
+import { asRecord, asText, epochMs, eta, nonNegative, sizeOf } from "../../core/units";
 
 /** A torrent of `sync/maindata` — only the fields the adapter reads. */
 export interface QbTorrent {
@@ -75,7 +75,7 @@ export function mapQbState(raw: string | number, debug: (msg: string) => void): 
  * @returns major, minor, patch — zeros when unreadable
  */
 export function parseQbVersion(text: unknown): [number, number, number] {
-  const m = /(\d+)\.(\d+)(?:\.(\d+))?/.exec(typeof text === "string" ? text : "");
+  const m = /(\d+)\.(\d+)(?:\.(\d+))?/.exec(asText(text));
   return m ? [Number(m[1]), Number(m[2]), Number(m[3] ?? 0)] : [0, 0, 0];
 }
 
@@ -125,7 +125,7 @@ export function qbRunning(m: MaindataState): Set<string> {
   return new Set(
     Object.entries(m.torrents)
       .filter(([, t]) => {
-        const s = typeof t.state === "string" ? t.state : "";
+        const s = asText(t.state);
         return !STOPPED.test(s) && s !== "error" && s !== "missingFiles";
       })
       .map(([hash]) => hash),
@@ -166,7 +166,7 @@ export function toSnapshot(
       etaSeconds: eta(t.eta, [8640000]),
       addedMs: epochMs(t.added_on),
       finishedMs: epochMs(t.completion_on),
-      category: typeof t.category === "string" ? t.category : "",
+      category: asText(t.category),
       error,
       extra: { forceStart: t.force_start === true },
     };

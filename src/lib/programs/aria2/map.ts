@@ -1,6 +1,6 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
 import { statusFrom } from "../../core/status";
-import { asRecord, nonNegative, sizeOf } from "../../core/units";
+import { asRecord, asText, nonNegative, sizeOf } from "../../core/units";
 
 /**
  * Raw key = status, `:seed` = a torrent that only seeds (`seeder: "true"`), `:0` = download speed 0. `removed` and
@@ -53,12 +53,12 @@ export function ariaName(e: Record<string, unknown>): string {
     return bt;
   }
   const file = asRecord(arr(e.files)[0]);
-  const path = typeof file.path === "string" ? file.path : "";
+  const path = asText(file.path);
   if (path) {
     return path.split("/").pop() ?? path;
   }
   const uri = asRecord(arr(file.uris)[0]).uri;
-  return typeof uri === "string" ? uri : typeof e.gid === "string" ? e.gid : "";
+  return typeof uri === "string" ? uri : asText(e.gid);
 }
 
 /**
@@ -83,7 +83,7 @@ export function toSnapshot(
   const items: DownloadItem[] = [];
   for (const raw of entries) {
     const e = asRecord(raw);
-    const gid = typeof e.gid === "string" ? e.gid : "";
+    const gid = asText(e.gid);
     if (!gid || e.status === "removed" || arr(e.followedBy).length > 0) {
       continue;
     }

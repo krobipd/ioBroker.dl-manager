@@ -4,7 +4,7 @@ import { ProgramVersion } from "../../core/version";
 import type { Capability, Command, ProgramDriver, ProgramSnapshot, DriverDeps, ProgramConfig } from "../../core/model";
 import { PyClient } from "./client";
 import { toSnapshot } from "./map";
-import { toKiB } from "../../core/units";
+import { asText, toKiB } from "../../core/units";
 
 /** Polls between two reads of the speed limit — a poll is four calls, pyLoad allows 100 a minute. */
 const LIMIT_EVERY = 10;
@@ -56,10 +56,7 @@ export class PyDriver implements ProgramDriver {
   /** @returns one complete query */
   public poll(): Promise<ProgramSnapshot> {
     return this.version.poll(
-      async () => {
-        const v = await this.client.get("get_server_version");
-        return typeof v === "string" ? v : "";
-      },
+      async () => asText(await this.client.get("get_server_version")),
       version => this.query(version),
     );
   }

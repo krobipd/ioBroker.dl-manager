@@ -8,7 +8,7 @@ import type {
   DriverDeps,
   ProgramConfig,
 } from "../../core/model";
-import { asRecord, asRecords, toKiB } from "../../core/units";
+import { asRecord, asRecords, asText, toKiB } from "../../core/units";
 import { RETRY_EXTRA } from "../retry-extra";
 import { SabClient } from "./client";
 import { toSnapshot } from "./map";
@@ -58,7 +58,7 @@ export class SabDriver implements ProgramDriver {
       await this.client.call({ mode: "history", limit: HISTORY_LIMIT, last_history_update: this.historyUpdate })
     ).history;
     if (h && typeof h === "object") {
-      const hist = h as Record<string, unknown>;
+      const hist = asRecord(h);
       this.history = Array.isArray(hist.slots) ? hist.slots : [];
       const update = hist.last_history_update;
       this.historyUpdate = typeof update === "number" || typeof update === "string" ? String(update) : "0";
@@ -80,7 +80,7 @@ export class SabDriver implements ProgramDriver {
       );
     }
     const version = (await this.client.callWithoutKey({ mode: "version" })).version;
-    return typeof version === "string" ? version : "";
+    return asText(version);
   }
 
   /** @param cmd the command */

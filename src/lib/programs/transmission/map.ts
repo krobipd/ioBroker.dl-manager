@@ -1,6 +1,6 @@
 import { RATIO_INFINITE, type DownloadItem, type ProgramSnapshot, type Status } from "../../core/model";
 import { unknownStatus } from "../../core/status";
-import { asRecord, doneOf, epochMs, eta, fromKiB, nonNegative, num, sizeOf } from "../../core/units";
+import { asRecord, asText, doneOf, epochMs, eta, fromKiB, nonNegative, num, sizeOf } from "../../core/units";
 
 /** A torrent of `torrent_get`, keys in snake_case (legacy answers are converted by snakeKeys). */
 export interface TrTorrent {
@@ -107,7 +107,7 @@ export function trTorrentFromRaw(raw: string): TrTorrent {
 export function trStatus(t: TrTorrent, debug: (msg: string) => void): { status: Status; error: string } {
   const code = num(t.status);
   const err = num(t.error) ?? 0;
-  const text = typeof t.error_string === "string" ? t.error_string : "";
+  const text = asText(t.error_string);
   const running = code === 4 || code === 6;
   if (err === 3 || (err === 2 && !running)) {
     return { status: "failed", error: text };

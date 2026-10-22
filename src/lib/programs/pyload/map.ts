@@ -1,5 +1,5 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
-import { asRecord, asRecords, fromKiB, nonNegative, num, sizeOf } from "../../core/units";
+import { asRecord, asRecords, doneOf, fromKiB, nonNegative, num, sizeOf } from "../../core/units";
 
 /** A file of a pyLoad package (`get_queue_data` → `links`). */
 export interface PyFile {
@@ -151,7 +151,7 @@ export function toSnapshot(
       size += s;
       const run = running.get(num(f.fid) ?? -1);
       if (run) {
-        done += Math.max(0, s - (nonNegative(run.bleft) ?? s));
+        done += doneOf(s, nonNegative(run.bleft) ?? s) ?? 0;
         speed += nonNegative(run.speed) ?? 0;
         const e = nonNegative(run.eta);
         eta = e !== null ? Math.max(eta ?? 0, e) : eta;

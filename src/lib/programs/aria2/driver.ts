@@ -4,7 +4,7 @@ import { ProtocolError } from "../../core/errors";
 import type { Capability, Command, ProgramDriver, ProgramSnapshot, DriverDeps, ProgramConfig } from "../../core/model";
 import { AriaClient, nodeSocket, type SocketFactory } from "./client";
 import { toSnapshot } from "./map";
-import { asRecord, asRecords } from "../../core/units";
+import { asRecord, asRecords, asText } from "../../core/units";
 
 /** Pause before reconnecting the push channel. */
 const RECONNECT_MS = 30_000;
@@ -63,9 +63,7 @@ export class AriaDriver implements ProgramDriver {
     const resumable = new Set(gids([...asRecords(active), ...asRecords(waiting)]));
     const paused = await this.pause.observe(new Set(this.running), resumable);
     const reported = asRecord(version).version;
-    return toSnapshot(typeof reported === "string" ? reported : "", all, stat, option, paused, m =>
-      this.deps.log.debug(m),
-    );
+    return toSnapshot(asText(reported), all, stat, option, paused, m => this.deps.log.debug(m));
   }
 
   /** @param cmd the command */
