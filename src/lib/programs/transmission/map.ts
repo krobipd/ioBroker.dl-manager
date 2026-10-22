@@ -1,4 +1,4 @@
-import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
+import { RATIO_INFINITE, type DownloadItem, type ProgramSnapshot, type Status } from "../../core/model";
 import { asRecord, doneOf, epochMs, eta, fromKiB, nonNegative, num, sizeOf } from "../../core/units";
 
 /** A torrent of `torrent_get`, keys in snake_case (legacy answers are converted by snakeKeys). */
@@ -191,7 +191,8 @@ export function toSnapshot(
       doneBytes: doneOf(size, left),
       speedBps: nonNegative(t.rate_download),
       uploadBps: nonNegative(t.rate_upload),
-      ratio: nonNegative(t.upload_ratio),
+      // TR_RATIO_INF -2 is infinite, TR_RATIO_NA -1 is no ratio at all
+      ratio: t.upload_ratio === -2 ? RATIO_INFINITE : nonNegative(t.upload_ratio),
       etaSeconds: eta(t.eta, []),
       addedMs: epochMs(t.added_date),
       finishedMs: epochMs(t.done_date),

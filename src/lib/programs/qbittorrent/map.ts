@@ -1,4 +1,4 @@
-import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
+import { RATIO_INFINITE, type DownloadItem, type ProgramSnapshot, type Status } from "../../core/model";
 import { asRecord, epochMs, eta, nonNegative, sizeOf } from "../../core/units";
 
 /** A torrent of `sync/maindata` — only the fields the adapter reads. */
@@ -166,7 +166,7 @@ export function toSnapshot(
       doneBytes: nonNegative(t.completed),
       speedBps: nonNegative(t.dlspeed),
       uploadBps: nonNegative(t.upspeed),
-      ratio: nonNegative(t.ratio),
+      ratio: t.ratio === -1 ? RATIO_INFINITE : nonNegative(t.ratio),
       etaSeconds: eta(t.eta, [8640000]),
       addedMs: epochMs(t.added_on),
       finishedMs: epochMs(t.completion_on),

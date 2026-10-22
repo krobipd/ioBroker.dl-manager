@@ -74,7 +74,7 @@ A download is what you added: a JDownloader or pyLoad package, a torrent, an NZB
 | `downloaded`  | number (GB)   | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Downloaded.                                                                                          |
 | `speed`       | number (MB/s) | r      |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  ✓  | Speed.                                                                                               |
 | `uploadSpeed` | number (MB/s) | r      |  –  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  –  | Upload speed.                                                                                        |
-| `ratio`       | number        | r      |  –  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  –  | Uploaded amount divided by downloaded amount.                                                        |
+| `ratio`       | number        | r      |  –  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  –  | Uploaded amount divided by downloaded amount; `-1` = infinite (∞).                                   |
 | `eta`         | number (s)    | r      |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  ✓  | Seconds until the download is complete; empty while a torrent seeds or when the program cannot tell. |
 | `added`       | number        | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  |  –  | When the download was added.                                                                         |
 | `finished`    | number        | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  | When the download finished.                                                                          |

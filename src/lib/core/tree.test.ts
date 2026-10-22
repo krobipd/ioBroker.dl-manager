@@ -197,6 +197,14 @@ describe("ProgramTree — downloads", () => {
     expect(a.val("qbittorrent-nas.downloads.11112222.eta")).toBeNull();
   });
 
+  it("labels the infinite ratio in the ratio's states (review S2)", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a);
+    await t.sync(snap([item("aaaa11112222", { status: "seeding", ratio: -1 })]));
+    expect((a.objects.get(`${CH}.ratio`)?.common as ioBroker.StateCommon).states).toEqual({ "-1": "∞" });
+    expect(a.val("qbittorrent-nas.downloads.11112222.ratio")).toBe(-1);
+  });
+
   it("gives status labels as plain strings in the system language, never equal to the key", async () => {
     const a = new FakeAdapter(NS);
     const t = await makeTree(a);

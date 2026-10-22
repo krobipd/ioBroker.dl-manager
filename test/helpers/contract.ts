@@ -1,5 +1,12 @@
 import { AuthError, ProtocolError, UnreachableError } from "../../src/lib/core/errors";
-import { STATUSES, type Capability, type Command, type ProgramDriver, type Status } from "../../src/lib/core/model";
+import {
+  RATIO_INFINITE,
+  STATUSES,
+  type Capability,
+  type Command,
+  type ProgramDriver,
+  type Status,
+} from "../../src/lib/core/model";
 import { startFixtureServer, type FixtureServer, type RecordedCall } from "./fixture-server";
 
 /** The fixture server of one driver, with the hooks the contract needs. */
@@ -118,9 +125,10 @@ export function runDriverContract(c: ContractCase): void {
       for (const i of s.items) {
         expect(STATUSES).toContain(i.status);
         expect(typeof i.key === "string" && i.key.length > 0).toBe(true);
-        for (const v of [i.sizeBytes, i.doneBytes, i.speedBps, i.etaSeconds, i.uploadBps, i.ratio]) {
+        for (const v of [i.sizeBytes, i.doneBytes, i.speedBps, i.etaSeconds, i.uploadBps]) {
           expect(unknownOrNonNegative(v)).toBe(true);
         }
+        expect(i.ratio === RATIO_INFINITE || unknownOrNonNegative(i.ratio)).toBe(true);
       }
       await d.close();
     });

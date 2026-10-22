@@ -143,7 +143,7 @@ describe("qBittorrent snapshot from the recorded answers", () => {
     });
     const s = toSnapshot("v5.0.0", m, false, () => undefined);
     const by = Object.fromEntries(s.items.map(i => [i.key, i]));
-    expect(by.a).toMatchObject({ error: "files missing", sizeBytes: null, ratio: null, extra: { forceStart: false } });
+    expect(by.a).toMatchObject({ error: "files missing", sizeBytes: null, ratio: -1, extra: { forceStart: false } });
     expect(by.b.error).toBe("tracker error");
     expect(by.c.error).toBe("error");
     expect(s.status.altSpeed).toBe(false);

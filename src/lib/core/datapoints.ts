@@ -2,6 +2,7 @@ import type { I18nKey } from "../i18n";
 import {
   ACTIVE,
   countActive,
+  RATIO_INFINITE,
   countQueued,
   type Capability,
   type Command,
@@ -24,6 +25,8 @@ export interface DatapointDef<S = unknown> {
   role: string;
   /** Unit. */
   unit?: string;
+  /** Labels of the values a program reports instead of a measurement (outside the value range). */
+  states?: Readonly<Record<string, string>>;
   /** Readable. */
   read: boolean;
   /** Writable. */
@@ -220,6 +223,7 @@ export const ITEM_DATAPOINTS: readonly DatapointDef<DownloadItem>[] = [
   ir({
     id: "ratio",
     value: i => (typeof i.ratio === "number" ? round2(i.ratio) : null),
+    states: { [String(RATIO_INFINITE)]: "∞" },
     type: "number",
     role: "value",
     capability: "upload",

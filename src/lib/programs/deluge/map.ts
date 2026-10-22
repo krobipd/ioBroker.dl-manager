@@ -1,4 +1,4 @@
-import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
+import { RATIO_INFINITE, type DownloadItem, type ProgramSnapshot, type Status } from "../../core/model";
 import { asRecord, epochMs, eta, fromKiB, nonNegative, num, sizeOf } from "../../core/units";
 
 /** A torrent of `web.update_ui`. */
@@ -158,7 +158,8 @@ export function toSnapshot(
       doneBytes: nonNegative(t.total_done),
       speedBps: nonNegative(t.download_payload_rate),
       uploadBps: nonNegative(t.upload_payload_rate),
-      ratio: nonNegative(t.ratio),
+      // Deluge's -1: nothing downloaded, so the ratio is infinite (its own UI shows ∞)
+      ratio: t.ratio === -1 ? RATIO_INFINITE : nonNegative(t.ratio),
       etaSeconds: eta(t.eta, [0]),
       addedMs: epochMs(t.time_added),
       finishedMs: epochMs(t.completed_time),

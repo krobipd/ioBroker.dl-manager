@@ -75,7 +75,7 @@ aria2-Download.
 | `downloaded`  | number (GB)   | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Heruntergeladen.                                                                                                            |
 | `speed`       | number (MB/s) | r       |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  ✓  | Geschwindigkeit.                                                                                                            |
 | `uploadSpeed` | number (MB/s) | r       |  –  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  –  | Upload-Geschwindigkeit.                                                                                                     |
-| `ratio`       | number        | r       |  –  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  –  | Hochgeladene Menge geteilt durch heruntergeladene Menge.                                                                    |
+| `ratio`       | number        | r       |  –  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  –  | Hochgeladene Menge geteilt durch heruntergeladene Menge; `-1` = unendlich (∞).                                              |
 | `eta`         | number (s)    | r       |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  ✓  | Sekunden, bis der Download fertig ist; leer, solange ein Torrent weiterverteilt wird oder das Programm es nicht sagen kann. |
 | `added`       | number        | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  |  –  | Wann der Download hinzugefügt wurde.                                                                                        |
 | `finished`    | number        | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  | Wann der Download fertig wurde.                                                                                             |

@@ -407,7 +407,7 @@ export class ProgramTree {
    * @returns its object
    */
   private stateObject(
-    d: Pick<DatapointDef, "id" | "type" | "role" | "unit" | "read" | "write" | "nameKey" | "descKey">,
+    d: Pick<DatapointDef, "id" | "type" | "role" | "unit" | "states" | "read" | "write" | "nameKey" | "descKey">,
   ): ioBroker.PartialObject {
     const common: Partial<ioBroker.StateCommon> = {
       name: tName(d.nameKey),
@@ -424,6 +424,9 @@ export class ProgramTree {
     }
     if (d.id === "status") {
       common.states = Object.fromEntries(STATUSES.map(s => [s, tState(STATUS_LABEL[s])]));
+    }
+    if (d.states) {
+      common.states = { ...d.states };
     }
     if (d.role === "button") {
       common.def = false;

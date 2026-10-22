@@ -54,7 +54,7 @@ describe("Deluge snapshot from the recorded answers", () => {
         doneBytes: 2097152,
       });
       expect(byName["done.bin"].finishedMs).toBeGreaterThan(1e12);
-      expect(byName["big.bin"]).toMatchObject({ key: "885bd0670addf14ec2c3014998ab3ef2f810fabf", ratio: null });
+      expect(byName["big.bin"]).toMatchObject({ key: "885bd0670addf14ec2c3014998ab3ef2f810fabf", ratio: -1 });
       expect(s.status).toMatchObject({ version, paused: false, speedLimitBps: 0, uploadLimitBps: 0 });
       expect(s.status.freeSpaceBytes).toBeGreaterThan(0);
     });

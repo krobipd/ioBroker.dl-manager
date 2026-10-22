@@ -18,6 +18,9 @@ export const STATUSES = [
 /** A download's status, the same for every program. */
 export type Status = (typeof STATUSES)[number];
 
+/** The ratio a program reports as infinite (nothing downloaded, something uploaded) — a value outside the range. */
+export const RATIO_INFINITE = -1;
+
 /** Statuses that count as "active": loading or post-processing (`docs/en/datapoints.md`) — checking loads nothing. */
 export const ACTIVE: ReadonlySet<Status> = new Set<Status>(["downloading", "postprocessing"]);
 
@@ -69,7 +72,7 @@ export interface DownloadItem {
   speedBps: number | null;
   /** Upload speed in bytes per second (torrent programs). */
   uploadBps?: number | null;
-  /** Upload ratio (torrent programs). */
+  /** Upload ratio (torrent programs); {@link RATIO_INFINITE} when the program reports it as infinite. */
   ratio?: number | null;
   /** Seconds left, null while unknown. */
   etaSeconds: number | null;
