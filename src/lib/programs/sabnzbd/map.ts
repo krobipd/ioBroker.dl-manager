@@ -1,4 +1,5 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
+import { statusFrom } from "../../core/status";
 import { asRecord, asText, doneOf, epochMs, num } from "../../core/units";
 
 const MiB = 1024 * 1024;
@@ -40,12 +41,7 @@ export function mapSabStatus(raw: string | number, debug: (msg: string) => void)
   if (list === "q" && flag === "globalPause") {
     return "paused";
   }
-  const s = BY_RAW.get(`${list}:${status}`);
-  if (s === undefined) {
-    debug(`sabnzbd: unknown slot status ${String(raw)} — shown as queued`);
-    return "queued";
-  }
-  return s;
+  return statusFrom(BY_RAW, `${list}:${status}`, "sabnzbd", debug);
 }
 
 const scaled = (v: unknown, unit: number): number | null => {

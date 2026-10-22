@@ -55,8 +55,8 @@ src/lib/core/commands.ts         → routeState: Datenpunkt-Id → pauseAll / Be
 src/lib/core/http.ts             → HttpClient: Timeout über Adapter-Timer, Cookies, keine Weiterleitungen, multipart,
                                    502/503/504 = nicht erreichbar
 src/lib/core/emulated-pause.ts   → nachgebildete Programm-Pause (PauseStore im native des paused-Objekts)
-src/lib/core/{errors,ids,units,redact,version}.ts → Fehlerklassen, Kennungen, Einheiten + Lesehelfer der Antworten,
-                                   Geheimnisse, Programmversion (neu gelesen nach jedem Fehlschlag)
+src/lib/core/{errors,ids,units,redact,version,status}.ts → Fehlerklassen, Kennungen, Einheiten + Lesehelfer der Antworten,
+                                   Geheimnisse, Programmversion (neu gelesen nach jedem Fehlschlag), unbekannter Status → queued
 src/lib/programs/catalog.ts      → die EINZIGE Programmliste: Typ, Name, Familie, Standard-Port/-Pfad, Anmeldeart → needsOf,
                                    baseUrl; liest der Kern, jeder Client, die Duplikatprüfung und die Dialoge
 src/lib/programs/registry.ts     → Katalog + Treiber (DRIVERS) → PROGRAMS, findProgram

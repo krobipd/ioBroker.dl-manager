@@ -1,4 +1,5 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
+import { statusFrom } from "../../core/status";
 import { asRecord, nonNegative, sizeOf } from "../../core/units";
 
 /**
@@ -23,12 +24,7 @@ const STATUS = new Map<string, Status>(statusTable);
  * @returns the status
  */
 export function mapAriaStatus(raw: string | number, debug: (msg: string) => void): Status {
-  const status = STATUS.get(String(raw));
-  if (status) {
-    return status;
-  }
-  debug(`aria2: unknown status "${String(raw)}" — shown as queued`);
-  return "queued";
+  return statusFrom(STATUS, String(raw), "aria2", debug);
 }
 
 /**

@@ -1,4 +1,5 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
+import { unknownStatus } from "../../core/status";
 import { asRecord, asRecords, asText, doneOf, hiLo, num } from "../../core/units";
 
 const PP = [
@@ -69,8 +70,12 @@ export function mapNzbStatus(raw: string | number, debug: (msg: string) => void)
   if (known === undefined) {
     // an unknown history text still says SUCCESS/FAILURE/WARNING before the slash
     const prefix = list === "h" ? status.split("/")[0] : "";
-    debug(`nzbget: unknown status ${String(raw)}`);
-    return prefix === "SUCCESS" ? "completed" : prefix === "FAILURE" || prefix === "WARNING" ? "failed" : "queued";
+    if (prefix === "SUCCESS" || prefix === "FAILURE" || prefix === "WARNING") {
+      const done = prefix === "SUCCESS" ? "completed" : "failed";
+      debug(`nzbget: unknown status ${String(raw)} — shown as ${done}`);
+      return done;
+    }
+    return unknownStatus("nzbget", raw, debug);
   }
   if (flag === "globalPause" && (known === "queued" || known === "downloading")) {
     return "paused";

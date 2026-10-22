@@ -1,4 +1,5 @@
 import { RATIO_INFINITE, type DownloadItem, type ProgramSnapshot, type Status } from "../../core/model";
+import { statusFrom } from "../../core/status";
 import { asRecord, epochMs, eta, nonNegative, sizeOf } from "../../core/units";
 
 /** A torrent of `sync/maindata` — only the fields the adapter reads. */
@@ -66,12 +67,7 @@ const STOPPED = /^(stopped|paused)(DL|UP)$/;
  * @returns the common status
  */
 export function mapQbState(raw: string | number, debug: (msg: string) => void): Status {
-  const s = KNOWN.get(String(raw));
-  if (s === undefined) {
-    debug(`qbittorrent: unknown state "${raw}" — shown as queued`);
-    return "queued";
-  }
-  return s;
+  return statusFrom(KNOWN, String(raw), "qbittorrent", debug);
 }
 
 /**

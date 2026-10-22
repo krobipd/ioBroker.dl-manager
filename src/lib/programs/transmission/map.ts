@@ -1,4 +1,5 @@
 import { RATIO_INFINITE, type DownloadItem, type ProgramSnapshot, type Status } from "../../core/model";
+import { unknownStatus } from "../../core/status";
 import { asRecord, doneOf, epochMs, eta, fromKiB, nonNegative, num, sizeOf } from "../../core/units";
 
 /** A torrent of `torrent_get`, keys in snake_case (legacy answers are converted by snakeKeys). */
@@ -126,8 +127,7 @@ export function trStatus(t: TrTorrent, debug: (msg: string) => void): { status: 
     case 6:
       return { status: "seeding", error: note };
     default:
-      debug(`transmission: unknown status ${String(t.status)} — shown as queued`);
-      return { status: "queued", error: note };
+      return { status: unknownStatus("transmission", t.status, debug), error: note };
   }
 }
 

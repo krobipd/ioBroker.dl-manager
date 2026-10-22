@@ -1,4 +1,5 @@
 import { RATIO_INFINITE, type DownloadItem, type ProgramSnapshot, type Status } from "../../core/model";
+import { unknownStatus } from "../../core/status";
 import { asRecord, epochMs, eta, fromKiB, nonNegative, num, sizeOf } from "../../core/units";
 
 /** A torrent of `web.update_ui`. */
@@ -111,8 +112,7 @@ export function dlStatus(t: DlTorrent, debug: (msg: string) => void): { status: 
     case "Error":
       return { status: "failed", error: typeof t.message === "string" ? t.message : "" };
     default:
-      debug(`deluge: unknown state "${String(t.state)}" — shown as queued`);
-      return { status: "queued", error: "" };
+      return { status: unknownStatus("deluge", t.state, debug), error: "" };
   }
 }
 
