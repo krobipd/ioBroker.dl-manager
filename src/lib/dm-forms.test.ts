@@ -103,6 +103,7 @@ describe("rows and dialog data", () => {
     expect(rowToForm({ type: "transmission", username: "u" })).toMatchObject({ needLogin: true, advanced: false });
     expect(rowToForm({ type: "jdownloader-cloud", username: "me@x" })).toMatchObject({ mode: "cloud", port: "" });
     expect(rowToForm({ port: "9" }).port).toBe(""); // like parsePrograms: a port is a number
+    expect(rowToForm({ port: 70000 }).port).toBe(""); // and one the program could not listen on is none
     expect(rowToForm({})).toMatchObject({ name: "", enabled: true });
     expect(rowToForm({ key: "old" })).not.toHaveProperty("key");
   });

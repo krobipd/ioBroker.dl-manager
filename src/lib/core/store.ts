@@ -32,7 +32,11 @@ export interface StoreAdapter {
   decrypt(value: string): string;
 }
 
-const isRow = (r: unknown): r is SettingsRow => !!r && typeof r === "object" && !Array.isArray(r);
+/**
+ * @param r an entry of a stored or old program list
+ * @returns whether it is a row (an object, not a list)
+ */
+export const isRow = (r: unknown): r is SettingsRow => !!r && typeof r === "object" && !Array.isArray(r);
 
 /**
  * @param rows stored rows

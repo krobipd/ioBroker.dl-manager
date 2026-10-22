@@ -1,5 +1,7 @@
 import type { JsonFormSchema } from "@iobroker/dm-utils";
 import { tName, tText, type I18nKey } from "./i18n";
+import { portOf } from "./core/config";
+import type { SettingsRow } from "./core/store";
 import { CATALOG, catalogEntry, programInfo, type ProgramInfo, type ProgramType } from "./programs/catalog";
 import type { ProgramConfig } from "./core/model";
 
@@ -9,7 +11,7 @@ import type { ProgramConfig } from "./core/model";
  */
 
 /** One program row with readable secrets — fields the dialog does not know are kept. */
-export type SettingsRow = Record<string, unknown>;
+export type { SettingsRow };
 
 /** A JDownloader instance of a My.JDownloader account, as the dialog stores it. */
 export interface JdChoice {
@@ -95,12 +97,12 @@ export function rowToForm(row: SettingsRow): ProgramForm {
   const path = textOf(row.path);
   const apiKey = textOf(row.apiKey);
   const username = textOf(row.username);
-  const port = typeof row.port === "number" && row.port > 0 ? String(row.port) : "";
+  const port = portOf(row.port);
   return {
     name: textOf(row.name),
     mode: row.type === "jdownloader-cloud" ? "cloud" : "local",
     host: textOf(row.host),
-    port,
+    port: port ? String(port) : "",
     // what the program logs in with today: both clients take a stored API key first
     login: apiKey || (programInfo(textOf(row.type))?.login === "keyOrUser" && !username) ? "key" : "user",
     needLogin: username !== "",
@@ -196,7 +198,6 @@ export function formToRow(
 ): SettingsRow {
   const stored = storedType(type, form);
   const login = catalogEntry(stored).login;
-  const port = Number(form.port);
   // every connection field of a program, emptied — the compiler names one added to ProgramConfig and missing here
   const blank: Omit<ProgramConfig, "type" | "name"> = {
     host: "",
@@ -221,7 +222,7 @@ export function formToRow(
   }
   Object.assign(row, {
     host: form.host.trim(),
-    port: Number.isInteger(port) && port > 0 && port < 65536 ? port : 0,
+    port: portOf(Number(form.port)),
     https: form.https,
     path: form.path.trim(),
   });
@@ -249,7 +250,7 @@ export function formToRow(
  * @returns its product name ("" for an unknown type)
  */
 export function programLabel(type: string): string {
-  return CATALOG.find(p => p.type === type)?.label ?? "";
+  return programInfo(type)?.label ?? "";
 }
 
 /**

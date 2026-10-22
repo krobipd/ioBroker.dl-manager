@@ -11,7 +11,7 @@ import { moveObjects, type MoveAdapter } from "./lib/core/move";
 import { coveredBy, KnownObjects } from "./lib/known-objects";
 import { Serial } from "./lib/core/serial";
 import { KnownStates } from "./lib/core/states";
-import { ProgramStore, STORE_FILE, STORE_ID, type SettingsRow } from "./lib/core/store";
+import { isRow, ProgramStore, STORE_FILE, STORE_ID, type SettingsRow } from "./lib/core/store";
 import { LAST_CHANNEL, lastChannelObject } from "./lib/core/tree";
 import { deviceIcon } from "./lib/device-icons";
 import { DlDeviceManagement, type DmHost } from "./lib/device-management";
@@ -171,7 +171,7 @@ export class DownloadManagerAdapter extends utils.Adapter {
       this.log.debug("the instance settings still hold programs — the store has them already, the old copy goes");
       return;
     }
-    const kept = rows.filter((r): r is SettingsRow => !!r && typeof r === "object" && !Array.isArray(r));
+    const kept = rows.filter(isRow);
     await this.programs.write(kept);
     this.log.info(`${kept.length} program(s) moved out of the instance settings — changes no longer restart it`);
   }
