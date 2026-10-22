@@ -299,6 +299,20 @@ describe("JDownloader limits and transports", () => {
     }
   });
 
+  it("names the HTTP status of a failed answer that is no JSON, such as a proxy's error page", async () => {
+    const s = await startFixtureServer(() => ({
+      status: 500,
+      body: "<html><body>Internal Server Error</body></html>",
+    }));
+    try {
+      await expect(new JdLocalTransport(s.baseUrl, timers).call("/jd/version")).rejects.toThrow(
+        /^jdownloader: HTTP 500$/,
+      );
+    } finally {
+      await s.close();
+    }
+  });
+
   it("talks to the cloud for jdownloader-cloud and opens no push channel there", async () => {
     const c: ProgramConfig = {
       ...cfg("http://nas:1"),

@@ -1,7 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, createHmac } from "node:crypto";
 import { AuthError, ProtocolError, UnreachableError } from "../../core/errors";
 import { errText } from "../../err-text";
-import { HttpClient, type HttpResponse, type HttpTimers } from "../../core/http";
+import { errorField, HttpClient, type HttpResponse, type HttpTimers } from "../../core/http";
 import type { ProgramConfig } from "../../core/model";
 import { asText } from "../../core/units";
 import { checkJdCall, type JdTransport } from "./client";
@@ -110,15 +110,14 @@ export function adaptParams(params: readonly unknown[]): unknown[] {
  * @returns the error type of My.JDownloader's body (plain or encrypted), empty when unreadable
  */
 function errorType(res: HttpResponse, token: Buffer | null): string {
-  const read = (text: string): string => asText((JSON.parse(text) as { type?: unknown } | null)?.type);
+  const plain = errorField(res.text, "type");
+  if (plain || !token) {
+    return plain;
+  }
   try {
-    return read(res.text);
+    return errorField(jdDecrypt(token, res.text), "type");
   } catch {
-    try {
-      return token ? read(jdDecrypt(token, res.text)) : "";
-    } catch {
-      return "";
-    }
+    return "";
   }
 }
 

@@ -1,5 +1,6 @@
 import { errText } from "../err-text";
 import { ProtocolError, UnreachableError } from "./errors";
+import { asRecord, asText } from "./units";
 
 /** The adapter's timers — the deadline never runs on a bare setTimeout. */
 export interface HttpTimers {
@@ -37,6 +38,19 @@ export interface HttpResponse {
   text: string;
   /** Body as JSON; throws `ProtocolError` for anything else. */
   json(): unknown;
+}
+
+/**
+ * @param text the body of a refused answer
+ * @param field the field that names the error, e.g. `type` or `error`
+ * @returns the field's text, "" when the body is no JSON object with that text (a proxy's page, an older version)
+ */
+export function errorField(text: string, field: string): string {
+  try {
+    return asText(asRecord(JSON.parse(text))[field]);
+  } catch {
+    return "";
+  }
 }
 
 /** Client options. */

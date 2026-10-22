@@ -1,5 +1,5 @@
 import { AuthError, ProtocolError, UnreachableError } from "../../core/errors";
-import { HttpClient, type HttpTimers } from "../../core/http";
+import { errorField, HttpClient, type HttpTimers } from "../../core/http";
 import type { ProgramConfig } from "../../core/model";
 import { baseUrl, catalogEntry } from "../catalog";
 
@@ -61,13 +61,9 @@ export class PyClient {
       ...(json ? { json } : {}),
     });
     if (res.status === 401 || res.status === 403) {
-      let err: unknown;
-      try {
-        err = (res.json() as { error?: unknown } | null)?.error;
-      } catch {
-        err = undefined; // a proxy or an older pyLoad answers plain text
-      }
-      throw new AuthError(`pyload: ${this.refused} (${typeof err === "string" ? err : `HTTP ${res.status}`})`);
+      // a proxy or an older pyLoad answers plain text
+      const err = errorField(res.text, "error");
+      throw new AuthError(`pyload: ${this.refused} (${err || `HTTP ${res.status}`})`);
     }
     if (res.status === 429) {
       throw new UnreachableError("pyload: too many requests (pyLoad allows 100 a minute) — raise the poll interval");

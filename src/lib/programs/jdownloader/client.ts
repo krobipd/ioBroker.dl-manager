@@ -1,5 +1,5 @@
 import { ProtocolError } from "../../core/errors";
-import { HttpClient, type HttpTimers } from "../../core/http";
+import { errorField, HttpClient, type HttpTimers } from "../../core/http";
 import { baseUrl, catalogEntry, type Endpoint } from "../catalog";
 
 /** The one call JD's API knows: a namespace path and positional parameters; the answer's `data`. */
@@ -98,8 +98,8 @@ export class JdLocalTransport implements JdTransport {
       );
     }
     if (res.status >= 400) {
-      const type = (res.json() as { type?: unknown } | null)?.type;
-      throw new ProtocolError(`jdownloader: HTTP ${res.status}${typeof type === "string" ? ` ${type}` : ""}`);
+      const type = errorField(res.text, "type");
+      throw new ProtocolError(`jdownloader: HTTP ${res.status}${type ? ` ${type}` : ""}`);
     }
     const body = res.json();
     return body && typeof body === "object" ? (body as { data?: unknown }).data : undefined;
