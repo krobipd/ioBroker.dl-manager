@@ -101,3 +101,31 @@ describe("aria2 edge values", () => {
     expect(snap.items[1].error).toBe("404 Not Found");
   });
 });
+
+describe("aria2 torrents", () => {
+  const torrent = (extra: Record<string, unknown>): Record<string, unknown> => ({
+    gid: "t",
+    status: "active",
+    bittorrent: { info: { name: "Ubuntu" } },
+    totalLength: "1000",
+    completedLength: "1000",
+    downloadSpeed: "0",
+    uploadSpeed: "300",
+    uploadLength: "500",
+    ...extra,
+  });
+  const one = (e: Record<string, unknown>): ReturnType<typeof toSnapshot>["items"][number] =>
+    toSnapshot("1.37.0", [e], {}, {}, false, () => undefined).items[0];
+
+  it("calls a torrent that only seeds seeding, not waiting (B4)", () => {
+    expect(one(torrent({ seeder: "true" })).status).toBe("seeding");
+    expect(one(torrent({ seeder: "false" })).status).toBe("waiting");
+    expect(one(torrent({ seeder: "false", downloadSpeed: "10", completedLength: "500" })).status).toBe("downloading");
+  });
+
+  it("gives a torrent its ratio from what it gave back over what it has, a plain download none (B5)", () => {
+    expect(one(torrent({ seeder: "true" })).ratio).toBe(0.5);
+    expect(one(torrent({ completedLength: "0", uploadLength: "0" })).ratio).toBeNull();
+    expect(one({ gid: "h", status: "complete", completedLength: "10", files: [{ path: "/d/x" }] }).ratio).toBeNull();
+  });
+});

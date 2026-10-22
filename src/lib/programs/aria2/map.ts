@@ -1,9 +1,13 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
 import { asRecord, nonNegative } from "../../core/units";
 
-/** Raw key = status, `:0` = download speed 0. `removed` and entries followed by another are not shown. */
+/**
+ * Raw key = status, `:seed` = a torrent that only seeds (`seeder: "true"`), `:0` = download speed 0. `removed` and
+ * entries followed by another are not shown.
+ */
 export const statusTable = [
   ["active", "downloading"],
+  ["active:seed", "seeding"],
   ["active:0", "waiting"],
   ["waiting", "queued"],
   ["paused", "paused"],
@@ -11,28 +15,34 @@ export const statusTable = [
   ["error", "failed"],
 ] as const satisfies readonly (readonly [string, Status])[];
 
+const STATUS = new Map<string, Status>(statusTable);
+
 /**
  * @param raw a key of the status table
  * @param debug debug log, names an unknown status
  * @returns the status
  */
 export function mapAriaStatus(raw: string | number, debug: (msg: string) => void): Status {
-  const [status, speed] = String(raw).split(":");
-  switch (status) {
-    case "active":
-      return speed === "0" ? "waiting" : "downloading";
-    case "waiting":
-      return "queued";
-    case "paused":
-      return "paused";
-    case "complete":
-      return "completed";
-    case "error":
-      return "failed";
-    default:
-      debug(`aria2: unknown status "${String(raw)}" — shown as queued`);
-      return "queued";
+  const status = STATUS.get(String(raw));
+  if (status) {
+    return status;
   }
+  debug(`aria2: unknown status "${String(raw)}" — shown as queued`);
+  return "queued";
+}
+
+/**
+ * @param e a download of tellActive/tellWaiting/tellStopped
+ * @param speed its download speed
+ * @returns its key in the status table
+ */
+function rawStatus(e: Record<string, unknown>, speed: number | null): string {
+  const status = String(e.status);
+  if (status !== "active") {
+    return status;
+  }
+  // a seeding torrent loads nothing: it is not waiting, it is done and gives back
+  return e.seeder === "true" ? "active:seed" : speed === 0 ? "active:0" : "active";
 }
 
 const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
@@ -84,7 +94,8 @@ export function toSnapshot(
     const speed = nonNegative(e.downloadSpeed);
     const size = nonNegative(e.totalLength);
     const done = nonNegative(e.completedLength);
-    const status = mapAriaStatus(`${String(e.status)}${e.status === "active" && speed === 0 ? ":0" : ""}`, debug);
+    const status = mapAriaStatus(rawStatus(e, speed), debug);
+    const torrent = Object.keys(asRecord(e.bittorrent)).length > 0;
     items.push({
       key: gid,
       name: ariaName(e),
@@ -93,6 +104,8 @@ export function toSnapshot(
       doneBytes: done,
       speedBps: speed,
       uploadBps: nonNegative(e.uploadSpeed),
+      // aria2 reports no ratio: what a torrent gave back over what it has
+      ratio: torrent && done ? (nonNegative(e.uploadLength) ?? 0) / done : null,
       etaSeconds: speed && size !== null && done !== null && size > done ? Math.round((size - done) / speed) : null,
       error:
         status === "failed"
