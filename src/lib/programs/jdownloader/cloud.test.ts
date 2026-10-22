@@ -236,6 +236,8 @@ describe("My.JDownloader failures", () => {
       [f => (f.devices = [{ name: "PC" }]), /not found/],
       [f => (f.device = { status: 403, type: "AUTH_FAILED" }), AuthError],
       [f => (f.device = { status: 403, type: "OFFLINE" }), /device is offline/],
+      // the session refused again after a reconnect — named, never a bare "Error" (review B11)
+      [f => (f.device = { status: 403, type: "TOKEN_INVALID" }), /jdownloader-cloud: .*TOKEN_INVALID/],
     ];
     for (const [fault, err] of cases) {
       const s = await serve();

@@ -99,4 +99,8 @@ export class DlClient {
 }
 
 /** `error.code === 1` — the session is gone. */
-class SessionLost extends Error {}
+class SessionLost extends Error {
+  public constructor() {
+    super("deluge: the web UI refused the session (error 1)");
+  }
+}

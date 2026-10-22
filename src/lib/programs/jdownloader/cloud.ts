@@ -313,7 +313,11 @@ export class JdCloudTransport implements JdTransport {
 }
 
 /** The session is gone — one reconnect, one repeat. */
-class TokenInvalid extends Error {}
+class TokenInvalid extends Error {
+  public constructor() {
+    super("jdownloader-cloud: My.JDownloader refused the session (TOKEN_INVALID)");
+  }
+}
 
 /** One My.JDownloader session: its tokens and the keys derived from them. */
 interface Session {

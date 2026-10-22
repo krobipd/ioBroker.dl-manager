@@ -3,6 +3,7 @@ import { startFixtureServer } from "../../../../test/helpers/fixture-server";
 import { firstUrl } from "../../../../test/helpers/first-url";
 import { loadFixture } from "../../../../test/helpers/fixtures";
 import { UnreachableError } from "../../core/errors";
+import { errText } from "../../err-text";
 import type { ProgramConfig } from "../../core/model";
 import { DlDriver } from "./driver";
 import { mapDlStatus, statusTable } from "./map";
@@ -169,6 +170,25 @@ describe("Deluge connection", () => {
       } finally {
         await s.close();
       }
+    }
+  });
+
+  it("names a session the web UI refuses again right after a new login (review B11)", async () => {
+    const s = await startFixtureServer(call => {
+      const { method, id } = JSON.parse(call.body) as { method: string; id: number };
+      if (method === "auth.login") {
+        return { body: { result: true, error: null, id }, headers: { "set-cookie": "_session_id=abc" } };
+      }
+      return { body: { result: null, error: { code: 1, message: "Not authenticated" }, id } };
+    });
+    try {
+      const got = await new DlDriver(cfg(s.baseUrl), { ...timers, log }).poll().then(
+        () => "resolved",
+        (e: unknown) => errText(e),
+      );
+      expect(got).toMatch(/^deluge: .*session/);
+    } finally {
+      await s.close();
     }
   });
 
