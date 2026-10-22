@@ -836,6 +836,41 @@ describe("ProgramManager — connection test and stop", () => {
     expect(w.drivers.every(d => d.closed)).toBe(true);
   });
 
+  it("a card change during the start waits for it — one runner per program, none left running (B2)", async () => {
+    const w = world({ h1: { snapshot: snap(0) } });
+    const m = w.manager();
+    let release = (): void => undefined;
+    const held = new Promise<void>(resolve => (release = resolve));
+    const extend = w.a.extendObject.bind(w.a);
+    let holding = true;
+    w.a.extendObject = async (id, obj) => {
+      if (holding && id.includes("qbittorrent-a")) {
+        holding = false;
+        await held;
+      }
+      return extend(id, obj);
+    };
+    const starting = m.start([row("qbittorrent", "a", "h1")]);
+    await vi.waitFor(() => expect(holding).toBe(false));
+    const applying = m.apply([row("qbittorrent", "a", "h1", { name: "renamed" })]);
+    release();
+    await Promise.all([starting, applying]);
+    await flush();
+    await m.stop();
+    expect(w.drivers.length).toBe(2);
+    expect(w.drivers.every(d => d.closed)).toBe(true);
+  });
+
+  it("starts no program when the adapter stops before its start ran (B2)", async () => {
+    const w = world({ h1: { snapshot: snap(0) } });
+    const m = w.manager();
+    const starting = m.start([row("qbittorrent", "a", "h1")]);
+    const stopping = m.stop();
+    await Promise.all([starting, stopping]);
+    await flush();
+    expect(w.drivers).toEqual([]);
+  });
+
   it("stop closes every driver, marks every program Unknown and the adapter disconnected", async () => {
     const w = world({ h1: { snapshot: snap(0) }, h2: { snapshot: snap(0) } });
     const m = w.manager();

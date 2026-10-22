@@ -36,6 +36,8 @@ export interface RunnerTree {
 export class ProgramRunner {
   private timer: ioBroker.Timeout | undefined = undefined;
   private polling: Promise<void> | null = null;
+  /** A poll was asked for while one ran — that one may have read the program before the change, so one more follows. */
+  private again = false;
   private stopped = false;
   private unsubscribe: (() => void) | undefined = undefined;
   /** Failure text → when it was last warned. */
@@ -92,19 +94,28 @@ export class ProgramRunner {
     void this.pollNow();
   }
 
-  /** Polls at once unless a poll is running; resolves when that poll is done. */
+  /**
+   * Polls at once; while a poll is running, one more follows right after it (a command or a push notification may
+   * come after that poll read the program). Resolves when the running or the new poll is done.
+   */
   public pollNow(): Promise<void> {
     if (this.stopped || this._lockedByAuth) {
       return Promise.resolve();
     }
     if (this.polling) {
+      this.again = true;
       return this.polling;
     }
     this.deps.clearTimeout(this.timer);
     this.timer = undefined;
     this.polling = this.poll().finally(() => {
       this.polling = null;
-      this.schedule();
+      if (this.again) {
+        this.again = false;
+        void this.pollNow();
+      } else {
+        this.schedule();
+      }
     });
     return this.polling;
   }

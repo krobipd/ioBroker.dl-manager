@@ -309,24 +309,65 @@ describe("ProgramRunner", () => {
     expect(r2.online).toBe(true);
   });
 
-  it("never runs two polls at once", async () => {
+  it("never runs two polls at once — a request during a poll gets one more poll right after it", async () => {
     const clock = new ManualClock();
-    let release: () => void = () => undefined;
-    const driver = makeDriver(
-      () =>
-        new Promise<ProgramSnapshot>(resolve => {
-          release = () => resolve(SNAP);
-        }),
-    );
+    const releases: (() => void)[] = [];
+    let running = 0;
+    let most = 0;
+    const driver = makeDriver(() => {
+      running++;
+      most = Math.max(most, running);
+      return new Promise<ProgramSnapshot>(resolve => {
+        releases.push(() => {
+          running--;
+          resolve(SNAP);
+        });
+      });
+    });
     const r = new ProgramRunner("fake-a", driver, makeTree(), makeDeps(clock), 10_000, vi.fn());
     r.start();
     await flush();
-    const second = r.pollNow();
+    void r.pollNow();
+    void r.pollNow();
     await flush();
     expect(driver.polls).toBe(1);
-    release();
-    await second;
-    expect(driver.polls).toBe(1);
+    releases.shift()?.();
+    await flush();
+    // the two requests during the poll make ONE more, at once — not one interval later
+    expect(driver.polls).toBe(2);
+    expect(clock.timers.size).toBe(0);
+    releases.shift()?.();
+    await flush();
+    expect(driver.polls).toBe(2);
+    expect(clock.timers.size).toBe(1);
+    expect(most).toBe(1);
+  });
+
+  it("asks the program again right after a command that came while a poll was running (B1)", async () => {
+    const clock = new ManualClock();
+    let paused = false;
+    const releases: (() => void)[] = [];
+    const driver = makeDriver(() => {
+      // the program is read when the poll starts: a poll under way does not see a later command
+      const seen = paused;
+      return new Promise<ProgramSnapshot>(resolve => {
+        releases.push(() => resolve({ ...SNAP, status: { ...SNAP.status, paused: seen } }));
+      });
+    });
+    driver.command = (): Promise<void> => {
+      paused = true;
+      return Promise.resolve();
+    };
+    const tree = makeTree();
+    const r = new ProgramRunner("fake-a", driver, tree, makeDeps(clock), 10_000, vi.fn());
+    r.start();
+    await flush();
+    await r.command({ kind: "pauseAll" });
+    releases.shift()?.();
+    await flush();
+    releases.shift()?.();
+    await flush();
+    expect(tree.sync.mock.calls.map(([s]) => s.status.paused)).toEqual([false, true]);
   });
 
   it("polls immediately after a command", async () => {

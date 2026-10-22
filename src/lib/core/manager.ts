@@ -101,10 +101,19 @@ export class ProgramManager {
 
   /**
    * Stamps every known program offline, removes the devices no row keeps and starts one runner per usable program.
+   * Queued like a change of the rows: a card change in the start window waits for it, a stop before it starts nothing.
    *
    * @param raw the program rows (secrets readable)
+   * @returns when the start is through
    */
-  public async start(raw: unknown): Promise<void> {
+  public start(raw: unknown): Promise<void> {
+    return this.changes.run(() => this.startNow(raw));
+  }
+
+  private async startNow(raw: unknown): Promise<void> {
+    if (this.stopped) {
+      return;
+    }
     this.rows = parsePrograms(raw, this.deps.find);
     const existing = await readDevices(this.a);
     await stampOffline(this.a, existing.keys());
