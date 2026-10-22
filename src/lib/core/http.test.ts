@@ -191,6 +191,12 @@ describe("HttpClient", () => {
     await expect(new HttpClient(timers).request({ method: "GET", url })).rejects.toThrow(UnreachableError);
   });
 
+  it("calls an address that is no URL a protocol error, never unreachable (review B12)", async () => {
+    const req = new HttpClient(timers).request({ method: "GET", url: "http://[nas:8080]:80/" });
+    await expect(req).rejects.toThrow(ProtocolError);
+    await expect(req).rejects.toThrow(/no valid URL/);
+  });
+
   it("close() aborts a request that is still waiting (long poll at shutdown)", async () => {
     const s = await serve(() => undefined);
     server = s.server;

@@ -327,6 +327,13 @@ describe("programForm — only the fields of the program", () => {
     );
     expect(run(items.host.validator, { mode: "local", host: "" })).toBe(false);
     expect(run(items.host.validator, { mode: "local", host: "http://nas" })).toBe(false);
+    // a port belongs in its own field; an IPv6 address has two colons at least (review B12)
+    expect(run(items.host.validator, { mode: "local", host: "box:8080" })).toBe(false);
+    expect(run(items.host.validator, { mode: "local", host: "cafe:8080" })).toBe(false);
+    expect(run(items.host.validator, { mode: "local", host: "[box]" })).toBe(false);
+    for (const host of ["fd00::1", "[fd00::1]", "::1", "::ffff:10.0.0.2", "box", "10.0.0.2"]) {
+      expect(run(items.host.validator, { mode: "local", host }), host).toBe(true);
+    }
     expect(run(items.host.validator, { mode: "local", host: "NAS" })).toBe(false);
     expect(run(items.host.validator, { mode: "local", host: "NAS", port: "3129" })).toBe(true);
     expect(run(items.host.validator, { mode: "cloud", host: "" })).toBe(true);

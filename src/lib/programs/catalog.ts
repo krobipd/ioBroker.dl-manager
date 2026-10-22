@@ -145,5 +145,7 @@ export function baseUrl(
   scheme: "http" | "ws" = "http",
 ): string {
   const { port, path } = effectiveEndpoint(cfg, info);
-  return `${scheme}${cfg.https ? "s" : ""}://${cfg.host}:${port}${path}`;
+  // an IPv6 address goes in brackets — its colons would read as the port
+  const host = cfg.host.includes(":") && !cfg.host.startsWith("[") ? `[${cfg.host}]` : cfg.host;
+  return `${scheme}${cfg.https ? "s" : ""}://${host}:${port}${path}`;
 }

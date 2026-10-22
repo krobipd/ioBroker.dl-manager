@@ -69,4 +69,10 @@ describe("baseUrl", () => {
     expect(baseUrl(row(), catalogEntry("aria2"), "ws")).toBe("ws://nas:6800/jsonrpc");
     expect(baseUrl(row({ https: true }), catalogEntry("aria2"), "ws")).toBe("wss://nas:6800/jsonrpc");
   });
+
+  it("puts an IPv6 address in brackets, once (review B12)", () => {
+    expect(baseUrl(row({ host: "fd00::1" }), catalogEntry("deluge"))).toBe("http://[fd00::1]:8112");
+    expect(baseUrl(row({ host: "[fd00::1]" }), catalogEntry("deluge"))).toBe("http://[fd00::1]:8112");
+    expect(baseUrl(row({ host: "10.0.0.2" }), catalogEntry("deluge"))).toBe("http://10.0.0.2:8112");
+  });
 });

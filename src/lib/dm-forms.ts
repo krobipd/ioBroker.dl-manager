@@ -356,7 +356,10 @@ export function programForm(type: DialogType, ctx: FormContext): JsonFormSchema 
     type: "text",
     label: tName("dmHost"),
     hidden: `!(${local})`,
-    validator: `!(${local}) || (/^[^\\s/]+$/.test(String(data.host||'').trim()) && !${taken})`,
+    // a name or IPv4 address without a port, or an IPv6 address (two colons at least), with or without brackets
+    validator:
+      `!(${local}) || ([String(data.host||'').trim()].some(h => /^[^\\s/:[\\]]+$/.test(h) || ` +
+      `/^\\[?[0-9a-f.]*(:[0-9a-f.]*){2,}\\]?$/i.test(h)) && !${taken})`,
     newLine: true,
     sm: 12,
     md: 6,

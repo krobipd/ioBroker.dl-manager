@@ -87,6 +87,10 @@ export class HttpClient {
    * @returns the answer — any status
    */
   public async request(req: HttpRequest): Promise<HttpResponse> {
+    // fetch rejects an unparsable address like a network error — it is the card's host, never a state
+    if (!URL.canParse(req.url)) {
+      throw new ProtocolError("the address is no valid URL — check the host on the card");
+    }
     const headers: Record<string, string> = { ...req.headers };
     let body: string | FormData | undefined = req.body;
     if (req.json !== undefined) {
