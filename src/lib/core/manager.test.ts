@@ -679,7 +679,7 @@ describe("ProgramManager — user writes", () => {
     expect(w.a.writeLog.slice(from).filter(x => x.id === "info.connection" && x.val === true)).toEqual([]);
   });
 
-  it("confirms a button with ack after the command, leaves a switch to the next poll", async () => {
+  it("confirms a button with ack after the command, leaves a switch to the next poll (D9: the button falls back to false)", async () => {
     const w = world({ h1: { snapshot: snap(0, [item("aaaa11112222", "downloading")]) } });
     const m = w.manager();
     await m.start([row("qbittorrent", "nas", "h1")]);
@@ -687,7 +687,7 @@ describe("ProgramManager — user writes", () => {
     await w.a.setState("qbittorrent-nas.downloads.11112222.remove", { val: true, ack: false });
     await m.onUserWrite("qbittorrent-nas.downloads.11112222.remove", true);
     expect(w.drivers[0].commands).toContainEqual({ kind: "remove", key: "aaaa11112222" });
-    expect(w.a.states.get(`${NS}.qbittorrent-nas.downloads.11112222.remove`)?.ack).toBe(true);
+    expect(w.a.states.get(`${NS}.qbittorrent-nas.downloads.11112222.remove`)).toMatchObject({ val: false, ack: true });
 
     await w.a.setState("qbittorrent-nas.paused", { val: true, ack: false });
     await m.onUserWrite("qbittorrent-nas.paused", true);

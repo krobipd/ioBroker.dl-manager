@@ -276,7 +276,8 @@ export class ProgramManager {
       await p.runner.command(route.cmd);
       this.a.log.info(`${route.program}: ${what}`);
       if (route.confirm) {
-        await this.a.setState(relId, { val: route.cmd.kind === "add" ? "" : val, ack: true });
+        // only write-only datapoints are confirmed here: a button falls back to false, `add` empties
+        await this.a.setState(relId, { val: route.cmd.kind === "add" ? "" : false, ack: true });
       }
     } catch (err: unknown) {
       this.a.log.warn(`${route.program}: ${what} failed — ${redact(errText(err))}`);
