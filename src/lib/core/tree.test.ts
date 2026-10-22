@@ -523,6 +523,47 @@ describe("ProgramTree — finished and failed events", () => {
     expect(a.val("qbittorrent-nas.last.finished")).toBe("name k2");
   });
 
+  it("names the download that finished last, not the one listed last — a restart does not report it again (review B9)", async () => {
+    const a = new FakeAdapter(NS);
+    a.states.set(`${DEV}.last.finishedTime`, { val: 5000, ack: true } as ioBroker.State);
+    const t = await makeTree(a);
+    const e = await t.sync(
+      snap([
+        item("k1", { status: "completed", finishedMs: 9000 }),
+        item("k2", { status: "completed", finishedMs: 7000 }),
+      ]),
+    );
+    expect(e.finished.map(i => i.key)).toEqual(["k1", "k2"]);
+    expect(a.val("qbittorrent-nas.last.finished")).toBe("name k1");
+    expect(a.val("qbittorrent-nas.last.finishedTime")).toBe(9000);
+    const again = await makeTree(a);
+    const after = await again.sync(
+      snap([
+        item("k1", { status: "completed", finishedMs: 9000 }),
+        item("k2", { status: "completed", finishedMs: 7000 }),
+      ]),
+    );
+    expect(after.finished).toHaveLength(0);
+    await again.sync(
+      snap([
+        item("k1", { status: "completed", finishedMs: 9000 }),
+        item("k2", { status: "completed", finishedMs: 7000 }),
+        item("k3", { status: "failed", finishedMs: 9500 }),
+        item("k4", { status: "failed", finishedMs: 9400 }),
+        item("k5", { status: "failed" }),
+      ]),
+    );
+    expect(a.val("qbittorrent-nas.last.failed")).toBe("name k3");
+  });
+
+  it("names the one listed last when the program reports no finish time (review B9)", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a);
+    await t.sync(snap([item("k1"), item("k2")]));
+    await t.sync(snap([item("k1", { status: "failed" }), item("k2", { status: "failed" })]));
+    expect(a.val("qbittorrent-nas.last.failed")).toBe("name k2");
+  });
+
   it("catches a download that finished while the adapter was stopped", async () => {
     const a = new FakeAdapter(NS);
     a.states.set(`${DEV}.last.finishedTime`, { val: 5000, ack: true } as ioBroker.State);

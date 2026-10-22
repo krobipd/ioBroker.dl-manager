@@ -80,6 +80,15 @@ export function lastChannelObject(): ioBroker.PartialObject {
 }
 
 /**
+ * @param items downloads that ended in one poll
+ * @returns the one that ended last — by the program's finish time, else the last listed
+ */
+function newest(items: readonly DownloadItem[]): DownloadItem | undefined {
+  const at = (i: DownloadItem): number => i.finishedMs ?? -Infinity;
+  return items.reduce<DownloadItem | undefined>((best, i) => (!best || at(i) >= at(best) ? i : best), undefined);
+}
+
+/**
  * The newest finished and the newest failed download of a poll into `<prefix>.last.finished*` / `.last.failed*` —
  * below a program's device and in the adapter's summary alike.
  *
@@ -92,12 +101,12 @@ export async function writeLastEvents(
   prefix: string,
   events: Pick<ProgramEvents, "finished" | "failed">,
 ): Promise<void> {
-  const last = events.finished.at(-1);
+  const last = newest(events.finished);
   if (last) {
     await setState(`${prefix}.${LAST_CHANNEL}.finished`, { val: last.name, ack: true });
     await setState(`${prefix}.${LAST_CHANNEL}.finishedTime`, { val: last.finishedMs ?? Date.now(), ack: true });
   }
-  const failed = events.failed.at(-1);
+  const failed = newest(events.failed);
   if (failed) {
     await setState(`${prefix}.${LAST_CHANNEL}.failed`, { val: failed.name, ack: true });
     await setState(`${prefix}.${LAST_CHANNEL}.failedTime`, { val: Date.now(), ack: true });
