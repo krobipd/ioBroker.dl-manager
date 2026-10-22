@@ -845,7 +845,7 @@ describe("ProgramTree — the warning about many downloads", () => {
     await t.sync(many(202));
     const warns = a.logs.filter(l => l.level === "warn");
     expect(warns.map(l => l.msg)).toEqual([
-      "qBittorrent (NAS): 201 downloads in the object tree — this many can slow ioBroker down; limit them in the adapter settings (100 or fewer recommended)",
+      "qbittorrent-nas: 201 downloads in the object tree — this many can slow ioBroker down; limit them in the adapter settings (100 or fewer recommended)",
     ]);
   });
 

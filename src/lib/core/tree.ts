@@ -145,7 +145,7 @@ export class ProgramTree {
    */
   public constructor(
     private readonly adapter: TreeAdapter,
-    programId: string,
+    private readonly programId: string,
     private readonly programName: string,
     private readonly driver: TreeDriver,
     private readonly opts: TreeOptions,
@@ -317,7 +317,7 @@ export class ProgramTree {
     }
     this.warned = true;
     this.adapter.log.warn(
-      `${this.programName}: ${shown} downloads in the object tree — this many can slow ioBroker down; limit them in the adapter settings (100 or fewer recommended)`,
+      `${this.programId}: ${shown} downloads in the object tree — this many can slow ioBroker down; limit them in the adapter settings (100 or fewer recommended)`,
     );
   }
 
