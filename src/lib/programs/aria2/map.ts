@@ -1,5 +1,5 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
-import { asRecord, nonNegative } from "../../core/units";
+import { asRecord, nonNegative, sizeOf } from "../../core/units";
 
 /**
  * Raw key = status, `:seed` = a torrent that only seeds (`seeder: "true"`), `:0` = download speed 0. `removed` and
@@ -92,7 +92,7 @@ export function toSnapshot(
       continue;
     }
     const speed = nonNegative(e.downloadSpeed);
-    const size = nonNegative(e.totalLength);
+    const size = sizeOf(e.totalLength);
     const done = nonNegative(e.completedLength);
     const status = mapAriaStatus(rawStatus(e, speed), debug);
     const torrent = Object.keys(asRecord(e.bittorrent)).length > 0;
@@ -100,7 +100,7 @@ export function toSnapshot(
       key: gid,
       name: ariaName(e),
       status,
-      sizeBytes: size !== null && size > 0 ? size : null,
+      sizeBytes: size,
       doneBytes: done,
       speedBps: speed,
       uploadBps: nonNegative(e.uploadSpeed),

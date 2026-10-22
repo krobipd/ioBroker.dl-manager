@@ -12,12 +12,22 @@ import {
   num,
   percent,
   round2,
+  sizeOf,
   toGB,
   toKiB,
   toMBps,
 } from "./units";
 
 describe("units", () => {
+  it("reads a size of 0 as not known yet (review S1)", () => {
+    expect(sizeOf(0)).toBeNull();
+    expect(sizeOf("0")).toBeNull();
+    expect(sizeOf(-1)).toBeNull();
+    expect(sizeOf("x")).toBeNull();
+    expect(sizeOf(1)).toBe(1);
+    expect(sizeOf("2048")).toBe(2048);
+  });
+
   it("turns a limit into the program's KiB/s and back, a set limit at least 1", () => {
     expect(toKiB(2_000_000)).toBe(1953);
     expect(toKiB(2_000_000, 1000)).toBe(2000);

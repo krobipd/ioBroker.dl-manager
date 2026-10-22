@@ -71,7 +71,7 @@ aria2-Download.
 | ------------- | ------------- | ------- | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | --------------------------------------------------------------------------------------------------------------------------- |
 | `status`      | string        | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Einer der Status-Werte unten.                                                                                               |
 | `progress`    | number (%)    | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Fortschritt.                                                                                                                |
-| `size`        | number (GB)   | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Größe.                                                                                                                      |
+| `size`        | number (GB)   | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Größe; leer, solange das Programm sie noch nicht kennt (ein Magnet ohne Metadaten).                                         |
 | `downloaded`  | number (GB)   | r       |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Heruntergeladen.                                                                                                            |
 | `speed`       | number (MB/s) | r       |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  ✓  | Geschwindigkeit.                                                                                                            |
 | `uploadSpeed` | number (MB/s) | r       |  –  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  –  | Upload-Geschwindigkeit.                                                                                                     |

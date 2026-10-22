@@ -70,7 +70,7 @@ A download is what you added: a JDownloader or pyLoad package, a torrent, an NZB
 | ------------- | ------------- | ------ | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | ---------------------------------------------------------------------------------------------------- |
 | `status`      | string        | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | One of the status values below.                                                                      |
 | `progress`    | number (%)    | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Progress.                                                                                            |
-| `size`        | number (GB)   | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Size.                                                                                                |
+| `size`        | number (GB)   | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Size; empty while the program does not know it yet (a magnet without metadata).                      |
 | `downloaded`  | number (GB)   | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Downloaded.                                                                                          |
 | `speed`       | number (MB/s) | r      |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  ✓  | Speed.                                                                                               |
 | `uploadSpeed` | number (MB/s) | r      |  –  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  –  | Upload speed.                                                                                        |

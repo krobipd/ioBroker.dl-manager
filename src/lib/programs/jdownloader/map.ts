@@ -1,5 +1,5 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
-import { asText, eta, nonNegative } from "../../core/units";
+import { asText, eta, nonNegative, sizeOf } from "../../core/units";
 
 /** One entry of `advancedStatus` — only the machine-readable id is read. */
 interface JdStatusEntry {
@@ -266,7 +266,7 @@ export function toSnapshot(
       key: String(p.uuid),
       name: asText(p.name),
       status,
-      sizeBytes: nonNegative(p.bytesTotal),
+      sizeBytes: sizeOf(p.bytesTotal),
       doneBytes: nonNegative(p.bytesLoaded),
       speedBps: p.running === true ? (nonNegative(p.speed) ?? 0) : 0,
       etaSeconds: eta(p.eta, [-1]),

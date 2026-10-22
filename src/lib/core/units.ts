@@ -150,6 +150,16 @@ export function nonNegative(v: unknown): number | null {
 }
 
 /**
+ * @param v a download's size in bytes, as the programs send it
+ * @returns the size, null for none or 0 — the programs' "not known yet" (a magnet without metadata, a failed
+ *   JDownloader package)
+ */
+export function sizeOf(v: unknown): number | null {
+  const n = num(v);
+  return n !== null && n > 0 ? n : null;
+}
+
+/**
  * @param v a point in time in seconds since 1970, as the programs send it
  * @returns milliseconds, null for none or 0 (the programs' "not yet")
  */

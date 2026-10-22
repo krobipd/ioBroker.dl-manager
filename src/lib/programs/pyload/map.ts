@@ -1,5 +1,5 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
-import { asRecord, asRecords, fromKiB, nonNegative, num } from "../../core/units";
+import { asRecord, asRecords, fromKiB, nonNegative, num, sizeOf } from "../../core/units";
 
 /** A file of a pyLoad package (`get_queue_data` → `links`). */
 export interface PyFile {
@@ -163,7 +163,7 @@ export function toSnapshot(
       key: String(pid),
       name: typeof p.name === "string" ? p.name : String(pid),
       status,
-      sizeBytes: size > 0 ? size : null,
+      sizeBytes: sizeOf(size),
       doneBytes: done,
       speedBps: speed,
       etaSeconds: status === "downloading" && eta ? eta : null,

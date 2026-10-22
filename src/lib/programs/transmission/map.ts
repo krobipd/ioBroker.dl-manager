@@ -1,5 +1,5 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
-import { asRecord, doneOf, epochMs, eta, fromKiB, nonNegative, num } from "../../core/units";
+import { asRecord, doneOf, epochMs, eta, fromKiB, nonNegative, num, sizeOf } from "../../core/units";
 
 /** A torrent of `torrent_get`, keys in snake_case (legacy answers are converted by snakeKeys). */
 export interface TrTorrent {
@@ -181,7 +181,7 @@ export function toSnapshot(
       continue;
     }
     const { status, error } = trStatus(t, debug);
-    const size = nonNegative(t.size_when_done);
+    const size = sizeOf(t.size_when_done);
     const left = nonNegative(t.left_until_done);
     items.push({
       key: t.hash_string,

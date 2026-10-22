@@ -1,5 +1,5 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
-import { asRecord, epochMs, eta, fromKiB, nonNegative, num } from "../../core/units";
+import { asRecord, epochMs, eta, fromKiB, nonNegative, num, sizeOf } from "../../core/units";
 
 /** A torrent of `web.update_ui`. */
 export interface DlTorrent {
@@ -154,7 +154,7 @@ export function toSnapshot(
       key: hash,
       name: typeof t.name === "string" ? t.name : hash,
       status,
-      sizeBytes: nonNegative(t.total_wanted),
+      sizeBytes: sizeOf(t.total_wanted),
       doneBytes: nonNegative(t.total_done),
       speedBps: nonNegative(t.download_payload_rate),
       uploadBps: nonNegative(t.upload_payload_rate),

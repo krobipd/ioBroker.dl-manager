@@ -85,6 +85,8 @@ describe("JDownloader snapshot from the recorded answers (build 48637)", () => {
     const byName = Object.fromEntries(s.items.map(i => [i.name, i]));
     expect(byName.small).toMatchObject({ status: "completed", sizeBytes: 2097152, doneBytes: 2097152, speedBps: 0 });
     expect(byName.missing).toMatchObject({ status: "failed", error: "File not found" });
+    // a failed package reports bytesTotal 0 — its size is unknown, never 0 bytes (review S1)
+    expect(byName.missing.sizeBytes).toBeNull();
     expect(byName.big).toMatchObject({ status: "downloading", speedBps: 1058202, etaSeconds: 1, sizeBytes: 33554432 });
     expect(byName.queued.status).toBe("queued");
     expect(byName.stopped.status).toBe("paused");

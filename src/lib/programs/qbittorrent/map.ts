@@ -1,5 +1,5 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
-import { asRecord, epochMs, eta, nonNegative } from "../../core/units";
+import { asRecord, epochMs, eta, nonNegative, sizeOf } from "../../core/units";
 
 /** A torrent of `sync/maindata` — only the fields the adapter reads. */
 export interface QbTorrent {
@@ -162,7 +162,7 @@ export function toSnapshot(
       key: hash,
       name: typeof t.name === "string" ? t.name : hash,
       status,
-      sizeBytes: nonNegative(t.size),
+      sizeBytes: sizeOf(t.size),
       doneBytes: nonNegative(t.completed),
       speedBps: nonNegative(t.dlspeed),
       uploadBps: nonNegative(t.upspeed),
