@@ -18,7 +18,7 @@ export const STATUSES = [
 /** A download's status, the same for every program. */
 export type Status = (typeof STATUSES)[number];
 
-/** Statuses that count as "active" (the program is working on the download). */
+/** Statuses that count as "active": loading or post-processing (`docs/en/datapoints.md`) — checking loads nothing. */
 export const ACTIVE: ReadonlySet<Status> = new Set<Status>(["downloading", "postprocessing"]);
 
 /** Which datapoints and commands exist for a program. A missing capability means: no datapoint. */
@@ -41,7 +41,7 @@ export type Capability =
 
 /**
  * @param items the downloads of a poll
- * @returns how many run right now (downloading, checking, post-processing …)
+ * @returns how many load or are post-processed right now
  */
 export const countActive = (items: readonly { status: Status }[]): number =>
   items.filter(i => ACTIVE.has(i.status)).length;

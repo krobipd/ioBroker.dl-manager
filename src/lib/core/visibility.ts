@@ -19,7 +19,7 @@ export interface TreeOptions {
 /** A download that is through: loaded completely (seeding ones too). */
 export const DONE: ReadonlySet<Status> = new Set<Status>(["completed", "seeding"]);
 
-/** Who keeps a channel when a program has more downloads than the limit — lower first. */
+/** Who keeps a channel when a program has more downloads than the limit — lower first; a check ranks with the running. */
 const RANK: Readonly<Record<Status, number>> = {
   downloading: 0,
   checking: 0,
