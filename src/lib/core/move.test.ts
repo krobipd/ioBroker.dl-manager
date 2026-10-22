@@ -49,7 +49,11 @@ const state = (common: Record<string, unknown> = {}): ioBroker.SettableObject =>
 });
 
 async function oldTree(a: FakeAdapter): Promise<void> {
-  await a.setForeignObject(OLD, { type: "device", common: { name: "T" }, native: { type: "transmission" } });
+  await a.setForeignObject(OLD, {
+    type: "device",
+    common: { name: "T", statusStates: { onlineId: `${OLD}.online`, errorId: `${NS}.info.connection` } },
+    native: { type: "transmission" },
+  });
   await a.setForeignObject(`${OLD}.online`, state());
   await a.setForeignObject(`${OLD}.paused`, {
     ...state(),
@@ -83,6 +87,11 @@ describe("moveObjects — a device", () => {
     expect([...a.objects.keys()].filter(id => id.startsWith(`${OLD}.`) || id === OLD)).toEqual([]);
     expect(a.objects.has(`${NS}.transmission-2`)).toBe(true);
     expect(a.objects.get(NEW)?.native).toEqual({ type: "transmission", idScheme: ID_SCHEME });
+    // the connection symbol follows the device, an id outside the move stays (review B10)
+    expect((a.objects.get(NEW)?.common as { statusStates?: unknown }).statusStates).toEqual({
+      onlineId: `${NEW}.online`,
+      errorId: `${NS}.info.connection`,
+    });
     expect(a.objects.get(`${NEW}.paused`)?.native).toEqual({ emulatedPause: { paused: true, keys: ["k1"] } });
     expect(a.states.get(`${NEW}.downloads.k1.status`)).toMatchObject({
       val: "seeding",

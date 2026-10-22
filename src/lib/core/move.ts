@@ -105,6 +105,17 @@ function retarget(alias: unknown, moved: ReadonlyMap<string, string>): unknown {
 }
 
 /**
+ * @param states a device's `common.statusStates` (full ids)
+ * @param moved old full id → new full id
+ * @returns them pointing at the moved datapoints — the connection symbol follows its device
+ */
+function restate<T extends object>(states: T, moved: ReadonlyMap<string, string>): T {
+  return Object.fromEntries(
+    Object.entries(states).map(([k, v]) => [k, typeof v === "string" ? (moved.get(v) ?? v) : v]),
+  ) as T;
+}
+
+/**
  * Moves each root (a device, or single datapoints) with everything below it.
  *
  * @param a the adapter
@@ -178,6 +189,9 @@ export async function moveObjects(
     delete native.movingTo;
     delete native.idScheme;
     const common = { ...src.common, ...(history ? { custom: history.custom } : {}) };
+    if ("statusStates" in common && common.statusStates) {
+      common.statusStates = restate(common.statusStates, moved);
+    }
     await a.setForeignObject(newId, { type: src.type, common, native } as ioBroker.SettableObject);
     result.objects++;
     result.recordings += history?.kept ?? 0;
