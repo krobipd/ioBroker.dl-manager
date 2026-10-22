@@ -167,7 +167,8 @@
     "loglevel": "info",
     "mode": "daemon",
     "supportedMessages": {
-      "deviceManager": true
+      "deviceManager": true,
+      "custom": true
     },
     "type": "infrastructure",
     "compact": true,

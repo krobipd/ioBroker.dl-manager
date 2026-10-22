@@ -9,7 +9,8 @@ describe("manifest — the device manager can talk to the adapter", () => {
   const common = read("io-package.json").common as Record<string, unknown>;
 
   it("declares deviceManager in supportedMessages — without it no dm message arrives, and no boot test notices", () => {
-    expect(common.supportedMessages).toEqual({ deviceManager: true });
+    // custom: scripts send testConnection (and get an error for anything else)
+    expect(common.supportedMessages).toEqual({ deviceManager: true, custom: true });
   });
 
   it("carries no messagebox switch any more (supportedMessages decides)", () => {

@@ -460,6 +460,8 @@ export class DownloadManagerAdapter extends utils.Adapter {
       await this.settleDevices();
       this.log.debug(`start: devices settled`);
       this.deviceManagement = new DlDeviceManagement(this, this.dmHost());
+      // the messages dm-utils leaves alone: the connection test for scripts, an answer for anything unknown
+      this.on("message", this.onMessage.bind(this));
       // subscribed before the start: a write that arrives while the programs start is forgotten like any other
       await this.subscribeStatesAsync("*");
       this.manager = this.makeManager();
@@ -469,6 +471,51 @@ export class DownloadManagerAdapter extends utils.Adapter {
     } catch (err: unknown) {
       this.log.error(`onReady failed: ${errText(err)}`);
     }
+  }
+
+  /**
+   * The messages that are not the device manager's (`dm:*` go to dm-utils): `testConnection` with `{ id }` runs the test
+   * of that program's card; any other command is answered with an error, so its sender does not wait for a timeout.
+   *
+   * @param obj the message
+   */
+  private async onMessage(obj: ioBroker.Message): Promise<void> {
+    try {
+      if (typeof obj?.command !== "string" || obj.command.startsWith("dm:")) {
+        return;
+      }
+      let answer: { result: string } | { error: string };
+      if (obj.command === "testConnection") {
+        answer = await this.testConnection(obj.message);
+      } else {
+        this.log.debug(`unknown message ${obj.command}`);
+        answer = { error: `unknown command ${obj.command}` };
+      }
+      if (obj.callback) {
+        this.sendTo(obj.from, obj.command, answer, obj.callback);
+      }
+    } catch (err: unknown) {
+      this.log.error(`onMessage failed: ${errText(err)}`);
+    }
+  }
+
+  /**
+   * @param message `{ id: "<device id>" }`
+   * @returns the card test's text in the system language — `result` when the program answered, else `error`
+   */
+  private async testConnection(message: unknown): Promise<{ result: string } | { error: string }> {
+    const id =
+      message && typeof message === "object" && typeof (message as { id?: unknown }).id === "string"
+        ? (message as { id: string }).id
+        : "";
+    const tested = await this.deviceManagement?.testCard(id);
+    if (!tested) {
+      return { error: `no program with the id "${id}"` };
+    }
+    const config = await this.getForeignObjectAsync("system.config");
+    const language = (config?.common as { language?: ioBroker.Languages } | undefined)?.language ?? "en";
+    const text = typeof tested.text === "string" ? tested.text : (tested.text[language] ?? tested.text.en);
+    return tested.ok ? { result: text } : { error: text };
   }
 
   private async onStateChange(id: string, state: ioBroker.State | null | undefined): Promise<void> {

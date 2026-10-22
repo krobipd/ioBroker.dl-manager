@@ -538,11 +538,11 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
    * @returns nothing reloads
    */
   private async testProgram(cardId: string, ctx: ActionContext): Promise<{ refresh: "none" }> {
-    const row = (await this.host.readRows()).find(r => this.idOf(r) === cardId);
+    const row = await this.cardRow(cardId);
     if (!row) {
       return { refresh: "none" };
     }
-    const name = typeof row.name === "string" && row.name ? row.name : cardId;
+    const name = nameOf(row, cardId);
     const progress = await ctx.openProgress(tName("dmTesting", name), { indeterminate: true });
     let result: TestResult;
     try {
@@ -552,6 +552,30 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
     }
     await ctx.showMessage(testText(name, result));
     return { refresh: "none" };
+  }
+
+  /**
+   * The card's connection test as a message (`sendTo("dl-manager.0", "testConnection", { id })`): the same stored row,
+   * asked once.
+   *
+   * @param cardId the card (= device id)
+   * @returns whether the program answered and what the card would say, undefined for an id no card has
+   */
+  public async testCard(cardId: string): Promise<{ ok: boolean; text: ioBroker.StringOrTranslated } | undefined> {
+    const row = await this.cardRow(cardId);
+    if (!row) {
+      return undefined;
+    }
+    const result = await this.host.test(row);
+    return { ok: result.ok, text: testText(nameOf(row, cardId), result) };
+  }
+
+  /**
+   * @param cardId the card
+   * @returns its stored row as it is now
+   */
+  private async cardRow(cardId: string): Promise<SettingsRow | undefined> {
+    return (await this.host.readRows()).find(r => this.idOf(r) === cardId);
   }
 
   /**
@@ -572,6 +596,15 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
     const count = rows.filter(r => dialogType(r) === type).length;
     return count ? `${label} ${count + 1}` : label;
   }
+}
+
+/**
+ * @param row a stored row
+ * @param cardId its card
+ * @returns the name the user gave it, the card id without one
+ */
+function nameOf(row: SettingsRow, cardId: string): string {
+  return typeof row.name === "string" && row.name ? row.name : cardId;
 }
 
 /**

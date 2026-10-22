@@ -89,6 +89,15 @@ ein Wechsel zwischen lokal und My.JDownloader lassen das Gerät, wo es ist, mit 
 Details der Karte zeigen die ID. Eine gelöschte Karte nimmt ihr Gerät mit. Eine ausgeschaltete Karte behält ihr Gerät,
 es wird als nicht erreichbar angezeigt.
 
+## Kann ein Skript die Verbindung eines Programms testen?
+
+Ja — derselbe Test wie der Knopf auf seiner Karte. Sende `testConnection` mit der ID des Programms; die Antwort ist
+`result`, wenn das Programm geantwortet hat, sonst `error`, in der Systemsprache:
+
+```js
+sendTo("dl-manager.0", "testConnection", { id: "qbittorrent-nas" }, answer => log(answer.result ?? answer.error));
+```
+
 ## pyLoad meldet „too many requests“
 
 pyLoad erlaubt 100 Anfragen pro Minute; der Adapter braucht vier bis sechs je Abfrage und fragt höchstens alle 10

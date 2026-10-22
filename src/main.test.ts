@@ -85,6 +85,8 @@ vi.mock("@iobroker/adapter-core", () => {
   };
 });
 
+import { I18n } from "@iobroker/adapter-core";
+import { UnreachableError } from "./lib/core/errors";
 import type { ProgramConfig, ProgramEntry, ProgramDriver, ProgramSnapshot } from "./lib/core/model";
 import { DownloadManagerAdapter } from "./main";
 
@@ -627,6 +629,69 @@ describe("DownloadManagerAdapter — device manager", () => {
       downloads: 0,
     });
     expect(closed()).toBe(1);
+  });
+});
+
+describe("DownloadManagerAdapter — messages", () => {
+  const CALLBACK = { id: 7, ack: false, time: 0, message: {} };
+  const send = async (h: Harness, command: string, message: unknown): Promise<unknown[]> => {
+    h.sent.length = 0;
+    await h.handlers.get("message")?.({ command, message, from: "system.adapter.javascript.0", callback: CALLBACK });
+    return h.sent;
+  };
+
+  it("runs the card test of a program for testConnection and answers result while it answers (D3)", async () => {
+    const { h } = make();
+    await h.handlers.get("ready")?.();
+    expect(await send(h, "testConnection", { id: "qbittorrent-nas" })).toEqual([
+      ["system.adapter.javascript.0", "testConnection", { result: "dmTestOkDownloads" }, CALLBACK],
+    ]);
+  });
+
+  it("answers error when the program cannot be reached — the test asks for real", async () => {
+    let up = true;
+    const { h } = make(() => (up ? Promise.resolve(SNAP) : Promise.reject(new UnreachableError("gone"))));
+    await h.handlers.get("ready")?.();
+    up = false;
+    expect(await send(h, "testConnection", { id: "qbittorrent-nas" })).toEqual([
+      ["system.adapter.javascript.0", "testConnection", { error: "dmTestUnreachable" }, CALLBACK],
+    ]);
+  });
+
+  it("answers in the system language", async () => {
+    const { h } = make();
+    await h.store.setForeignObject("system.config", {
+      type: "config",
+      common: { language: "de" },
+      native: {},
+    } as unknown as ioBroker.SettableObject);
+    await h.handlers.get("ready")?.();
+    const own = I18n.getTranslatedObject;
+    I18n.getTranslatedObject = (k: string) => ({ en: `${k} en`, de: `${k} de` });
+    try {
+      expect(await send(h, "testConnection", { id: "qbittorrent-nas" })).toEqual([
+        ["system.adapter.javascript.0", "testConnection", { result: "dmTestOkDownloads de" }, CALLBACK],
+      ]);
+    } finally {
+      I18n.getTranslatedObject = own;
+    }
+  });
+
+  it("answers error for an id no card has and for any command it does not know (D10)", async () => {
+    const { h } = make();
+    await h.handlers.get("ready")?.();
+    expect(await send(h, "testConnection", { id: "nope" })).toEqual([
+      ["system.adapter.javascript.0", "testConnection", { error: 'no program with the id "nope"' }, CALLBACK],
+    ]);
+    expect(await send(h, "whatever", {})).toEqual([
+      ["system.adapter.javascript.0", "whatever", { error: "unknown command whatever" }, CALLBACK],
+    ]);
+  });
+
+  it("leaves the device manager's messages to dm-utils", async () => {
+    const { h } = make();
+    await h.handlers.get("ready")?.();
+    expect(await send(h, "dm:instanceInfo", {})).toEqual([]);
   });
 });
 

@@ -81,6 +81,15 @@ switch between local and My.JDownloader keep the device where it is, with its ro
 details show the ID. A card you delete takes its device with it. A card you switch off keeps its device, shown as
 offline.
 
+## Can a script test a program's connection?
+
+Yes — the same test as the button on its card. Send `testConnection` with the program's ID; the answer is `result` when
+the program answered and `error` when it did not, in the system language:
+
+```js
+sendTo("dl-manager.0", "testConnection", { id: "qbittorrent-nas" }, answer => log(answer.result ?? answer.error));
+```
+
 ## pyLoad reports "too many requests"
 
 pyLoad allows 100 calls a minute; the adapter needs four to six calls per query and asks at most every 10 seconds.
