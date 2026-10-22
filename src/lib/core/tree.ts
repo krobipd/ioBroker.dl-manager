@@ -189,9 +189,10 @@ export class ProgramTree {
    * Creates the device, the downloads folder and every program datapoint; marks the program offline.
    *
    * @param icon inline data URI of the program's pictogram
-   * @param address the program's address (`addressOf`)
+   * @param address the program's address (`addressOf`); null for a program reached through an account — the account
+   *   stays out of the object tree, and an address stored by an earlier version is emptied
    */
-  public async ensureDevice(icon: string | undefined, address = ""): Promise<void> {
+  public async ensureDevice(icon: string | undefined, address: string | null = ""): Promise<void> {
     await this.writeDevice(icon, address);
     await this.adapter.extendObject(`${this.dev}.downloads`, {
       type: "folder",
@@ -210,9 +211,9 @@ export class ProgramTree {
 
   /**
    * @param icon the pictogram, none for a row that cannot run
-   * @param address the program's address, none for a row that cannot run
+   * @param address the program's address, null for a program reached through an account, none for a row that cannot run
    */
-  private async writeDevice(icon?: string, address?: string): Promise<void> {
+  private async writeDevice(icon?: string, address?: string | null): Promise<void> {
     await this.adapter.extendObject(this.dev, {
       type: "device",
       common: {

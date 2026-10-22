@@ -126,6 +126,10 @@ The test button on a program's card asks the program once and shows its answer.
     ### **WORK IN PROGRESS**
 -->
 
+### **WORK IN PROGRESS**
+
+- Fixed: the e-mail address of a My.JDownloader account no longer appears in the device object or an object export
+
 ### 0.4.0 (2026-10-02)
 
 - Fixed: saving a card while a second admin tab changed the programs could bring back a deleted card or undo a learned My.JDownloader connection

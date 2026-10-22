@@ -211,7 +211,8 @@ export class ProgramManager {
     const driver = row.entry.create(row.cfg, this.driverDeps(row.id));
     const tree = new ProgramTree(this.a, row.id, name, driver, this.opts, row.scheme);
     await tree.load();
-    await tree.ensureDevice(deviceIcon(row.cfg.type), addressOf(row.cfg));
+    // a program reached through an account has no address — its account never goes into the object tree
+    await tree.ensureDevice(deviceIcon(row.cfg.type), row.cfg.host ? addressOf(row.cfg) : null);
     const runner = new ProgramRunner(
       row.id,
       driver,

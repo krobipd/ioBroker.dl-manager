@@ -170,6 +170,48 @@ async function seedDevice(a: FakeAdapter, id: string, native: Record<string, unk
 }
 
 describe("ProgramManager — start", () => {
+  it("keeps the account of a My.JDownloader program out of its device, also one an earlier version stored", async () => {
+    const w = world({});
+    await seedDevice(w.a, "jdownloader-2222", { address: "me@example.com/Office" });
+    const m = new ProgramManager(
+      {
+        adapter: w.a,
+        timers: { setTimeout: () => undefined, clearTimeout: () => undefined },
+        find: () => ({
+          type: "jdownloader-cloud",
+          needs: [],
+          create: (): ProgramDriver => ({
+            type: "jdownloader-cloud",
+            capabilities: new Set(),
+            extras: [],
+            poll: () => new Promise<ProgramSnapshot>(() => undefined),
+            command: () => Promise.resolve(),
+            close: () => Promise.resolve(),
+          }),
+        }),
+        problems: { report: () => undefined, forget: () => undefined },
+        moveDevice: () => Promise.resolve(),
+      },
+      { intervalMs: 10_000, scope: "all", limit: 0 },
+    );
+    await m.start([
+      {
+        id: "jdownloader-2222",
+        enabled: true,
+        type: "jdownloader-cloud",
+        name: "JD",
+        username: "me@example.com",
+        password: "pw",
+        device: "Office",
+        deviceId: "bbbb2222",
+      },
+    ]);
+    expect(w.a.objects.get(`${NS}.jdownloader-2222`)?.native).toMatchObject({
+      type: "jdownloader-cloud",
+      address: null,
+    });
+  });
+
   it("stamps every known program offline/Unknown and the adapter disconnected BEFORE the first poll", async () => {
     const w = world({ h1: { pending: true } });
     await seedDevice(w.a, "qbittorrent-nas");
