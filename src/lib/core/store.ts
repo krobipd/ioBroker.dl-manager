@@ -55,7 +55,8 @@ export class ProgramStore {
 
   /**
    * @returns the rows as stored (secrets encrypted), undefined while the store file does not exist
-   * @throws {Error} when the file holds no readable JSON — the programs are never replaced by an empty list
+   * @throws {Error} when the file holds no readable JSON or no row list — the programs are never replaced by an empty
+   *   list (the start would remove every program's device)
    */
   public async stored(): Promise<SettingsRow[] | undefined> {
     const text = await this.a.readText();
@@ -69,7 +70,10 @@ export class ProgramStore {
       throw new Error(`${STORE_FILE} is no readable JSON — fix or remove it (${errText(err)})`);
     }
     const rows: unknown = isRow(parsed) ? parsed.rows : undefined;
-    return Array.isArray(rows) ? rows.filter(isRow) : [];
+    if (!Array.isArray(rows)) {
+      throw new Error(`${STORE_FILE} holds no list of programs — fix or remove it`);
+    }
+    return rows.filter(isRow);
   }
 
   /** @returns the rows with their secrets readable — what the adapter and the dialogs work with */

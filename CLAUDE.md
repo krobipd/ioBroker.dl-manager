@@ -29,7 +29,7 @@ src/lib/device-management.ts     → DlDeviceManagement (dm-utils): Karten je Ze
 src/lib/dm-forms.ts              → rein: Dialog-Schemas, Zeile ↔ Dialogdaten, Duplikat-Ausdruck
 src/lib/core/store.ts            → ProgramStore: `programs.json` im Datenordner der Instanz (`common.dataFolder`, im Backup),
                                    Passwort/API-Schlüssel mit `encrypt()`, unveränderter Klartext behält seinen Chiffretext,
-                                   kein leerer Speicher, unlesbares JSON hält den Start an; `adopt` übernimmt das Objekt von 0.3.x
+                                   kein leerer Speicher, unlesbares JSON oder eine Datei ohne Programmliste hält den Start an; `adopt` übernimmt das Objekt von 0.3.x
 src/lib/core/device-id.ts        → Geräte-ID `<programm>-<stück>` (deviceIdFor, hostPiece, settleIds), ID_SCHEME = 3, RESERVED_IDS
 src/lib/core/move.ts             → moveObjects: Objekte + native, Werte mit ack/ts/lc/q, custom + aliasId, Aliase, EIN
                                    moveAllWithEnums, Kinder zuerst gelöscht, Journal `native.movingTo`, Marke idScheme

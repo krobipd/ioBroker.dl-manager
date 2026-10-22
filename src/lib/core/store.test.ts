@@ -41,17 +41,18 @@ describe("ProgramStore", () => {
     expect(await make().store.stored()).toBeUndefined();
     expect(await make().store.read()).toEqual([]);
     expect(await make([{ type: "a" }, null, "x", [1]]).store.stored()).toEqual([{ type: "a" }]);
-    expect(await make("garbage").store.read()).toEqual([]);
+    expect(await make([]).store.read()).toEqual([]);
   });
 
-  it("reads a file without a row list as empty", async () => {
-    const { store, file } = make();
-    file.text = "[1, 2]";
-    expect(await store.stored()).toEqual([]);
-    file.text = '{"other": true}';
-    expect(await store.stored()).toEqual([]);
-    file.text = "null";
-    expect(await store.stored()).toEqual([]);
+  it("stops at a file without a row list like at unreadable JSON — the start never removes every program (review B8)", async () => {
+    const { store, file, writes } = make();
+    for (const text of ["[1, 2]", '{"other": true}', "null", '{"rows": "garbage"}']) {
+      file.text = text;
+      await expect(store.stored(), text).rejects.toThrow(`${STORE_FILE} holds no list of programs`);
+      await expect(store.read(), text).rejects.toThrow(STORE_FILE);
+      await expect(store.adopt([{ id: "a" }]), text).rejects.toThrow(STORE_FILE);
+    }
+    expect(writes()).toBe(0);
   });
 
   it("stops at a file that holds no readable JSON — the programs are never replaced by an empty list", async () => {
