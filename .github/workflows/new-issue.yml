@@ -1,7 +1,7 @@
 name: New issue
 
 # A friendly first reply on every new issue that names an older adapter version: the reported
-# version is compared with the npm release, and only when they differ the issue gets the label
+# version is compared with the npm release, and only when it is older the issue gets the label
 # `not-latest-version` and one short bilingual note. No threats, no task list, no auto-close —
 # the reporter has already done what the form asked.
 
@@ -20,14 +20,27 @@ jobs:
         with:
           script: |
             const body = context.payload.issue.body || "";
-            const m = body.match(/### Adapter-Version[^\n]*\n+\s*([0-9][^\s]*)/);
-            if (!m) return; // no version field filled in — nothing to compare
-            const reported = m[1].trim().replace(/^v/, "");
+            // Only a plain version is read, and only that is ever written back: free text from the form would land in
+            // the comment as Markdown (links, @mentions).
+            const VERSION = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/;
+            const m = body.match(/### Adapter-Version[^\n]*\n+\s*v?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)(?=\s|$)/);
+            if (!m) return; // no readable version — nothing to compare
+            const reported = m[1];
             const name = context.payload.repository.name.toLowerCase();
             const res = await fetch(`https://registry.npmjs.org/${name}/latest`);
             if (!res.ok) return; // the registry is not the issue's problem
-            const latest = (await res.json()).version;
-            if (!latest || reported === latest) return;
+            const latest = String((await res.json()).version || "");
+            if (!VERSION.test(latest)) return;
+            // Only an OLDER version gets the hint — a newer one (a beta from npm `next`) is not outdated. A pre-release
+            // of the current version is older than it; two pre-releases of one version are left alone.
+            const older = (a, b) => {
+              const x = VERSION.exec(a), y = VERSION.exec(b);
+              for (let i = 1; i <= 3; i++) {
+                if (Number(x[i]) !== Number(y[i])) return Number(x[i]) < Number(y[i]);
+              }
+              return x[4] !== undefined && y[4] === undefined;
+            };
+            if (!older(reported, latest)) return;
             const { owner, repo } = context.repo;
             const issue_number = context.payload.issue.number;
             const label = "not-latest-version";
