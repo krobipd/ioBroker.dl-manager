@@ -122,6 +122,8 @@ export class ProgramTree {
   private readonly dev: string;
   private readonly itemDefs: DatapointDef[];
   private readonly itemExtras: readonly ExtraDefinition[];
+  private readonly programDefs: DatapointDef<ProgramSnapshot>[];
+  private readonly programExtras: readonly ExtraDefinition[];
   private ids = new ItemIds(new Map());
   /**
    * Raw key → channel name; `fresh` once this start offered the channel's objects (a channel read from the database
@@ -154,6 +156,8 @@ export class ProgramTree {
     this.dev = `${adapter.namespace}.${programId}`;
     this.itemDefs = forCapabilities(ITEM_DATAPOINTS, driver.capabilities);
     this.itemExtras = driver.extras.filter(e => e.level === "item");
+    this.programDefs = forCapabilities(PROGRAM_DATAPOINTS, driver.capabilities);
+    this.programExtras = driver.extras.filter(e => e.level === "program");
   }
 
   /** @returns the id of the program's online indicator */
@@ -209,10 +213,10 @@ export class ProgramTree {
       native: {},
     });
     await this.adapter.extendObject(`${this.dev}.${LAST_CHANNEL}`, lastChannelObject());
-    for (const d of forCapabilities(PROGRAM_DATAPOINTS, this.driver.capabilities)) {
+    for (const d of this.programDefs) {
       await this.adapter.extendObject(`${this.dev}.${d.id}`, this.stateObject(d));
     }
-    for (const e of this.driver.extras.filter(x => x.level === "program")) {
+    for (const e of this.programExtras) {
       await this.adapter.extendObject(`${this.dev}.${e.id}`, this.stateObject(e));
     }
     await this.markOffline("Unknown");
@@ -351,39 +355,37 @@ export class ProgramTree {
       await this.adapter.extendObject(ch, { common: { name: item.name } });
       known.name = item.name;
     }
-    const values: [string, ioBroker.StateValue][] = [];
-    for (const d of this.itemDefs) {
-      if (d.value) {
-        values.push([d.id, d.value(item)]);
-      }
-    }
-    for (const e of this.itemExtras) {
-      const v = item.extra?.[e.id];
-      if (v !== undefined) {
-        values.push([e.id, v]);
-      }
-    }
-    for (const [dp, val] of values) {
-      await this.put(`${ch}.${dp}`, val);
-    }
+    await this.putValues(ch, this.itemDefs, item, this.itemExtras, item.extra);
   }
 
   private async writeProgram(snapshot: ProgramSnapshot): Promise<void> {
-    const s = snapshot.status;
-    const values: [string, ioBroker.StateValue][] = [];
-    for (const d of forCapabilities(PROGRAM_DATAPOINTS, this.driver.capabilities)) {
+    await this.putValues(this.dev, this.programDefs, snapshot, this.programExtras, snapshot.status.extra);
+  }
+
+  /**
+   * @param base the id the datapoints sit below
+   * @param defs the datapoints of this level
+   * @param source what their values are read from
+   * @param extras the driver's own datapoints of this level
+   * @param extra the values the driver delivered for them
+   */
+  private async putValues<S>(
+    base: string,
+    defs: readonly DatapointDef<S>[],
+    source: S,
+    extras: readonly ExtraDefinition[],
+    extra: Readonly<Record<string, ioBroker.StateValue>> | undefined,
+  ): Promise<void> {
+    for (const d of defs) {
       if (d.value) {
-        values.push([d.id, d.value(snapshot)]);
+        await this.put(`${base}.${d.id}`, d.value(source));
       }
     }
-    for (const e of this.driver.extras.filter(x => x.level === "program")) {
-      const v = s.extra?.[e.id];
+    for (const e of extras) {
+      const v = extra?.[e.id];
       if (v !== undefined) {
-        values.push([e.id, v]);
+        await this.put(`${base}.${e.id}`, v);
       }
-    }
-    for (const [dp, val] of values) {
-      await this.put(`${this.dev}.${dp}`, val);
     }
   }
 

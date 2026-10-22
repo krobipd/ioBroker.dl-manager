@@ -1,4 +1,5 @@
 import { RESERVED_IDS } from "./device-id";
+import { computeSummary } from "./summary";
 
 /** The devices of the instance and the offline stamp before anything runs. */
 
@@ -26,11 +27,8 @@ export interface DevicesAdapter {
   setStateChanged(id: string, state: ioBroker.SettableState): Promise<unknown>;
 }
 
-const NO_REACHABLE_STAMP: [string, ioBroker.StateValue][] = [
-  ["info.connection", false],
-  ["info.programsOnline", 0],
-  ["info.programsAllOnline", false],
-];
+/** The reachability values of the summary — before the first poll they say what the summary says for none. */
+const NO_REACHABLE_STAMP = ["info.connection", "info.programsOnline", "info.programsAllOnline"] as const;
 
 /**
  * @param a the adapter
@@ -64,7 +62,8 @@ export async function stampOffline(a: DevicesAdapter, deviceIds: Iterable<string
       await a.setStateChanged(`${id}.error`, { val: "Unknown", ack: true });
     }
   }
-  for (const [id, val] of NO_REACHABLE_STAMP) {
-    await a.setStateChanged(id, { val, ack: true });
+  const none = computeSummary([]);
+  for (const id of NO_REACHABLE_STAMP) {
+    await a.setStateChanged(id, { val: none[id], ack: true });
   }
 }
