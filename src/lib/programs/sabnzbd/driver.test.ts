@@ -168,6 +168,22 @@ describe("SABnzbd details", () => {
     }
   });
 
+  it("keeps a proxy's error page out of the error — at most 80 characters of it (review B19)", async () => {
+    const page = `<html><head><title>403 Forbidden</title></head><body>${"x".repeat(500)}</body></html>`;
+    const s = await startFixtureServer(() => ({ status: 403, body: page }));
+    try {
+      const got = await new SabDriver(cfg(s.baseUrl), { ...timers, log }).poll().then(
+        () => "",
+        (e: unknown) => String((e as Error).message),
+      );
+      expect(got).toMatch(/^sabnzbd: <html><head><title>403 Forbidden/);
+      expect(got).toMatch(/check the API key/);
+      expect(got.length).toBeLessThan(200);
+    } finally {
+      await s.close();
+    }
+  });
+
   it("names the NZB key when it was entered instead of the API key", async () => {
     const s = await startFixtureServer(() => ({ body: { auth: "nzbkey" } }));
     try {

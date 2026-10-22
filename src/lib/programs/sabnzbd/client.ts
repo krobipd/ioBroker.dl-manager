@@ -52,7 +52,7 @@ export class SabClient {
     const res = await this.http.request({ method: "GET", url: `${this.base}?${query.toString()}` });
     if (res.status === 403 || res.status === 401) {
       throw new AuthError(
-        `sabnzbd: ${res.text.trim() || `HTTP ${res.status}`} — check the API key (and the host name whitelist)`,
+        `sabnzbd: ${res.text.trim().slice(0, 80) || `HTTP ${res.status}`} — check the API key (and the host name whitelist)`,
       );
     }
     if (res.status >= 400) {
