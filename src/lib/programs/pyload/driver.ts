@@ -4,7 +4,7 @@ import { ProgramVersion } from "../../core/version";
 import type { Capability, Command, ProgramDriver, ProgramSnapshot, DriverDeps, ProgramConfig } from "../../core/model";
 import { PyClient } from "./client";
 import { toSnapshot } from "./map";
-import { asText, toKiB } from "../../core/units";
+import { asText, num, toKiB } from "../../core/units";
 
 /** Polls between two reads of the speed limit — a poll is four calls, pyLoad allows 100 a minute. */
 const LIMIT_EVERY = 10;
@@ -119,7 +119,7 @@ export class PyDriver implements ProgramDriver {
     try {
       const on = await this.client.get("get_config_value", { category: "download", option: "limit_speed" });
       const kib = await this.client.get("get_config_value", { category: "download", option: "max_speed" });
-      this.limit = { on: on === true || on === "True", kib: Number(kib) || 0 };
+      this.limit = { on: on === true || on === "True", kib: num(kib) ?? 0 };
     } catch (err: unknown) {
       this.deps.log.debug(`pyload: speed limit not read: ${errText(err)}`);
     }
