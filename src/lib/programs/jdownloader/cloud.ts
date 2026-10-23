@@ -2,7 +2,7 @@ import { createCipheriv, createDecipheriv, createHash, createHmac } from "node:c
 import { AuthError, ProtocolError, UnreachableError } from "../../core/errors";
 import { errText } from "../../err-text";
 import { errorField, HttpClient, type HttpResponse, type HttpTimers } from "../../core/http";
-import type { ProgramConfig } from "../../core/model";
+import type { DriverDeps, ProgramConfig } from "../../core/model";
 import { asText } from "../../core/units";
 import { checkJdCall, type JdTransport } from "./client";
 
@@ -143,15 +143,15 @@ export class JdCloudTransport implements JdTransport {
 
   /**
    * @param cfg the settings row: e-mail in `username`, password, device id in `deviceId` and its name in `device`
-   * @param timers the adapter's timers, and where the device id goes once the account named it
+   * @param deps the adapter's timers, and where the device id goes once the account named it
    * @param base the API address (tests point it at a local server)
    */
   public constructor(
     private readonly cfg: ProgramConfig,
-    private readonly timers: HttpTimers & { onDeviceId?: (id: string) => void },
+    private readonly deps: HttpTimers & Pick<DriverDeps, "onDeviceId">,
     private readonly base = API,
   ) {
-    this.http = new HttpClient(timers, { timeoutMs: 20_000 });
+    this.http = new HttpClient(deps, { timeoutMs: 20_000 });
     this.login = jdSecret(cfg.username, cfg.password, "server");
     this.device = jdSecret(cfg.username, cfg.password, "device");
   }
@@ -268,7 +268,7 @@ export class JdCloudTransport implements JdTransport {
     }
     this.deviceId = found.id;
     if (found.id !== this.cfg.deviceId) {
-      this.timers.onDeviceId?.(found.id);
+      this.deps.onDeviceId?.(found.id);
     }
   }
 
