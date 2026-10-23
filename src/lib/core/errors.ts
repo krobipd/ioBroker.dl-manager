@@ -23,14 +23,5 @@ export function classify(err: unknown): ErrorKind {
   if (err instanceof UnreachableError) {
     return "unreachable";
   }
-  if (err instanceof Error) {
-    // Node's fetch: TypeError("fetch failed", { cause }) for DNS/refused/reset, TimeoutError/AbortError for the signal.
-    if (err.name === "TimeoutError" || err.name === "AbortError") {
-      return "unreachable";
-    }
-    if (err instanceof TypeError && err.message === "fetch failed") {
-      return "unreachable";
-    }
-  }
   return "other";
 }

@@ -8,12 +8,9 @@ describe("classify", () => {
     expect(classify(new ProtocolError("unexpected body"))).toBe("other");
   });
 
-  it("treats Node's fetch failures and timeouts as unreachable", () => {
-    expect(classify(new TypeError("fetch failed", { cause: { code: "ECONNREFUSED" } }))).toBe("unreachable");
-    expect(
-      classify(Object.assign(new Error("The operation was aborted due to timeout"), { name: "TimeoutError" })),
-    ).toBe("unreachable");
-    expect(classify(Object.assign(new Error("aborted"), { name: "AbortError" }))).toBe("unreachable");
+  it("reads no network error of its own — HttpClient turns every fetch failure into an UnreachableError first", () => {
+    expect(classify(new TypeError("fetch failed", { cause: { code: "ECONNREFUSED" } }))).toBe("other");
+    expect(classify(Object.assign(new Error("aborted"), { name: "AbortError" }))).toBe("other");
   });
 
   it("calls everything else other", () => {
