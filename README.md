@@ -6,6 +6,9 @@
 
 **Support:** [![Ko-fi](https://img.shields.io/badge/Ko--fi-Support-ff5e5b?logo=ko-fi)](https://ko-fi.com/krobipd) [![PayPal](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://paypal.me/krobipd)
 
+> [!IMPORTANT]
+> This adapter cannot be installed from github
+
 Monitors and controls your download programs from ioBroker — [JDownloader 2](https://jdownloader.org/), [qBittorrent](https://www.qbittorrent.org/), [Transmission](https://transmissionbt.com/), [Deluge](https://deluge-torrent.org/), [SABnzbd](https://sabnzbd.org/), [NZBGet](https://nzbget.com/), [aria2](https://aria2.github.io/) and [pyLoad](https://pyload.net/) — in one instance.
 
 [🇺🇸 Documentation](./docs/en/README.md) · [🇩🇪 Dokumentation](./docs/de/README.md)
@@ -51,19 +54,17 @@ For details and how to disable it, see the [Sentry plugin documentation](https:/
 Every version in this table was started in a container and put into each status it can reach; the adapter's tests run
 against those recorded answers.
 
-> The adapter CANNOT be installed via GitHub: The adapter must be installed via the ioBroker repository (stable or latest).
-
 ---
 
 ## Configuration
 
-| Setting                                     | Meaning                                                                                                                                                                                                                               |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Programs**                                | One card per program. **+** adds one: choose the program, and its dialog asks only for what that program needs — a name, address, port (empty = its default), its login and, under _Advanced_, HTTPS and path                         |
-| **Query interval**                          | How often every program is asked (seconds, 10 to 3600, default 10). My.JDownloader is asked at most every 30 seconds                                                                                                                  |
-| **Downloads in the object tree**            | _All_ (default), _Without completed_ or _Only unfinished_ (no completed, no seeding). Failed downloads always stay. The program keeps every download, and the totals count all of them                                                |
-| **At most this many downloads per program** | Default 100, 0 = all. Above the limit, running and failed downloads keep their channel first, completed and seeding ones give it up first. More than 200 per program slow ioBroker down — the settings page and the log warn about it |
-| **A new link resumes a paused program**     | Default off: a link added while its program is paused waits until you resume the program (JDownloader, which starts on its own, is paused again). On: adding the link resumes the program                                             |
+| Setting                                                        | Meaning                                                                                                                                                                                                                               |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Programs**                                                   | One card per program. **+** adds one: choose the program, and its dialog asks only for what that program needs — a name, address, port (empty = its default), its login and, under _Advanced_, HTTPS and path                         |
+| **Query interval (seconds)**                                   | How often every program is asked (seconds, 10 to 3600, default 10). My.JDownloader is asked at most every 30 seconds                                                                                                                  |
+| **Downloads in the object tree**                               | _All_ (default), _Without completed_ or _Only unfinished_ (no completed, no seeding). Failed downloads always stay. The program keeps every download, and the totals count all of them                                                |
+| **At most this many downloads per program in the object tree** | Default 100, 0 = all. Above the limit, running and failed downloads keep their channel first, completed and seeding ones give it up first. More than 200 per program slow ioBroker down — the settings page and the log warn about it |
+| **A new link resumes a paused program**                        | Default off: a link added while its program is paused waits until you resume the program (JDownloader, which starts on its own, is paused again). On: adding the link resumes the program                                             |
 
 Every program can be added as often as you like — two qBittorrent servers, a local JDownloader and one at a friend's.
 A second entry for the same program (the same address, or the same JDownloader of a My.JDownloader account) is refused.

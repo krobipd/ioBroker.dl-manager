@@ -160,7 +160,7 @@
     },
     "platform": "Javascript/Node.js",
     "icon": "dl-manager.svg",
-    "extIcon": "https://raw.githubusercontent.com/krobipd/ioBroker.dl-manager/main/admin/dl-manager.svg",
+    "extIcon": "https://cdn.jsdelivr.net/gh/krobipd/ioBroker.dl-manager@main/admin/dl-manager.svg",
     "readme": "https://github.com/krobipd/ioBroker.dl-manager/blob/main/README.md",
     "enabled": false,
     "tier": 3,

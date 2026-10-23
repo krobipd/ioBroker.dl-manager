@@ -12,7 +12,6 @@ Kanal mit Einzel-Datenpunkten, Summen für Blockly.
 - **GitHub:** https://github.com/krobipd/ioBroker.dl-manager
 - **npm:** https://www.npmjs.com/package/iobroker.dl-manager
 - **Runtime-Deps:** `@iobroker/adapter-core` und `@iobroker/dm-utils` (Gerätemanager-Karten); fetch, WebSocket, node:crypto aus Node ≥ 22
-- **Plan / Bauplan / Schnittstellen:** `Ressourcen/dl-manager/` (`plan-2026-09-28.md`, `bauplan-2026-09-28.md`, `api-*.md`)
 
 ## Architektur
 
@@ -106,7 +105,7 @@ _Jede Entscheidung steht hier als Regel-Satz; Beleg, Messung und Verlauf stehen 
 2. `driver.test.ts` über `runDriverContract` (`test/helpers/contract.ts`) plus die programmeigenen Fälle.
 3. Container-Modul `test/live/programs/<typ>.mjs` + Matrix-Zeile in `.github/workflows/live-programs.yml`; Lauf, dann `test/live/import.mjs` → `test/fixtures/<typ>/<version>/`.
 4. Route in `test/fixture-hook.js` + Zeile in `PROGRAM_ROWS` (`test/inventory.js`), Inventar neu erzeugen.
-5. Dialog-Hinweis: Schlüssel `hint_<typ>` in `HINT` (`dm-forms.ts`) und Text in `Ressourcen/dl-manager/i18n_src.py` (erzeugt `admin/i18n/*`); Piktogramm und Dialogfelder folgen dem Katalog.
+5. Dialog-Hinweis: Schlüssel `hint_<typ>` in `HINT` (`dm-forms.ts`) und Text in allen elf `admin/i18n/*.json` (erzeugt vom lokalen i18n-Quellskript, nie von Hand einzeln); Piktogramm und Dialogfelder folgen dem Katalog.
 6. README-Tabelle „Tested with“, `docs/<sprache>/datapoints.md` (Matrix von Hand, gegen `datapoints.ts` und die Fähigkeiten der Treiber — einen Generator gibt es nicht).
 
 ## Tests
