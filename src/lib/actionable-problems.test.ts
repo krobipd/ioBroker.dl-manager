@@ -1,75 +1,65 @@
+// Fleet master (.consistency-master/src/lib/actionable-problems.test.ts) — never edit the copy in an adapter.
 import { describe, expect, it } from "vitest";
 import { ActionableProblems, type ActionableProblemsHost } from "./actionable-problems";
 
-function makeHost(): ActionableProblemsHost & {
-  warns: string[];
-  notifications: string[];
-} {
-  const warns: string[] = [];
-  const notifications: string[] = [];
+function host(): ActionableProblemsHost & { lines: string[] } {
+  const lines: string[] = [];
   return {
-    warns,
-    notifications,
-    logWarn: m => warns.push(m),
-    notify: m => notifications.push(m),
+    lines,
+    logWarn: m => lines.push(`warn ${m}`),
+    logInfo: m => lines.push(`info ${m}`),
+    notify: m => lines.push(`notify ${m}`),
   };
 }
 
 describe("ActionableProblems", () => {
-  const problem = {
-    key: "auth:qbittorrent-nas",
-    title: "qBittorrent refused the login",
-    action: "check user and password in the adapter settings",
-  };
+  const login = { key: "auth:nas", title: "nas refused the login", action: "check the login on its card" };
 
-  it("report surfaces a new problem ONCE: warn + notification, both carrying what+action", () => {
-    const host = makeHost();
-    const mgr = new ActionableProblems(host);
-    mgr.report(problem);
-    expect(host.warns).toEqual(["qBittorrent refused the login → check user and password in the adapter settings"]);
-    expect(host.notifications).toEqual(host.warns);
+  it("surfaces a new problem once with a notification, stays quiet while it is the same", () => {
+    const h = host();
+    const problems = new ActionableProblems(h);
+    problems.report(login);
+    problems.report(login);
+    expect(h.lines).toEqual([
+      "warn nas refused the login → check the login on its card",
+      "notify nas refused the login → check the login on its card",
+    ]);
   });
 
-  it("re-reporting the same active problem is a no-op (no spam)", () => {
-    const host = makeHost();
-    const mgr = new ActionableProblems(host);
-    mgr.report(problem);
-    mgr.report(problem);
-    mgr.report(problem);
-    expect(host.warns).toHaveLength(1);
-    expect(host.notifications).toHaveLength(1);
+  it("surfaces it again when its text changed", () => {
+    const h = host();
+    const problems = new ActionableProblems(h);
+    problems.report(login);
+    problems.report({ ...login, title: "nas blocked the address" });
+    expect(h.lines.filter(l => l.startsWith("warn"))).toEqual([
+      "warn nas refused the login → check the login on its card",
+      "warn nas blocked the address → check the login on its card",
+    ]);
   });
 
-  it("re-surfaces under the same key when the message changes (refused → blocked)", () => {
-    const host = makeHost();
-    const mgr = new ActionableProblems(host);
-    mgr.report({ key: "auth:qbittorrent-nas", title: "qBittorrent refused the login", action: "check the password" });
-    mgr.report({
-      key: "auth:qbittorrent-nas",
-      title: "qBittorrent blocked this address",
-      action: "wait an hour or restart qBittorrent",
-    });
-    expect(host.warns).toHaveLength(2);
-    expect(host.warns[1]).toContain("blocked");
-    expect(host.notifications).toHaveLength(2);
-    // ...but a true duplicate after the change is still silent
-    mgr.report({
-      key: "auth:qbittorrent-nas",
-      title: "qBittorrent blocked this address",
-      action: "wait an hour or restart qBittorrent",
-    });
-    expect(host.warns).toHaveLength(2);
+  it("resolves an active problem with one info line, a default one or the caller's", () => {
+    const h = host();
+    const problems = new ActionableProblems(h);
+    problems.resolve("auth:nas");
+    problems.report(login);
+    problems.resolve("auth:nas");
+    problems.resolve("auth:nas");
+    problems.report(login);
+    problems.resolve("auth:nas", "nas accepts the login again");
+    expect(h.lines.filter(l => l.startsWith("info"))).toEqual([
+      "info Resolved: nas refused the login",
+      "info nas accepts the login again",
+    ]);
   });
 
-  it("forget clears the problem without a line — the same problem is surfaced fresh again", () => {
-    const host = makeHost();
-    const mgr = new ActionableProblems(host);
-    mgr.forget("never-reported");
-    mgr.report(problem);
-    mgr.forget("auth:qbittorrent-nas");
-    expect(host.warns).toHaveLength(1);
-    mgr.report(problem);
-    expect(host.warns).toHaveLength(2);
-    expect(host.notifications).toHaveLength(2);
+  it("forgets a problem without a line, so the next report surfaces it again", () => {
+    const h = host();
+    const problems = new ActionableProblems(h);
+    problems.report(login);
+    problems.forget("auth:nas");
+    problems.resolve("auth:nas");
+    problems.report(login);
+    expect(h.lines.filter(l => l.startsWith("warn")).length).toBe(2);
+    expect(h.lines.filter(l => l.startsWith("info"))).toEqual([]);
   });
 });

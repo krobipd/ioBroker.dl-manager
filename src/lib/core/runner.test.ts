@@ -202,7 +202,7 @@ describe("ProgramRunner", () => {
     now = WARN_COOLDOWN_MS - 1;
     await clock.tick();
     expect(deps.lines.filter(l => l.level === "warn").map(l => l.msg)).toEqual(["fake-a: bad answer"]);
-    expect(deps.lines.filter(l => l.level === "debug").map(l => l.msg)).toContain("[fake-a] bad answer");
+    expect(deps.lines.filter(l => l.level === "debug").map(l => l.msg)).toContain("fake-a: bad answer");
     now = WARN_COOLDOWN_MS;
     await clock.tick();
     expect(deps.lines.filter(l => l.level === "warn")).toHaveLength(2);

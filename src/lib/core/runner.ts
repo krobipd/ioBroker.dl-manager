@@ -1,4 +1,5 @@
 import { errText } from "../err-text";
+import { LogOnce } from "../log-once";
 import { classify } from "./errors";
 import type { HttpTimers } from "./http";
 import type { LoginHint } from "./login-hint";
@@ -40,8 +41,8 @@ export class ProgramRunner {
   private again = false;
   private stopped = false;
   private unsubscribe: (() => void) | undefined = undefined;
-  /** Failure text → when it was last warned. */
-  private readonly warnedAt = new Map<string, number>();
+  /** The same failure text warns once per window (fleet master `log-once.ts`), repeats go to debug. */
+  private readonly warnOnce: LogOnce;
   /** Set by a card change: the next poll result goes to info, with this product name. */
   private announceLabel: string | null = null;
   private _online = false;
@@ -66,7 +67,14 @@ export class ProgramRunner {
     private readonly intervalMs: number,
     private readonly onChange: (events: ProgramEvents, ok: boolean) => void,
     private readonly login: LoginHint = { action: "check the login on its card" },
-  ) {}
+  ) {
+    const log = deps.log;
+    this.warnOnce = new LogOnce(
+      // the runner warns at most — the adapter log of the drivers has no error level
+      { debug: m => log.debug(m), info: m => log.info(m), warn: m => log.warn(m), error: m => log.warn(m) },
+      { windowMs: WARN_COOLDOWN_MS, maxKeys: WARN_MEMORY, now: deps.now },
+    );
+  }
 
   /**
    * A card change started this program: the result of its next poll is written on info — answering, not reachable,
@@ -217,32 +225,10 @@ export class ProgramRunner {
       }
       return;
     }
-    if (this.firstInWindow(text) || announced) {
-      this.deps.log.warn(`${this.id}: ${text}`);
-    } else {
-      this.deps.log.debug(`[${this.id}] ${text}`);
+    if (announced) {
+      // a card change says its outcome once, whatever the window holds
+      this.warnOnce.forget(text);
     }
-  }
-
-  /**
-   * @param text a failure text
-   * @returns whether it was not warned within the last {@link WARN_COOLDOWN_MS} — and marks it warned now
-   */
-  private firstInWindow(text: string): boolean {
-    const now = (this.deps.now ?? Date.now)();
-    const last = this.warnedAt.get(text);
-    if (last !== undefined && now - last < WARN_COOLDOWN_MS) {
-      return false;
-    }
-    this.warnedAt.delete(text);
-    if (this.warnedAt.size >= WARN_MEMORY) {
-      // the oldest entry goes — a program with ever new texts keeps a bounded memory
-      for (const oldest of this.warnedAt.keys()) {
-        this.warnedAt.delete(oldest);
-        break;
-      }
-    }
-    this.warnedAt.set(text, now);
-    return true;
+    this.warnOnce.report(text, `${this.id}: ${text}`);
   }
 }
