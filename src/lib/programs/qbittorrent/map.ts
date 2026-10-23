@@ -28,8 +28,6 @@ export interface QbTorrent {
   category?: unknown;
   /** Force started. */
   force_start?: unknown;
-  /** A tracker reported an error. */
-  has_tracker_error?: unknown;
 }
 
 /** Every state of qBittorrent 4.6–5.3 (api-torrent.md § 1.4) and the status it maps to. */
@@ -150,10 +148,6 @@ export function toSnapshot(
   const items: DownloadItem[] = Object.entries(m.torrents).map(([hash, t]) => {
     const raw = typeof t.state === "string" ? t.state : "unknown";
     const status = mapQbState(raw, debug);
-    let error = "";
-    if (status === "failed") {
-      error = raw === "missingFiles" ? "files missing" : t.has_tracker_error === true ? "tracker error" : "error";
-    }
     return {
       key: hash,
       name: typeof t.name === "string" ? t.name : hash,
@@ -167,7 +161,8 @@ export function toSnapshot(
       addedMs: epochMs(t.added_on),
       finishedMs: epochMs(t.completion_on),
       category: asText(t.category),
-      error,
+      // qBittorrent names no error of its own — the status says failed (no itemError capability)
+      error: "",
       extra: { forceStart: t.force_start === true },
     };
   });

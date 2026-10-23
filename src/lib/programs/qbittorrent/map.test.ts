@@ -116,11 +116,10 @@ describe("qBittorrent snapshot from the recorded answers", () => {
       expect(states("completed")).toContain("completed");
     });
 
-    it(`gives a failed torrent a reason and reads the alternative limits of ${version}`, () => {
+    it(`shows a torrent with missing files as failed and reads the alternative limits of ${version}`, () => {
       const m = new MaindataState();
       m.apply(maindata(version, "missing"));
-      const failed = toSnapshot(version, m, false, () => undefined).items.find(i => i.status === "failed");
-      expect(failed?.error).not.toBe("");
+      expect(toSnapshot(version, m, false, () => undefined).items.some(i => i.status === "failed")).toBe(true);
       const l = new MaindataState();
       l.apply(maindata(version, "limited"));
       expect(toSnapshot(version, l, false, () => undefined).status).toMatchObject({
@@ -130,22 +129,26 @@ describe("qBittorrent snapshot from the recorded answers", () => {
     });
   }
 
-  it("reads the torrent fields defensively and names the failure", () => {
+  it("reads the torrent fields defensively; a failure carries no text of its own", () => {
     const m = new MaindataState();
     m.apply({
       full_update: true,
       torrents: {
         a: { name: "a", state: "missingFiles", size: -1, ratio: -1 },
-        b: { name: "b", state: "error", has_tracker_error: true },
-        c: { name: "c", state: "error" },
+        b: { name: "b", state: "error" },
       },
       server_state: {},
     });
     const s = toSnapshot("v5.0.0", m, false, () => undefined);
     const by = Object.fromEntries(s.items.map(i => [i.key, i]));
-    expect(by.a).toMatchObject({ error: "files missing", sizeBytes: null, ratio: -1, extra: { forceStart: false } });
-    expect(by.b.error).toBe("tracker error");
-    expect(by.c.error).toBe("error");
+    expect(by.a).toMatchObject({
+      status: "failed",
+      error: "",
+      sizeBytes: null,
+      ratio: -1,
+      extra: { forceStart: false },
+    });
+    expect(by.b).toMatchObject({ status: "failed", error: "" });
     expect(s.status.altSpeed).toBe(false);
   });
 
