@@ -6,13 +6,13 @@ import { RESERVED_IDS } from "./device-id";
 import { readDevices, stampOffline, type DevicesAdapter } from "./devices";
 import { objectPauseStore, type PauseObjectAdapter } from "./emulated-pause";
 import { programInfo } from "../programs/catalog";
+import { commandLine, startLine } from "./log-lines";
 import { loginHint } from "./login-hint";
-import type { Command, DriverDeps, ProgramDriver, ProgramEntry } from "./model";
+import type { DriverDeps, ProgramDriver, ProgramEntry } from "./model";
 import { redact } from "./redact";
 import { ProgramRunner, type RunnerDeps } from "./runner";
 import { computeSummary, type SummaryInput } from "./summary";
 import { ProgramTree, writeLastEvents, type ProgramEvents, type TreeAdapter, type TreeScope } from "./tree";
-import { toMBps } from "./units";
 import { Serial } from "./serial";
 
 /** The adapter methods the manager uses on top of the tree's. */
@@ -56,20 +56,6 @@ interface Running {
  */
 const signature = (row: ProgramRow): string =>
   JSON.stringify([row.enabled, row.scheme, row.problem, row.entry ? row.cfg : row.cfg.type]);
-
-/**
- * @param rows the program rows at the start
- * @returns the one info line of the start: which programs run, which are switched off
- */
-export function startLine(rows: readonly ProgramRow[]): string {
-  if (!rows.length) {
-    return "no program configured — add one on the settings page of the instance";
-  }
-  const on = rows.filter(r => r.enabled).map(r => r.id);
-  const off = rows.filter(r => !r.enabled).map(r => r.id);
-  const tail = off.length ? ` — switched off: ${off.join(", ")}` : "";
-  return `${on.length} program(s) asked${on.length ? `: ${on.join(", ")}` : ""}${tail}`;
-}
 
 /**
  * All configured programs: reads the program rows, keeps the device tree in line with them, runs one isolated
@@ -271,7 +257,7 @@ export class ProgramManager {
     if (!p) {
       return;
     }
-    const what = this.describe(p, route.cmd);
+    const what = commandLine(route.cmd, key => p.runner.lastSnapshot?.items.find(i => i.key === key)?.name ?? key);
     try {
       await p.runner.command(route.cmd);
       this.a.log.info(`${route.program}: ${what}`);
@@ -334,33 +320,6 @@ export class ProgramManager {
     const verb = on ? "pause all: paused" : "resume all: resumed";
     const tail = missed.length ? ` — not reachable: ${missed.join(", ")}` : "";
     this.a.log.info(`${verb} ${done} of ${targets.length} program(s)${tail}`);
-  }
-
-  private describe(p: Running, cmd: Command): string {
-    const name = (key: string): string => p.runner.lastSnapshot?.items.find(i => i.key === key)?.name ?? key;
-    const limit = (bps: number): string => (bps > 0 ? `${toMBps(bps)} MB/s` : "off");
-    switch (cmd.kind) {
-      case "pauseAll":
-        return "paused";
-      case "resumeAll":
-        return "resumed";
-      case "pause":
-        return `paused "${name(cmd.key)}"`;
-      case "resume":
-        return `resumed "${name(cmd.key)}"`;
-      case "remove":
-        return `removed "${name(cmd.key)}" from the program's list`;
-      case "add":
-        return `added ${redact(cmd.url)}`;
-      case "setSpeedLimit":
-        return `download limit ${limit(cmd.bps)}`;
-      case "setUploadLimit":
-        return `upload limit ${limit(cmd.bps)}`;
-      case "setAltSpeed":
-        return `alternative speed limits ${cmd.on ? "on" : "off"}`;
-      case "extra":
-        return cmd.key ? `${cmd.name} for "${name(cmd.key)}"` : cmd.name;
-    }
   }
 
   private async changed(programId: string, events: ProgramEvents, ok: boolean): Promise<void> {

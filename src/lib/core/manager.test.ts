@@ -8,7 +8,8 @@ vi.mock("@iobroker/adapter-core", () => ({
 import { FakeAdapter } from "../../../test/helpers/fake-adapter";
 import { AuthError, UnreachableError } from "./errors";
 import { objectPauseStore } from "./emulated-pause";
-import { ProgramManager, startLine } from "./manager";
+import { startLine } from "./log-lines";
+import { ProgramManager } from "./manager";
 import { KnownStates } from "./states";
 import type {
   Capability,
