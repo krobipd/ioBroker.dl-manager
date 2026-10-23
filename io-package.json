@@ -172,7 +172,7 @@
     },
     "type": "infrastructure",
     "compact": true,
-    "connectionType": "local",
+    "connectionType": "cloud",
     "dataSource": "poll",
     "adminUI": {
       "config": "json"
