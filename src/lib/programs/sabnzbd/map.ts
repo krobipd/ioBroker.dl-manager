@@ -5,7 +5,7 @@ import { asRecord, asRecords, asText, doneOf, epochMs, num } from "../../core/un
 const MiB = 1024 * 1024;
 const GiB = 1024 * MiB;
 
-/** Raw key `q:<queue slot status>` or `h:<history slot status>`; `q:*:globalPause` = queue header paused. */
+/** Raw key `q:<queue slot status>` or `h:<history slot status>`. */
 export const statusTable = [
   ["q:Downloading", "downloading"],
   ["q:Fetching", "downloading"],
@@ -14,7 +14,6 @@ export const statusTable = [
   ["q:Checking", "checking"],
   ["q:Queued", "queued"],
   ["q:Paused", "paused"],
-  ["q:Downloading:globalPause", "paused"],
   ["h:Queued", "postprocessing"],
   ["h:QuickCheck", "postprocessing"],
   ["h:Verifying", "postprocessing"],
@@ -37,10 +36,7 @@ const BY_RAW = new Map<string, Status>(statusTable);
  * @returns the status
  */
 export function mapSabStatus(raw: string | number, debug: (msg: string) => void): Status {
-  const [list, status, flag] = String(raw).split(":");
-  if (list === "q" && flag === "globalPause") {
-    return "paused";
-  }
+  const [list, status] = String(raw).split(":");
   return statusFrom(BY_RAW, `${list}:${status}`, "sabnzbd", debug);
 }
 

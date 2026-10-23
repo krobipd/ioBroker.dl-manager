@@ -151,7 +151,6 @@ describe("mapSabStatus — every SABnzbd status", () => {
       ["h:Running", "postprocessing"],
       ["h:Completed", "completed"],
       ["h:Failed", "failed"],
-      ["q:Downloading:globalPause", "paused"],
     ];
     expect(expected.map(([raw]) => [raw, mapSabStatus(raw, () => undefined)])).toEqual(expected);
   });
