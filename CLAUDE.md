@@ -47,6 +47,7 @@ src/lib/core/runner.ts           → Abfrage-Schleife je Programm, Anmelde-Sperr
 src/lib/core/login-hint.ts       → rein: was die Anmelde-Warnung je Anmeldeart sagt (Ursache, wenn die Karte keine Anmeldung trägt)
 src/lib/core/log-lines.ts        → rein: Sammelzeile des Starts (startLine), info-Zeile nach einem Nutzerbefehl (commandLine)
 src/lib/core/tree.ts             → ProgramTree: Gerät/Kanäle/Datenpunkte gegen den Schnappschuss abgleichen, itemKey
+src/lib/core/transitions.ts      → rein: welche Downloads seit der letzten Abfrage fertig/fehlgeschlagen sind (erste Abfrage: last.finishedTime)
 src/lib/known-objects.ts         → Flotten-Master (byte-gleich): KnownObjects, eigener Baum einmal gelesen, Objekte nur bei
                                    Unterschied schreiben (coveredBy, mergedWith wie js-controller)
 src/lib/core/states.ts           → KnownStates: EIN Wertespeicher, jeder Zustand im Speicher verglichen; get (Karte, Baum),

@@ -2,7 +2,8 @@ import { tDesc, tName, tState, type I18nKey } from "../i18n";
 import { forCapabilities, ITEM_DATAPOINTS, PROGRAM_DATAPOINTS, type DatapointDef } from "./datapoints";
 import { ID_SCHEME } from "./device-id";
 import { ItemIds } from "./ids";
-import { DONE, shownKeys, type TreeOptions } from "./visibility";
+import { shownKeys, type TreeOptions } from "./visibility";
+import { transitions } from "./transitions";
 import {
   STATUSES,
   type AdapterLog,
@@ -274,9 +275,10 @@ export class ProgramTree {
    * @returns the finished and failed downloads of this sync
    */
   public async sync(snapshot: ProgramSnapshot): Promise<ProgramEvents> {
-    const events: ProgramEvents = { finished: [], failed: [], removedFromTree: 0 };
-    const baseline = this.prev === null;
-    const prev = this.prev ?? new Map<string, Status>();
+    const events: ProgramEvents = {
+      ...transitions(snapshot.items, this.prev, this.baselineFinished),
+      removedFromTree: 0,
+    };
     const next = new Map<string, Status>();
     const present = new Set<string>();
     const shown = shownKeys(snapshot.items, this.opts);
@@ -284,13 +286,6 @@ export class ProgramTree {
     for (const item of snapshot.items) {
       present.add(item.key);
       next.set(item.key, item.status);
-      const before = prev.get(item.key);
-      if (DONE.has(item.status) && (before === undefined ? this.isNewFinish(item, baseline) : !DONE.has(before))) {
-        events.finished.push(item);
-      }
-      if (item.status === "failed" && !baseline && before !== "failed") {
-        events.failed.push(item);
-      }
       if (!shown.has(item.key)) {
         if (this.known.has(item.key)) {
           await this.removeChannel(item.key);
@@ -322,15 +317,6 @@ export class ProgramTree {
     this.warned = true;
     this.adapter.log.warn(
       `${this.programId}: ${shown} downloads in the object tree — this many can slow ioBroker down; limit them in the adapter settings (100 or fewer recommended)`,
-    );
-  }
-
-  private isNewFinish(item: DownloadItem, baseline: boolean): boolean {
-    if (!baseline) {
-      return true;
-    }
-    return (
-      this.baselineFinished !== null && typeof item.finishedMs === "number" && item.finishedMs > this.baselineFinished
     );
   }
 
