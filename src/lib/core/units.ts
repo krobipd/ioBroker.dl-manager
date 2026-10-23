@@ -77,11 +77,11 @@ export function percent(done: number | null, size: number | null): number | null
 }
 
 /**
- * Seconds left, rounded. The programs' own "unknown" markers (qBittorrent 8640000, Transmission -1/-2, Deluge 0/-1)
- * become null.
+ * Seconds left, rounded. The programs' own "unknown" markers (qBittorrent 8640000, Transmission -1/-2, Deluge 0/-1,
+ * JDownloader -1) become null — a negative one always, so only a non-negative marker goes into the list.
  *
  * @param seconds the raw value
- * @param sentinels the values this program uses for "unknown"
+ * @param sentinels the non-negative values this program uses for "unknown"
  * @returns seconds, or null
  */
 export function eta(seconds: unknown, sentinels: readonly number[]): number | null {

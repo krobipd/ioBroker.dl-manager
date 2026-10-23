@@ -269,7 +269,7 @@ export function toSnapshot(
       sizeBytes: sizeOf(p.bytesTotal),
       doneBytes: nonNegative(p.bytesLoaded),
       speedBps: p.running === true ? (nonNegative(p.speed) ?? 0) : 0,
-      etaSeconds: eta(p.eta, [-1]),
+      etaSeconds: eta(p.eta, []),
       addedMs: added.length ? Math.min(...added) : null,
       finishedMs: status === "completed" && done.length ? Math.max(...done) : null,
       error,

@@ -294,16 +294,12 @@ export class ProgramManager {
     await this.writeSummary();
   }
 
-  private driverDeps(programId?: string): DriverDeps {
+  private driverDeps(programId: string): DriverDeps {
     return {
       ...this.deps.timers,
       log: this.a.log,
-      ...(programId
-        ? {
-            pauseStore: objectPauseStore(this.a, `${this.a.namespace}.${programId}.paused`),
-            onDeviceId: (deviceId: string) => this.deps.onDeviceId?.(programId, deviceId),
-          }
-        : {}),
+      pauseStore: objectPauseStore(this.a, `${this.a.namespace}.${programId}.paused`),
+      onDeviceId: (deviceId: string) => this.deps.onDeviceId?.(programId, deviceId),
     };
   }
 
