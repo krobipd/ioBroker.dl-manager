@@ -75,6 +75,13 @@ actually stand in the tree.
 
 `remove` on a download takes it off the program's list; the files always stay on disk.
 
+## A new link while a program is paused
+
+**A new link resumes a paused program** (off by default) decides what a link does that you write to a program's `add`
+while the program is paused. Off, the pause holds for every program and the link waits until you resume it; JDownloader,
+which starts on its own for every new link, is paused again right away. On, adding the link resumes the program first,
+so all its downloads continue.
+
 ## Updating from 0.2
 
 The first start of 0.3 moves the programs out of the instance settings into the adapter's program store (the instance

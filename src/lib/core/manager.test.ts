@@ -9,7 +9,7 @@ import { FakeAdapter } from "../../../test/helpers/fake-adapter";
 import { AuthError, UnreachableError } from "./errors";
 import { objectPauseStore } from "./emulated-pause";
 import { startLine } from "./log-lines";
-import { ProgramManager } from "./manager";
+import { ProgramManager, type ManagerOptions } from "./manager";
 import { KnownStates } from "./states";
 import type {
   Capability,
@@ -21,7 +21,6 @@ import type {
   ProgramEntry,
   ProgramSnapshot,
 } from "./model";
-import type { TreeOptions } from "./tree";
 import { testProgram, type TestResult } from "./connection-test";
 
 const NS = "dl-manager.0";
@@ -59,7 +58,7 @@ function world(
 ): {
   a: FakeAdapter;
   drivers: FakeDriver[];
-  manager: (opts?: Partial<TreeOptions>) => ProgramManager;
+  manager: (opts?: Partial<ManagerOptions>) => ProgramManager;
   test: (raw: unknown) => Promise<TestResult>;
   reported: string[];
   resolved: string[];
@@ -114,7 +113,7 @@ function world(
   };
   const test = (raw: unknown): Promise<TestResult> =>
     testProgram(raw, type => entries[type], { setTimeout: () => undefined, clearTimeout: () => undefined, log: a.log });
-  const manager = (opts: Partial<TreeOptions> = {}): ProgramManager =>
+  const manager = (opts: Partial<ManagerOptions> = {}): ProgramManager =>
     new ProgramManager(
       {
         adapter: a,
@@ -136,7 +135,7 @@ function world(
         },
         onDeviceId: (programId, deviceId) => void learned.push([programId, deviceId]),
       },
-      { intervalMs: 10_000, scope: opts.scope ?? "all", limit: opts.limit ?? 0 },
+      { intervalMs: 10_000, scope: opts.scope ?? "all", limit: opts.limit ?? 0, addResumes: opts.addResumes ?? false },
     );
   return { a, drivers, manager, test, reported, resolved, moved, learned };
 }
@@ -705,6 +704,31 @@ describe("ProgramManager — user writes", () => {
     expect(w.drivers[0].commands).toContainEqual({ kind: "add", url: "https://u:secret@host/file?apikey=abc" });
     expect(w.a.states.get(`${NS}.qbittorrent-nas.add`)).toMatchObject({ val: "", ack: true });
     expect(w.a.logs.map(l => l.msg).join("\n")).not.toContain("secret");
+  });
+
+  it("lets a new link wait in a paused program — unless the instance setting says a link resumes it", async () => {
+    const link = "https://host/file.iso";
+    const sent = async (addResumes: boolean, paused: boolean, caps?: Capability[]): Promise<Command[]> => {
+      const w = world({ h1: { snapshot: snap(0, [], paused) } }, caps ? { h1: caps } : {});
+      const m = w.manager({ addResumes });
+      await m.start([row("qbittorrent", "nas", "h1")]);
+      await flush();
+      await m.onUserWrite("qbittorrent-nas.add", link);
+      return w.drivers[0].commands;
+    };
+    expect(await sent(false, true)).toEqual([{ kind: "add", url: link }]);
+    expect(await sent(true, true)).toEqual([{ kind: "resumeAll" }, { kind: "add", url: link }]);
+    expect(await sent(true, false)).toEqual([{ kind: "add", url: link }]);
+    expect(await sent(true, true, ["add"])).toEqual([{ kind: "add", url: link }]);
+  });
+
+  it("says in the add line that the link resumed the program", async () => {
+    const w = world({ h1: { snapshot: snap(0, [], true) } });
+    const m = w.manager({ addResumes: true });
+    await m.start([row("qbittorrent", "nas", "h1")]);
+    await flush();
+    await m.onUserWrite("qbittorrent-nas.add", "https://host/file.iso");
+    expect(w.a.logs.map(l => l.msg)).toContain("qbittorrent-nas: added https://host/file.iso — resumed the program");
   });
 
   it("ignores a write to a program that does not run", async () => {

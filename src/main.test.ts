@@ -87,7 +87,7 @@ vi.mock("@iobroker/adapter-core", () => {
 
 import { I18n } from "@iobroker/adapter-core";
 import { UnreachableError } from "./lib/core/errors";
-import type { ProgramConfig, ProgramEntry, ProgramDriver, ProgramSnapshot } from "./lib/core/model";
+import type { Capability, ProgramConfig, ProgramEntry, ProgramDriver, ProgramSnapshot } from "./lib/core/model";
 import { DownloadManagerAdapter } from "./main";
 
 interface Harness {
@@ -128,7 +128,10 @@ afterAll(() => {
 });
 const SNAP: ProgramSnapshot = { status: { version: "4.6", paused: false, downloadBps: 0 }, items: [], complete: true };
 
-function make(pollResult: () => Promise<ProgramSnapshot> = () => Promise.resolve(SNAP)): {
+function make(
+  pollResult: () => Promise<ProgramSnapshot> = () => Promise.resolve(SNAP),
+  caps: Capability[] = ["globalPause"],
+): {
   h: Harness;
   polls: () => number;
   closed: () => number;
@@ -144,7 +147,7 @@ function make(pollResult: () => Promise<ProgramSnapshot> = () => Promise.resolve
       configs.push(cfg);
       return {
         type: "qbittorrent",
-        capabilities: new Set(["globalPause"]),
+        capabilities: new Set(caps),
         extras: [],
         poll: () => {
           polls++;
@@ -723,6 +726,23 @@ describe("DownloadManagerAdapter — unload", () => {
     expect(h.store.logs.some(l => l.msg.startsWith("pause all"))).toBe(false);
     await h.handlers.get("stateChange")?.("dl-manager.0.summary.pauseAll", { val: true, ack: false });
     expect(h.store.logs.some(l => l.msg === "pause all: paused 1 of 1 program(s)")).toBe(true);
+  });
+
+  it("reads from the settings whether a new link resumes a paused program", async () => {
+    const resumed = async (setting: unknown): Promise<boolean> => {
+      const { h } = make(
+        () => Promise.resolve({ ...SNAP, status: { ...SNAP.status, paused: true } }),
+        ["globalPause", "add"],
+      );
+      h.config.addResumes = setting;
+      await h.handlers.get("ready")?.();
+      await flush();
+      await h.handlers.get("stateChange")?.("dl-manager.0.qbittorrent-nas.add", { val: "https://host/f", ack: false });
+      return h.store.logs.some(l => l.msg.endsWith("— resumed the program"));
+    };
+    expect(await resumed(true)).toBe(true);
+    expect(await resumed(false)).toBe(false);
+    expect(await resumed("true")).toBe(false);
   });
 
   it("forgets what it wrote to a state a user wrote, so the program's value goes out again", async () => {

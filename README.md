@@ -63,6 +63,7 @@ against those recorded answers.
 | **Query interval**                          | How often every program is asked (seconds, 10 to 3600, default 10). My.JDownloader is asked at most every 30 seconds                                                                                                                  |
 | **Downloads in the object tree**            | _All_ (default), _Without completed_ or _Only unfinished_ (no completed, no seeding). Failed downloads always stay. The program keeps every download, and the totals count all of them                                                |
 | **At most this many downloads per program** | Default 100, 0 = all. Above the limit, running and failed downloads keep their channel first, completed and seeding ones give it up first. More than 200 per program slow ioBroker down — the settings page and the log warn about it |
+| **A new link resumes a paused program**     | Default off: a link added while its program is paused waits until you resume the program (JDownloader, which starts on its own, is paused again). On: adding the link resumes the program                                             |
 
 Every program can be added as often as you like — two qBittorrent servers, a local JDownloader and one at a friend's.
 A second entry for the same program (the same address, or the same JDownloader of a My.JDownloader account) is refused.
@@ -111,7 +112,7 @@ Only the datapoints a program really supports are created — pyLoad has no paus
 | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `online` is false, `error` shows a network text         | The program is not reachable from the ioBroker host — host, port, HTTPS, firewall                                                                                                                 |
 | A warning "login rejected" and an ioBroker notification | The program refused the login. The adapter asks it no more (qBittorrent and Transmission lock an address after failed logins) until its card changes; the warning names what to check on the card |
-| `error` is `Unknown`                                    | The program has not been asked yet, the adapter is stopped, or its card cannot run — the card says why                                                                                                                                     |
+| `error` is `Unknown`                                    | The program has not been asked yet, the adapter is stopped, or its card cannot run — the card says why                                                                                            |
 | A download disappears                                   | The program removed it, or the tree settings leave it out — its status is not shown, or the program has more downloads than the limit                                                             |
 | pyLoad reports "too many requests"                      | pyLoad allows 100 calls a minute — raise the query interval                                                                                                                                       |
 

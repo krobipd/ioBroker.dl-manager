@@ -11,6 +11,8 @@ declare global {
       treeScope: string;
       /** At most this many download channels per program, 0 = all (read through `core/config.ts`). */
       maxDownloads: number;
+      /** A link added while its program is paused resumes the program (off: the pause holds). */
+      addResumes: boolean;
     }
 
     /**

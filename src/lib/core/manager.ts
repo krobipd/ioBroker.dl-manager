@@ -42,6 +42,8 @@ export interface ManagerOptions {
   scope: TreeScope;
   /** At most this many download channels per program, 0 = no limit. */
   limit: number;
+  /** A link added while its program is paused resumes the program — off or absent: the pause holds and the link waits. */
+  addResumes?: boolean;
 }
 
 interface Running {
@@ -258,9 +260,18 @@ export class ProgramManager {
       return;
     }
     const what = commandLine(route.cmd, key => p.runner.lastSnapshot?.items.find(i => i.key === key)?.name ?? key);
+    // the program's own pause, as the last poll read it — the user chose whether a new link ends it
+    const resume =
+      route.cmd.kind === "add" &&
+      this.opts.addResumes === true &&
+      p.driver.capabilities.has("globalPause") &&
+      p.runner.lastSnapshot?.status.paused === true;
     try {
+      if (resume) {
+        await p.runner.command({ kind: "resumeAll" });
+      }
       await p.runner.command(route.cmd);
-      this.a.log.info(`${route.program}: ${what}`);
+      this.a.log.info(`${route.program}: ${what}${resume ? " — resumed the program" : ""}`);
       if (route.confirm) {
         // only write-only datapoints are confirmed here: a button falls back to false, `add` empties
         await this.a.setState(relId, { val: route.cmd.kind === "add" ? "" : false, ack: true });

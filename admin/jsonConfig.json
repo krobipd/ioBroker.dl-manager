@@ -98,6 +98,18 @@
       "lg": 12,
       "xl": 12
     },
+    "addResumes": {
+      "newLine": true,
+      "type": "checkbox",
+      "label": "label_addResumes",
+      "help": "help_addResumes",
+      "default": false,
+      "xs": 12,
+      "sm": 12,
+      "md": 12,
+      "lg": 12,
+      "xl": 12
+    },
     "_supportHeader": {
       "newLine": true,
       "type": "header",

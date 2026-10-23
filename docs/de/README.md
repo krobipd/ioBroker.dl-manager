@@ -79,6 +79,13 @@ langsam. Die Einstellungsseite zeigt dann eine Warnung, und das Log warnt einmal
 
 `remove` an einem Download nimmt ihn aus der Liste des Programms; die Dateien bleiben immer erhalten.
 
+## Ein neuer Link, während ein Programm pausiert ist
+
+**Ein neuer Link setzt ein pausiertes Programm fort** (Vorgabe aus) entscheidet, was ein Link bewirkt, den du in `add`
+eines Programms schreibst, während das Programm pausiert ist. Aus: Die Pause hält bei jedem Programm, und der Link
+wartet, bis du das Programm fortsetzt; JDownloader, der bei jedem neuen Link von selbst startet, wird sofort wieder
+angehalten. An: Das Hinzufügen setzt das Programm zuerst fort, alle seine Downloads laufen weiter.
+
 ## Aktualisierung von 0.2
 
 Der erste Start von 0.3 zieht die Programme aus den Instanz-Einstellungen in den Programm-Speicher des Adapters um (die Instanz

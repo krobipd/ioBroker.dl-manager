@@ -249,7 +249,8 @@
   "native": {
     "pollInterval": 10,
     "treeScope": "all",
-    "maxDownloads": 100
+    "maxDownloads": 100,
+    "addResumes": false
   },
   "encryptedNative": [],
   "protectedNative": [],

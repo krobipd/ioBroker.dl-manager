@@ -441,6 +441,7 @@ export class DownloadManagerAdapter extends utils.Adapter {
         intervalMs: parsePollInterval(this.config.pollInterval),
         scope: parseTreeScope(this.config.treeScope),
         limit: parseMaxDownloads(this.config.maxDownloads),
+        addResumes: this.config.addResumes === true,
       },
     );
   }
