@@ -11,7 +11,7 @@ import { loginHint } from "./login-hint";
 import type { DriverDeps, ProgramDriver, ProgramEntry } from "./model";
 import { redact } from "./redact";
 import { ProgramRunner, type RunnerDeps } from "./runner";
-import { computeSummary, REACHABILITY_IDS, stoppedSummary, type SummaryInput } from "./summary";
+import { computeSummary, idleSummary, REACHABILITY_IDS, type SummaryInput } from "./summary";
 import { ProgramTree, writeLastEvents, type ProgramEvents, type TreeAdapter, type TreeScope } from "./tree";
 import { Serial } from "./serial";
 
@@ -119,7 +119,8 @@ export class ProgramManager {
       }
     }
     this.a.log.info(startLine(this.rows));
-    await this.writeSummary();
+    // nothing asked yet: the sums of a run that crashed do not stand as current
+    await this.writeIdleSummary();
     for (const r of this.running.values()) {
       r.runner.start();
     }
@@ -288,9 +289,14 @@ export class ProgramManager {
     await Promise.allSettled([...this.running.values()].map(r => r.runner.stop()));
     this.running.clear();
     // nothing runs any more: every count and speed goes to nothing, the connection markers to false
-    await this.summaries.run(async () => {
+    await this.writeIdleSummary();
+  }
+
+  /** @returns when the summary of an adapter that asks nothing (yet, or any more) is written */
+  private writeIdleSummary(): Promise<void> {
+    return this.summaries.run(async () => {
       const total = this.rows.filter(r => r.enabled).length;
-      for (const [id, val] of Object.entries(stoppedSummary(total))) {
+      for (const [id, val] of Object.entries(idleSummary(total))) {
         await this.a.setStateChanged(id, { val, ack: true });
       }
     });

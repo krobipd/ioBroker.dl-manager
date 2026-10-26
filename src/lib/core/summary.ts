@@ -42,7 +42,7 @@ function sums(read: readonly SummaryInput[]): Record<string, ioBroker.StateValue
 /**
  * The adapter-wide values over all configured programs. Reachability counts the programs whose last poll succeeded;
  * the sums count the last poll of every program, reachable or not — an outage shows only on reachability, the values
- * it read stay (krobi 2026-10-06 17:55). Without any poll the sums are left out, so they keep what they had.
+ * it read stay (krobi 2026-10-06 17:55). Without any poll the sums are left out — the start has set them (idleSummary).
  *
  * @param programs every enabled program, reachable or not
  * @returns value per datapoint id below the instance
@@ -60,11 +60,12 @@ export function computeSummary(programs: readonly SummaryInput[]): Record<string
 }
 
 /**
- * The stopped adapter asks nothing: no connection, and no sums that look current (final review M6).
+ * Nothing asked yet, or nothing asked any more: no connection, and no sums that look current — at the stop and, for a
+ * crash, at the start (final review M6; `.claude/rules/coding.md`: what the shutdown sets offline belongs on startup too).
  *
  * @param total the enabled programs
  * @returns value per datapoint id below the instance
  */
-export function stoppedSummary(total: number): Record<string, ioBroker.StateValue> {
+export function idleSummary(total: number): Record<string, ioBroker.StateValue> {
   return { ...computeSummary(Array(total).fill({ online: false, canPause: false, snapshot: null })), ...sums([]) };
 }

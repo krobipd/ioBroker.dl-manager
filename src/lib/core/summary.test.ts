@@ -1,5 +1,5 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "./model";
-import { computeSummary, stoppedSummary } from "./summary";
+import { computeSummary, idleSummary } from "./summary";
 
 const item = (key: string, status: Status): DownloadItem => ({
   key,
@@ -80,9 +80,9 @@ describe("computeSummary", () => {
     expect(s["info.programsTotal"]).toBe(2);
   });
 
-  it("says unknown (null) for speeds on a stopped adapter, and never 'all online' without programs", () => {
+  it("says unknown (null) for speeds before the first poll and after the stop, and never 'all online' without programs", () => {
     expect(computeSummary([])["info.programsAllOnline"]).toBe(false);
-    const s = stoppedSummary(2);
+    const s = idleSummary(2);
     expect(s["info.connection"]).toBe(false);
     expect(s["info.programsTotal"]).toBe(2);
     expect(s["info.programsOnline"]).toBe(0);

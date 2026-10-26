@@ -24,15 +24,17 @@ Transmission, **DE** Deluge, **SAB** SABnzbd, **NZB** NZBGet, **a2** aria2, **py
 | `summary.downloading`       | boolean       | r       | Wahr, solange irgendein Download eines Programms lädt oder nachbearbeitet wird.                         |
 | `summary.active`            | number        | r       | Downloads, die laden oder nachbearbeitet werden, über alle Programme.                                   |
 | `summary.queued`            | number        | r       | Downloads, die in einer Warteschlange stehen, über alle Programme.                                      |
-| `summary.downloadSpeed`     | number (MB/s) | r       | Download-Geschwindigkeit aller erreichbaren Programme zusammen.                                         |
-| `summary.uploadSpeed`       | number (MB/s) | r       | Upload-Geschwindigkeit aller erreichbaren Torrent-Programme zusammen.                                   |
+| `summary.downloadSpeed`     | number (MB/s) | r       | Download-Geschwindigkeit aller Programme zusammen, jedes mit seinem letzten Wert.                       |
+| `summary.uploadSpeed`       | number (MB/s) | r       | Upload-Geschwindigkeit aller Torrent-Programme zusammen, jedes mit seinem letzten Wert.                 |
 | `summary.pauseAll`          | boolean       | rw      | Wahr pausiert jedes erreichbare Programm, falsch setzt sie fort.                                        |
 | `summary.last.finished`     | string        | r       | Name des zuletzt fertigen Downloads; bei jedem Abschluss geschrieben, auch wenn der Name gleich bleibt. |
 | `summary.last.finishedTime` | number        | r       | Wann dieser Download fertig wurde.                                                                      |
 | `summary.last.failed`       | string        | r       | Name des zuletzt fehlgeschlagenen Downloads.                                                            |
 | `summary.last.failedTime`   | number        | r       | Wann dieser Download fehlschlug.                                                                        |
 
-`summary.pauseAll` zeigt wahr, wenn jedes erreichbare Programm, das pausieren kann, pausiert ist.
+`summary.pauseAll` zeigt wahr, wenn jedes Programm, das pausieren kann, bei seiner letzten Abfrage pausiert war. Solange
+ein Programm nicht erreichbar ist, behalten seine Downloads und die Summen die Werte, die es zuletzt geliefert hat; nur
+`online` und die Zähler unter `info.*` ändern sich.
 
 ## `<programm>-<stück>` — ein Programm
 

@@ -343,9 +343,9 @@ describe("ProgramManager — start", () => {
       await flush();
     }
     const speeds = a.writeLog.filter(l => l.id === "summary.downloadSpeed").map(l => l.val);
-    // every poll adds a program: each summary written is larger than the one before, none comes back stale; before
-    // the first poll no sum is written (they keep what they had)
-    const sums = speeds as number[];
+    // every poll adds a program: each summary written is larger than the one before, none comes back stale
+    expect(speeds[0]).toBeNull();
+    const sums = speeds.slice(1) as number[];
     expect(sums).toEqual([...new Set(sums)].sort((x, y) => x - y));
     expect(sums.at(-1)).toBe(7);
   });

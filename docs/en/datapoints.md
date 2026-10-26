@@ -24,15 +24,16 @@ Deluge, **SAB** SABnzbd, **NZB** NZBGet, **a2** aria2, **pyL** pyLoad.
 | `summary.downloading`       | boolean       | r      | True while any download of any program is loading or being post-processed.                    |
 | `summary.active`            | number        | r      | Downloads loading or being post-processed, over all programs.                                 |
 | `summary.queued`            | number        | r      | Downloads waiting in a queue, over all programs.                                              |
-| `summary.downloadSpeed`     | number (MB/s) | r      | Download speed of all reachable programs together.                                            |
-| `summary.uploadSpeed`       | number (MB/s) | r      | Upload speed of all reachable torrent programs together.                                      |
+| `summary.downloadSpeed`     | number (MB/s) | r      | Download speed of all programs together, each with its last value.                            |
+| `summary.uploadSpeed`       | number (MB/s) | r      | Upload speed of all torrent programs together, each with its last value.                      |
 | `summary.pauseAll`          | boolean       | rw     | True pauses every reachable program, false resumes them.                                      |
 | `summary.last.finished`     | string        | r      | Name of the download that finished last; written on every finish, also when the name repeats. |
 | `summary.last.finishedTime` | number        | r      | When that download finished.                                                                  |
 | `summary.last.failed`       | string        | r      | Name of the download that failed last.                                                        |
 | `summary.last.failedTime`   | number        | r      | When that download failed.                                                                    |
 
-`summary.pauseAll` reads true when every reachable program that can pause is paused.
+`summary.pauseAll` reads true when every program that can pause was paused at its last query. While a program cannot
+be reached, its downloads and the totals keep the values it gave last; only `online` and the `info.*` counts change.
 
 ## `<program>-<piece>` — one program
 

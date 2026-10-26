@@ -21415,17 +21415,17 @@
       "unit": "MB/s",
       "def": 0,
       "desc": {
-        "en": "Download speed of all reachable programs together.",
-        "de": "Download-Geschwindigkeit aller erreichbaren Programme zusammen.",
-        "ru": "Скорость загрузки всех доступных программ вместе.",
-        "pt": "Velocidade de download de todos os programas acessíveis em conjunto.",
-        "nl": "Downloadsnelheid van alle bereikbare programma's samen.",
-        "fr": "Vitesse de téléchargement de tous les programmes joignables réunis.",
-        "it": "Velocità di download di tutti i programmi raggiungibili insieme.",
-        "es": "Velocidad de descarga de todos los programas accesibles juntos.",
-        "pl": "Prędkość pobierania wszystkich osiągalnych programów razem.",
-        "uk": "Швидкість завантаження всіх доступних програм разом.",
-        "zh-cn": "所有可访问程序的下载速度总和。"
+        "en": "Download speed of all programs together, each with its last value.",
+        "de": "Download-Geschwindigkeit aller Programme zusammen, jedes mit seinem letzten Wert.",
+        "ru": "Скорость загрузки всех программ вместе, каждой по её последнему значению.",
+        "pt": "Velocidade de download de todos os programas em conjunto, cada um com o seu último valor.",
+        "nl": "Downloadsnelheid van alle programma's samen, elk met zijn laatste waarde.",
+        "fr": "Vitesse de téléchargement de tous les programmes réunis, chacun avec sa dernière valeur.",
+        "it": "Velocità di download di tutti i programmi insieme, ciascuno con il suo ultimo valore.",
+        "es": "Velocidad de descarga de todos los programas juntos, cada uno con su último valor.",
+        "pl": "Prędkość pobierania wszystkich programów razem, każdego według jego ostatniej wartości.",
+        "uk": "Швидкість завантаження всіх програм разом, кожної за її останнім значенням.",
+        "zh-cn": "所有程序的下载速度总和，各取其最近一次的值。"
       }
     },
     "native": {}
@@ -21674,17 +21674,17 @@
       "unit": "MB/s",
       "def": 0,
       "desc": {
-        "en": "Upload speed of all reachable torrent programs together.",
-        "de": "Upload-Geschwindigkeit aller erreichbaren Torrent-Programme zusammen.",
-        "ru": "Скорость отдачи всех доступных торрент-программ вместе.",
-        "pt": "Velocidade de upload de todos os programas de torrent acessíveis em conjunto.",
-        "nl": "Uploadsnelheid van alle bereikbare torrentprogramma's samen.",
-        "fr": "Vitesse d'envoi de tous les programmes torrent joignables réunis.",
-        "it": "Velocità di upload di tutti i programmi torrent raggiungibili insieme.",
-        "es": "Velocidad de subida de todos los programas de torrent accesibles juntos.",
-        "pl": "Prędkość wysyłania wszystkich osiągalnych programów torrent razem.",
-        "uk": "Швидкість віддачі всіх доступних торрент-програм разом.",
-        "zh-cn": "所有可访问种子程序的上传速度总和。"
+        "en": "Upload speed of all torrent programs together, each with its last value.",
+        "de": "Upload-Geschwindigkeit aller Torrent-Programme zusammen, jedes mit seinem letzten Wert.",
+        "ru": "Скорость отдачи всех торрент-программ вместе, каждой по её последнему значению.",
+        "pt": "Velocidade de upload de todos os programas de torrent em conjunto, cada um com o seu último valor.",
+        "nl": "Uploadsnelheid van alle torrentprogramma's samen, elk met zijn laatste waarde.",
+        "fr": "Vitesse d'envoi de tous les programmes torrent réunis, chacun avec sa dernière valeur.",
+        "it": "Velocità di upload di tutti i programmi torrent insieme, ciascuno con il suo ultimo valore.",
+        "es": "Velocidad de subida de todos los programas de torrent juntos, cada uno con su último valor.",
+        "pl": "Prędkość wysyłania wszystkich programów torrent razem, każdego według jego ostatniej wartości.",
+        "uk": "Швидкість віддачі всіх торрент-програм разом, кожної за її останнім значенням.",
+        "zh-cn": "所有种子程序的上传速度总和，各取其最近一次的值。"
       }
     },
     "native": {}
