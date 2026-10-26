@@ -182,6 +182,7 @@ describe("Deluge connection", () => {
       const err = await new DlDriver(cfg(login.baseUrl), { ...timers, log }).poll().catch((e: unknown) => e);
       expect(err).toBeInstanceOf(ProtocolError);
       expect(err).not.toBeInstanceOf(AuthError);
+      expect(String(err)).toContain("auth.login");
     } finally {
       await login.close();
     }

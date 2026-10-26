@@ -102,7 +102,7 @@ describe("pyLoad package rules", () => {
             { fid: 12, status: 4, size: 50 },
           ],
         },
-        { pid: 2, name: "p2", links: [{ fid: 20, status: 13, size: 0 }] },
+        { pid: 2, links: [{ fid: 20, status: 13, size: 0 }] },
       ],
       [
         { fid: 10, bleft: 150, speed: 1, eta: 5 },
@@ -114,6 +114,8 @@ describe("pyLoad package rules", () => {
       () => undefined,
     );
     expect(snap.items.map(i => i.key)).toEqual(["1", "2"]);
+    // a package without a name is named by its id
+    expect(snap.items.map(i => i.name)).toEqual(["p1", "2"]);
     expect(snap.items[0]).toMatchObject({ sizeBytes: 250, doneBytes: 100, etaSeconds: 5 });
     expect(snap.items[1]).toMatchObject({ sizeBytes: null, etaSeconds: null });
     expect(snap.status).toMatchObject({ paused: false, downloadBps: null });

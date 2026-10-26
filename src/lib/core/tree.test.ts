@@ -142,6 +142,24 @@ describe("ProgramTree — device", () => {
     expect(a.val("qbittorrent-nas.error")).toBe("fetch failed (ECONNREFUSED)");
   });
 
+  it("markUnreachable sets online false and keeps the reason (fleet suite counterpart gone and back)", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a);
+    await t.sync(snap([]));
+    await t.markUnreachable();
+    expect(a.val("qbittorrent-nas.online")).toBe(false);
+    expect(a.val("qbittorrent-nas.error")).toBe("");
+  });
+
+  it("keeps the last version when a poll read none (fleet C26b)", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a);
+    await t.sync(snap([]));
+    const none = snap([]);
+    await t.sync({ ...none, status: { ...none.status, version: "" } });
+    expect(a.val("qbittorrent-nas.version")).toBe("5.2.3");
+  });
+
   it("shows a row that cannot run as a bare device, offline with the reason Unknown", async () => {
     const a = new FakeAdapter(NS);
     const t = new ProgramTree(a, "emule-x", "eMule", { type: "emule", capabilities: new Set(), extras: [] }, ALL);

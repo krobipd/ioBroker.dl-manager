@@ -101,6 +101,7 @@ describe("NZBGet edge values", () => {
       [[{ Status: "QUEUED" }], []],
       [[{ NZBID: "1", Status: "QUEUED" }], []],
       [[], [null]],
+      [[], [{ Status: "SUCCESS/ALL" }]],
       [null, []],
     ]) {
       expect(() => toSnapshot("26.3", {}, groups, history, () => undefined)).toThrow(ProtocolError);

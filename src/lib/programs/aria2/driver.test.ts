@@ -3,6 +3,7 @@ import { startFixtureServer } from "../../../../test/helpers/fixture-server";
 import { firstUrl } from "../../../../test/helpers/first-url";
 import { loadFixture } from "../../../../test/helpers/fixtures";
 import { memoryPauseStore } from "../../core/emulated-pause";
+import { ProtocolError } from "../../core/errors";
 import type { ProgramConfig } from "../../core/model";
 import type { MiniSocket } from "./client";
 import { AriaDriver } from "./driver";
@@ -251,6 +252,24 @@ describe("aria2 details", () => {
     stop();
     later.shift()?.();
     expect(opened).toBe(1);
+  });
+
+  it("refuses a list with an entry out of shape or without its gid (fleet C26b)", async () => {
+    for (const lists of [
+      { "aria2.tellActive": [{ status: "active" }] },
+      { "aria2.tellWaiting": [{ gid: 7, status: "waiting" }] },
+      { "aria2.tellStopped": [null] },
+      { "aria2.tellActive": { gid: "a" } },
+    ]) {
+      const s = await ariaSynth(lists);
+      try {
+        await expect(
+          new AriaDriver(cfg(s.baseUrl), { ...timers, log, pauseStore: memoryPauseStore() }, noSocket).poll(),
+        ).rejects.toThrow(ProtocolError);
+      } finally {
+        await s.close();
+      }
+    }
   });
 
   it("pauses only running downloads, forgets gone ones", async () => {

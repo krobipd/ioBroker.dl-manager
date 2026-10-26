@@ -13,6 +13,15 @@ describe("ProgramVersion", () => {
     expect(await v.poll(read, version => Promise.resolve(version))).toBe("v3");
   });
 
+  it("keeps no empty version — the next query asks again (fleet C26b)", async () => {
+    const v = new ProgramVersion();
+    const answers = ["", "v2"];
+    const read = (): Promise<string> => Promise.resolve(answers.shift() ?? "v3");
+    expect(await v.poll(read, version => Promise.resolve(version))).toBe("");
+    expect(await v.poll(read, version => Promise.resolve(version))).toBe("v2");
+    expect(await v.poll(read, version => Promise.resolve(version))).toBe("v2");
+  });
+
   it("reads again when the version itself could not be read", async () => {
     const v = new ProgramVersion();
     let fail = true;

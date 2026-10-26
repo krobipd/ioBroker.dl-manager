@@ -139,18 +139,27 @@ describe("SABnzbd details", () => {
     expect((await firstUrl(() => d.poll())).startsWith("http://nas:8080/sab/api?")).toBe(true);
   });
 
-  it("refuses a queue with an empty entry instead of losing that download (fleet C26b)", async () => {
-    const s = await startFixtureServer(call => {
-      const mode = new URLSearchParams(call.query).get("mode");
-      if (mode === "queue") {
-        return { body: { queue: { slots: [null, { nzo_id: "a", status: "Downloading", filename: "x" }] } } };
+  it("refuses a queue or a history out of shape instead of losing a download (fleet C26b)", async () => {
+    const good = { nzo_id: "a", status: "Downloading", filename: "x" };
+    for (const [queue, history] of [
+      [{ slots: [null, good] }, { slots: [] }],
+      [{ slots: [{ status: "Downloading" }] }, { slots: [] }],
+      [null, { slots: [] }],
+      [{ slots: [good] }, null],
+      [{ slots: [good] }, { slots: [{ status: "Completed" }] }],
+    ]) {
+      const s = await startFixtureServer(call => {
+        const mode = new URLSearchParams(call.query).get("mode");
+        if (mode === "queue") {
+          return { body: { queue } };
+        }
+        return { body: mode === "history" ? { history } : { status: {} } };
+      });
+      try {
+        await expect(new SabDriver(cfg(s.baseUrl), { ...timers, log }).poll()).rejects.toThrow(ProtocolError);
+      } finally {
+        await s.close();
       }
-      return { body: mode === "history" ? { history: { slots: [] } } : { status: {} } };
-    });
-    try {
-      await expect(new SabDriver(cfg(s.baseUrl), { ...timers, log }).poll()).rejects.toThrow(ProtocolError);
-    } finally {
-      await s.close();
     }
   });
 
