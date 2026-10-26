@@ -188,6 +188,7 @@ const ARIA_READS = {
   "aria2.getGlobalOption": "global-option",
 };
 function aria2(url, init) {
+  // the dropped device of the fleet suite — test/inventory.js waits for every other one (DROPPED_DEVICE)
   if (DROPPED) {
     throw new TypeError("fetch failed", {
       cause: Object.assign(new Error(`connect EHOSTUNREACH ${url.host}`), { code: "EHOSTUNREACH" }),

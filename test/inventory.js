@@ -293,11 +293,13 @@ async function feedFixtures(harness) {
  */
 async function waitForAdapterWork(harness) {
   // A tree, not a count: every program is online and every one lists its downloads, and the summary the
-  // adapter writes after each poll says all are reachable (written last in the cycle).
+  // adapter writes after each poll says all are reachable (written last in the cycle). Under the fleet suite
+  // "one device gone while the channel lives" the dropped program answers nothing: every other one, and the count.
+  const dropped = process.env.INVENTORY_DROP_DEVICE === "1" ? DROPPED_DEVICE : null;
   const deadline = Date.now() + 90000;
   for (;;) {
     const missing = [];
-    for (const dev of DEVICES) {
+    for (const dev of DEVICES.filter(d => d !== dropped)) {
       const online = await harness.states.getState(`${NS}${dev}.online`);
       if (online?.val !== true) {
         missing.push(`${NS}${dev}.online`);
@@ -309,8 +311,13 @@ async function waitForAdapterWork(harness) {
       });
       if (!channels.rows.some(r => r.value?.type === "channel")) missing.push(`${NS}${dev}.downloads.*`);
     }
-    const all = await harness.states.getState(`${NS}info.programsAllOnline`);
-    if (all?.val !== true) missing.push(`${NS}info.programsAllOnline`);
+    if (dropped) {
+      const online = await harness.states.getState(`${NS}info.programsOnline`);
+      if (online?.val !== DEVICES.length - 1) missing.push(`${NS}info.programsOnline`);
+    } else {
+      const all = await harness.states.getState(`${NS}info.programsAllOnline`);
+      if (all?.val !== true) missing.push(`${NS}info.programsAllOnline`);
+    }
     if (missing.length === 0) return;
     if (Date.now() > deadline) {
       throw new Error(
@@ -351,6 +358,8 @@ const PROGRAM_ROWS = [
 const DEVICES = PROGRAM_ROWS.map(([type, , cfg]) =>
   cfg.host ? `${type}-${cfg.host.split(".")[0]}` : "jdownloader-dev1",
 );
+/** The program test/fixture-hook.js lets answer nothing under INVENTORY_DROP_DEVICE (its aria2 route). */
+const DROPPED_DEVICE = "aria2-aria2";
 
 /** Adapter-specific config the fixtures need (fake endpoint address, credentials, ...). */
 const FIXTURE_NATIVE = {
