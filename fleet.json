@@ -39,5 +39,54 @@
   "forumThread": "https://forum.iobroker.net/topic/85475/test-adapter-dl-manager-0.x",
   "ciExtraJobs": {
     "live-programs.yml:live-programs": "starts the eight download programs (14 versions) in containers and records their real answers as the test fixtures; runs only on a manual start or when driver code, recording scripts or the workflow change"
+  },
+  "pollIntervals": {
+    "pollInterval": "s"
+  },
+  "suites": {
+    "connectionTest": {
+      "command": "testConnection",
+      "message": {
+        "id": "qbittorrent-qbittorrent"
+      }
+    },
+    "groupSwitches": {
+      "none": "no boolean setting adds or removes datapoints: treeScope is a choice of three, addResumes only changes how a download is added"
+    },
+    "rename": true,
+    "rejectLogin": true,
+    "dropDevice": true
+  },
+  "serverTest": {
+    "_why": "the instance reaches every program, each answers with its version, and a real switch (Transmission's alternative speed) is set on the program and confirmed by its next answer",
+    "observeSeconds": 90,
+    "connectSeconds": 60,
+    "startSpacingSeconds": 30,
+    "reads": [
+      {
+        "id": "info.connection",
+        "expect": "true"
+      },
+      {
+        "id": "*.online",
+        "expect": "true"
+      },
+      {
+        "id": "*.version",
+        "expect": "nonEmpty"
+      },
+      {
+        "id": "summary.downloadSpeed",
+        "expect": "number"
+      }
+    ],
+    "commands": [
+      {
+        "id": "*.altSpeed",
+        "online": "*.online",
+        "value": "toggle",
+        "timeoutSeconds": 60
+      }
+    ]
   }
 }

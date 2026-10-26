@@ -2,6 +2,10 @@
 // Loaded into the ADAPTER process by test/inventory.js (NODE_OPTIONS=--require): replaces fetch so every configured
 // program is answered from the recordings in test/fixtures/ — nothing leaves the machine, an address without a
 // route is refused. The adapter knows nothing about it (reference_objekt_inventar_cloud_adapter).
+// Switches of the fleet suites (fleet.json `suites`): INVENTORY_RENAME renames a qBittorrent torrent, INVENTORY_REJECT_LOGIN
+// lets every program with a login refuse it the way that program does (the local JDownloader API has none),
+// INVENTORY_DROP_DEVICE lets aria2 answer nothing while the others go on; the file `reserved` in RESOURCE_PROBE_DIR names a
+// torrent `info` (suite "a name that is the adapter's own").
 const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
@@ -13,6 +17,12 @@ const body = (program, version, state, name) => load(program, version, state, na
 
 /** Account and device of the My.JDownloader fixture (test/inventory.js configures the same). */
 const MYJD = { email: "fixture@example.com", password: "fixture", device: "JD Fixture" };
+
+const RENAMED = process.env.INVENTORY_RENAME === "1";
+const REJECTED = process.env.INVENTORY_REJECT_LOGIN === "1";
+const DROPPED = process.env.INVENTORY_DROP_DEVICE === "1";
+const reserved = () =>
+  process.env.RESOURCE_PROBE_DIR !== undefined && fs.existsSync(path.join(process.env.RESOURCE_PROBE_DIR, "reserved"));
 
 const json = (value, status = 200, headers = {}) =>
   new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json", ...headers } });
@@ -68,6 +78,7 @@ function newSession(base) {
 }
 async function myjd(url, init) {
   if (url.pathname === "/my/connect") {
+    if (REJECTED) return json({ src: "MYJD", type: "AUTH_FAILED" }, 403);
     return text(encrypt(cloud.login, JSON.stringify({ ...newSession(cloud.login), rid: 1 })));
   }
   if (url.pathname === "/my/reconnect") {
@@ -88,10 +99,20 @@ async function myjd(url, init) {
 // ---- qBittorrent 5.2.3 ----
 function qbittorrent(url) {
   const p = url.pathname;
-  if (p === "/api/v2/auth/login") return text("", 204, { "set-cookie": "SID=fixture; HttpOnly" });
+  if (p === "/api/v2/auth/login") {
+    return REJECTED ? text("Fails.") : text("", 204, { "set-cookie": "SID=fixture; HttpOnly" });
+  }
   if (p === "/api/v2/app/version") return text(body("qbittorrent", "5.2.3", "auth", "app-version"));
-  if (p === "/api/v2/sync/maindata") return json(body("qbittorrent", "5.2.3", "running", "maindata"));
+  if (p === "/api/v2/sync/maindata") return json(maindata());
   return text("");
+}
+// the first torrent named `info` while `reserved` exists, the second renamed under INVENTORY_RENAME
+function maindata() {
+  const data = body("qbittorrent", "5.2.3", "running", "maindata");
+  const [first, second] = Object.keys(data.torrents ?? {});
+  if (reserved() && first) data.torrents[first].name = "info";
+  if (RENAMED && second) data.torrents[second].name = `${data.torrents[second].name} (renamed)`;
+  return data;
 }
 
 // ---- Transmission 4.1.3 (JSON-RPC, the 409 session round) ----
@@ -102,6 +123,7 @@ const TR_READS = {
   free_space: "free-space",
 };
 function transmission(url, init, headers) {
+  if (REJECTED) return text("<h1>401: Unauthorized</h1>", 401);
   if (headers.get("x-transmission-session-id") !== "fixture") {
     return text("<h1>409: Conflict</h1>", 409, {
       "x-transmission-session-id": "fixture",
@@ -123,8 +145,11 @@ const DL_READS = {
 };
 function deluge(url, init) {
   const { method } = JSON.parse(String(init.body));
-  if (method === "auth.login")
-    return json({ result: true, error: null, id: 1 }, 200, { "set-cookie": "_session_id=fixture" });
+  if (method === "auth.login") {
+    return REJECTED
+      ? json({ result: false, error: null, id: 1 })
+      : json({ result: true, error: null, id: 1 }, 200, { "set-cookie": "_session_id=fixture" });
+  }
   if (method === "web.connected") return json({ result: true, error: null, id: 1 });
   const r = DL_READS[method];
   return json(r ? body("deluge", "2.2.0", r[0], r[1]) : { result: null, error: null, id: 1 });
@@ -132,6 +157,7 @@ function deluge(url, init) {
 
 // ---- SABnzbd 5.1.3 ----
 function sabnzbd(url) {
+  if (REJECTED) return text("API Key Incorrect", 403);
   const q = url.searchParams;
   if (q.get("mode") === "queue" && !q.get("name")) return json(body("sabnzbd", "5.1.3", "running", "queue"));
   if (q.get("mode") === "history" && !q.get("name")) return json(body("sabnzbd", "5.1.3", "running", "history"));
@@ -147,6 +173,7 @@ const NZB_READS = {
   history: ["running", "history"],
 };
 function nzbget(url, init) {
+  if (REJECTED) return text("", 401);
   const { method } = JSON.parse(String(init.body));
   const r = NZB_READS[method];
   return json(r ? body("nzbget", "26.3", r[0], r[1]) : { version: "1.1", id: 1, result: true });
@@ -161,7 +188,13 @@ const ARIA_READS = {
   "aria2.getGlobalOption": "global-option",
 };
 function aria2(url, init) {
+  if (DROPPED) {
+    throw new TypeError("fetch failed", {
+      cause: Object.assign(new Error(`connect EHOSTUNREACH ${url.host}`), { code: "EHOSTUNREACH" }),
+    });
+  }
   const { method, params, id } = JSON.parse(String(init.body));
+  if (REJECTED) return json({ jsonrpc: "2.0", id, error: { code: 1, message: "Unauthorized" } });
   if (method === "system.multicall") {
     const result = params[0].map(s =>
       s.methodName === "aria2.getVersion"
@@ -177,6 +210,7 @@ function aria2(url, init) {
 
 // ---- pyLoad 0.5.0b3.dev101 ----
 function pyload(url) {
+  if (REJECTED) return json({ error: "Unauthorized" }, 401);
   const fn = url.pathname.replace(/^\/api\//, "");
   if (fn === "get_server_version") return json(body("pyload", "0.5.0", "auth", "version"));
   if (fn === "get_config_value") return json(url.searchParams.get("option") === "limit_speed" ? false : -1);
