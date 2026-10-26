@@ -101,6 +101,30 @@ _Jede Entscheidung steht hier als Regel-Satz; Beleg, Messung und Verlauf stehen 
 25. **HTTP 502, 503 und 504 heißen „nicht erreichbar“** — ein Reverse-Proxy vor einem Programm, das nicht läuft; 500 entscheidet jeder Client selbst (JDownloader meldet damit eigene Fehler).
 26. **Ein neuer Link in einem pausierten Programm: die Instanz-Einstellung `addResumes` entscheidet, für alle Programme gleich (krobi 2026-10-22 22:24 zu K8: „… besser in der admin …, wo der user dieses verhalten einstellen kann“)** — Vorgabe aus: die Pause hält, der Link wartet; JDownloader startet bei jedem Link in der Downloadliste von selbst (`LinkgrabberAutoStartEnabled`, ab Werk an, per API nicht abschaltbar, auch `moveToDownloadlist`; gemessen 2026-10-01), deshalb hält ihn sein Treiber sofort wieder an, wie er war (stop bzw. pause). An: der Manager schickt vor dem `add` ein `resumeAll`, wenn das Programm `globalPause` kann und die letzte Abfrage es pausiert las.
 
+<!-- core-decisions:begin (generated from the sealed register — change only through the Werkbank) -->
+
+## Core decisions (sealed)
+
+krobi's decisions for this adapter. The register with his verbatim words lives in the locked Werkbank tool tree; a change is a request to the Werkbank, never an edit here. Each guarded rule has a test under `src/decisions/`.
+
+- **D-01** One adapter for every download program (JDownloader, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2, pyLoad); a new program joins as one more driver behind the same interface, the core stays.
+- **D-02** All download programs run in the same dl-manager instance, each one a device — not one adapter per downloader (D-01); every download is its own channel with typed single datapoints (status, progress, speed …) usable in Blockly, never a JSON list instead of that subtree.
+- **D-03** A JDownloader is reached locally or through its My.JDownloader account; the JDownloader dialog switches between the two and asks only the fields of the chosen way; with My.JDownloader the user picks the JDownloader instance of the account from a list.
+- **D-04** Every download has a datapoint of its own to remove it (as in the parcelapp adapter); removing takes it at most out of the program's list — the adapter never deletes downloaded files.
+- **D-05** What is the same for all downloads is set once for the whole instance — never per download or per program.
+- **D-06** Which downloads stand in the object tree is set by a scope (all / without finished / only unfinished; failed ones always stay) and a highest number per program (0–1000, 0 = all, default 100); above it the best ranked stay (running → failed → paused/waiting → queue → seeding → finished, the newest first within a rank); the sums always count everything. At 0 or more than 200 the settings page shows a warning box; when a program actually shows more than 200 downloads in the object tree at runtime, the log warns once per program and start.
+- **D-07** Programs are set up as device-manager cards like in the yamaha adapter, not in a table; each dialog shows only the fields of its program; the same program may be added any number of times, only never twice with the same configuration (the same address, or the same My.JDownloader account with the same instance).
+- **D-08** The card shows, it controls nothing: no control on the card pauses downloads; pausing goes through the datapoint `paused`, which stays.
+- **D-09** The "last" values (last finished, when, last failed, when) stand in a channel `last` of their own below every program and below the summary.
+- **D-11** The programs do not live in the object tree but in `programs.json` in the instance's data folder, which every ioBroker backup takes along; password and API key are encrypted with `encrypt()`; neither account nor password appears in the object tree, and so in no object export.
+- **K1** A download is the unit the user added: a JDownloader or pyLoad package with many files is one channel, likewise a torrent, an NZB job, an aria2 download.
+- **K2** One status list for all programs: every download shows the same status whatever the program (queued, downloading, waiting, paused, checking, postprocessing, seeding, completed, failed) — a Blockly script works the same for every program.
+- **K3** An unknown raw status of a program becomes "queued" instead of an error; a debug line names the raw value so it can be added.
+- **K4** What a program can do decides its datapoints; a program without a pause of its own (Transmission, aria2, qBittorrent before 5.3) gets one from the adapter: it stops only the downloads that run and later resumes exactly these, also after a restart.
+- **K5** After a rejected login the adapter asks the program no more until its card changes; one warning points at the card.
+
+<!-- core-decisions:end -->
+
 ## Ein Programm hinzufügen
 
 1. `src/lib/programs/<typ>/` mit `client.ts` (Adresse über `baseUrl`), `map.ts` (Status-Tabelle), `driver.ts`; Zeile in `catalog.ts` (Typ, Name, Familie, Port, Pfad, Anmeldeart), Treiber in `DRIVERS` (`registry.ts`).
