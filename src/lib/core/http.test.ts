@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import { ProtocolError, UnreachableError } from "./errors";
-import { HttpClient } from "./http";
+import { HttpClient, RETRY_AFTER_DEFAULT_MS, RETRY_AFTER_MAX_MS, retryAfterMs } from "./http";
 
 type Handler = (req: IncomingMessage, body: string, res: ServerResponse) => void;
 
@@ -148,6 +148,39 @@ describe("HttpClient", () => {
     });
     server = s.server;
     expect((await new HttpClient(timers).request({ method: "GET", url: s.url })).status).toBe(500);
+  });
+
+  // fleet suite D21: a 429 is a rate limit — the host is not called again before its retry-after ran out
+  it("hands a 429 to the program's client and calls that program no more until its retry-after ran out", async () => {
+    let calls = 0;
+    const s = await serve((_req, _b, res) => {
+      calls++;
+      res.statusCode = 429;
+      res.setHeader("retry-after", "60");
+      res.end();
+    });
+    server = s.server;
+    let now = 1_000_000;
+    const c = new HttpClient(timers, { now: () => now });
+    expect((await c.request({ method: "GET", url: s.url })).status).toBe(429);
+    now += 59_000;
+    const err: unknown = await c.request({ method: "GET", url: s.url }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(UnreachableError);
+    expect(String(err)).toContain("next call in 1 s");
+    expect(calls).toBe(1);
+    now += 1_000;
+    expect((await c.request({ method: "GET", url: s.url })).status).toBe(429);
+    expect(calls).toBe(2);
+  });
+
+  it("reads retry-after as seconds or an HTTP date, a minute without one, an hour at most", () => {
+    const now = Date.parse("2026-10-27T10:00:00Z");
+    expect(retryAfterMs("120", now)).toBe(120_000);
+    expect(retryAfterMs("Tue, 27 Oct 2026 10:00:30 GMT", now)).toBe(30_000);
+    expect(retryAfterMs(null, now)).toBe(RETRY_AFTER_DEFAULT_MS);
+    expect(retryAfterMs("soon", now)).toBe(RETRY_AFTER_DEFAULT_MS);
+    expect(retryAfterMs("Tue, 27 Oct 2026 09:00:00 GMT", now)).toBe(RETRY_AFTER_DEFAULT_MS);
+    expect(retryAfterMs("86400", now)).toBe(RETRY_AFTER_MAX_MS);
   });
 
   it("gives up after the deadline as unreachable", async () => {

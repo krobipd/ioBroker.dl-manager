@@ -1,7 +1,15 @@
 import type { Mock } from "vitest";
 import { AuthError, ProtocolError, UnreachableError } from "./errors";
 import type { Command, ProgramDriver, ProgramSnapshot } from "./model";
-import { ProgramRunner, WARN_COOLDOWN_MS, WARN_MEMORY, type RunnerDeps, type RunnerTree } from "./runner";
+import {
+  BACKOFF_MAX_MS,
+  nextPollMs,
+  ProgramRunner,
+  WARN_COOLDOWN_MS,
+  WARN_MEMORY,
+  type RunnerDeps,
+  type RunnerTree,
+} from "./runner";
 import type { ProgramEvents } from "./tree";
 
 const flush = (): Promise<void> => new Promise(resolve => setImmediate(resolve));
@@ -9,7 +17,10 @@ const flush = (): Promise<void> => new Promise(resolve => setImmediate(resolve))
 class ManualClock {
   private seq = 0;
   public readonly timers = new Map<number, () => void>();
-  public setTimeout = (cb: () => void): ioBroker.Timeout => {
+  /** The delay of every timer set. */
+  public readonly delays: number[] = [];
+  public setTimeout = (cb: () => void, ms: number): ioBroker.Timeout => {
+    this.delays.push(ms);
     const id = ++this.seq;
     this.timers.set(id, cb);
     return id as unknown as ioBroker.Timeout;
@@ -279,6 +290,25 @@ describe("ProgramRunner", () => {
     // an outage shows only on reachability (fleet suite "counterpart gone and back"): the reason text stays
     expect(tree.markUnreachable).toHaveBeenCalled();
     expect(tree.markOffline).not.toHaveBeenCalled();
+  });
+
+  // fleet suite D21: a host is called less often from minute to minute under a series of errors
+  it("doubles the time to the next poll after every failed one up to the cap, and is back on its interval after a good one", async () => {
+    const clock = new ManualClock();
+    let fail = 6;
+    const driver = makeDriver(() =>
+      fail-- > 0 ? Promise.reject(new ProtocolError("HTTP 500")) : Promise.resolve(SNAP),
+    );
+    const r = new ProgramRunner("fake-a", driver, makeTree(), makeDeps(clock), 10_000, vi.fn());
+    r.start();
+    await flush();
+    for (let i = 0; i < 6; i++) {
+      await clock.tick();
+    }
+    expect(driver.polls).toBe(7);
+    expect(clock.delays).toEqual([20_000, 40_000, 80_000, BACKOFF_MAX_MS, BACKOFF_MAX_MS, BACKOFF_MAX_MS, 10_000]);
+    expect(nextPollMs(3_600_000, 3)).toBe(3_600_000);
+    expect(nextPollMs(10_000, 2_000)).toBe(BACKOFF_MAX_MS);
   });
 
   it("warns once for a repeated protocol error, then only debug", async () => {

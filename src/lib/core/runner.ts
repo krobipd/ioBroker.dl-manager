@@ -11,6 +11,20 @@ import type { ProgramEvents } from "./tree";
 export const WARN_COOLDOWN_MS = 60 * 60 * 1000;
 /** How many failure texts per program the warn window remembers. */
 export const WARN_MEMORY = 20;
+/**
+ * Failed polls in a row double the time to the next one up to this (fleet suite D21: calls get fewer under a series of
+ * errors) — an interval set longer stays as it is; a good poll, a command and a push ask at once again.
+ */
+export const BACKOFF_MAX_MS = 120_000;
+
+/**
+ * @param intervalMs the program's poll interval
+ * @param failures failed polls in a row
+ * @returns the time to the next poll
+ */
+export function nextPollMs(intervalMs: number, failures: number): number {
+  return failures === 0 ? intervalMs : Math.max(intervalMs, Math.min(intervalMs * 2 ** failures, BACKOFF_MAX_MS));
+}
 
 /** Adapter services the runner needs — a seam for the tests. */
 export interface RunnerDeps extends HttpTimers {
@@ -49,6 +63,7 @@ export class ProgramRunner {
   private announceLabel: string | null = null;
   private _online = false;
   private _lockedByAuth = false;
+  private failures = 0;
   private _lastSnapshot: ProgramSnapshot | null = null;
 
   /**
@@ -164,7 +179,7 @@ export class ProgramRunner {
     if (this.stopped || this._lockedByAuth) {
       return;
     }
-    this.timer = this.deps.setTimeout(() => void this.pollNow(), this.intervalMs);
+    this.timer = this.deps.setTimeout(() => void this.pollNow(), nextPollMs(this.intervalMs, this.failures));
   }
 
   private async poll(): Promise<void> {
@@ -186,8 +201,10 @@ export class ProgramRunner {
         this.deps.log.debug(`[${this.id}] reachable`);
       }
       this._online = true;
+      this.failures = 0;
       this.onChange(events, true);
     } catch (err: unknown) {
+      this.failures++;
       await this.handle(err);
       if (!this.stopped) {
         this.onChange({ finished: [], failed: [], removedFromTree: 0 }, false);

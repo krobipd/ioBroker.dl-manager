@@ -64,6 +64,24 @@ export interface HttpOptions {
    * the connection after every answer (live-programs runs 36486882766, 36487216805).
    */
   resendOnClosedSocket?: boolean;
+  /** The clock for the wait after a 429, `Date.now` when absent. */
+  now?: () => number;
+}
+
+/** A 429 without a readable `retry-after` waits this long — a limit counted per minute (pyLoad, `api-limits.json`). */
+export const RETRY_AFTER_DEFAULT_MS = 60_000;
+/** A `retry-after` longer than the longest poll interval is cut to it — the program is asked again within that time. */
+export const RETRY_AFTER_MAX_MS = 60 * 60 * 1000;
+
+/**
+ * @param header the `retry-after` of a 429: seconds or an HTTP date (RFC 9110 10.2.3)
+ * @param now the time the answer came
+ * @returns how long to wait before the next call, ms
+ */
+export function retryAfterMs(header: string | null, now: number): number {
+  const text = header?.trim() ?? "";
+  const ms = /^\d+$/.test(text) ? Number(text) * 1000 : text ? Date.parse(text) - now : NaN;
+  return Number.isFinite(ms) && ms >= 0 ? Math.min(ms, RETRY_AFTER_MAX_MS) : RETRY_AFTER_DEFAULT_MS;
 }
 
 /**
@@ -73,6 +91,8 @@ export interface HttpOptions {
 export class HttpClient {
   private readonly cookies = new Map<string, string>();
   private readonly inFlight = new Set<AbortController>();
+  /** No call before this time — the program answered 429 (fleet suite D21: a 429 is a rate limit, mcm1957). */
+  private notBefore = 0;
 
   /**
    * @param timers the adapter's timers
@@ -104,6 +124,11 @@ export class HttpClient {
     // fetch rejects an unparsable address like a network error — it is the card's host, never a state
     if (!URL.canParse(req.url)) {
       throw new ProtocolError("the address is no valid URL — check the host on the card");
+    }
+    const now = this.opts.now ?? Date.now;
+    const wait = this.notBefore - now();
+    if (wait > 0) {
+      throw new UnreachableError(`rate limited (HTTP 429) — next call in ${Math.ceil(wait / 1000)} s`);
     }
     const headers: Record<string, string> = { ...req.headers };
     let body: string | FormData | undefined = req.body;
@@ -153,6 +178,10 @@ export class HttpClient {
     } finally {
       this.timers.clearTimeout(timer);
       this.inFlight.delete(abort);
+    }
+    if (res.status === 429) {
+      // the answer goes to the caller as it came (pyLoad names its limit), the next call waits
+      this.notBefore = now() + retryAfterMs(res.headers.get("retry-after"), now());
     }
     if (res.status >= 300 && res.status < 400) {
       throw new ProtocolError(`redirected (${res.status}) — check host, port and path`);
