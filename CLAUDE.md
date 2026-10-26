@@ -42,7 +42,7 @@ src/lib/core/connection-test.ts  → testProgram: der Test-Knopf einer Karte (ei
 src/lib/core/serial.ts           → Serial: Aufgaben nacheinander (Zeilenänderungen, Summen)
 src/lib/core/devices.ts          → readDevices (nur Geräte mit Programmtyp, keine reservierte Wurzel), Offline-Stempel
 src/lib/core/visibility.ts       → rein: welche Downloads einen Kanal bekommen (treeScope, Rang, Obergrenze)
-src/lib/core/runner.ts           → Abfrage-Schleife je Programm, Anmelde-Sperre, pollNow nach jedem Befehl
+src/lib/core/runner.ts           → Abfrage-Schleife je Programm, Anmelde-Sperre, pollNow nach jedem Befehl, Backoff nach Fehlschlägen
 src/lib/core/login-hint.ts       → rein: was die Anmelde-Warnung je Anmeldeart sagt (Ursache, wenn die Karte keine Anmeldung trägt)
 src/lib/core/log-lines.ts        → rein: Sammelzeile des Starts (startLine), info-Zeile nach einem Nutzerbefehl (commandLine)
 src/lib/core/tree.ts             → ProgramTree: Gerät/Kanäle/Datenpunkte gegen den Schnappschuss abgleichen, itemKey
@@ -54,7 +54,8 @@ src/lib/core/states.ts           → KnownStates: EIN Wertespeicher, jeder Zusta
 src/lib/core/summary.ts          → info.* und summary.* aus allen Programmen
 src/lib/core/commands.ts         → routeState: Datenpunkt-Id → pauseAll / Befehl an Programm / ignorieren
 src/lib/core/http.ts             → HttpClient: Timeout über Adapter-Timer, Cookies, keine Weiterleitungen, multipart,
-                                   502/503/504 = nicht erreichbar
+                                   502/503/504 = nicht erreichbar, 429 = bis `retry-after` keine Anfrage
+src/lib/core/answer.ts           → rein: Listen und Kennungen einer Programmantwort prüfen, sonst ProtocolError (ganz abgelehnt)
 src/lib/core/emulated-pause.ts   → nachgebildete Programm-Pause (PauseStore im native des paused-Objekts)
 src/lib/core/{errors,ids,units,redact,version,status}.ts → Fehlerklassen, Kennungen, Einheiten + Lesehelfer der Antworten,
                                    Geheimnisse, Programmversion (neu gelesen nach jedem Fehlschlag), unbekannter Status → queued
@@ -100,6 +101,9 @@ _Jede Entscheidung steht hier als Regel-Satz; Beleg, Messung und Verlauf stehen 
 24. **Programmzeilen ändern sich nur über `updateRows`** — frisch lesen, ändern, speichern und übernehmen in einem Schritt nacheinander; ein Dialog, dessen Karte sich inzwischen geändert hat oder weg ist, speichert nichts und sagt es.
 25. **HTTP 502, 503 und 504 heißen „nicht erreichbar“** — ein Reverse-Proxy vor einem Programm, das nicht läuft; 500 entscheidet jeder Client selbst (JDownloader meldet damit eigene Fehler).
 26. **Ein neuer Link in einem pausierten Programm: die Instanz-Einstellung `addResumes` entscheidet, für alle Programme gleich (krobi 2026-10-22 22:24 zu K8: „… besser in der admin …, wo der user dieses verhalten einstellen kann“)** — Vorgabe aus: die Pause hält, der Link wartet; JDownloader startet bei jedem Link in der Downloadliste von selbst (`LinkgrabberAutoStartEnabled`, ab Werk an, per API nicht abschaltbar, auch `moveToDownloadlist`; gemessen 2026-10-01), deshalb hält ihn sein Treiber sofort wieder an, wie er war (stop bzw. pause). An: der Manager schickt vor dem `add` ein `resumeAll`, wenn das Programm `globalPause` kann und die letzte Abfrage es pausiert las.
+27. **Ein Ausfall zeigt sich nur an der Erreichbarkeit (krobi 2026-10-06 17:55, Flotten-Suite „counterpart gone and back“)** — ein nicht erreichbares Programm setzt nur `online` und die drei Erreichbarkeits-Werte unter `info`, `error`, Downloads und Summen behalten ihre letzten Werte (die Summen zählen den letzten Schnappschuss jedes Programms); ein Fehlschlag schreibt nur die Erreichbarkeit, ein unbestätigtes `summary.pauseAll` bleibt unbestätigt; erst der Stopp setzt die Summen auf nichts.
+28. **Eine Antwort, die ihre Form verloren hat, wird ganz abgelehnt (Flotten-Suite C26b)** — Download-Listen und ihre Kennungen gehen durch `answer.ts`, die Kennungsart (Text oder Zahl) legt jeder Treiber fest; eine leere Version behält die letzte; nur ein ausdrückliches Nein des Programms ist eine abgelehnte Anmeldung.
+29. **Ein 429 ist ein Ratenlimit (Flotten-Suite D21)** — der HTTP-Client fragt das Programm bis zum Ende von `retry-after` nicht mehr (Sekunden oder HTTP-Datum, ohne 60 s, höchstens 1 h); Fehlschläge in Folge verdoppeln den Abstand bis 120 s, ein länger eingestelltes Intervall bleibt.
 
 <!-- core-decisions:begin (generated from the sealed register — change only through the Werkbank) -->
 

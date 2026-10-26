@@ -143,6 +143,12 @@ The test button on a program's card asks the program once and shows its answer.
 - Fixed: `error` names the real cause instead of a proxy's HTML page or an encryption message, and names a refused session
 - Fixed: a programs.json without a program list stops the start instead of removing every device
 - Fixed: the program dialog checks its fields again before it stores, and never stores over a card another tab changed
+- Fixed: while a program is unreachable its downloads, its `error` and the `summary` totals keep their last values; only `online` and the connection values change
+- Fixed: an answer in an unexpected form no longer deletes downloads or empties the version
+- Fixed: a garbled Deluge login answer no longer stops the program as if the password were wrong
+- Fixed: `summary.pauseAll` is confirmed only once a program has taken the pause
+- Fixed: a program that answers "too many requests" (HTTP 429) is asked again only after the wait it names
+- Changed: after failed queries a program is asked less often, up to every two minutes, until it answers again
 - Changed: requires js-controller 7.2.5 and admin 8.2.0
 
 ### 0.4.0 (2026-10-02)
