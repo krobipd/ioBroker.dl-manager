@@ -6,7 +6,7 @@ import { PyClient } from "./client";
 import { toSnapshot } from "./map";
 import { asText, num, toKiB } from "../../core/units";
 
-/** Polls between two reads of the speed limit — a poll is four calls, pyLoad allows 100 a minute. */
+/** Polls between two reads of the speed limit — a poll is four calls, pyLoad's limit is in `api-limits.json`. */
 const LIMIT_EVERY = 10;
 
 /**

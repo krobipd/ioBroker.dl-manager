@@ -1,3 +1,4 @@
+import { apiLimit } from "../../api-limits";
 import { AuthError, ProtocolError, UnreachableError } from "../../core/errors";
 import { errorField, HttpClient, type HttpTimers } from "../../core/http";
 import type { ProgramConfig } from "../../core/model";
@@ -6,7 +7,7 @@ import { baseUrl, catalogEntry } from "../catalog";
 /**
  * pyLoad-ng REST API (api-usenet-aria2-pyload.md § 4): `/api/<function>`, reads GET, changes POST with a JSON body.
  * From 0.5.0b3.dev97 only an API key (`X-API-Key`) opens it; older builds take basic auth — the filled-in field
- * decides. 429 is pyLoad's limit of 100 calls a minute: a passing state, not a login error.
+ * decides. 429 is pyLoad's limit of calls a minute (`api-limits.json`): a passing state, not a login error.
  */
 export class PyClient {
   private readonly http: HttpClient;
@@ -66,7 +67,8 @@ export class PyClient {
       throw new AuthError(`pyload: ${this.refused} (${err || `HTTP ${res.status}`})`);
     }
     if (res.status === 429) {
-      throw new UnreachableError("pyload: too many requests (pyLoad allows 100 a minute) — raise the poll interval");
+      const { max } = apiLimit("Download program in the user's network", 60);
+      throw new UnreachableError(`pyload: too many requests (pyLoad allows ${max} a minute) — raise the poll interval`);
     }
     if (res.status >= 400) {
       throw new ProtocolError(`pyload: ${path.split("?")[0]} answered HTTP ${res.status}`);

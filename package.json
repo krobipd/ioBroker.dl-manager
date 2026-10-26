@@ -38,7 +38,8 @@
     "build",
     "io-package.json",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "src/lib/api-limits.json"
   ],
   "dependencies": {
     "@iobroker/adapter-core": "^3.4.3",

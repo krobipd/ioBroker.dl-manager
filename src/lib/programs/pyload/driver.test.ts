@@ -122,6 +122,10 @@ describe("pyLoad driver", () => {
     const s = await pyServer({ limited: true });
     try {
       await expect(new PyDriver(cfg(s.baseUrl), { ...timers, log }).poll()).rejects.toThrow(UnreachableError);
+      // the number comes from pyLoad's limit in api-limits.json
+      await expect(new PyDriver(cfg(s.baseUrl), { ...timers, log }).poll()).rejects.toThrow(
+        "pyLoad allows 100 a minute",
+      );
     } finally {
       await s.close();
     }

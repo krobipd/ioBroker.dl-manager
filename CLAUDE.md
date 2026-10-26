@@ -65,6 +65,8 @@ src/lib/programs/<typ>/          → client.ts (Transport + Anmeldung), map.ts (
                                    driver.ts (Fähigkeiten, Extras, Befehle)
 src/lib/{enum-carry,known-objects,err-text,native-key-migration}.ts → Kopien aus .consistency-master (byte-gleich)
 src/lib/{actionable-problems,device-icons,i18n}.ts → Flotten-Muster
+src/lib/api-limits.{json,ts}     → Limits jeder Gegenstelle (lokale Programme: pyLoads 100/min je Host; My.JDownloader: eigener
+                                   Deckel); liegt in src/, im Paket über `files`; die pyLoad-429-Meldung liest ihre Zahl daraus
 admin/jsonConfig.json, admin/icons/*.svg → Einstellungsseite (Gerätemanager + Allgemein + Spenden), Piktogramme je Familie
 ```
 
