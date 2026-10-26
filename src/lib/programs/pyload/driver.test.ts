@@ -162,7 +162,8 @@ async function pySynth(state: {
       return { body: JSON.stringify(state.config[String(new URLSearchParams(call.query).get("option"))] ?? null) };
     }
     if (call.method === "GET") {
-      return { body: JSON.stringify(state[fn] ?? null) };
+      // an empty pyLoad answers its two lists with [] — never null
+      return { body: JSON.stringify(state[fn] ?? (fn === "status_downloads" || fn === "get_queue_data" ? [] : null)) };
     }
     return { body: "null" };
   });

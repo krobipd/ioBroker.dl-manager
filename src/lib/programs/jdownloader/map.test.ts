@@ -1,4 +1,5 @@
 import { loadFixture } from "../../../../test/helpers/fixtures";
+import { ProtocolError } from "../../core/errors";
 import { jdLinkFromRaw, mapJdStatus, packageStatus, statusTable, toSnapshot, type JdLink } from "./map";
 
 const link = (over: Partial<JdLink> = {}): JdLink => ({ uuid: 1, packageUUID: 10, name: "a.bin", ...over });
@@ -165,12 +166,17 @@ describe("JDownloader package rules (written out, not taken from map.ts)", () =>
 });
 
 describe("JDownloader snapshot details", () => {
-  it("reads packages without links, skips packages without uuid and keeps special values unknown", () => {
+  it("refuses a package list with an entry without its uuid (fleet C26b)", () => {
+    for (const packages of [[{ name: "no uuid" }], [{ uuid: "1" }], [null], null, {}]) {
+      expect(() => toSnapshot("48637", {}, packages, null, () => undefined)).toThrow(ProtocolError);
+    }
+  });
+
+  it("reads packages without links and keeps special values unknown", () => {
     const s = toSnapshot(
       "48637",
       { state: "STOPPING", limit: false, limitspeed: 5 },
       [
-        { name: "no uuid" },
         { uuid: 1, name: "off", enabled: false, bytesTotal: -1, speed: 7 },
         { uuid: 2, name: "on", enabled: true },
       ],

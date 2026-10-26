@@ -1,3 +1,4 @@
+import { recordMapIn } from "../../core/answer";
 import { RATIO_INFINITE, type DownloadItem, type ProgramSnapshot, type Status } from "../../core/model";
 import { unknownStatus } from "../../core/status";
 import { asRecord, asText, epochMs, eta, fromKiB, nonNegative, num, sizeOf } from "../../core/units";
@@ -147,8 +148,8 @@ export function toSnapshot(
   const u = asRecord(ui);
   const stats = asRecord(u.stats);
   const cfg = asRecord(config);
-  const items: DownloadItem[] = Object.entries(asRecord(u.torrents)).map(([hash, raw]) => {
-    const t = asRecord(raw) as DlTorrent;
+  const items: DownloadItem[] = recordMapIn(u.torrents, "Deluge's web.update_ui torrents").map(([hash, raw]) => {
+    const t = raw as DlTorrent;
     const { status, error } = dlStatus(t, debug);
     return {
       key: hash,

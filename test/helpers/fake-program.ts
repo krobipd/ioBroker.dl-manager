@@ -1,3 +1,4 @@
+import { idIn, recordsIn } from "../../src/lib/core/answer";
 import { AuthError, ProtocolError } from "../../src/lib/core/errors";
 import { HttpClient, type HttpResponse, type HttpTimers } from "../../src/lib/core/http";
 import type {
@@ -71,15 +72,12 @@ export class FakeProgramDriver implements ProgramDriver {
   /** @returns one complete query */
   public async poll(): Promise<ProgramSnapshot> {
     const status = (await this.api("GET", "/status")).json() as { version: string; paused: boolean; speed: number };
-    const raw = (await this.api("GET", "/items")).json() as {
-      id: string;
-      name: string;
-      state: string;
-      size: number;
-      done: number;
-      speed: number;
-      eta: number;
-    }[];
+    // like every driver: a list out of shape is refused whole (fleet C26b)
+    const answer = (await this.api("GET", "/items")).json();
+    const raw = recordsIn(answer, "fake /items").map(r => ({
+      ...(r as { name: string; state: string; size: number; done: number; speed: number; eta: number }),
+      id: idIn(r, "id", "fake /items", "text"),
+    }));
     let categories: Record<string, string> | null = null;
     try {
       const res = await this.api("GET", "/categories");

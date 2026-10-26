@@ -4,7 +4,8 @@ import { ProtocolError } from "../../core/errors";
 import type { Capability, Command, ProgramDriver, ProgramSnapshot, DriverDeps, ProgramConfig } from "../../core/model";
 import { AriaClient, nodeSocket, type SocketFactory } from "./client";
 import { toSnapshot } from "./map";
-import { asRecord, asRecords, asText } from "../../core/units";
+import { idIn, recordsIn } from "../../core/answer";
+import { asRecord, asText } from "../../core/units";
 
 /** Pause before reconnecting the push channel. */
 const RECONNECT_MS = 30_000;
@@ -55,12 +56,20 @@ export class AriaDriver implements ProgramDriver {
       ["aria2.getGlobalStat", []],
       ["aria2.getGlobalOption", []],
     ]);
+    const listOf = (raw: unknown, method: string): Record<string, unknown>[] => {
+      const entries = recordsIn(raw, `aria2's ${method}`);
+      entries.forEach(e => idIn(e, "gid", `aria2's ${method}`, "text"));
+      return entries;
+    };
+    const run = listOf(active, "tellActive");
+    const wait = listOf(waiting, "tellWaiting");
+    const done = listOf(stopped, "tellStopped");
     const gids = (l: Record<string, unknown>[]): string[] => l.map(e => String(e.gid));
-    this.running = [...gids(asRecords(active)), ...gids(asRecords(waiting).filter(e => e.status !== "paused"))];
-    this.stopped = new Set(gids(asRecords(stopped)));
-    const all = [...asRecords(active), ...asRecords(waiting), ...asRecords(stopped)];
+    this.running = [...gids(run), ...gids(wait.filter(e => e.status !== "paused"))];
+    this.stopped = new Set(gids(done));
+    const all = [...run, ...wait, ...done];
     // a finished download cannot be resumed — only active and waiting ones stay in the pause
-    const resumable = new Set(gids([...asRecords(active), ...asRecords(waiting)]));
+    const resumable = new Set(gids([...run, ...wait]));
     const paused = await this.pause.observe(new Set(this.running), resumable);
     const reported = asRecord(version).version;
     return toSnapshot(asText(reported), all, stat, option, paused, m => this.deps.log.debug(m));

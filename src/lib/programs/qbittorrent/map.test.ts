@@ -1,3 +1,4 @@
+import { ProtocolError } from "../../core/errors";
 import { loadFixture } from "../../../../test/helpers/fixtures";
 import { MaindataState, mapQbState, parseQbVersion, qbRunning, statusTable, toSnapshot } from "./map";
 
@@ -76,11 +77,14 @@ describe("qBittorrent sync/maindata", () => {
     expect(Object.keys(m.torrents)).toEqual(["c"]);
   });
 
-  it("ignores garbage", () => {
+  it("refuses garbage whole and keeps what it had (fleet C26b)", () => {
     const m = new MaindataState();
-    m.apply(null);
-    m.apply({ torrents: "x" });
-    expect(m.torrents).toEqual({});
+    m.apply({ rid: 1, full_update: true, torrents: { abc: { name: "a" } } });
+    for (const garbage of [null, { torrents: "x" }, { rid: null }, { rid: 2, torrents: { abc: null } }]) {
+      expect(() => m.apply(garbage)).toThrow(ProtocolError);
+    }
+    expect(m.rid).toBe(1);
+    expect(Object.keys(m.torrents)).toEqual(["abc"]);
   });
 });
 

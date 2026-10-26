@@ -37,8 +37,11 @@ export interface DatapointDef<S = unknown> {
   nameKey: I18nKey;
   /** i18n key of the explanation. */
   descKey?: I18nKey;
-  /** The value each poll writes; none for a button or a value written by an event (last finished, last failed). */
-  value?(src: S): ioBroker.StateValue;
+  /**
+   * The value each poll writes; none for a button or a value written by an event (last finished, last failed).
+   * `undefined` means the answer did not say — the last value stays.
+   */
+  value?(src: S): ioBroker.StateValue | undefined;
   /**
    * What a user write means for the program (writable datapoints); null when the value asks for nothing (a button
    * written false, an empty link). A datapoint that is only written is confirmed with ack right away — no poll ever
@@ -65,7 +68,7 @@ export const PROGRAM_DATAPOINTS: readonly DatapointDef<ProgramSnapshot>[] = [
     descKey: "descOnline",
   }),
   pr({ id: "error", value: () => "", type: "string", role: "text", nameKey: "error", descKey: "descError" }),
-  pr({ id: "version", value: s => s.status.version, type: "string", role: "text", nameKey: "version" }),
+  pr({ id: "version", value: s => s.status.version || undefined, type: "string", role: "text", nameKey: "version" }),
   pr({
     id: "downloading",
     value: s => s.items.some(i => ACTIVE.has(i.status)),

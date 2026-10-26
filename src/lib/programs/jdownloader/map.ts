@@ -1,3 +1,4 @@
+import { idIn, recordsIn } from "../../core/answer";
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
 import { asRecord, asText, eta, nonNegative, sizeOf } from "../../core/units";
 
@@ -250,20 +251,14 @@ export function toSnapshot(
   const state = asText(t.state);
   const linkList = Array.isArray(links) ? (links as JdLink[]).filter(l => l && typeof l === "object") : null;
   const items: DownloadItem[] = [];
-  for (const raw of Array.isArray(packages) ? (packages as unknown[]) : []) {
-    if (!raw || typeof raw !== "object") {
-      continue;
-    }
-    const p = raw as Record<string, unknown>;
-    if (typeof p.uuid !== "number") {
-      continue;
-    }
+  for (const p of recordsIn(packages, "JDownloader's queryPackages")) {
+    const key = idIn(p, "uuid", "JDownloader's queryPackages", "number");
     const own = linkList?.filter(l => l.packageUUID === p.uuid) ?? null;
     const { status, error } = own ? packageStatus(own, debug) : { status: fromPackage(p), error: "" };
     const added = (own ?? []).map(l => l.addedDate).filter((v): v is number => typeof v === "number" && v > 0);
     const done = (own ?? []).map(l => l.finishedDate).filter((v): v is number => typeof v === "number" && v > 0);
     items.push({
-      key: String(p.uuid),
+      key,
       name: asText(p.name),
       status,
       sizeBytes: sizeOf(p.bytesTotal),

@@ -1,3 +1,5 @@
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { AuthError, ProtocolError, UnreachableError } from "../../src/lib/core/errors";
 import {
   RATIO_INFINITE,
@@ -5,6 +7,7 @@ import {
   type Capability,
   type Command,
   type ProgramDriver,
+  type ProgramSnapshot,
   type Status,
 } from "../../src/lib/core/model";
 import { startFixtureServer, type FixtureServer, type RecordedCall } from "./fixture-server";
@@ -71,6 +74,97 @@ const sample = (kind: CommandKind, key: string): Command => {
       return { kind };
   }
 };
+
+/**
+ * The network hook's drift (fleet master test/network-hook.js, section 7): of every object's keys the first of each three
+ * is gone, the second null, the third of another type.
+ *
+ * @param value a parsed answer
+ * @returns it drifted
+ */
+function drift(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(drift);
+  }
+  if (value === null || typeof value !== "object") {
+    return value;
+  }
+  const out: Record<string, unknown> = {};
+  Object.entries(value).forEach(([key, v], i) => {
+    if (i % 3 === 1) {
+      out[key] = null;
+    } else if (i % 3 === 2) {
+      out[key] =
+        typeof v === "number" || typeof v === "boolean"
+          ? String(v)
+          : typeof v === "string" || v === null
+            ? 0
+            : drift(v);
+    }
+  });
+  return out;
+}
+
+/**
+ * A proxy in front of a fixture server that drifts the JSON of exactly one answer, the n-th it passes on.
+ *
+ * @param target the fixture server
+ * @param n which answer drifts (0 = the first)
+ * @returns the running proxy
+ */
+async function startDriftProxy(target: string, n: number): Promise<{ baseUrl: string; close(): Promise<void> }> {
+  let seen = 0;
+  const server = createServer((req, res) => {
+    let body = "";
+    req.on("data", (chunk: Buffer) => (body += chunk.toString()));
+    req.on("end", () => {
+      void (async () => {
+        const headers = Object.fromEntries(
+          Object.entries(req.headers).filter(
+            ([k, v]) => typeof v === "string" && k !== "host" && k !== "content-length",
+          ),
+        ) as Record<string, string>;
+        const real = await fetch(`${target}${req.url ?? "/"}`, {
+          method: req.method,
+          headers,
+          body: req.method === "GET" || req.method === "HEAD" ? undefined : body,
+          redirect: "manual",
+        });
+        let text = await real.text();
+        if (seen++ === n) {
+          try {
+            text = JSON.stringify(drift(JSON.parse(text)));
+          } catch {
+            // not JSON — it goes on as it came, like in the network hook
+          }
+        }
+        res.statusCode = real.status;
+        for (const [k, v] of real.headers) {
+          if (k !== "content-length" && k !== "content-encoding" && k !== "transfer-encoding") {
+            res.setHeader(k, v);
+          }
+        }
+        const cookies = real.headers.getSetCookie();
+        if (cookies.length) {
+          res.setHeader("set-cookie", cookies);
+        }
+        res.end(text);
+      })().catch(() => {
+        res.statusCode = 599;
+        res.end();
+      });
+    });
+  });
+  await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+  return {
+    baseUrl: `http://127.0.0.1:${(server.address() as AddressInfo).port}`,
+    close: () =>
+      new Promise<void>(resolve => {
+        server.closeAllConnections();
+        server.close(() => resolve());
+      }),
+  };
+}
 
 const unknownOrNonNegative = (v: unknown): boolean =>
   v === null || v === undefined || (typeof v === "number" && Number.isFinite(v) && v >= 0);
@@ -181,6 +275,41 @@ export function runDriverContract(c: ContractCase): void {
       expect(s.complete).toBe(true);
       expect(server.calls.filter(c.isLoginCall)).toHaveLength(2);
       await d.close();
+    });
+
+    // fleet suite C26b (network hook, section 7): an answer whose JSON drifted deletes no download — each answer of a
+    // clean poll drifted on its own, the driver refuses it or keeps every download
+    it("refuses a drifted answer instead of losing a download or the version", async () => {
+      const clean = c.makeDriver(server.baseUrl, { good: true });
+      const from = server.calls.length;
+      const before = await clean.poll();
+      const calls = server.calls.length - from;
+      await clean.close();
+      const keys = before.items.map(i => i.key);
+      for (let n = 0; n < calls; n++) {
+        const proxy = await startDriftProxy(server.baseUrl, n);
+        const d = c.makeDriver(proxy.baseUrl, { good: true });
+        try {
+          let last: ProgramSnapshot | null = null;
+          for (let poll = 0; poll < 3; poll++) {
+            try {
+              last = await d.poll();
+            } catch {
+              last = null;
+              continue;
+            }
+            const kept = new Set(last.items.map(i => i.key));
+            expect(
+              last.complete ? keys.filter(k => !kept.has(k)) : [],
+              `answer ${n} drifted, poll ${poll}: downloads a complete snapshot lost`,
+            ).toEqual([]);
+          }
+          expect(last?.status.version, `answer ${n} drifted: the version of the last poll`).toBe(before.status.version);
+        } finally {
+          await d.close();
+          await proxy.close();
+        }
+      }
     });
 
     it("reports a poll with a failed secondary list as incomplete instead of failing", async ({ skip }) => {

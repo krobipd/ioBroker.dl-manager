@@ -1,3 +1,5 @@
+import { recordIn, recordMapIn } from "../../core/answer";
+import { ProtocolError } from "../../core/errors";
 import { RATIO_INFINITE, type DownloadItem, type ProgramSnapshot, type Status } from "../../core/model";
 import { statusFrom } from "../../core/status";
 import { asRecord, asText, epochMs, eta, nonNegative, sizeOf } from "../../core/units";
@@ -77,6 +79,15 @@ export function parseQbVersion(text: unknown): [number, number, number] {
   return m ? [Number(m[1]), Number(m[2]), Number(m[3] ?? 0)] : [0, 0, 0];
 }
 
+/** The fields of `sync/maindata` the driver reads, with their type. */
+const MAINDATA_FIELDS = [
+  ["rid", "number"],
+  ["full_update", "boolean"],
+  ["server_state", "object"],
+  ["torrents", "object"],
+  ["torrents_removed", "object"],
+] as const;
+
 /** The merged picture of `sync/maindata`: a full update replaces, a partial one changes fields. */
 export class MaindataState {
   /** Response id to send with the next request. */
@@ -86,9 +97,18 @@ export class MaindataState {
   /** Program-wide values. */
   public serverState: Record<string, unknown> = {};
 
-  /** @param raw one answer of `sync/maindata` */
+  /**
+   * @param raw one answer of `sync/maindata` — refused whole, before anything changes, when a field it carries has
+   *   lost its type
+   */
   public apply(raw: unknown): void {
-    const r = asRecord(raw);
+    const r = recordIn(raw, "qBittorrent's maindata");
+    for (const [field, type] of MAINDATA_FIELDS) {
+      if (r[field] !== undefined && (typeof r[field] !== type || r[field] === null)) {
+        throw new ProtocolError(`qBittorrent's maindata with a ${field} that is no ${type} — answer refused`);
+      }
+    }
+    const changed = r.torrents === undefined ? [] : recordMapIn(r.torrents, "qBittorrent's torrents");
     if (typeof r.rid === "number") {
       this.rid = r.rid;
     }
@@ -96,8 +116,8 @@ export class MaindataState {
       this.torrents = {};
       this.serverState = {};
     }
-    for (const [hash, fields] of Object.entries(asRecord(r.torrents))) {
-      this.torrents[hash] = { ...this.torrents[hash], ...asRecord(fields) };
+    for (const [hash, fields] of changed) {
+      this.torrents[hash] = { ...this.torrents[hash], ...fields };
     }
     if (Array.isArray(r.torrents_removed)) {
       for (const hash of r.torrents_removed) {

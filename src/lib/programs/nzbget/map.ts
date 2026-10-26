@@ -1,6 +1,7 @@
+import { idIn, recordsIn } from "../../core/answer";
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
 import { unknownStatus } from "../../core/status";
-import { asRecord, asRecords, asText, doneOf, epochMs, hiLo, num } from "../../core/units";
+import { asRecord, asText, doneOf, epochMs, hiLo, num } from "../../core/units";
 
 const PP = [
   "PP_QUEUED",
@@ -103,11 +104,8 @@ export function toSnapshot(
   const st = asRecord(status);
   const paused = st.DownloadPaused === true;
   const items: DownloadItem[] = [];
-  for (const g of asRecords(groups)) {
-    const id = num(g.NZBID);
-    if (id === null) {
-      continue;
-    }
+  for (const g of recordsIn(groups, "NZBGet's listgroups")) {
+    const id = idIn(g, "NZBID", "NZBGet's listgroups", "number");
     const raw = asText(g.Status);
     const size = hiLo(g.FileSizeHi, g.FileSizeLo);
     const left = hiLo(g.RemainingSizeHi, g.RemainingSizeLo);
@@ -123,10 +121,10 @@ export function toSnapshot(
       error: "",
     });
   }
-  for (const h of asRecords(history)) {
-    const id = num(h.NZBID);
+  for (const h of recordsIn(history, "NZBGet's history")) {
+    const id = idIn(h, "NZBID", "NZBGet's history", "number");
     const raw = asText(h.Status);
-    if (id === null || raw.startsWith("DELETED/")) {
+    if (raw.startsWith("DELETED/")) {
       continue;
     }
     const s = mapNzbStatus(`h:${raw}`, debug);

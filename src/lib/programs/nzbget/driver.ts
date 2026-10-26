@@ -63,8 +63,10 @@ export class NzbDriver implements ProgramDriver {
     const status = await this.client.call("status");
     const groups = await this.client.call("listgroups", [0]);
     const history = await this.client.call("history", [false]);
+    // toSnapshot refuses a list out of shape — the queue is taken only from an answer it accepted
+    const snapshot = toSnapshot(version, status, groups, history, m => this.deps.log.debug(m));
     this.inQueue = new Set(asRecords(groups).map(g => String(g.NZBID)));
-    return toSnapshot(version, status, groups, history, m => this.deps.log.debug(m));
+    return snapshot;
   }
 
   /** @param cmd the command */

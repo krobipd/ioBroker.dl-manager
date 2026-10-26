@@ -363,8 +363,9 @@ export class ProgramTree {
     extra: Readonly<Record<string, ioBroker.StateValue>> | undefined,
   ): Promise<void> {
     for (const d of defs) {
-      if (d.value) {
-        await this.put(`${base}.${d.id}`, d.value(source));
+      const v = d.value?.(source);
+      if (v !== undefined) {
+        await this.put(`${base}.${d.id}`, v);
       }
     }
     for (const e of extras) {

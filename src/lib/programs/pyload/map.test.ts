@@ -1,3 +1,4 @@
+import { ProtocolError } from "../../core/errors";
 import { loadFixture } from "../../../../test/helpers/fixtures";
 import { mapPyStatus, packageStatus, statusTable, toSnapshot } from "./map";
 
@@ -92,7 +93,6 @@ describe("pyLoad package rules", () => {
       "0.5.0",
       { speed: -1 },
       [
-        { name: "no id", links: [] },
         {
           pid: 1,
           name: "p1",
@@ -117,5 +117,12 @@ describe("pyLoad package rules", () => {
     expect(snap.items[0]).toMatchObject({ sizeBytes: 250, doneBytes: 100, etaSeconds: 5 });
     expect(snap.items[1]).toMatchObject({ sizeBytes: null, etaSeconds: null });
     expect(snap.status).toMatchObject({ paused: false, downloadBps: null });
+  });
+
+  it("refuses a queue with a package without its id instead of losing that download (fleet C26b)", () => {
+    expect(() => toSnapshot("0.5.0", {}, [{ name: "no id", links: [] }], [], 0, null, () => undefined)).toThrow(
+      ProtocolError,
+    );
+    expect(() => toSnapshot("0.5.0", {}, null, [], 0, null, () => undefined)).toThrow(ProtocolError);
   });
 });

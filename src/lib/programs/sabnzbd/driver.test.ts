@@ -2,6 +2,7 @@ import { runDriverContract, type ContractServer } from "../../../../test/helpers
 import { startFixtureServer } from "../../../../test/helpers/fixture-server";
 import { firstUrl } from "../../../../test/helpers/first-url";
 import { loadFixture } from "../../../../test/helpers/fixtures";
+import { AuthError, ProtocolError } from "../../core/errors";
 import type { ProgramConfig } from "../../core/model";
 import { SabDriver } from "./driver";
 import { mapSabStatus, statusTable } from "./map";
@@ -138,7 +139,7 @@ describe("SABnzbd details", () => {
     expect((await firstUrl(() => d.poll())).startsWith("http://nas:8080/sab/api?")).toBe(true);
   });
 
-  it("skips an empty entry in the queue instead of failing the query", async () => {
+  it("refuses a queue with an empty entry instead of losing that download (fleet C26b)", async () => {
     const s = await startFixtureServer(call => {
       const mode = new URLSearchParams(call.query).get("mode");
       if (mode === "queue") {
@@ -147,8 +148,7 @@ describe("SABnzbd details", () => {
       return { body: mode === "history" ? { history: { slots: [] } } : { status: {} } };
     });
     try {
-      const snap = await new SabDriver(cfg(s.baseUrl), { ...timers, log }).poll();
-      expect(snap.items.map(i => i.key)).toEqual(["a"]);
+      await expect(new SabDriver(cfg(s.baseUrl), { ...timers, log }).poll()).rejects.toThrow(ProtocolError);
     } finally {
       await s.close();
     }
@@ -188,6 +188,17 @@ describe("SABnzbd details", () => {
     const s = await startFixtureServer(() => ({ body: { auth: "nzbkey" } }));
     try {
       await expect(new SabDriver(cfg(s.baseUrl), { ...timers, log }).test()).rejects.toThrow(/NZB key/);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("refuses a mode=auth answer without the key kind instead of calling the key wrong (fleet C26b)", async () => {
+    const s = await startFixtureServer(() => ({ body: { auth: null } }));
+    try {
+      const err = await new SabDriver(cfg(s.baseUrl), { ...timers, log }).test().catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(ProtocolError);
+      expect(err).not.toBeInstanceOf(AuthError);
     } finally {
       await s.close();
     }

@@ -147,11 +147,21 @@ const bodies = (s: { calls: RecordedCall[] }, method: string): Record<string, un
     .map(b => b.params ?? {});
 
 describe("Transmission driver details", () => {
-  it("skips an empty entry in the torrent list instead of failing the query", async () => {
-    const s = await trSynth({ torrent_get: { torrents: [null, { hash_string: "h1", status: 4, name: "x" }] } });
+  it("refuses a torrent list with an empty entry or a torrent without its hash (fleet C26b)", async () => {
+    for (const odd of [null, { hash_string: 0, status: 4 }]) {
+      const s = await trSynth({ torrent_get: { torrents: [odd, { hash_string: "h1", status: 4, name: "x" }] } });
+      try {
+        await expect(new TrDriver(cfg(s.baseUrl), { ...timers, log }).poll()).rejects.toThrow(ProtocolError);
+      } finally {
+        await s.close();
+      }
+    }
+  });
+
+  it("reads an empty torrent list as no torrents", async () => {
+    const s = await trSynth({ torrent_get: { torrents: [] } });
     try {
-      const snap = await new TrDriver(cfg(s.baseUrl), { ...timers, log }).poll();
-      expect(snap.items.map(i => i.key)).toEqual(["h1"]);
+      expect((await new TrDriver(cfg(s.baseUrl), { ...timers, log }).poll()).items).toEqual([]);
     } finally {
       await s.close();
     }
@@ -162,7 +172,7 @@ describe("Transmission driver details", () => {
       new TrDriver({ ...cfg("http://nas:1"), port: 0, ...over }, { ...timers, log });
     expect(await firstUrl(() => d({}).poll())).toBe("http://nas:9091/transmission/rpc");
     expect(await firstUrl(() => d({ path: "rpc" }).poll())).toBe("http://nas:9091/rpc");
-    const s = await trSynth({});
+    const s = await trSynth({ torrent_get: { torrents: [] } });
     try {
       await new TrDriver({ ...cfg(s.baseUrl), username: "", password: "" }, { ...timers, log }).poll();
       expect(s.calls.every(c => c.headers.authorization === undefined)).toBe(true);
@@ -171,9 +181,14 @@ describe("Transmission driver details", () => {
     }
   });
 
-  it("stops only running, keyed torrents, forgets gone ones and asks free space only with a folder", async () => {
+  it("stops only running torrents, forgets gone ones and asks free space only with a folder", async () => {
     const state: Record<string, unknown> = {
-      torrent_get: { torrents: [{ hash_string: "a", status: 0 }, { hash_string: "b", status: 4 }, { status: 4 }] },
+      torrent_get: {
+        torrents: [
+          { hash_string: "a", status: 0 },
+          { hash_string: "b", status: 4 },
+        ],
+      },
       session_get: { version: "4.1.3 (abc)" },
     };
     const s = await trSynth(state);

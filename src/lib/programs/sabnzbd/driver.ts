@@ -8,7 +8,8 @@ import type {
   DriverDeps,
   ProgramConfig,
 } from "../../core/model";
-import { asRecord, asRecords, asText, toKiB } from "../../core/units";
+import { idIn, recordIn, recordsIn } from "../../core/answer";
+import { asText, toKiB } from "../../core/units";
 import { RETRY_EXTRA } from "../retry-extra";
 import { SabClient } from "./client";
 import { toSnapshot } from "./map";
@@ -53,17 +54,23 @@ export class SabDriver implements ProgramDriver {
 
   /** @returns one complete query */
   public async poll(): Promise<ProgramSnapshot> {
-    const queue = asRecord((await this.client.call({ mode: "queue" })).queue);
+    const queue = recordIn((await this.client.call({ mode: "queue" })).queue, "SABnzbd's queue");
+    const slots = recordsIn(queue.slots, "SABnzbd's queue slots").map(s =>
+      idIn(s, "nzo_id", "SABnzbd's queue", "text"),
+    );
     const h = (
       await this.client.call({ mode: "history", limit: HISTORY_LIMIT, last_history_update: this.historyUpdate })
     ).history;
-    if (h && typeof h === "object") {
-      const hist = asRecord(h);
-      this.history = Array.isArray(hist.slots) ? hist.slots : [];
+    // an unchanged history comes as `false` — the one read before stays
+    if (h !== false) {
+      const hist = recordIn(h, "SABnzbd's history");
+      const history = recordsIn(hist.slots, "SABnzbd's history slots");
+      history.forEach(e => idIn(e, "nzo_id", "SABnzbd's history", "text"));
+      this.history = history;
       const update = hist.last_history_update;
       this.historyUpdate = typeof update === "number" || typeof update === "string" ? String(update) : "0";
     }
-    this.inQueue = new Set(asRecords(queue.slots).map(s => String(s.nzo_id)));
+    this.inQueue = new Set(slots);
     const status = (await this.client.call({ mode: "status", skip_dashboard: "1" })).status;
     const ppPause = (status as { pp_pause_event?: unknown } | null | undefined)?.pp_pause_event === true;
     return toSnapshot(queue, this.history, m => this.deps.log.debug(m), ppPause);
@@ -72,6 +79,9 @@ export class SabDriver implements ProgramDriver {
   /** @returns the version, after SABnzbd confirmed the key as its full API key (`mode=auth`, no warning on a miss) */
   public async test(): Promise<string> {
     const auth = (await this.client.callWithoutKey({ mode: "auth", key: this.client.apiKey })).auth;
+    if (typeof auth !== "string") {
+      throw new ProtocolError("sabnzbd: mode=auth answered no key kind — answer refused");
+    }
     if (auth !== "apikey") {
       throw new AuthError(
         auth === "nzbkey"

@@ -2,7 +2,7 @@ import { runDriverContract, type ContractServer } from "../../../../test/helpers
 import { startFixtureServer } from "../../../../test/helpers/fixture-server";
 import { firstUrl } from "../../../../test/helpers/first-url";
 import { loadFixture } from "../../../../test/helpers/fixtures";
-import { UnreachableError } from "../../core/errors";
+import { AuthError, ProtocolError, UnreachableError } from "../../core/errors";
 import { errText } from "../../err-text";
 import type { ProgramConfig } from "../../core/model";
 import { DlDriver } from "./driver";
@@ -167,6 +167,32 @@ describe("Deluge connection", () => {
       const s = await dlSynth(results, status);
       try {
         await expect(new DlDriver(cfg(s.baseUrl), { ...timers, log }).poll()).rejects.toThrow(err);
+      } finally {
+        await s.close();
+      }
+    }
+  });
+
+  it("refuses a login answer without its verdict, a host status and a torrent list out of shape (fleet C26b)", async () => {
+    const login = await startFixtureServer(call => {
+      const { id } = JSON.parse(call.body) as { id: number };
+      return { body: { error: null, id } };
+    });
+    try {
+      const err = await new DlDriver(cfg(login.baseUrl), { ...timers, log }).poll().catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(ProtocolError);
+      expect(err).not.toBeInstanceOf(AuthError);
+    } finally {
+      await login.close();
+    }
+    for (const results of [
+      { ...HOST, "web.get_host_status": null },
+      { ...HOST, "web.update_ui": { connected: true, torrents: null, stats: {} } },
+      { ...HOST, "web.update_ui": { connected: true, torrents: { h: null }, stats: {} } },
+    ]) {
+      const s = await dlSynth({ ...results, "web.connected": true });
+      try {
+        await expect(new DlDriver(cfg(s.baseUrl), { ...timers, log }).poll()).rejects.toThrow(ProtocolError);
       } finally {
         await s.close();
       }

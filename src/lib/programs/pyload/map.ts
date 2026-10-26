@@ -1,4 +1,5 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
+import { idIn, recordsIn } from "../../core/answer";
 import { asRecord, asRecords, doneOf, fromKiB, nonNegative, num, sizeOf } from "../../core/units";
 
 /** A file of a pyLoad package (`get_queue_data` → `links`). */
@@ -128,18 +129,15 @@ export function toSnapshot(
   debug: (msg: string) => void,
 ): ProgramSnapshot {
   const running = new Map<number, Record<string, unknown>>();
-  for (const d of asRecords(active)) {
+  for (const d of recordsIn(active, "pyLoad's status_downloads")) {
     const fid = num(d.fid);
     if (fid !== null) {
       running.set(fid, d);
     }
   }
   const items: DownloadItem[] = [];
-  for (const p of asRecords(queue)) {
-    const pid = num(p.pid);
-    if (pid === null) {
-      continue;
-    }
+  for (const p of recordsIn(queue, "pyLoad's get_queue_data")) {
+    const pid = idIn(p, "pid", "pyLoad's get_queue_data", "number");
     const files = asRecords(p.links) as PyFile[];
     const { status, error } = packageStatus(files, debug);
     let size = 0;
@@ -160,8 +158,8 @@ export function toSnapshot(
       }
     }
     items.push({
-      key: String(pid),
-      name: typeof p.name === "string" ? p.name : String(pid),
+      key: pid,
+      name: typeof p.name === "string" ? p.name : pid,
       status,
       sizeBytes: sizeOf(size),
       doneBytes: done,

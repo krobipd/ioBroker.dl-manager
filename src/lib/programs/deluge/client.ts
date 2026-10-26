@@ -60,8 +60,13 @@ export class DlClient {
 
   private async connect(): Promise<void> {
     this.http.clearCookies();
-    if ((await this.raw("auth.login", [this.cfg.password])) !== true) {
+    // only a `false` is a rejection — an answer without its result is no verdict on the password (fleet C26b)
+    const login = await this.raw("auth.login", [this.cfg.password]);
+    if (login === false) {
       throw new AuthError("deluge: password rejected");
+    }
+    if (login !== true) {
+      throw new ProtocolError("deluge: auth.login answered no verdict — answer refused");
     }
     const hosts = await this.raw("web.get_hosts");
     const first = Array.isArray(hosts) && Array.isArray(hosts[0]) ? String(hosts[0][0]) : "";
@@ -69,11 +74,12 @@ export class DlClient {
       throw new ProtocolError("deluge: the web UI knows no daemon (connection manager is empty)");
     }
     const status = await this.raw("web.get_host_status", [first]);
-    if (Array.isArray(status)) {
-      this.version = typeof status[2] === "string" ? status[2] : "";
-      if (status[1] === "Offline") {
-        throw new UnreachableError("deluge: the daemon behind the web UI is offline");
-      }
+    if (!Array.isArray(status)) {
+      throw new ProtocolError("deluge: web.get_host_status is no list — answer refused");
+    }
+    this.version = typeof status[2] === "string" ? status[2] : "";
+    if (status[1] === "Offline") {
+      throw new UnreachableError("deluge: the daemon behind the web UI is offline");
     }
     if ((await this.raw("web.connected")) !== true) {
       await this.raw("web.connect", [first]);

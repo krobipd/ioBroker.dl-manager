@@ -1,4 +1,5 @@
 import { loadFixture } from "../../../../test/helpers/fixtures";
+import { ProtocolError } from "../../core/errors";
 import { mapNzbStatus, statusTable, toSnapshot } from "./map";
 
 const result = (version: string, state: string, name: string): unknown =>
@@ -95,14 +96,22 @@ describe("NZBGet status (written out, not taken from map.ts)", () => {
 });
 
 describe("NZBGet edge values", () => {
-  it("skips groups without id, reads 64-bit rates and keeps special values unknown", () => {
+  it("refuses a list with a group or history entry without its NZBID (fleet C26b)", () => {
+    for (const [groups, history] of [
+      [[{ Status: "QUEUED" }], []],
+      [[{ NZBID: "1", Status: "QUEUED" }], []],
+      [[], [null]],
+      [null, []],
+    ]) {
+      expect(() => toSnapshot("26.3", {}, groups, history, () => undefined)).toThrow(ProtocolError);
+    }
+  });
+
+  it("reads 64-bit rates and keeps special values unknown", () => {
     const snap = toSnapshot(
       "26.3",
       { DownloadRateHi: 1, DownloadRateLo: 0, DownloadRate: 5 },
-      [
-        { Status: "QUEUED" },
-        { NZBID: 1, Status: "QUEUED", FileSizeHi: 0, FileSizeLo: 100, RemainingSizeHi: 0, RemainingSizeLo: 150 },
-      ],
+      [{ NZBID: 1, Status: "QUEUED", FileSizeHi: 0, FileSizeLo: 100, RemainingSizeHi: 0, RemainingSizeLo: 150 }],
       [{ NZBID: 2, Status: "SUCCESS/ALL", HistoryTime: 0 }],
       () => undefined,
     );
