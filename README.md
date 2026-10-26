@@ -130,7 +130,20 @@ The test button on a program's card asks the program once and shows its answer.
 
 ### **WORK IN PROGRESS**
 
+- New: a setting decides whether a new link resumes a paused program; by default the link waits until you resume the program
+- New: scripts can run a program's connection test with the message `testConnection`
 - Fixed: the e-mail address of a My.JDownloader account no longer appears in the device object or an object export
+- Fixed: a link added while the adapter holds Transmission, aria2 or qBittorrent before 5.3 paused now resumes with the others
+- Fixed: aria2 shows a seeding torrent as seeding and gives torrents their ratio; an infinite ratio shows as ∞ instead of empty
+- Fixed: size stays empty while a program does not know it yet, and time left stays empty while a torrent seeds
+- Fixed: NZBGet and pyLoad show their new version after an update; pyLoad shows a decrypting package as queued
+- Fixed: a program on an IPv6 address is reachable
+- Fixed: `last.finished` and `last.failed` name the download that ended last; a finished SABnzbd job keeps its added time
+- Fixed: a pressed button goes back to false once the program took the command, also during a query
+- Fixed: `error` names the real cause instead of a proxy's HTML page or an encryption message, and names a refused session
+- Fixed: a programs.json without a program list stops the start instead of removing every device
+- Fixed: the program dialog checks its fields again before it stores, and never stores over a card another tab changed
+- Changed: requires js-controller 7.2.5 and admin 8.2.0
 
 ### 0.4.0 (2026-10-02)
 
