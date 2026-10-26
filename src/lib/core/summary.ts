@@ -16,28 +16,55 @@ const sum = (values: (number | null | undefined)[]): number | null => {
   return known.length ? known.reduce((a, b) => a + b, 0) : null;
 };
 
+/** The values that tell reachability — the only ones an outage changes (fleet suite "counterpart gone and back"). */
+export const REACHABILITY_IDS = ["info.connection", "info.programsOnline", "info.programsAllOnline"] as const;
+
 /**
- * The adapter-wide values over all configured programs. Only reachable programs count — an unreachable program's
- * last values are stale. Speeds are added in bytes per second and converted once.
+ * The sums over the given polls. Speeds are added in bytes per second and converted once.
+ *
+ * @param read the programs whose last poll counts
+ * @returns value per `summary.*` datapoint
+ */
+function sums(read: readonly SummaryInput[]): Record<string, ioBroker.StateValue> {
+  const items = read.flatMap(p => p.snapshot?.items ?? []);
+  const active = countActive(items);
+  const pausable = read.filter(p => p.canPause);
+  return {
+    "summary.downloading": active > 0,
+    "summary.active": active,
+    "summary.queued": countQueued(items),
+    "summary.downloadSpeed": toMBps(sum(read.map(p => p.snapshot?.status.downloadBps))),
+    "summary.uploadSpeed": toMBps(sum(read.map(p => p.snapshot?.status.uploadBps))),
+    "summary.pauseAll": pausable.length > 0 && pausable.every(p => p.snapshot?.status.paused === true),
+  };
+}
+
+/**
+ * The adapter-wide values over all configured programs. Reachability counts the programs whose last poll succeeded;
+ * the sums count the last poll of every program, reachable or not — an outage shows only on reachability, the values
+ * it read stay (krobi 2026-10-06 17:55). Without any poll the sums are left out, so they keep what they had.
  *
  * @param programs every enabled program, reachable or not
  * @returns value per datapoint id below the instance
  */
 export function computeSummary(programs: readonly SummaryInput[]): Record<string, ioBroker.StateValue> {
   const online = programs.filter(p => p.online && p.snapshot);
-  const items = online.flatMap(p => p.snapshot?.items ?? []);
-  const active = countActive(items);
-  const pausable = online.filter(p => p.canPause);
+  const read = programs.filter(p => p.snapshot);
   return {
     "info.connection": online.length > 0,
     "info.programsTotal": programs.length,
     "info.programsOnline": online.length,
     "info.programsAllOnline": programs.length > 0 && online.length === programs.length,
-    "summary.downloading": active > 0,
-    "summary.active": active,
-    "summary.queued": countQueued(items),
-    "summary.downloadSpeed": toMBps(sum(online.map(p => p.snapshot?.status.downloadBps))),
-    "summary.uploadSpeed": toMBps(sum(online.map(p => p.snapshot?.status.uploadBps))),
-    "summary.pauseAll": pausable.length > 0 && pausable.every(p => p.snapshot?.status.paused === true),
+    ...(read.length ? sums(read) : {}),
   };
+}
+
+/**
+ * The stopped adapter asks nothing: no connection, and no sums that look current (final review M6).
+ *
+ * @param total the enabled programs
+ * @returns value per datapoint id below the instance
+ */
+export function stoppedSummary(total: number): Record<string, ioBroker.StateValue> {
+  return { ...computeSummary(Array(total).fill({ online: false, canPause: false, snapshot: null })), ...sums([]) };
 }

@@ -343,9 +343,9 @@ describe("ProgramManager — start", () => {
       await flush();
     }
     const speeds = a.writeLog.filter(l => l.id === "summary.downloadSpeed").map(l => l.val);
-    // every poll adds a program: each summary written is larger than the one before, none comes back stale
-    expect(speeds[0]).toBeNull();
-    const sums = speeds.slice(1) as number[];
+    // every poll adds a program: each summary written is larger than the one before, none comes back stale; before
+    // the first poll no sum is written (they keep what they had)
+    const sums = speeds as number[];
     expect(sums).toEqual([...new Set(sums)].sort((x, y) => x - y));
     expect(sums.at(-1)).toBe(7);
   });
@@ -365,6 +365,33 @@ describe("ProgramManager — start", () => {
     expect(w.a.val("summary.downloadSpeed")).toBe(3);
     expect(w.a.val("summary.active")).toBe(2);
     expect(w.a.val("summary.queued")).toBe(1);
+  });
+
+  // fleet suites "counterpart gone and back" and "a command nobody answers" (krobi 2026-10-06 17:55): an outage shows
+  // only on reachability — the sums keep what the program said last, and a pauseAll no program confirmed stays unconfirmed
+  it("changes only reachability when a program goes away, keeps its sums and confirms no pending pauseAll", async () => {
+    const gone: { snapshot?: ProgramSnapshot; error?: Error } = {
+      snapshot: snap(2_000_000, [item("b", "downloading"), item("c", "queued")]),
+    };
+    const w = world({ h1: { snapshot: snap(1_000_000, [item("a", "downloading")]) }, h2: gone as Behaviour });
+    const m = w.manager();
+    await m.start([row("qbittorrent", "a", "h1"), row("qbittorrent", "b", "h2")]);
+    await flush();
+    expect(w.a.val("summary.active")).toBe(2);
+    await w.a.setState("summary.pauseAll", { val: true, ack: false });
+    gone.error = new UnreachableError("down");
+    const from = w.a.writeLog.length;
+    await m.onUserWrite("qbittorrent-b.paused", true);
+    await flush();
+    expect(w.a.writeLog.slice(from).map(l => l.id.replace(`${NS}.`, ""))).toEqual([
+      "qbittorrent-b.online",
+      "info.programsOnline",
+      "info.programsAllOnline",
+    ]);
+    expect(w.a.val("summary.active")).toBe(2);
+    expect(w.a.val("summary.queued")).toBe(1);
+    expect(w.a.val("summary.downloadSpeed")).toBe(3);
+    expect(w.a.states.get(`${NS}.summary.pauseAll`)).toMatchObject({ val: true, ack: false });
   });
 
   it("reports a rejected login once as an actionable problem", async () => {

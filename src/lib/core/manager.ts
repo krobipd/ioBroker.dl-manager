@@ -11,7 +11,7 @@ import { loginHint } from "./login-hint";
 import type { DriverDeps, ProgramDriver, ProgramEntry } from "./model";
 import { redact } from "./redact";
 import { ProgramRunner, type RunnerDeps } from "./runner";
-import { computeSummary, type SummaryInput } from "./summary";
+import { computeSummary, REACHABILITY_IDS, stoppedSummary, type SummaryInput } from "./summary";
 import { ProgramTree, writeLastEvents, type ProgramEvents, type TreeAdapter, type TreeScope } from "./tree";
 import { Serial } from "./serial";
 
@@ -288,7 +288,12 @@ export class ProgramManager {
     await Promise.allSettled([...this.running.values()].map(r => r.runner.stop()));
     this.running.clear();
     // nothing runs any more: every count and speed goes to nothing, the connection markers to false
-    await this.writeSummary();
+    await this.summaries.run(async () => {
+      const total = this.rows.filter(r => r.enabled).length;
+      for (const [id, val] of Object.entries(stoppedSummary(total))) {
+        await this.a.setStateChanged(id, { val, ack: true });
+      }
+    });
   }
 
   private driverDeps(programId: string): DriverDeps {
@@ -348,7 +353,9 @@ export class ProgramManager {
     }
     try {
       await writeLastEvents((id, st) => this.a.setState(id, st), "summary", events);
-      await this.writeSummary();
+      // a failed poll changes reachability only: the sums it did not read stay, and a pauseAll the programs have not
+      // confirmed yet is not confirmed by it
+      await this.writeSummary(ok ? undefined : REACHABILITY_IDS);
     } catch (err: unknown) {
       this.a.log.debug(`summary not written: ${errText(err)}`);
     }
@@ -358,13 +365,14 @@ export class ProgramManager {
    * The summary over all programs, one write after the other: polls that end together would otherwise write their
    * summaries interleaved, and an older one could be written last. Each one is computed when it is its turn.
    *
+   * @param only the ids to write, all when absent
    * @returns when this summary is written
    */
-  private writeSummary(): Promise<void> {
-    return this.summaries.run(() => this.writeSummaryNow());
+  private writeSummary(only?: readonly string[]): Promise<void> {
+    return this.summaries.run(() => this.writeSummaryNow(only));
   }
 
-  private async writeSummaryNow(): Promise<void> {
+  private async writeSummaryNow(only?: readonly string[]): Promise<void> {
     const inputs: SummaryInput[] = this.rows
       .filter(r => r.enabled)
       .map(r => {
@@ -378,6 +386,9 @@ export class ProgramManager {
           : { online: false, canPause: false, snapshot: null };
       });
     for (const [id, val] of Object.entries(computeSummary(inputs))) {
+      if (only && !only.includes(id)) {
+        continue;
+      }
       await this.a.setStateChanged(id, { val, ack: true });
     }
   }

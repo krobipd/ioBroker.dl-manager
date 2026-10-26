@@ -54,10 +54,12 @@ function makeDriver(poll: () => Promise<ProgramSnapshot>): ProgramDriver & { pol
 function makeTree(): {
   sync: Mock<RunnerTree["sync"]>;
   markOffline: Mock<RunnerTree["markOffline"]>;
+  markUnreachable: Mock<RunnerTree["markUnreachable"]>;
 } {
   return {
     sync: vi.fn<RunnerTree["sync"]>(() => Promise.resolve(NO_EVENTS)),
     markOffline: vi.fn<RunnerTree["markOffline"]>(() => Promise.resolve()),
+    markUnreachable: vi.fn<RunnerTree["markUnreachable"]>(() => Promise.resolve()),
   };
 }
 
@@ -262,7 +264,7 @@ describe("ProgramRunner", () => {
     expect(driver.commands).toHaveLength(0);
   });
 
-  it("marks offline without an info or warn line on a network error, and keeps asking", async () => {
+  it("marks only unreachable without an info or warn line on a network error, and keeps asking", async () => {
     const clock = new ManualClock();
     const driver = makeDriver(() => Promise.reject(new UnreachableError("connect ECONNREFUSED")));
     const tree = makeTree();
@@ -274,7 +276,9 @@ describe("ProgramRunner", () => {
     expect(r.online).toBe(false);
     expect(driver.polls).toBe(2);
     expect(deps.lines.filter(l => l.level !== "debug")).toHaveLength(0);
-    expect(tree.markOffline).toHaveBeenCalledWith("connect ECONNREFUSED");
+    // an outage shows only on reachability (fleet suite "counterpart gone and back"): the reason text stays
+    expect(tree.markUnreachable).toHaveBeenCalled();
+    expect(tree.markOffline).not.toHaveBeenCalled();
   });
 
   it("warns once for a repeated protocol error, then only debug", async () => {
@@ -416,9 +420,7 @@ describe("ProgramRunner", () => {
 
   it("redacts credentials in the reason text", async () => {
     const clock = new ManualClock();
-    const driver = makeDriver(() =>
-      Promise.reject(new UnreachableError("GET http://u:secret@h/api?apikey=abc failed")),
-    );
+    const driver = makeDriver(() => Promise.reject(new ProtocolError("GET http://u:secret@h/api?apikey=abc failed")));
     const tree = makeTree();
     const r = new ProgramRunner("fake-a", driver, tree, makeDeps(clock), 10_000, vi.fn());
     r.start();

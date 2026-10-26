@@ -28,6 +28,8 @@ export interface RunnerTree {
   sync(snapshot: ProgramSnapshot): Promise<ProgramEvents>;
   /** Marks the program offline with a reason. */
   markOffline(reason: string): Promise<void>;
+  /** Marks the program unreachable — online false, every other value stays. */
+  markUnreachable(): Promise<void>;
 }
 
 /**
@@ -203,7 +205,8 @@ export class ProgramRunner {
     this.announceLabel = null;
     this._online = false;
     try {
-      await this.tree.markOffline(text);
+      // an outage shows only on reachability (krobi 2026-10-06 17:55) — the program's own text is no outage
+      await (kind === "unreachable" ? this.tree.markUnreachable() : this.tree.markOffline(text));
     } catch (e: unknown) {
       this.deps.log.debug(`[${this.id}] could not mark offline: ${errText(e)}`);
     }

@@ -1,5 +1,5 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "./model";
-import { computeSummary } from "./summary";
+import { computeSummary, stoppedSummary } from "./summary";
 
 const item = (key: string, status: Status): DownloadItem => ({
   key,
@@ -23,7 +23,7 @@ const snap = (
 });
 
 describe("computeSummary", () => {
-  it("counts only reachable programs and adds their speeds in bytes before converting", () => {
+  it("counts reachability over the reachable programs, the sums over every program's last poll (fleet outage suite)", () => {
     const s = computeSummary([
       {
         online: true,
@@ -39,15 +39,15 @@ describe("computeSummary", () => {
       "info.programsOnline": 2,
       "info.programsAllOnline": false,
       "summary.downloading": true,
-      "summary.active": 2,
+      "summary.active": 3,
       "summary.queued": 1,
-      "summary.downloadSpeed": 2.5,
+      "summary.downloadSpeed": 11.5,
       "summary.uploadSpeed": 0.25,
       "summary.pauseAll": false,
     });
   });
 
-  it("reports pauseAll only when every reachable program that can pause is paused", () => {
+  it("reports pauseAll only when every program that can pause was read paused", () => {
     const paused = { paused: true };
     const s = computeSummary([
       { online: true, canPause: true, snapshot: snap(0, [], paused) },
@@ -71,10 +71,23 @@ describe("computeSummary", () => {
     expect(s["info.connection"]).toBe(false);
   });
 
-  it("says unknown (null) for speeds nobody reports, and never 'all online' without programs", () => {
-    const s = computeSummary([]);
+  it("writes no sum before the first poll, so the sums keep what they had", () => {
+    const s = computeSummary([
+      { online: false, canPause: true, snapshot: null },
+      { online: false, canPause: false, snapshot: null },
+    ]);
+    expect(Object.keys(s).filter(id => id.startsWith("summary."))).toEqual([]);
+    expect(s["info.programsTotal"]).toBe(2);
+  });
+
+  it("says unknown (null) for speeds on a stopped adapter, and never 'all online' without programs", () => {
+    expect(computeSummary([])["info.programsAllOnline"]).toBe(false);
+    const s = stoppedSummary(2);
     expect(s["info.connection"]).toBe(false);
+    expect(s["info.programsTotal"]).toBe(2);
+    expect(s["info.programsOnline"]).toBe(0);
     expect(s["info.programsAllOnline"]).toBe(false);
+    expect(s["summary.active"]).toBe(0);
     expect(s["summary.downloadSpeed"]).toBeNull();
     expect(s["summary.uploadSpeed"]).toBeNull();
     expect(s["summary.pauseAll"]).toBe(false);

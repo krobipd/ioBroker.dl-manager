@@ -259,13 +259,18 @@ export class ProgramTree {
   }
 
   /**
-   * The program cannot be reached (or is not asked yet): online false, the reason in `error`.
+   * The program failed with a text of its own (or is not asked yet): online false, the reason in `error`.
    *
    * @param reason the fleet reason text — `Unknown` or the program's own message
    */
   public async markOffline(reason: string): Promise<void> {
     await this.put(`${this.dev}.online`, false);
     await this.put(`${this.dev}.error`, reason);
+  }
+
+  /** The program cannot be reached: online false, nothing else — what it said last stays. */
+  public async markUnreachable(): Promise<void> {
+    await this.put(`${this.dev}.online`, false);
   }
 
   /**
