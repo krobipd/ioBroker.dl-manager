@@ -1,0 +1,29 @@
+{
+  "_comment": "Release gate A15: every download program a source knows is in the catalogue or excluded with a reason. The catalogue is the program types of src/lib/programs/catalog.ts under the names these sources spell them (source-names.json, held to catalog.ts by catalog.test.ts). Sonarr and Radarr list the download programs they drive, one folder each. pyLoad and JDownloader appear in neither list.",
+  "catalog": "src/lib/programs/source-names.json",
+  "pattern": "\"path\":\"src/NzbDrone\\.Core/Download/Clients/([A-Za-z0-9]+)\"",
+  "sources": [
+    {
+      "name": "Sonarr download clients",
+      "url": "https://api.github.com/repos/Sonarr/Sonarr/contents/src/NzbDrone.Core/Download/Clients?ref=develop"
+    },
+    {
+      "name": "Radarr download clients",
+      "url": "https://api.github.com/repos/Radarr/Radarr/contents/src/NzbDrone.Core/Download/Clients?ref=develop"
+    }
+  ],
+  "excluded": {
+    "Blackhole": "A watch folder Sonarr and Radarr drop .torrent and .nzb files into, not a program with an interface to read.",
+    "DownloadStation": "The download package of a Synology NAS, reached through the NAS's own web API; not one of the programs dl-manager drives.",
+    "Flood": "A web interface in front of rTorrent, qBittorrent, Transmission or Deluge, not a download program of its own - dl-manager talks to the program behind it.",
+    "FreeboxDownload": "The download service built into the Freebox router of the French provider Free; not one of the programs dl-manager drives.",
+    "Hadouken": "A headless BitTorrent client whose repository has had no change since 2020-08-30; not one of the programs dl-manager drives.",
+    "NzbVortex": "A commercial Usenet client for macOS; not one of the programs dl-manager drives.",
+    "Pneumatic": "Writes .strm files for the Kodi add-on Pneumatic, not a program with an interface to read.",
+    "RQBit": "A BitTorrent client written in Rust with an HTTP API; not one of the programs dl-manager drives.",
+    "Tribler": "A BitTorrent client with anonymous downloading over its own onion network; not one of the programs dl-manager drives.",
+    "Vuze": "A Java BitTorrent client, formerly Azureus; not one of the programs dl-manager drives.",
+    "rTorrent": "A terminal BitTorrent client reached over XML-RPC through SCGI; not one of the programs dl-manager drives.",
+    "uTorrent": "A closed-source BitTorrent client for Windows and macOS; not one of the programs dl-manager drives."
+  }
+}

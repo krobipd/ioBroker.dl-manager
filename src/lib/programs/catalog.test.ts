@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { baseUrl, CATALOG, catalogEntry, effectiveEndpoint, needsOf, programInfo } from "./catalog";
 import { PROGRAMS } from "./registry";
@@ -18,6 +20,13 @@ describe("catalog", () => {
 
   it("knows every type once", () => {
     expect(new Set(CATALOG.map(p => p.type)).size).toBe(CATALOG.length);
+  });
+
+  it("maps every program name of the device sources (device-sources.json) to a catalog type", () => {
+    const names = JSON.parse(readFileSync(join(__dirname, "source-names.json"), "utf8")) as Record<string, string>;
+    const types = new Set<string>(CATALOG.map(p => p.type));
+    expect(Object.values(names).filter(t => !types.has(t))).toEqual([]);
+    expect(new Set(Object.values(names)).size).toBe(Object.keys(names).length);
   });
 
   it("finds a known type and nothing for an unknown or inherited name", () => {

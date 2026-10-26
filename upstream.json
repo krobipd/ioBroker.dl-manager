@@ -1,0 +1,12 @@
+{
+  "_comment": "Release gate A12: the versioned reference source of the program APIs dl-manager speaks. Transmission's RPC is the one with versioned protocol changes (4.1 brought JSON-RPC 2.0 and snake_case names); the watched files are its RPC implementation and the names it answers with. 4.1.4 was checked against 4.1.3: none of the watched RPC files changed, transmission.h only gained comments and config-dir lock functions.",
+  "source": "github:transmission/transmission",
+  "verified": "4.1.4",
+  "watch": [
+    "libtransmission/rpcimpl.",
+    "libtransmission/rpc-server.",
+    "libtransmission/api-compat.",
+    "libtransmission/quark.",
+    "libtransmission/transmission.h"
+  ]
+}
