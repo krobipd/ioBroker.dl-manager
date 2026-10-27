@@ -163,6 +163,23 @@ describe("SABnzbd details", () => {
     }
   });
 
+  it("names the history itself when it is no object — the reason the user reads points at the right part", async () => {
+    const s = await startFixtureServer(call => {
+      const mode = new URLSearchParams(call.query).get("mode");
+      if (mode === "queue") {
+        return { body: { queue: { slots: [] } } };
+      }
+      return { body: mode === "history" ? { history: "maintenance" } : { status: {} } };
+    });
+    try {
+      await expect(new SabDriver(cfg(s.baseUrl), { ...timers, log }).poll()).rejects.toThrow(
+        "SABnzbd's history is no object",
+      );
+    } finally {
+      await s.close();
+    }
+  });
+
   it("calls a 4xx and status false protocol errors with SABnzbd's reason", async () => {
     for (const [answer, err] of [
       [{ status: 404, body: {} }, /HTTP 404/],
