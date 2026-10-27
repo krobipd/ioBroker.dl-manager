@@ -59,6 +59,10 @@ export class DownloadManagerAdapter extends utils.Adapter {
   private readonly programs: ProgramStore;
   /** Changes of the program rows, one after the other (dialogs and a learned My.JDownloader id). */
   private readonly rowChanges = new Serial();
+  /** Set first in `onUnload`: a start still under way starts no program. */
+  private unloading = false;
+  /** The start as it runs — a stop that comes before the programs start waits for it, so nothing writes after the stop. */
+  private starting: Promise<void> = Promise.resolve();
 
   /**
    * @param options Adapter options
@@ -92,7 +96,7 @@ export class DownloadManagerAdapter extends utils.Adapter {
           this.log.debug(`Could not raise a notification: ${errText(err)}`),
         ),
     });
-    this.on("ready", this.onReady.bind(this));
+    this.on("ready", this.ready.bind(this));
     this.on("stateChange", this.onStateChange.bind(this));
     this.on("unload", this.onUnload.bind(this));
   }
@@ -466,6 +470,10 @@ export class DownloadManagerAdapter extends utils.Adapter {
       this.on("message", this.onMessage.bind(this));
       // subscribed before the start: a write that arrives while the programs start is forgotten like any other
       await this.subscribeStatesAsync("*");
+      // a stop during the start: no program starts — onUnload waits for this start and writes the last word
+      if (this.unloading) {
+        return;
+      }
       this.manager = this.makeManager();
       const rows = await this.programs.read();
       this.log.debug(`start: ${rows.length} program row(s) in the store`);
@@ -536,11 +544,23 @@ export class DownloadManagerAdapter extends utils.Adapter {
     }
   }
 
+  /** @returns the start, kept for a stop that comes while it runs */
+  private ready(): Promise<void> {
+    this.starting = this.onReady();
+    return this.starting;
+  }
+
   private onUnload(callback: () => void): void {
+    this.unloading = true;
     try {
       const manager = this.manager;
       this.manager = null;
-      void (manager ? manager.stop() : this.states.put("info.connection", { val: false, ack: true }))
+      // no manager yet: the start may still be writing — it starts no program now, the last word comes after it
+      void (
+        manager
+          ? manager.stop()
+          : this.starting.then(() => this.states.put("info.connection", { val: false, ack: true }))
+      )
         .catch((err: unknown) => this.log.debug(`onUnload: final writes rejected: ${errText(err)}`))
         .finally(callback);
     } catch {

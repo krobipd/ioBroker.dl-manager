@@ -99,6 +99,7 @@ interface Harness {
   instanceWrites: unknown[];
   dataDir: string;
   getObjectListAsync(p: { startkey: string; endkey: string }): Promise<unknown>;
+  getForeignObjectsAsync(p: string, t: ioBroker.ObjectType): Promise<Record<string, ioBroker.Object>>;
   getStatesAsync(p: string): Promise<Record<string, ioBroker.State>>;
   getStateAsync(id: string): Promise<ioBroker.State | null>;
 }
@@ -259,6 +260,42 @@ describe("DownloadManagerAdapter — start", () => {
     await h.handlers.get("ready")?.();
     await flush();
     expect(h.store.writeLog.filter(w => w.id === "info.connection").map(w => w.val)).toEqual([true]);
+  });
+
+  it("starts no program on a stop during the start and answers the stop only after the start's last write", async () => {
+    const { h, polls } = make();
+    const ready = h.handlers.get("ready")?.();
+    const writes = (): number => h.store.objectWrites + h.store.stateWrites;
+    let written = -1;
+    await new Promise<void>(resolve =>
+      h.handlers.get("unload")?.(() => {
+        written = writes();
+        resolve();
+      }),
+    );
+    await ready;
+    await flush();
+    expect(polls()).toBe(0);
+    expect(writes()).toBe(written);
+    expect(h.store.writeLog.at(-1)).toMatchObject({ id: "info.connection", val: false });
+  });
+
+  it("starts no program on a stop while the programs start", async () => {
+    const { h, polls } = make();
+    const objects = h.getForeignObjectsAsync;
+    let stopped: Promise<void> | undefined;
+    h.getForeignObjectsAsync = (p, t) => {
+      if ((h as unknown as { manager: unknown }).manager && !stopped) {
+        stopped = new Promise<void>(resolve => h.handlers.get("unload")?.(resolve));
+      }
+      return objects(p, t);
+    };
+    await h.handlers.get("ready")?.();
+    await stopped;
+    await flush();
+    expect(stopped).toBeDefined();
+    expect(polls()).toBe(0);
+    expect(h.store.val("qbittorrent-nas.error")).toBe("Unknown");
   });
 
   it("writes a manifest object only when its name differs", async () => {

@@ -121,6 +121,10 @@ export class ProgramManager {
     this.a.log.info(startLine(this.rows));
     // nothing asked yet: the sums of a run that crashed do not stand as current
     await this.writeIdleSummary();
+    // a stop that came while the programs started: stop() waits for this start and stops runners that never asked
+    if (this.stopped) {
+      return;
+    }
     for (const r of this.running.values()) {
       r.runner.start();
     }

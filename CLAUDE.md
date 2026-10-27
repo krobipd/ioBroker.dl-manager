@@ -21,7 +21,9 @@ src/main.ts                      → Lebenszyklus: I18n (erste Anweisung) → Sp
                                    migrieren → Objekt- und Wertespeicher laden → Manifest-Objekte auffrischen → settleDevices
                                    (Umzug fortsetzen, IDs vergeben, last-Umzug) → Gerätemanager bauen → subscribeStates("*")
                                    → ProgramManager.start; updateRows (frisch lesen, ändern, speichern, apply — ein Schritt in
-                                   `Serial`), learnDeviceId (My.JD-Id), onStateChange, onUnload → stop().finally(cb)
+                                   `Serial`), learnDeviceId (My.JD-Id), onStateChange, onUnload → stop().finally(cb);
+                                   ein Stopp mitten im Start (`unloading`) startet kein Programm mehr und wartet ohne Manager
+                                   auf den Start (`starting`), damit nach dem Rückruf nichts mehr schreibt
 src/lib/device-management.ts     → DlDeviceManagement (dm-utils): Karten je Zeile, Details (Objekt-ID), Hinzufügen
                                    (Programmwahl → Dialog → bei My.JDownloader Instanzwahl), Bearbeiten, Löschen, Test, Ein/Aus;
                                    jede Änderung über `DmHost.updateRows` auf den Zeilen von jetzt, kein Neustart
