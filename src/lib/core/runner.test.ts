@@ -66,11 +66,13 @@ function makeTree(): {
   sync: Mock<RunnerTree["sync"]>;
   markOffline: Mock<RunnerTree["markOffline"]>;
   markUnreachable: Mock<RunnerTree["markUnreachable"]>;
+  halt: Mock<RunnerTree["halt"]>;
 } {
   return {
     sync: vi.fn<RunnerTree["sync"]>(() => Promise.resolve(NO_EVENTS)),
     markOffline: vi.fn<RunnerTree["markOffline"]>(() => Promise.resolve()),
     markUnreachable: vi.fn<RunnerTree["markUnreachable"]>(() => Promise.resolve()),
+    halt: vi.fn<RunnerTree["halt"]>(),
   };
 }
 
@@ -182,6 +184,27 @@ describe("ProgramRunner", () => {
     release();
     await stopping;
     expect(order.at(-1)).toBe("offline:Unknown");
+  });
+
+  it("stop halts the tree write under way and hands nothing on after it — the stop answers within stopTimeout", async () => {
+    const clock = new ManualClock();
+    const driver = makeDriver(() => Promise.resolve(SNAP));
+    const tree = makeTree();
+    const deps = makeDeps(clock);
+    const onChange = vi.fn();
+    let release: () => void = () => undefined;
+    tree.sync.mockImplementation(() => new Promise<ProgramEvents>(resolve => (release = () => resolve(NO_EVENTS))));
+    const r = new ProgramRunner("fake-a", driver, tree, deps, 10_000, onChange);
+    r.start();
+    await flush();
+    const stopping = r.stop();
+    expect(tree.halt).toHaveBeenCalledOnce();
+    release();
+    await stopping;
+    await flush();
+    expect(onChange).not.toHaveBeenCalled();
+    expect(r.lastSnapshot).toBeNull();
+    expect(deps.lines.filter(l => l.msg.includes("polled"))).toEqual([]);
   });
 
   it("a poll that fails because stop closed the driver writes no reason of its own (final review I1)", async () => {

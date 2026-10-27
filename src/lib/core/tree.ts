@@ -136,6 +136,8 @@ export class ProgramTree {
   private warned = false;
   private prev: Map<string, Status> | null = null;
   private baselineFinished: number | null = null;
+  /** The program stops: a sync under way writes no further download (the stop has to answer within `stopTimeout`). */
+  private halted = false;
 
   /**
    * @param adapter the adapter seam
@@ -273,6 +275,11 @@ export class ProgramTree {
     await this.put(`${this.dev}.online`, false);
   }
 
+  /** The program stops — a sync under way ends after the download it writes; the marks still write. */
+  public halt(): void {
+    this.halted = true;
+  }
+
   /**
    * One poll result into the tree.
    *
@@ -289,6 +296,9 @@ export class ProgramTree {
     const shown = shownKeys(snapshot.items, this.opts);
 
     for (const item of snapshot.items) {
+      if (this.halted) {
+        return events;
+      }
       present.add(item.key);
       next.set(item.key, item.status);
       if (!shown.has(item.key)) {
@@ -303,10 +313,16 @@ export class ProgramTree {
 
     if (snapshot.complete) {
       for (const key of [...this.known.keys()]) {
+        if (this.halted) {
+          return events;
+        }
         if (!present.has(key)) {
           await this.removeChannel(key);
         }
       }
+    }
+    if (this.halted) {
+      return events;
     }
     this.warnAboutMany(shown.size);
     this.prev = next;

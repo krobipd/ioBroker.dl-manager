@@ -123,6 +123,40 @@ describe("ProgramTree — device", () => {
     expect(a.val("qbittorrent-nas.version")).toBe("5.2.3");
   });
 
+  it("a halt during a sync writes no further download and no program value — the marks still write", async () => {
+    const halting = async (complete: boolean, at: string): Promise<FakeAdapter> => {
+      const a = new FakeAdapter(NS);
+      const t = await makeTree(a);
+      const extend = a.extendObject.bind(a);
+      a.extendObject = (id, obj): Promise<void> => {
+        if (id === `${DEV}.downloads.${at}`) {
+          t.halt();
+        }
+        return extend(id, obj);
+      };
+      await t.sync(snap([item("aaaa11112222"), item("bbbb33334444"), item("cccc55556666")], complete));
+      await t.markOffline("Unknown");
+      return a;
+    };
+    const mid = await halting(true, "33334444");
+    expect(mid.objects.has(`${DEV}.downloads.55556666`)).toBe(false);
+    expect(mid.val("qbittorrent-nas.version")).toBeUndefined();
+    expect(mid.val("qbittorrent-nas.error")).toBe("Unknown");
+    const last = await halting(false, "55556666");
+    expect(last.val("qbittorrent-nas.version")).toBeUndefined();
+
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a);
+    await t.sync(snap([item("aaaa11112222"), item("bbbb33334444")]));
+    const del = a.delObject.bind(a);
+    a.delObject = (id, opts): Promise<void> => {
+      t.halt();
+      return del(id, opts);
+    };
+    await t.sync(snap([]));
+    expect([CH, `${DEV}.downloads.33334444`].filter(id => a.objects.has(id))).toHaveLength(1);
+  });
+
   it("marks a program offline through the value memory — a second mark writes nothing", async () => {
     const a = new FakeAdapter(NS);
     const t = await makeTree(a);

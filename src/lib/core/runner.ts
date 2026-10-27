@@ -44,6 +44,8 @@ export interface RunnerTree {
   markOffline(reason: string): Promise<void>;
   /** Marks the program unreachable — online false, every other value stays. */
   markUnreachable(): Promise<void>;
+  /** The program stops — a sync under way writes no further download. */
+  halt(): void;
 }
 
 /**
@@ -172,6 +174,8 @@ export class ProgramRunner {
 
   private async halt(): Promise<void> {
     this.stopped = true;
+    // a sync under way ends after its current download, so the stop answers within stopTimeout
+    this.tree.halt();
     this.deps.clearTimeout(this.timer);
     this.timer = undefined;
     this.unsubscribe?.();
@@ -180,7 +184,7 @@ export class ProgramRunner {
     } catch (err: unknown) {
       this.deps.log.debug(`[${this.id}] close failed: ${errText(err)}`);
     }
-    // a tree write already under way finishes first, so "Unknown" is the last word
+    // the tree write under way ends first, so "Unknown" is the last word
     await this.polling;
     this._online = false;
     await this.tree.markOffline("Unknown");
@@ -200,6 +204,9 @@ export class ProgramRunner {
         return;
       }
       const events = await this.tree.sync(snapshot);
+      if (this.stopped) {
+        return;
+      }
       this._lastSnapshot = snapshot;
       this.deps.log.debug(
         `[${this.id}] polled: ${snapshot.items.length} download(s)${snapshot.complete ? "" : ", lists incomplete"}`,

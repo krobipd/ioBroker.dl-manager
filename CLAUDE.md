@@ -46,7 +46,9 @@ src/lib/core/connection-test.ts  → testProgram: der Test-Knopf einer Karte (ei
 src/lib/core/serial.ts           → Serial: Aufgaben nacheinander (Zeilenänderungen, Summen)
 src/lib/core/devices.ts          → readDevices (nur Geräte mit Programmtyp, keine reservierte Wurzel), Offline-Stempel
 src/lib/core/visibility.ts       → rein: welche Downloads einen Kanal bekommen (treeScope, Rang, Obergrenze)
-src/lib/core/runner.ts           → Abfrage-Schleife je Programm, Anmelde-Sperre, pollNow nach jedem Befehl, Backoff nach Fehlschlägen
+src/lib/core/runner.ts           → Abfrage-Schleife je Programm, Anmelde-Sperre, pollNow nach jedem Befehl, Backoff nach Fehlschlägen;
+                                   der Stopp hält den laufenden Abgleich nach dem aktuellen Download an (`tree.halt`) —
+                                   ein erster Abgleich vieler Kanäle dauert sonst länger als `stopTimeout`
 src/lib/core/login-hint.ts       → rein: was die Anmelde-Warnung je Anmeldeart sagt (Ursache, wenn die Karte keine Anmeldung trägt)
 src/lib/core/log-lines.ts        → rein: Sammelzeile des Starts (startLine), info-Zeile nach einem Nutzerbefehl (commandLine)
 src/lib/core/tree.ts             → ProgramTree: Gerät/Kanäle/Datenpunkte gegen den Schnappschuss abgleichen, itemKey
