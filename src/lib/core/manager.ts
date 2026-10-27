@@ -181,7 +181,10 @@ export class ProgramManager {
         if (announce) {
           started.runner.announceNextResult(programInfo(row.cfg.type)?.label ?? row.cfg.type);
         }
-        started.runner.start();
+        // a stop that came during this change: the runner never asks, stop() stops it once the change is through
+        if (!this.stopped) {
+          started.runner.start();
+        }
       } else if (announce && !row.enabled) {
         this.a.log.info(`${row.id}: switched off — the program is no longer asked`);
       }
@@ -289,11 +292,18 @@ export class ProgramManager {
   /** Stops every runner (they mark their program Unknown) and marks the adapter disconnected. */
   public async stop(): Promise<void> {
     this.stopped = true;
-    await this.changes.idle();
-    await Promise.allSettled([...this.running.values()].map(r => r.runner.stop()));
+    // every program stops asking at once: a change under way (a learned My.JDownloader id moves its device) can take
+    // longer than js-controller waits for the stop — the runners that change still builds are stopped after it
+    await Promise.all([this.stopRunners(), this.changes.idle()]);
+    await this.stopRunners();
     this.running.clear();
     // nothing runs any more: every count and speed goes to nothing, the connection markers to false
     await this.writeIdleSummary();
+  }
+
+  /** @returns when every runner that runs now is stopped */
+  private stopRunners(): Promise<unknown> {
+    return Promise.allSettled([...this.running.values()].map(r => r.runner.stop()));
   }
 
   /** @returns when the summary of an adapter that asks nothing (yet, or any more) is written */

@@ -888,6 +888,37 @@ describe("ProgramManager — connection test and stop", () => {
     expect(w.drivers.every(d => d.closed)).toBe(true);
   });
 
+  it("stop halts every program at once while a change still runs — the program that change builds never asks", async () => {
+    const w = world({ h1: { snapshot: snap(0) }, h2: { snapshot: snap(0) } });
+    const m = w.manager();
+    await m.start([row("qbittorrent", "a", "h1")]);
+    await flush();
+    let release = (): void => undefined;
+    const held = new Promise<void>(resolve => (release = resolve));
+    const extend = w.a.extendObject.bind(w.a);
+    let holding = true;
+    w.a.extendObject = async (id, obj) => {
+      if (holding && id.includes("qbittorrent-b")) {
+        holding = false;
+        await held;
+      }
+      return extend(id, obj);
+    };
+    const applying = m.apply([row("qbittorrent", "a", "h1"), row("qbittorrent", "b", "h2")]);
+    await vi.waitFor(() => expect(holding).toBe(false));
+    const stopping = m.stop();
+    await flush();
+    // the change still holds — the running program is stopped already
+    expect(w.drivers[0].closed).toBe(true);
+    expect(w.a.val("qbittorrent-a.error")).toBe("Unknown");
+    release();
+    await Promise.all([applying, stopping]);
+    await flush();
+    expect(w.drivers.length).toBe(2);
+    expect(w.drivers[1].polls).toBe(0);
+    expect(w.drivers.every(d => d.closed)).toBe(true);
+  });
+
   it("a card change during the start waits for it — one runner per program, none left running (B2)", async () => {
     const w = world({ h1: { snapshot: snap(0) } });
     const m = w.manager();

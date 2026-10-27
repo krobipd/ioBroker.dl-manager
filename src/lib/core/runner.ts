@@ -56,6 +56,7 @@ export class ProgramRunner {
   /** A poll was asked for while one ran — that one may have read the program before the change, so one more follows. */
   private again = false;
   private stopped = false;
+  private stopping: Promise<void> | null = null;
   private unsubscribe: (() => void) | undefined = undefined;
   /** The same failure text warns once per window (fleet master `log-once.ts`), repeats go to debug. */
   private readonly warnOnce: LogOnce;
@@ -158,8 +159,18 @@ export class ProgramRunner {
     void this.pollNow();
   }
 
-  /** Stops the timer and the push channel, closes the driver and marks the program Unknown. */
-  public async stop(): Promise<void> {
+  /**
+   * Stops the timer and the push channel, closes the driver and marks the program Unknown — once: a second call (the
+   * adapter's stop and a change under way both stop it) gets the same stop.
+   *
+   * @returns when the program is stopped
+   */
+  public stop(): Promise<void> {
+    this.stopping ??= this.halt();
+    return this.stopping;
+  }
+
+  private async halt(): Promise<void> {
     this.stopped = true;
     this.deps.clearTimeout(this.timer);
     this.timer = undefined;

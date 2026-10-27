@@ -23,7 +23,9 @@ src/main.ts                      → Lebenszyklus: I18n (erste Anweisung) → Sp
                                    → ProgramManager.start; updateRows (frisch lesen, ändern, speichern, apply — ein Schritt in
                                    `Serial`), learnDeviceId (My.JD-Id), onStateChange, onUnload → stop().finally(cb);
                                    ein Stopp mitten im Start (`unloading`) startet kein Programm mehr und wartet ohne Manager
-                                   auf den Start (`starting`), damit nach dem Rückruf nichts mehr schreibt
+                                   auf den Start (`starting`), damit nach dem Rückruf nichts mehr schreibt; `ProgramManager.stop`
+                                   hält jeden Runner sofort an (eine laufende Änderung, z. B. der Umzug nach einer gelernten
+                                   My.JD-Id, kann länger dauern als `stopTimeout`) und stoppt danach, was die Änderung noch baute
 src/lib/device-management.ts     → DlDeviceManagement (dm-utils): Karten je Zeile, Details (Objekt-ID), Hinzufügen
                                    (Programmwahl → Dialog → bei My.JDownloader Instanzwahl), Bearbeiten, Löschen, Test, Ein/Aus;
                                    jede Änderung über `DmHost.updateRows` auf den Zeilen von jetzt, kein Neustart

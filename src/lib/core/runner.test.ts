@@ -432,6 +432,22 @@ describe("ProgramRunner", () => {
     expect(driver.polls).toBe(1);
   });
 
+  it("stops once — a second stop gets the same stop and writes nothing again", async () => {
+    const clock = new ManualClock();
+    const driver = makeDriver(() => Promise.resolve(SNAP));
+    const close = vi.spyOn(driver, "close");
+    const tree = makeTree();
+    const r = new ProgramRunner("fake-a", driver, tree, makeDeps(clock), 10_000, vi.fn());
+    r.start();
+    await flush();
+    const first = r.stop();
+    expect(r.stop()).toBe(first);
+    await first;
+    await r.stop();
+    expect(close).toHaveBeenCalledTimes(1);
+    expect(tree.markOffline).toHaveBeenCalledTimes(1);
+  });
+
   it("uses a push notification only to poll at once", async () => {
     const clock = new ManualClock();
     let push: () => void = () => undefined;
