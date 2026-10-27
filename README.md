@@ -130,25 +130,27 @@ The test button on a program's card asks the program once and shows its answer.
 
 ### **WORK IN PROGRESS**
 
-- New: a setting decides whether a new link resumes a paused program; by default the link waits until you resume the program
-- New: scripts can run a program's connection test with the message `testConnection`
+- New: a setting lets a new link resume a paused program
+- New: scripts can test a program's connection
 - Fixed: the e-mail address of a My.JDownloader account no longer appears in the device object or an object export
-- Fixed: a link added while the adapter holds Transmission, aria2 or qBittorrent before 5.3 paused now resumes with the others
-- Fixed: aria2 shows a seeding torrent as seeding and gives torrents their ratio; an infinite ratio shows as ∞ instead of empty
-- Fixed: size stays empty while a program does not know it yet, and time left stays empty while a torrent seeds
-- Fixed: NZBGet and pyLoad show their new version after an update; pyLoad shows a decrypting package as queued
+- Fixed: a link added while downloads are paused now resumes together with them
+- Fixed: aria2 shows seeding torrents and their ratio correctly
+- Fixed: size and time left stay empty while the program does not know them
+- Fixed: NZBGet and pyLoad show their new version after an update
+- Fixed: pyLoad shows a decrypting package as queued
 - Fixed: a program on an IPv6 address is reachable
-- Fixed: `last.finished` and `last.failed` name the download that ended last; a finished SABnzbd job keeps its added time
-- Fixed: a pressed button goes back to false once the program took the command, also during a query
-- Fixed: `error` names the real cause instead of a proxy's HTML page or an encryption message, and names a refused session
+- Fixed: the last finished and last failed download are named correctly
+- Fixed: a finished SABnzbd job keeps its added time
+- Fixed: a pressed button resets once the program took the command
+- Fixed: the error shows the program's real problem
 - Fixed: a programs.json without a program list stops the start instead of removing every device
-- Fixed: the program dialog checks its fields again before it stores, and never stores over a card another tab changed
-- Fixed: while a program is unreachable its downloads, its `error` and the `summary` totals keep their last values; only `online` and the connection values change
-- Fixed: an answer in an unexpected form no longer deletes downloads or empties the version
-- Fixed: a garbled Deluge login answer no longer stops the program as if the password were wrong
-- Fixed: `summary.pauseAll` is confirmed only once a program has taken the pause
-- Fixed: a program that answers "too many requests" (HTTP 429) is asked again only after the wait it names
-- Changed: after failed queries a program is asked less often, up to every two minutes, until it answers again
+- Fixed: the program dialog no longer stores invalid fields
+- Fixed: the program dialog no longer overwrites changes made in another tab
+- Fixed: an unreachable program keeps its last download values
+- Fixed: an unexpected answer from a program no longer deletes its downloads
+- Fixed: Deluge no longer stops as if its password were wrong
+- Fixed: pause all is confirmed only once a program has paused
+- Changed: a busy or unreachable program is asked less often
 - Changed: requires js-controller 7.2.5 and admin 8.2.0
 
 ### 0.4.0 (2026-10-02)
