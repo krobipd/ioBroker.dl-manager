@@ -21,6 +21,7 @@
 //   answer; a missing one falls back to every address with exactly one warning.
 // Suite "diagnostics report" (round 97, only with a report): every device's report asked for the way the admin
 //   card asks — no datapoint, no value and no file for a report, and no live read of an unconnected device.
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const assert = require("node:assert");
@@ -807,9 +808,11 @@ async function restoreMaskedSecrets(harness) {
  * Empty only where the adapter declares no common.dataFolder (it writes nothing there); with the declaration B02
  * requires a body.
  * dl-manager: from a previous release of 0.3.2 on, the programs live in `programs.json` and no dump carries them — the
- * file is written as that release left it (ids given, the My.JDownloader instance id learned, secrets as typed).
- * Without it the start would set the programs up anew on top of the seeded devices, which no real installation does. A
- * previous release that still had the store object (0.3.0/0.3.1) or no ids yet left no file.
+ * file is written as 0.4.0 leaves it (its only file in the data folder): ids given, the My.JDownloader instance id
+ * learned, every row `encrypted: true` with password and API key sealed by the installation secret the way
+ * js-controller's encrypt does (aes-192-cbc, `$/aes-192-cbc:<iv>:<cipher>`), an empty one stays "". Without the file
+ * the start would set the programs up anew on top of the seeded devices, which no real installation does. A previous
+ * release that still had the store object (0.3.0/0.3.1) or no ids yet left no file.
  *
  * @param {import("@iobroker/testing").IntegrationTestHarness} harness
  * @param {object} previous the previous release's dump
@@ -820,10 +823,22 @@ async function seedInstanceData(harness, previous) {
   if (Array.isArray(store?.native?.rows) || seeded?.native?.idScheme !== 3) {
     return;
   }
+  const secret = (await harness.objects.getObjectAsync("system.config"))?.native?.secret;
+  assert.match(String(secret), /^[0-9a-f]{48}$/, "the installation secret is no aes-192 key");
+  const seal = plain => {
+    if (!plain) {
+      return "";
+    }
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipheriv("aes-192-cbc", Buffer.from(secret, "hex"), iv);
+    return `$/aes-192-cbc:${iv.toString("hex")}:${Buffer.concat([cipher.update(plain), cipher.final()]).toString("hex")}`;
+  };
   const rows = FIXTURE_NATIVE.programs.map(({ key: _key, ...row }, i) => ({
     ...row,
     id: DEVICES[i],
     ...(row.host ? {} : { deviceId: "dev1" }),
+    encrypted: true,
+    ...Object.fromEntries(ENCRYPTED_ROW_FIELDS.map(field => [field, seal(row[field])])),
   }));
   const dir = path.join(harness.testDir, "iobroker-data", `${ADAPTER}.0`);
   fs.mkdirSync(dir, { recursive: true });

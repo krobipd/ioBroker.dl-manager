@@ -164,7 +164,8 @@ krobi's decisions for this adapter. The register with his verbatim words lives i
   Werkzeug-Runde 67); jede Suite startet ohne den Datenordner der Instanz (`clearInstanceData`, Vorlage seit Runde 71 —
   der Harness leert pro Suite nur die Datenbank, eine liegengebliebene `programs.json` verdeckte die Übernahme); ab einem
   Vorgänger 0.3.2 trägt kein Abzug die Programme mehr — `seedInstanceData` (Runde 75) schreibt dann `programs.json`, wie
-  der Vorgänger sie hinterließ (IDs, My.JD-Id `dev1`, Geheimnisse wie eingetippt), sonst richtete der Start die Programme
+  der Vorgänger sie hinterließ (IDs, My.JD-Id `dev1`, `encrypted: true`, Geheimnisse mit dem Schlüssel der Testinstallation
+  verschlüsselt wie js-controllers `encrypt`), sonst richtete der Start die Programme
   über den gesäten Geräten neu ein;
   `MOVES` (berechnet aus dem Vorgänger-Inventar) nennt die Umzüge von 0.3.0, deren Aufzeichnung ankommen muss.
 - **Paket-/Standard-Prüfung** `test/package.js`, `test/standards` (`iobroker-adapter-checks`), `test/self-explaining.json`
