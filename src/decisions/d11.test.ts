@@ -11,7 +11,8 @@ import { ProgramManager, type ManagerAdapter } from "../lib/core/manager";
 import type { ProgramDriver, ProgramEntry } from "../lib/core/model";
 import type { ProgramStore } from "../lib/core/store";
 import { STORE_FILE } from "../lib/core/store";
-import { DownloadManagerAdapter } from "../main";
+import * as mainModule from "../main";
+const { DownloadManagerAdapter } = mainModule as unknown as { DownloadManagerAdapter: new () => ioBroker.Adapter };
 
 // The adapter base without js-controller: what the store needs — the instance's data folder and the installation secret.
 vi.mock("@iobroker/adapter-core", () => ({

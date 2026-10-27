@@ -43,7 +43,7 @@ const LAST_MOVES: readonly (readonly [string, string])[] = [
 ];
 
 /** ioBroker adapter that mirrors download programs into the object tree. */
-export class DownloadManagerAdapter extends utils.Adapter {
+class DownloadManagerAdapter extends utils.Adapter {
   private manager: ProgramManager | null = null;
   private readonly problems: ActionableProblems;
   /** The own object tree, read once at start — an object is written only when it differs. */
@@ -570,7 +570,10 @@ export class DownloadManagerAdapter extends utils.Adapter {
 }
 
 if (require.main !== module) {
-  module.exports = (options: Partial<utils.AdapterOptions> | undefined) => new DownloadManagerAdapter(options);
+  module.exports = Object.assign(
+    (options: Partial<utils.AdapterOptions> | undefined) => new DownloadManagerAdapter(options),
+    { DownloadManagerAdapter },
+  );
 } else {
   (() => new DownloadManagerAdapter())();
 }

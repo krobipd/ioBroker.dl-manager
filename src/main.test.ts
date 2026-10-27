@@ -88,7 +88,15 @@ vi.mock("@iobroker/adapter-core", () => {
 import { I18n } from "@iobroker/adapter-core";
 import { UnreachableError } from "./lib/core/errors";
 import type { Capability, ProgramConfig, ProgramEntry, ProgramDriver, ProgramSnapshot } from "./lib/core/model";
-import { DownloadManagerAdapter } from "./main";
+import * as mainModule from "./main";
+
+/** The adapter class rides on the factory export (`main.ts` exports no class, so esbuild has nothing to warn about). */
+const { DownloadManagerAdapter } = mainModule as unknown as {
+  DownloadManagerAdapter: new (
+    options?: Record<string, unknown>,
+    find?: (type: string) => ProgramEntry | undefined,
+  ) => ioBroker.Adapter;
+};
 
 interface Harness {
   store: FakeAdapter;
