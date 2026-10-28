@@ -648,6 +648,17 @@ describe("deleting and testing", () => {
     expect(ctx.showMessage).toHaveBeenCalledWith({ key: "dmTestOkDownloads", args: ["NAS", "4.6", 2] });
   });
 
+  it("names a program without a name by its card in the test answer", async () => {
+    const { dm } = make([{ ...qbRow, name: "" }]);
+    const [qb] = await cards(dm);
+    const ctx = context();
+    await action(qb, "test").handler("qbittorrent-nas", ctx);
+    expect(ctx.showMessage).toHaveBeenCalledWith({
+      key: "dmTestOkDownloads",
+      args: ["qbittorrent-nas", "4.6", 2],
+    });
+  });
+
   it("shows a failing action as a message instead of leaving the dialog waiting", async () => {
     const { dm, tested, errors } = make([qbRow]);
     tested.mockRejectedValueOnce(new Error("boom"));
