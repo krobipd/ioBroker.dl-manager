@@ -69,6 +69,7 @@ const decrypt = (token, s) => {
   const d = crypto.createDecipheriv("aes-128-cbc", token.subarray(16, 32), token.subarray(0, 16));
   return Buffer.concat([d.update(Buffer.from(s, "base64")), d.final()]).toString("utf8");
 };
+/** @type {{ login: Buffer, device: Buffer, session: string, server: Buffer | null, deviceToken: Buffer | null, n: number }} */
 const cloud = { login: secret("server"), device: secret("device"), session: "", server: null, deviceToken: null, n: 0 };
 function newSession(base) {
   cloud.session = crypto.createHash("sha256").update(`fixture-${++cloud.n}`).digest("hex").slice(0, 32);

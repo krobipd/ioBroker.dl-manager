@@ -122,13 +122,13 @@ export async function record(ctx) {
    *
    * @param {string} method snake_case method name
    * @param {Record<string, unknown>} params snake_case params (converted for legacy)
-   * @returns {Promise<{ status: number, text: string, headers: Record<string,string>, json: () => Record<string, unknown>, sent: string }>} answer
+   * @returns {Promise<{ status: number, text: string, headers: Record<string,string>, json: () => unknown, sent: string }>} answer
    */
   const rpc = async (method, params = {}) => {
     const legacyParams = Object.fromEntries(
       Object.entries(params).map(([k, v]) => [
         k === "fields" ? k : k.replace(/_/g, "-"),
-        k === "fields" ? v.map(camel) : v,
+        k === "fields" ? /** @type {string[]} */ (v).map(camel) : v,
       ]),
     );
     const body = modern

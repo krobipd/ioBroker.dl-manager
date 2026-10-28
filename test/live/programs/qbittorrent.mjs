@@ -106,7 +106,8 @@ export async function record(ctx) {
       rec.write(state, name, `GET ${path}`, await qb.req("GET", path));
     }
   };
-  const torrents = async () => (await qb.req("GET", "/api/v2/torrents/info")).json();
+  const torrents = async () =>
+    /** @type {Array<{ hash: string, state?: string }>} */ ((await qb.req("GET", "/api/v2/torrents/info")).json());
   const hash = name => torrentOf(ctx.work, name).hash;
   const stateOf = async name => (await torrents()).find(t => t.hash === hash(name))?.state;
 

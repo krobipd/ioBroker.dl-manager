@@ -59,7 +59,7 @@ export async function record(_ctx) {
     headers: { "x-csrftoken": token2 },
     json: { user: USER, password: PASS, name: "dl-manager-ci", expires: 0 },
   });
-  const generated = gen.json();
+  const generated = /** @type {string | { key?: string, data?: { key?: string } } | null} */ (gen.json());
   const key = typeof generated === "string" ? generated : (generated?.data?.key ?? generated?.key);
   if (typeof key !== "string") {
     throw new Error(`generate_apikey answered ${gen.status}: ${gen.text.slice(0, 300)}`);
@@ -81,7 +81,11 @@ export async function record(_ctx) {
       w(state, fn.replace(/_/g, "-"), `GET /api/${fn}`, await get(fn));
     }
   };
-  const packages = async () => (await get("get_queue_data")).json();
+  /**
+   * @typedef {{ pid: number, links: Array<{ fid: number, name: string, status: number, statusmsg?: string, error?: string }> }} PyPackage
+   *   a package of get_queue_data (the fields read here)
+   */
+  const packages = async () => /** @type {PyPackage[]} */ ((await get("get_queue_data")).json());
   const pkg = async pid => (await packages()).find(p => p.pid === pid);
   const add = (name, links) => post("add_package", { name, links, dest: 1 });
 
@@ -117,7 +121,7 @@ export async function record(_ctx) {
   await snapshot("running");
 
   // abort one file (pyLoad has no per-item pause), global pause
-  const bigFid = (await pkg(big)).links[0].fid;
+  const bigFid = /** @type {PyPackage} */ (await pkg(big)).links[0].fid;
   w("commands", "stop-downloads", "POST /api/stop_downloads", await post("stop_downloads", { file_ids: [bigFid] }));
   await waitFor("big aborted", async () => (await pkg(big))?.links?.[0]?.status === 9, 60_000, 2000);
   await snapshot("aborted");

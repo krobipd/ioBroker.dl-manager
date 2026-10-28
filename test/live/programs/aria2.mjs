@@ -46,18 +46,27 @@ export async function record(_ctx) {
    * @param {string} method RPC method
    * @param {unknown[]} params params after the token
    * @param {string} [secret] token
-   * @returns {Promise<{ status: number, text: string, headers: Record<string,string>, json: () => Record<string, unknown>, sent: string }>} answer
+   * @returns {Promise<{ status: number, text: string, headers: Record<string,string>, json: () => unknown, sent: string }>} answer
    */
   const rpc = async (method, params = [], secret = SECRET) => {
     const body = { jsonrpc: "2.0", id: String(++seq), method, params: [`token:${secret}`, ...params] };
     const res = await http.req("POST", "/jsonrpc", { json: body });
     return { ...res, sent: JSON.stringify(body).replace(secret, "<secret>") };
   };
-  const result = async (method, params) => (await rpc(method, params)).json().result;
+  const result = async (method, params) =>
+    /** @type {{ result?: unknown }} */ ((await rpc(method, params)).json()).result;
+  /**
+   * @param {{ json: () => unknown }} res an addUri answer
+   * @returns {string} the GID aria2 gave the download
+   */
+  const gidOf = res => /** @type {{ result: string }} */ (res.json()).result;
   await waitFor("aria2 RPC", async () => (await rpc("aria2.getVersion")).status === 200, 300_000, 1000);
 
   const versionRes = await rpc("aria2.getVersion");
-  const rec = new Recorder("aria2", String(versionRes.json().result.version));
+  const rec = new Recorder(
+    "aria2",
+    String(/** @type {{ result: { version: string } }} */ (versionRes.json()).result.version),
+  );
   const w = (state, name, res) => rec.write(state, name, `POST /jsonrpc ${res.sent}`, res);
   w("auth", "token-wrong", await rpc("aria2.getVersion", [], "wrong"));
   w("auth", "version", versionRes);
@@ -69,7 +78,9 @@ export async function record(_ctx) {
     w(state, "global-stat", await rpc("aria2.getGlobalStat"));
     w(state, "global-option", await rpc("aria2.getGlobalOption"));
   };
-  const status = async gid => (await result("aria2.tellStatus", [gid, ["status", "errorCode"]]))?.status;
+  const status = async gid =>
+    /** @type {{ status?: string } | undefined} */ (await result("aria2.tellStatus", [gid, ["status", "errorCode"]]))
+      ?.status;
   const add = (name, options = {}) => rpc("aria2.addUri", [[`http://seed:8080/${name}.bin`], options]);
 
   await snapshot("empty");
@@ -77,15 +88,15 @@ export async function record(_ctx) {
   // complete, then error (404)
   const smallRes = await add("small");
   w("commands", "add-uri", smallRes);
-  const small = smallRes.json().result;
+  const small = gidOf(smallRes);
   await waitFor("small complete", async () => (await status(small)) === "complete", 60_000);
-  const missing = (await rpc("aria2.addUri", [["http://seed:8080/missing.bin"]])).json().result;
+  const missing = gidOf(await rpc("aria2.addUri", [["http://seed:8080/missing.bin"]]));
   await waitFor("missing error", async () => (await status(missing)) === "error", 60_000);
   await snapshot("finished-and-failed");
 
   // running: one active (1 MiB/s), one waiting (max 1 concurrent), one added paused
-  const big = (await add("big")).json().result;
-  const queued = (await add("queued")).json().result;
+  const big = gidOf(await add("big"));
+  const queued = gidOf(await add("queued"));
   const stoppedRes = await add("stopped", { pause: "true" });
   w("commands", "add-uri-paused", stoppedRes);
   await waitFor("big active", async () => (await status(big)) === "active" && (await status(queued)) === "waiting");
@@ -116,7 +127,7 @@ export async function record(_ctx) {
   await rpc("aria2.changeGlobalOption", [{ "max-concurrent-downloads": "5" }]);
   const magnetRes = await rpc("aria2.addUri", [[DEAD_MAGNET]]);
   w("commands", "add-uri-magnet", magnetRes);
-  const magnet = magnetRes.json().result;
+  const magnet = gidOf(magnetRes);
   await waitFor("magnet active", async () => (await status(magnet)) === "active");
   await snapshot("metadata");
   await rpc("aria2.forceRemove", [magnet]);
@@ -124,13 +135,14 @@ export async function record(_ctx) {
   // finish, then remove (status "removed") and drop the result
   await waitFor("big complete", async () => (await status(big)) === "complete", 180_000, 1000);
   // unpauseAll released the paused one too — remove a freshly added paused download
-  const doomed = (await add("stopped", { pause: "true" })).json().result;
+  const doomed = gidOf(await add("stopped", { pause: "true" }));
   w("commands", "remove", await rpc("aria2.remove", [doomed]));
   // run 36489750113: after remove, tellStatus never said "removed" — record what it does say, accept both
   await waitFor("doomed gone", async () => {
     const st = await rpc("aria2.tellStatus", [doomed, ["status"]]);
-    const s = st.json().result?.status;
-    if (s === "removed" || st.json().error) {
+    const answer = /** @type {{ result?: { status?: string }, error?: unknown }} */ (st.json());
+    const s = answer.result?.status;
+    if (s === "removed" || answer.error) {
       w("commands", "tell-status-after-remove", st);
       return true;
     }

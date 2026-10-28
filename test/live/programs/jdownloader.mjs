@@ -125,18 +125,18 @@ export async function record(_ctx) {
   /**
    * @param {string} path API path, e.g. /downloadsV2/queryLinks
    * @param {unknown[]} params positional params
-   * @returns {Promise<{ status: number, text: string, headers: Record<string,string>, json: () => Record<string, unknown>, sent: string }>} answer
+   * @returns {Promise<{ status: number, text: string, headers: Record<string,string>, json: () => unknown, sent: string }>} answer
    */
   const call = async (path, params = []) => {
     const body = { apiVer: 1, url: path, params, rid: ++rid };
     const res = await http.req("POST", path, { json: body });
     return { ...res, sent: JSON.stringify(body) };
   };
-  const data = async (path, params) => (await call(path, params)).json().data;
+  const data = async (path, params) => /** @type {{ data?: unknown }} */ ((await call(path, params)).json()).data;
   await waitFor("JDownloader local API", async () => (await call("/jd/version")).status === 200, 900_000, 5000);
 
   const versionRes = await call("/jd/version");
-  const rec = new Recorder("jdownloader", String(versionRes.json().data));
+  const rec = new Recorder("jdownloader", String(/** @type {{ data?: unknown }} */ (versionRes.json()).data));
   const w = (state, name, res) => rec.write(state, name, `POST ${res.sent}`, res);
   w("auth", "jd-version", versionRes);
   w("auth", "device-ping", await call("/device/ping"));
@@ -151,19 +151,33 @@ export async function record(_ctx) {
     w(state, "query-packages", await call("/downloadsV2/queryPackages", [PACKAGE_QUERY]));
     w(state, "query-links", await call("/downloadsV2/queryLinks", [LINK_QUERY]));
   };
-  const links = async () => data("/downloadsV2/queryLinks", [LINK_QUERY]);
-  const packages = async () => data("/downloadsV2/queryPackages", [PACKAGE_QUERY]);
+  /**
+   * @typedef {object} JdLink a link of queryLinks (the fields LINK_QUERY asks for that this recorder reads)
+   * @property {number} uuid link id
+   * @property {number} [jobUUID] the job of the addLinks call that brought it
+   * @property {number} [packageUUID] its package
+   * @property {string} [extractionStatus] extraction state
+   * @property {{ FinalLinkState?: unknown, ExtractionStatus?: { id?: string } }} [advancedStatus] final and extraction state
+   */
+  /**
+   * @typedef {object} JdPackage a package of queryPackages
+   * @property {number} uuid package id
+   * @property {boolean} [finished] every link done
+   * @property {boolean} [running] a link is loading
+   */
+  const links = async () => /** @type {JdLink[]} */ (await data("/downloadsV2/queryLinks", [LINK_QUERY]));
+  const packages = async () => /** @type {JdPackage[]} */ (await data("/downloadsV2/queryPackages", [PACKAGE_QUERY]));
   const add = async (name, file, extra = {}) => {
     const res = await call("/linkgrabberv2/addLinks", [
       { links: `http://seed:8080/${file}`, autostart: true, assignJobID: true, packageName: name, ...extra },
     ]);
-    const job = res.json().data?.id;
+    const job = /** @type {{ data?: { id?: number } }} */ (res.json()).data?.id;
     const inList = async () => (await links()).find(x => x.jobUUID === job)?.packageUUID;
     const pkg = await waitFor(`${name} in the download list`, inList, 30_000).catch(async () => {
       // an offline link (404) stays in the link grabber despite autostart — move it over like a user would
       const crawled = await call("/linkgrabberv2/queryLinks", [{ jobUUIDs: [job], availability: true, status: true }]);
       w("open-points", `linkgrabber-${name}`, crawled);
-      const cl = crawled.json().data ?? [];
+      const cl = /** @type {{ data?: JdLink[] }} */ (crawled.json()).data ?? [];
       w(
         "open-points",
         `move-to-downloadlist-${name}`,
@@ -222,7 +236,7 @@ export async function record(_ctx) {
   // events: the envelope of subscribe/listen
   const sub = await call("/events/subscribe", [["downloads.*", "downloadwatchdog.*"], []]);
   w("open-points", "events-subscribe", sub);
-  const subId = sub.json().data?.subscriptionid;
+  const subId = /** @type {{ data?: { subscriptionid?: number } }} */ (sub.json()).data?.subscriptionid;
   if (subId !== undefined) {
     w("open-points", "events-listen", await call("/events/listen", [subId]));
     await call("/events/unsubscribe", [subId]);
@@ -232,7 +246,7 @@ export async function record(_ctx) {
   w("commands", "stop", await call("/downloadcontroller/stop"));
   await waitFor(
     "stopped",
-    async () => /STOPPED_STATE|IDLE/.test(await data("/downloadcontroller/getCurrentState")),
+    async () => /STOPPED_STATE|IDLE/.test(String(await data("/downloadcontroller/getCurrentState"))),
     60_000,
   );
   await snapshot("stopped");
@@ -242,20 +256,22 @@ export async function record(_ctx) {
   await new Promise(resolve => setTimeout(resolve, 5000));
   const afterProbe = await call("/downloadcontroller/getCurrentState");
   w("open-points", "state-after-autostart-add-while-stopped", afterProbe);
-  console.log(`jdownloader: controller after an autostart add while stopped: ${afterProbe.json().data}`);
+  console.log(
+    `jdownloader: controller after an autostart add while stopped: ${/** @type {{ data?: unknown }} */ (afterProbe.json()).data}`,
+  );
   // the adapter's way since then: add with autostart, and hold the controller again once JDownloader started it — the
   // download must be in the list and the controller stopped
   await call("/downloadcontroller/stop");
   await waitFor(
     "stopped again",
-    async () => /STOPPED_STATE|IDLE/.test(await data("/downloadcontroller/getCurrentState")),
+    async () => /STOPPED_STATE|IDLE/.test(String(await data("/downloadcontroller/getCurrentState"))),
     60_000,
   );
   const held = await call("/linkgrabberv2/addLinks", [
     { links: "http://seed:8080/held.bin", autostart: true, assignJobID: true, packageName: "held" },
   ]);
   w("commands", "add-links-held", held);
-  const heldJob = held.json().data?.id;
+  const heldJob = /** @type {{ data?: { id?: number } }} */ (held.json()).data?.id;
   await waitFor(
     "controller started by the add",
     async () => (await data("/downloadcontroller/getCurrentState")) === "RUNNING",
@@ -270,7 +286,9 @@ export async function record(_ctx) {
   await new Promise(resolve => setTimeout(resolve, 5000));
   const afterHeld = await call("/downloadcontroller/getCurrentState");
   w("open-points", "state-after-held-add", afterHeld);
-  console.log(`jdownloader: held add — in the download list: ${inList}, controller: ${afterHeld.json().data}`);
+  console.log(
+    `jdownloader: held add — in the download list: ${inList}, controller: ${/** @type {{ data?: unknown }} */ (afterHeld.json()).data}`,
+  );
   w("commands", "start", await call("/downloadcontroller/start"));
 
   // extraction (best effort: a stored zip extracts fast)

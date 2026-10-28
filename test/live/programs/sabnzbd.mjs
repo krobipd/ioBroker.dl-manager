@@ -66,7 +66,7 @@ export async function record(ctx) {
   await waitFor("SABnzbd API", async () => (await api("mode=version")).status === 200, 180_000);
 
   const versionRes = await api("mode=version");
-  const rec = new Recorder("sabnzbd", String(versionRes.json().version));
+  const rec = new Recorder("sabnzbd", String(/** @type {{ version?: string }} */ (versionRes.json()).version));
   const w = (state, name, request, res) => rec.write(state, name, request.replace(API_KEY, "<api-key>"), res);
   w("auth", "version", "GET /api?mode=version", versionRes);
   w("auth", "key-missing", "GET /api?mode=queue", await api("mode=queue"));
@@ -90,8 +90,11 @@ export async function record(ctx) {
     return keyed(`mode=addfile${extra}`, { body: form });
   };
   const idOf = res => res.json().nzo_ids?.[0];
-  const queue = async () => (await keyed("mode=queue")).json().queue.slots;
-  const history = async () => (await keyed("mode=history&limit=50")).json().history.slots;
+  /** @typedef {{ nzo_id: string, status: string }} SabSlot a queue or history slot (the fields read here) */
+  const queue = async () =>
+    /** @type {{ queue: { slots: SabSlot[] } }} */ ((await keyed("mode=queue")).json()).queue.slots;
+  const history = async () =>
+    /** @type {{ history: { slots: SabSlot[] } }} */ ((await keyed("mode=history&limit=50")).json()).history.slots;
 
   await snapshot("empty");
 

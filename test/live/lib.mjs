@@ -54,7 +54,7 @@ export function pull(image) {
  * @param {() => Promise<T>} probe returns a truthy value when ready
  * @param {number} [timeoutMs] deadline
  * @param {number} [everyMs] pause between probes
- * @returns {Promise<T>} the probe's value
+ * @returns {Promise<NonNullable<T>>} the probe's value
  */
 export async function waitFor(label, probe, timeoutMs = 120_000, everyMs = 500) {
   const end = Date.now() + timeoutMs;
@@ -66,7 +66,7 @@ export async function waitFor(label, probe, timeoutMs = 120_000, everyMs = 500) 
         return v;
       }
     } catch (err) {
-      last = String(err?.message ?? err);
+      last = String(err instanceof Error ? err.message : err);
     }
     if (Date.now() > end) {
       throw new Error(`timeout waiting for ${label}${last ? ` (last error: ${last})` : ""}`);
@@ -88,7 +88,7 @@ export class Http {
   /**
    * @param {string} method HTTP method
    * @param {string} path path with query
-   * @param {{ form?: Record<string,string>, json?: unknown, body?: BodyInit, headers?: Record<string,string> }} [o] body
+   * @param {{ form?: Record<string,string>, json?: unknown, body?: RequestInit["body"], headers?: Record<string,string> }} [o] body
    * @returns {Promise<{ status: number, headers: Record<string,string>, text: string, json: () => unknown }>} answer
    */
   async req(method, path, o = {}) {
@@ -111,7 +111,8 @@ export class Http {
       res = await send();
     } catch (err) {
       // NZBGet closes the connection after each answer; fetch then reuses the dead socket once — send again
-      if (err?.cause?.code !== "UND_ERR_SOCKET") {
+      const cause = err instanceof Error ? /** @type {{ code?: string } | undefined} */ (err.cause) : undefined;
+      if (cause?.code !== "UND_ERR_SOCKET") {
         throw err;
       }
       res = await send();
@@ -141,6 +142,7 @@ const KEEP_HEADERS = ["content-type", "www-authenticate", "x-transmission-rpc-ve
  * @returns {Record<string, string>} the headers a driver reads, session ids and cookies masked
  */
 function keptHeaders(headers) {
+  /** @type {Record<string, string>} */
   const out = {};
   for (const k of KEEP_HEADERS) {
     if (headers[k] !== undefined) {
@@ -233,8 +235,9 @@ function bencode(v) {
   if (Array.isArray(v)) {
     return Buffer.concat([Buffer.from("l"), ...v.map(bencode), Buffer.from("e")]);
   }
-  const keys = Object.keys(v).sort();
-  return Buffer.concat([Buffer.from("d"), ...keys.flatMap(k => [bencode(k), bencode(v[k])]), Buffer.from("e")]);
+  const dict = /** @type {Record<string, unknown>} */ (v);
+  const keys = Object.keys(dict).sort();
+  return Buffer.concat([Buffer.from("d"), ...keys.flatMap(k => [bencode(k), bencode(dict[k])]), Buffer.from("e")]);
 }
 
 /**

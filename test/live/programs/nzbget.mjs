@@ -64,19 +64,20 @@ export async function record(ctx) {
    * @param {string} method RPC method
    * @param {unknown[]} params positional params
    * @param {string} [pass] password
-   * @returns {Promise<{ status: number, text: string, headers: Record<string,string>, json: () => Record<string, unknown>, sent: string }>} answer
+   * @returns {Promise<{ status: number, text: string, headers: Record<string,string>, json: () => unknown, sent: string }>} answer
    */
   const rpc = async (method, params = [], pass = PASS) => {
     const body = { method, params, id: ++seq };
     const res = await http.req("POST", "/jsonrpc", { headers: auth(pass), json: body });
     return { ...res, sent: JSON.stringify(body) };
   };
-  const result = async (method, params) => (await rpc(method, params)).json().result;
+  const result = async (method, params) =>
+    /** @type {{ result?: unknown }} */ ((await rpc(method, params)).json()).result;
   await waitFor("NZBGet RPC", async () => (await rpc("version")).status === 200, 180_000);
 
   const wrong = await rpc("version", [], "wrong");
   const versionRes = await rpc("version");
-  const rec = new Recorder("nzbget", String(versionRes.json().result));
+  const rec = new Recorder("nzbget", String(/** @type {{ result?: unknown }} */ (versionRes.json()).result));
   const w = (state, name, res) => rec.write(state, name, `POST /jsonrpc ${res.sent}`, res);
   w("auth", "login-wrong", wrong);
   w("auth", "version", versionRes);
@@ -100,8 +101,9 @@ export async function record(ctx) {
       false,
       [],
     ]);
-  const groups = async () => result("listgroups", [0]);
-  const history = async () => result("history", [false]);
+  /** @typedef {{ NZBID: number, Status: string }} NzbEntry an entry of listgroups or history (the fields read here) */
+  const groups = async () => /** @type {NzbEntry[]} */ (await result("listgroups", [0]));
+  const history = async () => /** @type {NzbEntry[]} */ (await result("history", [false]));
   const idOf = res => res.json().result;
 
   await snapshot("empty");

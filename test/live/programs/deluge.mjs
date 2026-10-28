@@ -63,7 +63,7 @@ export async function record(ctx) {
    * @param {Http} h client
    * @param {string} method RPC method
    * @param {unknown[]} params positional params
-   * @returns {Promise<{ status: number, text: string, headers: Record<string,string>, json: () => Record<string, unknown>, sent: string }>} answer
+   * @returns {Promise<{ status: number, text: string, headers: Record<string,string>, json: () => unknown, sent: string }>} answer
    */
   const call = async (h, method, params = []) => {
     const body = { method, params, id: ++seq };
@@ -77,21 +77,22 @@ export async function record(ctx) {
   const missing = await call(new Http(base), "web.update_ui", [KEYS, {}]);
   const d = new Http(base);
   const login = await call(d, "auth.login", [PASS]);
-  if (login.json().result !== true) {
+  if (/** @type {{ result?: unknown }} */ (login.json()).result !== true) {
     throw new Error(`login failed: ${login.text}`);
   }
   const rpc = (method, params) => call(d, method, params);
-  const result = async (method, params) => (await rpc(method, params)).json().result;
+  const result = async (method, params) =>
+    /** @type {{ result?: unknown }} */ ((await rpc(method, params)).json()).result;
 
   const hosts = await rpc("web.get_hosts");
-  const hostId = hosts.json().result[0][0];
+  const hostId = /** @type {{ result: Array<[string, ...unknown[]]> }} */ (hosts.json()).result[0][0];
   const status = await waitFor("daemon online", async () => {
     const r = await rpc("web.get_host_status", [hostId]);
-    return /Online|Connected/.test(JSON.stringify(r.json().result)) ? r : null;
+    return /Online|Connected/.test(JSON.stringify(/** @type {{ result?: unknown }} */ (r.json()).result)) ? r : null;
   });
   const connect = await rpc("web.connect", [hostId]);
   await waitFor("web connected", async () => (await result("web.connected")) === true);
-  const version = String(status.json().result[2] ?? "unknown");
+  const version = String(/** @type {{ result: unknown[] }} */ (status.json()).result[2] ?? "unknown");
   const rec = new Recorder("deluge", version);
   const w = (state, name, res) => rec.write(state, name, `POST /json ${res.sent}`, res);
   w("auth", "login-wrong", wrong);
@@ -127,7 +128,10 @@ export async function record(ctx) {
     );
     w(state, "is-session-paused", await rpc("core.is_session_paused"));
   };
-  const torrents = async () => (await result("web.update_ui", [KEYS, {}]))?.torrents ?? {};
+  const torrents = async () =>
+    /** @type {{ torrents?: Record<string, { state: string, progress: number }> } | undefined} */ (
+      await result("web.update_ui", [KEYS, {}])
+    )?.torrents ?? {};
   const hash = name => torrentOf(ctx.work, name).hash;
   const stateOf = async h => (await torrents())[h]?.state;
   const add = (name, options = {}) =>
@@ -167,7 +171,7 @@ export async function record(ctx) {
     w("commands", "label-add", await rpc("label.add", ["linux"]));
     w("commands", "label-set-torrent", await rpc("label.set_torrent", [hash("done"), "linux"]));
   } catch (err) {
-    console.log(`label plugin not usable: ${err.message}`);
+    console.log(`label plugin not usable: ${err instanceof Error ? err.message : err}`);
   }
   await snapshot("running");
 
