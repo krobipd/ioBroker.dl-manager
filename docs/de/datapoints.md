@@ -67,7 +67,8 @@ selbst angehalten hast, bleibt angehalten. Das Gemerkte übersteht einen Neustar
 ## `<programm>-<stück>.downloads.<download>` — ein Download
 
 Ein Download ist, was du hinzugefügt hast: ein JDownloader- oder pyLoad-Paket, ein Torrent, ein NZB-Auftrag, ein
-aria2-Download.
+aria2-Download. Der Kanal trägt den Namen des Downloads, und jeder Datenpunkt-Name beginnt damit
+(`ubuntu.iso: Fortschritt`), damit auch Listen, die nur den Namen zeigen, zwei Downloads auseinanderhalten.
 
 | Datenpunkt    | Typ           | Zugriff | JD  | qBt | TR  | DE  | SAB | NZB | a2  | pyL | Bedeutung                                                                                                                   |
 | ------------- | ------------- | ------- | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | --------------------------------------------------------------------------------------------------------------------------- |

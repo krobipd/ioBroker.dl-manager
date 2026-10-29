@@ -150,6 +150,7 @@ The test button on a program's card asks the program once and shows its answer.
 - Fixed: an unexpected answer from a program no longer deletes its downloads
 - Fixed: Deluge no longer stops as if its password were wrong
 - Fixed: pause all is confirmed only once a program has paused
+- Changed: every datapoint of a download starts with the download's name
 - Changed: a busy or unreachable program is asked less often
 - Changed: requires js-controller 7.2.5 and admin 8.3.5
 

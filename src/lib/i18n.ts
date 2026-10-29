@@ -31,6 +31,20 @@ export function tName(key: I18nKey, ...args: (string | number)[]): ioBroker.Stri
 }
 
 /**
+ * Translation object for a datapoint of one entry among many (a download): the entry's own name first, then the
+ * datapoint's — every entry carries the same datapoints, and only the name tells them apart wherever ioBroker lists
+ * them (fleet rule D19, `same-name`).
+ *
+ * @param owner the entry's name as its program reports it
+ * @param key Translation key of the datapoint's name
+ */
+export function tNameOf(owner: string, key: I18nKey): ioBroker.Translated {
+  return Object.fromEntries(
+    Object.entries(I18n.getTranslatedObject(key)).map(([lang, text]) => [lang, `${owner}: ${text}`]),
+  ) as ioBroker.Translated;
+}
+
+/**
  * The text with its `%s` placeholders filled in order.
  *
  * @param text a text with placeholders

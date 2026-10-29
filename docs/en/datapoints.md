@@ -65,7 +65,9 @@ yourself stays paused. The memory survives an adapter restart.
 
 ## `<program>-<piece>.downloads.<download>` — one download
 
-A download is what you added: a JDownloader or pyLoad package, a torrent, an NZB job, an aria2 download.
+A download is what you added: a JDownloader or pyLoad package, a torrent, an NZB job, an aria2 download. The channel
+carries the download's name, and every datapoint's name starts with it (`ubuntu.iso: Progress`), so lists that show
+only the name still tell two downloads apart.
 
 | Datapoint     | Type          | Access | JD  | qBt | TR  | DE  | SAB | NZB | a2  | pyL | Meaning                                                                                              |
 | ------------- | ------------- | ------ | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | ---------------------------------------------------------------------------------------------------- |

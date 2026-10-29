@@ -364,7 +364,10 @@ describe("ProgramTree — downloads", () => {
     const again = new ProgramTree(a, "qbittorrent-nas", "qBittorrent (NAS)", driver(), ALL);
     await again.load();
     await again.sync(snap([item("aaaa11112222")]));
-    expect(a.objects.get(`${CH}.progress`)?.common.name).toEqual({ en: "progress", de: "progress_de" });
+    expect(a.objects.get(`${CH}.progress`)?.common.name).toEqual({
+      en: "name aaaa11112222: progress",
+      de: "name aaaa11112222: progress_de",
+    });
     a.objectWrites = 0;
     await again.sync(snap([item("aaaa11112222")]));
     expect(a.objectWrites).toBe(0);
@@ -376,6 +379,40 @@ describe("ProgramTree — downloads", () => {
     await t.sync(snap([item("aaaa11112222")]));
     await t.sync(snap([item("aaaa11112222", { name: "renamed" })]));
     expect(a.objects.get(CH)?.common.name).toBe("renamed");
+    expect(a.objects.get(`${CH}.progress`)?.common.name).toEqual({
+      en: "renamed: progress",
+      de: "renamed: progress_de",
+    });
+  });
+
+  it("names every datapoint of a download after its download, the program's own datapoints stay as they are (D19)", async () => {
+    const a = new FakeAdapter(NS);
+    const recheck: ExtraDefinition = {
+      id: "recheck",
+      level: "item",
+      type: "boolean",
+      role: "button",
+      write: true,
+      read: false,
+      nameKey: "recheck",
+    };
+    const t = new ProgramTree(a, "qbittorrent-nas", "qBittorrent (NAS)", driver(CAPS, [recheck]), ALL);
+    await t.load();
+    await t.ensureDevice(undefined);
+    await t.sync(snap([item("aaaa11112222"), item("bbbb33334444")]));
+    expect(a.objects.get(`${CH}.uploadSpeed`)?.common.name).toEqual({
+      en: "name aaaa11112222: uploadSpeed",
+      de: "name aaaa11112222: uploadSpeed_de",
+    });
+    expect(a.objects.get(`${DEV}.downloads.33334444.uploadSpeed`)?.common.name).toEqual({
+      en: "name bbbb33334444: uploadSpeed",
+      de: "name bbbb33334444: uploadSpeed_de",
+    });
+    expect(a.objects.get(`${CH}.recheck`)?.common.name).toEqual({
+      en: "name aaaa11112222: recheck",
+      de: "name aaaa11112222: recheck_de",
+    });
+    expect(a.objects.get(`${DEV}.uploadSpeed`)?.common.name).toEqual({ en: "uploadSpeed", de: "uploadSpeed_de" });
   });
 
   it("removes nothing when the poll was incomplete", async () => {

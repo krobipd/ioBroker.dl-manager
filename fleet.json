@@ -44,6 +44,9 @@
   "pollIntervals": {
     "pollInterval": "s"
   },
+  "fixtureLimits": {
+    "none": "no program reports bounds: the only writable numbers are the speed limits in MB/s (speedLimit, uploadLimit), which every program takes in any size, 0 meaning unlimited"
+  },
   "suites": {
     "connectionTest": {
       "command": "testConnection",

@@ -1,4 +1,4 @@
-import { tDesc, tName, tState, type I18nKey } from "../i18n";
+import { tDesc, tName, tNameOf, tState, type I18nKey } from "../i18n";
 import { forCapabilities, ITEM_DATAPOINTS, PROGRAM_DATAPOINTS, type DatapointDef } from "./datapoints";
 import { ID_SCHEME } from "./device-id";
 import { ItemIds } from "./ids";
@@ -351,18 +351,29 @@ export class ProgramTree {
         common: { name: item.name },
         native: { key: item.key, nameSource: "api", ...(known?.leftSig ? { sig: null } : {}) },
       });
-      for (const d of this.itemDefs) {
-        await this.adapter.extendObject(`${ch}.${d.id}`, this.stateObject(d));
-      }
-      for (const e of this.itemExtras) {
-        await this.adapter.extendObject(`${ch}.${e.id}`, this.stateObject(e));
-      }
+      await this.writeItemStates(ch, item.name);
       this.known.set(item.key, { name: item.name, fresh: true, leftSig: false });
     } else if (known.name !== item.name) {
       await this.adapter.extendObject(ch, { common: { name: item.name } });
+      await this.writeItemStates(ch, item.name);
       known.name = item.name;
     }
     await this.putValues(ch, this.itemDefs, item, this.itemExtras, item.extra);
+  }
+
+  /**
+   * The datapoint objects of a download channel, each named after its download — so a renamed download renames them.
+   *
+   * @param ch the channel id
+   * @param download the download's name
+   */
+  private async writeItemStates(ch: string, download: string): Promise<void> {
+    for (const d of this.itemDefs) {
+      await this.adapter.extendObject(`${ch}.${d.id}`, this.stateObject(d, tNameOf(download, d.nameKey)));
+    }
+    for (const e of this.itemExtras) {
+      await this.adapter.extendObject(`${ch}.${e.id}`, this.stateObject(e, tNameOf(download, e.nameKey)));
+    }
   }
 
   private async writeProgram(snapshot: ProgramSnapshot): Promise<void> {
@@ -414,13 +425,15 @@ export class ProgramTree {
 
   /**
    * @param d a core datapoint or a driver's extra — both describe a state the same way
+   * @param name its name — the datapoint's own unless it belongs to one download of many
    * @returns its object
    */
   private stateObject(
     d: Pick<DatapointDef, "id" | "type" | "role" | "unit" | "states" | "read" | "write" | "nameKey" | "descKey">,
+    name: ioBroker.StringOrTranslated = tName(d.nameKey),
   ): ioBroker.PartialObject {
     const common: Partial<ioBroker.StateCommon> = {
-      name: tName(d.nameKey),
+      name,
       type: d.type,
       role: d.role,
       read: d.read,

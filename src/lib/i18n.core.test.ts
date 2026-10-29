@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import * as I18n from "@iobroker/adapter-core/i18n";
-import { tName } from "./i18n";
+import { tName, tNameOf } from "./i18n";
 
 // Against the real adapter-core translation module and the shipped texts — the other suites stub the translation
 // away. The package root needs a js-controller, its `i18n` entry does not.
@@ -33,5 +33,20 @@ describe("tName — placeholders, with the real adapter-core", () => {
 
   it("keeps a key without placeholders as it is", () => {
     expect((tName("dmTest") as Record<string, string>).en).toBe("Test connection");
+  });
+});
+
+describe("tNameOf — a download's datapoint, with the real adapter-core", () => {
+  beforeAll(async () => {
+    await I18n.init(join(__dirname, "../../admin"), "en");
+  });
+
+  it("puts the download's name before the datapoint's in every language", () => {
+    const own = I18n.getTranslatedObject("uploadSpeed") as Record<string, string>;
+    const text = tNameOf("ubuntu.iso", "uploadSpeed") as Record<string, string>;
+    expect(Object.keys(text).sort()).toEqual(Object.keys(own).sort());
+    for (const [lang, value] of Object.entries(text)) {
+      expect(value, lang).toBe(`ubuntu.iso: ${own[lang]}`);
+    }
   });
 });
