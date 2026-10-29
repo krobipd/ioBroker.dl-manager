@@ -37,7 +37,7 @@ For details and how to disable it, see the [Sentry plugin documentation](https:/
 
 - **Node.js >= 22**
 - **ioBroker js-controller >= 7.2.5**
-- **ioBroker Admin >= 8.2.0**
+- **ioBroker Admin >= 8.3.5**
 - At least one of the supported download programs, reachable from the ioBroker host
 
 | Program       | Tested with                             | Access                                                                 |
@@ -151,7 +151,7 @@ The test button on a program's card asks the program once and shows its answer.
 - Fixed: Deluge no longer stops as if its password were wrong
 - Fixed: pause all is confirmed only once a program has paused
 - Changed: a busy or unreachable program is asked less often
-- Changed: requires js-controller 7.2.5 and admin 8.2.0
+- Changed: requires js-controller 7.2.5 and admin 8.3.5
 
 ### 0.4.0 (2026-10-02)
 
