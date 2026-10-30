@@ -54,34 +54,33 @@ jobs:
       - name: Verify io-package.json against ioBroker stable repository
         run: |
           set -euo pipefail
-          # Source: sources-dist-stable.json — the official stable channel from
-          # ioBroker.repositories. Default installations (`activeRepo: stable`)
-          # pull every ioBroker adapter from there. Every adapter requirement
-          # declared in io-package.json (common.dependencies +
-          # common.globalDependencies) must be AT LEAST latest-stable.
-          # Behind = drift (block). Ahead = allowed: the dependency check at
-          # install time blocks the update on systems that do not meet the
-          # requirement, and stable users only ever get the adapter version
-          # pinned in sources-dist-stable.json anyway (tt-tom17 pattern:
-          # ioBroker.public-transport 1.x on npm-latest with globalDependencies
-          # an admin floor of a new major before that major reached stable).
-          URL="https://raw.githubusercontent.com/ioBroker/ioBroker.repositories/master/sources-dist-stable.json"
+          # Source: the stable repository default installations (`activeRepo: stable`) install from — js-controller's
+          # `repositories.stable` — and the repository checker judges E4033 against. The GitHub file
+          # sources-dist-stable.json is only what that repository is built from, hours later (round 159: it carried a
+          # newer admin than any stable user could install). The tooling reads the same address (STABLE_REPO_URL in
+          # audit-krobi-consistency.py). Every adapter requirement declared in io-package.json (common.dependencies +
+          # common.globalDependencies) must be AT LEAST the stable version. Behind = drift (block). Ahead = allowed
+          # (2026-08-21, tt-tom17 pattern: ioBroker.public-transport shipped an admin floor of a new major on npm-latest
+          # before that major reached stable): the dependency check at install time blocks the update on systems that do
+          # not meet the requirement, and stable users only get the adapter version pinned in the stable repository.
+          URL="https://download.iobroker.net/sources-dist.json"
           # Round 110 (audit E-M2): an unreachable source was "skipping live check" and green —
           # a gate that cannot measure is red. Three tries with a pause ride out a short outage.
-          HTTP_STATUS=$(curl -sLo /tmp/stable.json -w "%{http_code}" --max-time 30 --retry 3 --retry-delay 10 --retry-all-errors "$URL" || echo "000")
+          # The built repository is ~10 MB (measured 2026-10-29: 0.8 s on a fast line) — the whole transfer gets 120 s.
+          HTTP_STATUS=$(curl -sLo /tmp/stable.json -w "%{http_code}" --max-time 120 --retry 3 --retry-delay 10 --retry-all-errors "$URL" || echo "000")
           if [ "$HTTP_STATUS" = "404" ]; then
-            echo "::error ::sources-dist-stable.json returned 404 — file moved/renamed. Update workflow URL."
+            echo "::error ::the stable repository returned 404 — moved or renamed. Update the workflow URL."
             exit 1
           fi
           if [ "$HTTP_STATUS" != "200" ]; then
-            echo "::error ::sources-dist-stable.json not readable (HTTP $HTTP_STATUS after three tries) — the requirements are unchecked; re-run the job"
+            echo "::error ::the stable repository is not readable (HTTP $HTTP_STATUS after three tries) — the requirements are unchecked; re-run the job"
             exit 1
           fi
           # Schema sanity: without js-controller + admin the file is broken
           JS_STABLE=$(jq -r '."js-controller".version // ""' /tmp/stable.json)
           ADMIN_STABLE=$(jq -r '.admin.version // ""' /tmp/stable.json)
           if [ -z "${JS_STABLE}" ] || [ -z "${ADMIN_STABLE}" ]; then
-            echo "::error ::sources-dist-stable.json schema changed — could not parse js-controller/admin versions."
+            echo "::error ::the stable repository changed its schema — could not parse js-controller/admin versions."
             exit 1
           fi
           # Iterate over every adapter dependency in io-package.json (dependencies + globalDependencies)
@@ -97,7 +96,7 @@ jobs:
             [ -z "${NAME}" ] && continue
             STABLE=$(jq -r --arg n "${NAME}" '.[$n].version // ""' /tmp/stable.json)
             if [ -z "${STABLE}" ]; then
-              echo "::warning ::${NAME} not in sources-dist-stable.json — skipping (no autosync target)"
+              echo "::warning ::${NAME} not in the stable repository — skipping (no autosync target)"
               continue
             fi
             case "${VALUE}" in
@@ -118,7 +117,7 @@ jobs:
           done <<< "${DEPS}"
           if [ "${FAIL}" -eq 1 ]; then
             echo ""
-            echo "Source: https://github.com/ioBroker/ioBroker.repositories/blob/master/sources-dist-stable.json"
+            echo "Source: ${URL}"
             echo "Fix: bump io-package.json common.dependencies / globalDependencies to at least the stable versions above."
             exit 1
           fi
