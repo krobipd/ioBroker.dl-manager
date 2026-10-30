@@ -126,9 +126,9 @@ export class HttpClient {
       throw new ProtocolError("the address is no valid URL — check the host on the card");
     }
     const now = this.opts.now ?? Date.now;
-    const wait = this.notBefore - now();
-    if (wait > 0) {
-      throw new UnreachableError(`rate limited (HTTP 429) — next call in ${Math.ceil(wait / 1000)} s`);
+    const remaining = this.notBefore - now();
+    if (remaining > 0) {
+      throw new UnreachableError(`rate limited (HTTP 429) — next call in ${Math.ceil(remaining / 1000)} s`);
     }
     const headers: Record<string, string> = { ...req.headers };
     let body: string | FormData | undefined = req.body;

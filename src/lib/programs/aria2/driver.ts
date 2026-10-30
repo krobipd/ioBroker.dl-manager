@@ -62,14 +62,14 @@ export class AriaDriver implements ProgramDriver {
       return entries;
     };
     const run = listOf(active, "tellActive");
-    const wait = listOf(waiting, "tellWaiting");
+    const queued = listOf(waiting, "tellWaiting");
     const done = listOf(stopped, "tellStopped");
     const gids = (l: Record<string, unknown>[]): string[] => l.map(e => String(e.gid));
-    this.running = [...gids(run), ...gids(wait.filter(e => e.status !== "paused"))];
+    this.running = [...gids(run), ...gids(queued.filter(e => e.status !== "paused"))];
     this.stopped = new Set(gids(done));
-    const all = [...run, ...wait, ...done];
+    const all = [...run, ...queued, ...done];
     // a finished download cannot be resumed — only active and waiting ones stay in the pause
-    const resumable = new Set(gids([...run, ...wait]));
+    const resumable = new Set(gids([...run, ...queued]));
     const paused = await this.pause.observe(new Set(this.running), resumable);
     const reported = asRecord(version).version;
     return toSnapshot(asText(reported), all, stat, option, paused, m => this.deps.log.debug(m));

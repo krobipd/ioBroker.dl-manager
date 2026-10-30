@@ -100,6 +100,18 @@ describe("computeSummary", () => {
       { online: true, canPause: false, snapshot: snap(null, []) },
     ]);
     expect(s["info.programsAllOnline"]).toBe(true);
-    expect(s["summary.downloadSpeed"]).toBeNull();
+  });
+
+  it("keeps the last speed sums when no program reported a readable speed — only stop and start empty them (D6, C26b)", () => {
+    const s = computeSummary([
+      { online: true, canPause: false, snapshot: snap(null, [item("a", "downloading")]) },
+      { online: true, canPause: false, snapshot: snap(null, []) },
+    ]);
+    expect(s).not.toHaveProperty("summary.downloadSpeed");
+    expect(s).not.toHaveProperty("summary.uploadSpeed");
+    expect(s["summary.active"]).toBe(1);
+    expect(
+      computeSummary([{ online: true, canPause: false, snapshot: snap(2_000_000, []) }])["summary.downloadSpeed"],
+    ).toBe(2);
   });
 });
