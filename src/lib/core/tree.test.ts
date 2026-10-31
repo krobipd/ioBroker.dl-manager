@@ -254,6 +254,8 @@ describe("ProgramTree — downloads", () => {
     const t = await makeTree(a);
     await t.sync(snap([item("aaaa11112222", { status: "seeding", ratio: -1 })]));
     expect((a.objects.get(`${CH}.ratio`)?.common as ioBroker.StateCommon).states).toEqual({ "-1": "∞" });
+    // a measurement 0 or above stays a readable value next to the label, and ∞ is no write below the range
+    expect((a.objects.get(`${CH}.ratio`)?.common as ioBroker.StateCommon).min).toBe(-1);
     expect(a.val("qbittorrent-nas.downloads.11112222.ratio")).toBe(-1);
   });
 

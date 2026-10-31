@@ -25,8 +25,13 @@ export interface DatapointDef<S = unknown> {
   role: string;
   /** Unit. */
   unit?: string;
-  /** Labels of the values a program reports instead of a measurement (outside the value range). */
+  /** Labels of the values a program reports instead of a measurement. */
   states?: Readonly<Record<string, string>>;
+  /**
+   * Lowest value written, the labelled special values included — with `states` the range keeps a measurement readable
+   * (fleet check `state-list`), and js-controller warns on every write below it (`validator.ts`).
+   */
+  min?: number;
   /** Readable. */
   read: boolean;
   /** Writable. */
@@ -227,6 +232,7 @@ export const ITEM_DATAPOINTS: readonly DatapointDef<DownloadItem>[] = [
     id: "ratio",
     value: i => (typeof i.ratio === "number" ? round2(i.ratio) : null),
     states: { [String(RATIO_INFINITE)]: "∞" },
+    min: RATIO_INFINITE,
     type: "number",
     role: "value",
     capability: "upload",
