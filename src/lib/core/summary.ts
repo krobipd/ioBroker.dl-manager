@@ -44,7 +44,7 @@ function sums(read: readonly SummaryInput[]): Record<string, ioBroker.StateValue
  * the sums count the last poll of every program, reachable or not — an outage shows only on reachability, the values
  * it read stay (krobi 2026-10-06 17:55). Without any poll the sums are left out — the start has set them (idleSummary).
  * A speed no program reported readably is left out too: an answer whose fields drifted keeps the last sum, only stop
- * and start set it to nothing (fleet suite D6/C26b, dl-manager CI 40989959214).
+ * and start set it to nothing (CLAUDE.md design decision 27, fleet suite C26b).
  *
  * @param programs every enabled program, reachable or not
  * @returns value per datapoint id below the instance
