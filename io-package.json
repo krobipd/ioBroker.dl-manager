@@ -80,19 +80,6 @@
         "pl": "Pierwsze wydanie — JDownloader 2, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 i pyLoad w jednej instancji, z osobnym kanałem dla każdego pobierania",
         "uk": "Перший випуск — JDownloader 2, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 і pyLoad в одному екземплярі, окремий канал для кожного завантаження",
         "zh-cn": "首个版本 — 在一个实例中支持 JDownloader 2、qBittorrent、Transmission、Deluge、SABnzbd、NZBGet、aria2 和 pyLoad，每个下载都有自己的独立通道"
-      },
-      "0.0.1": {
-        "en": "Initial release",
-        "de": "Erste Version",
-        "ru": "Первый выпуск",
-        "pt": "Primeira versão",
-        "nl": "Eerste release",
-        "fr": "Première version",
-        "it": "Prima versione",
-        "es": "Primera versión",
-        "pl": "Pierwsze wydanie",
-        "uk": "Перший випуск",
-        "zh-cn": "首次发布"
       }
     },
     "titleLang": {
