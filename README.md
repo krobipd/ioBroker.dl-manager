@@ -135,6 +135,7 @@ The test button on a program's card asks the program once and shows its answer.
 - Fixed: the e-mail address of a My.JDownloader account no longer appears in the device object or an object export
 - Fixed: a link added while downloads are paused now resumes together with them
 - Fixed: aria2 shows seeding torrents and their ratio correctly
+- Fixed: an infinite seed ratio shows ∞ instead of staying empty
 - Fixed: size and time left stay empty while the program does not know them
 - Fixed: NZBGet and pyLoad show their new version after an update
 - Fixed: pyLoad shows a decrypting package as queued
