@@ -983,10 +983,19 @@ async function playOutage(harness, watch) {
   return outage;
 }
 
-/** Round 100: every call the network hook counted so far (`<pid>.calls`), oldest first. */
+/**
+ * Round 100: every call the network hook counted (`<pid>.calls`) at or after `from` (ms; 0: the whole run), oldest
+ * first. Round 165: through the master's recordLines — a read of what an earlier suite left is noted there, and D06 runs
+ * the suites before this one with it; one that reads only its own calls runs alone. Round 170: an HTTP call carries
+ * `answered`, the time its answer reached the adapter (`<pid>.answered`, paired by the call's number `n`).
+ *
+ * @param {number} [from] the earliest call of interest (ms)
+ */
 function readCalls(from = 0) {
+  const answered = new Map(recordLines(RESOURCE_DIR, ".answered", from).map(a => [`${a.pid} ${a.n}`, a.t]));
   return recordLines(RESOURCE_DIR, ".calls", from)
     .filter(c => c.t >= from)
+    .map(c => (answered.has(`${c.pid} ${c.n}`) ? { ...c, answered: answered.get(`${c.pid} ${c.n}`) } : c))
     .sort((a, b) => a.t - b.t);
 }
 
@@ -2142,7 +2151,8 @@ tests.integration(ADAPTER_DIR, {
       it("stays within every limit it declares", function () {
         // round 113 (govee inv4): each installation counts on its own — a suite begins one in clearInstanceData; a
         // process belongs to the installation its first call falls in, with the restarts the host plays in it;
-        // round 123: only the installations judgedCalls() keeps
+        // round 123: only the installations judgedCalls() keeps; round 170 (homeconnect 2026-11-05): a call holds its
+        // place until `seconds · 1000` after its answer — the server counts it at the latest when it answers
         const calls = judgedCalls();
         const over = [];
         for (const d of apiLimits()) {
@@ -2150,16 +2160,19 @@ tests.integration(ADAPTER_DIR, {
             const lanes = new Map();
             for (const c of calls.filter(c => fits(c, d.match))) {
               const lane = `${limit.per === "host" ? c.host : "account"}, installation ${c.install}`;
-              lanes.set(lane, [...(lanes.get(lane) ?? []), c.t]);
+              lanes.set(lane, [...(lanes.get(lane) ?? []), c]);
             }
-            for (const [lane, times] of lanes) {
-              for (let i = 0, j = 0; j < times.length; j++) {
-                while (times[j] - times[i] >= limit.seconds * 1000) {
-                  i++;
+            for (const [lane, sent] of lanes) {
+              for (let j = 0; j < sent.length; j++) {
+                let held = 1;
+                for (let i = 0; i < j; i++) {
+                  if (sent[j].t - (sent[i].answered ?? sent[i].t) < limit.seconds * 1000) {
+                    held++;
+                  }
                 }
-                if (j - i + 1 > limit.max) {
+                if (held > limit.max) {
                   over.push(
-                    `${d.name} (${lane}): ${j - i + 1} calls within ${limit.seconds} s, at most ${limit.max} (${limit.source})`,
+                    `${d.name} (${lane}): ${held} calls within ${limit.seconds} s, at most ${limit.max} (${limit.source})`,
                   );
                   break;
                 }
@@ -3123,7 +3136,11 @@ after(function () {
           ),
         ]
       : [];
-  fs.rmSync(RESOURCE_DIR, { recursive: true, force: true });
+  // Round 170 (R170-64): in a run folder the probe stays with the run (its retention removes it) — the lab run of
+  // round 170 had to run again to read its answer stamps; elsewhere (CI, the tmpdir) it goes
+  if (!process.env.KROBI_RUN_DIR) {
+    fs.rmSync(RESOURCE_DIR, { recursive: true, force: true });
+  }
   assert.ok(starts.length > 0, "no adapter start loaded the resource probe — a start without adapterEnv()");
   assert.deepStrictEqual(silent, [], "adapter processes that never reached their exit (killed or crashed)");
   assert.deepStrictEqual(left, [], `left open after onUnload:\n${left.join("\n")}`);
