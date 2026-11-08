@@ -1,5 +1,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
+import { LOCAL_PROGRAMS } from "../api-limits";
+import { CallBudget } from "./call-budget";
 import { ProtocolError, UnreachableError } from "./errors";
 import { HttpClient, RETRY_AFTER_DEFAULT_MS, RETRY_AFTER_MAX_MS, retryAfterMs } from "./http";
 
@@ -247,5 +249,108 @@ describe("HttpClient", () => {
     const r = await new HttpClient(timers).request({ method: "GET", url: s.url });
     expect(r.text).toBe("<html>");
     expect(() => r.json()).toThrow(ProtocolError);
+  });
+
+  it("sends only with a place in its counterpart's windows, and gives the wait up when closed", async () => {
+    vi.useFakeTimers({ now: 1_000_000 });
+    const spy = vi.spyOn(globalThis, "fetch").mockImplementation(() => Promise.resolve(new Response("{}")));
+    try {
+      const budget = new CallBudget([
+        {
+          name: LOCAL_PROGRAMS,
+          match: { network: "private" },
+          limits: [{ max: 1, seconds: 60, per: "host", source: "t" }],
+        },
+        { name: "cloud", match: { host: "cloud" }, limits: [{ max: 1, seconds: 60, per: "account", source: "t" }] },
+      ]);
+      const local = new HttpClient({ ...timers, budget });
+      await local.request({ method: "GET", url: "http://nas:1/a" });
+      await local.request({ method: "GET", url: "http://pc:1/a" });
+      const second = local.request({ method: "GET", url: "http://nas:1/b" });
+      await vi.advanceTimersByTimeAsync(59_999);
+      expect(spy).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(1);
+      expect((await second).status).toBe(200);
+      expect(spy).toHaveBeenCalledTimes(3);
+      const cloud = new HttpClient({ ...timers, budget }, { counterpart: "cloud" });
+      await cloud.request({ method: "GET", url: "http://cloud/a" });
+      const shared = cloud.request({ method: "GET", url: "http://other/a" });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(spy).toHaveBeenCalledTimes(4);
+      cloud.close();
+      await expect(shared).rejects.toThrow(/waited for its place/);
+    } finally {
+      spy.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
+  it("gives the second send after a closed socket a place of its own", async () => {
+    vi.useFakeTimers({ now: 1_000_000 });
+    const closed = new TypeError("fetch failed", {
+      cause: Object.assign(new Error("other side closed"), { code: "UND_ERR_SOCKET" }),
+    });
+    const spy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementationOnce(() => Promise.reject(closed))
+      .mockImplementation(() => Promise.resolve(new Response("{}")));
+    try {
+      const budget = new CallBudget([
+        {
+          name: LOCAL_PROGRAMS,
+          match: { network: "private" },
+          limits: [{ max: 2, seconds: 60, per: "host", source: "t" }],
+        },
+      ]);
+      const client = new HttpClient({ ...timers, budget }, { resendOnClosedSocket: true });
+      expect((await client.request({ method: "GET", url: "http://nas:1/a" })).status).toBe(200);
+      // two calls went out, the window of two is full
+      const next = client.request({ method: "GET", url: "http://nas:1/b" });
+      await vi.advanceTimersByTimeAsync(59_999);
+      expect(spy).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(spy).toHaveBeenCalledTimes(3);
+      expect((await next).status).toBe(200);
+    } finally {
+      spy.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
+  it("counts a request without an answer from its send, stamped after the transport took it", async () => {
+    vi.useFakeTimers({ now: 1_000_000 });
+    const spy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementationOnce(() => {
+        // the transport call itself takes time, and the program never answers
+        vi.setSystemTime(Date.now() + 5);
+        return new Promise<Response>((_resolve, reject) => {
+          globalThis.setTimeout(() => reject(new TypeError("fetch failed")), 9_000);
+        });
+      })
+      .mockImplementation(() => Promise.resolve(new Response("{}")));
+    try {
+      const budget = new CallBudget([
+        {
+          name: LOCAL_PROGRAMS,
+          match: { network: "private" },
+          limits: [{ max: 1, seconds: 60, per: "host", source: "t" }],
+        },
+      ]);
+      const client = new HttpClient({ ...timers, budget });
+      const failed = expect(client.request({ method: "GET", url: "http://nas:1/a" })).rejects.toThrow(UnreachableError);
+      await vi.advanceTimersByTimeAsync(9_000);
+      await failed;
+      const next = client.request({ method: "GET", url: "http://nas:1/b" });
+      // a window after the send (1_000_005) — not after the hand-out (1_000_000), not after the failure (1_009_005)
+      await vi.advanceTimersByTimeAsync(50_999);
+      expect(spy).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(spy).toHaveBeenCalledTimes(2);
+      expect((await next).status).toBe(200);
+    } finally {
+      spy.mockRestore();
+      vi.useRealTimers();
+    }
   });
 });

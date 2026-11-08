@@ -1,5 +1,6 @@
 import { createCipheriv, createDecipheriv, createHash, createHmac } from "node:crypto";
 import { AuthError, ProtocolError, UnreachableError } from "../../core/errors";
+import { MY_JDOWNLOADER } from "../../api-limits";
 import { errText } from "../../err-text";
 import { errorField, HttpClient, type HttpResponse, type HttpTimers } from "../../core/http";
 import type { DriverDeps, ProgramConfig } from "../../core/model";
@@ -151,7 +152,7 @@ export class JdCloudTransport implements JdTransport {
     private readonly deps: HttpTimers & Pick<DriverDeps, "onDeviceId">,
     private readonly base = API,
   ) {
-    this.http = new HttpClient(deps, { timeoutMs: 20_000 });
+    this.http = new HttpClient(deps, { timeoutMs: 20_000, counterpart: MY_JDOWNLOADER });
     this.login = jdSecret(cfg.username, cfg.password, "server");
     this.device = jdSecret(cfg.username, cfg.password, "device");
   }

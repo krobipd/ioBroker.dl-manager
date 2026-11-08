@@ -1,3 +1,5 @@
+import { LOCAL_PROGRAMS } from "../../api-limits";
+import type { CallPlace } from "../../core/call-budget";
 import { errText } from "../../err-text";
 import { EmulatedPause, memoryPauseStore } from "../../core/emulated-pause";
 import { ProtocolError } from "../../core/errors";
@@ -155,17 +157,39 @@ export class AriaDriver implements ProgramDriver {
   public subscribe(onChange: () => void): () => void {
     let stopped = false;
     let socket: ReturnType<SocketFactory> | null = null;
-    const open = (): void => {
+    const quit = new AbortController();
+    const open = async (): Promise<void> => {
       if (stopped) {
         return;
       }
+      // the handshake is a call to aria2 like a request — it waits for its place in the declared windows
+      let place: CallPlace | undefined;
       try {
+        const budget = this.deps.budget;
+        place = budget
+          ? await budget.take(LOCAL_PROGRAMS, new URL(this.client.wsUrl).hostname, this.deps, quit.signal)
+          : undefined;
         socket = this.socket(this.client.wsUrl);
       } catch (err: unknown) {
-        this.deps.log.debug(`aria2: push channel not opened: ${errText(err)}`);
-        this.deps.setTimeout(open, RECONNECT_MS);
+        if (place) {
+          this.deps.budget?.settle(place, false);
+        }
+        if (!stopped) {
+          this.deps.log.debug(`aria2: push channel not opened: ${errText(err)}`);
+          this.deps.setTimeout(() => void open(), RECONNECT_MS);
+        }
         return;
       }
+      if (place) {
+        this.deps.budget?.sent(place);
+      }
+      const settle = (answered: boolean): void => {
+        if (place) {
+          this.deps.budget?.settle(place, answered);
+        }
+      };
+      socket.addEventListener("open", () => settle(true));
+      socket.addEventListener("error", () => settle(false));
       socket.addEventListener("message", ev => {
         try {
           const m = JSON.parse(String(ev.data)) as { method?: unknown };
@@ -177,15 +201,17 @@ export class AriaDriver implements ProgramDriver {
         }
       });
       socket.addEventListener("close", () => {
+        settle(false);
         socket = null;
         if (!stopped) {
-          this.deps.setTimeout(open, RECONNECT_MS);
+          this.deps.setTimeout(() => void open(), RECONNECT_MS);
         }
       });
     };
-    open();
+    void open();
     return () => {
       stopped = true;
+      quit.abort();
       socket?.close();
     };
   }

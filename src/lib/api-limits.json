@@ -3,7 +3,7 @@
     {
       "name": "Download program in the user's network",
       "match": {
-        "hostPattern": "^(?!api\\.jdownloader\\.org$).+$",
+        "network": "private",
         "kind": "http"
       },
       "limits": [
@@ -11,7 +11,7 @@
           "max": 100,
           "seconds": 60,
           "per": "host",
-          "source": "pyLoad-ng: 100 requests a minute per client on /api/* (api_blueprint.py, commit 8939301c, answer HTTP 429); the other programs document no limit and get the same cap. Own pace: one query per program at most every 10 s, a first query of up to 8 calls (Deluge login), so three starts in one minute stay near 45"
+          "source": "pyLoad-ng: 100 requests a minute per client on /api/* (api_blueprint.py, commit 8939301c, answer HTTP 429); the other programs document no limit and get the same cap. Kept by the call budget (core/call-budget.ts) for every request and every WebSocket handshake; own pace: one query per program at most every 10 s, a first query of up to 8 calls (Deluge login)"
         }
       ]
     },
@@ -26,7 +26,7 @@
           "max": 40,
           "seconds": 60,
           "per": "account",
-          "source": "own cap: My.JDownloader documents no threshold, only HTTP 429 (Home Assistant asks every 60 s). The adapter asks at most every 30 s (jdownloader/driver.ts), 3 calls a query; a login with device list and version adds 3 — three starts in one minute with two queries and a new login stay near 28"
+          "source": "own cap: My.JDownloader documents no threshold, only HTTP 429 (Home Assistant asks every 60 s). Kept by the call budget (core/call-budget.ts) for every account at once; the adapter asks at most every 30 s (jdownloader/driver.ts), 3 calls a query; a login with device list and version adds 3 — three starts in one minute with two queries and a new login stay near 28"
         }
       ]
     }

@@ -221,15 +221,15 @@ function pyload(url) {
 }
 
 const ROUTES = {
-  "jdownloader.fixture": jdLocal,
+  "jdownloader.local": jdLocal,
   "api.jdownloader.org": myjd,
-  "qbittorrent.fixture": qbittorrent,
-  "transmission.fixture": transmission,
-  "deluge.fixture": deluge,
-  "sabnzbd.fixture": sabnzbd,
-  "nzbget.fixture": nzbget,
-  "aria2.fixture": aria2,
-  "pyload.fixture": pyload,
+  "qbittorrent.local": qbittorrent,
+  "transmission.local": transmission,
+  "deluge.local": deluge,
+  "sabnzbd.local": sabnzbd,
+  "nzbget.local": nzbget,
+  "aria2.local": aria2,
+  "pyload.local": pyload,
 };
 
 globalThis.fetch = async (input, init = {}) => {

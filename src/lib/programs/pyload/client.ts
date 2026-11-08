@@ -1,4 +1,4 @@
-import { apiLimit } from "../../api-limits";
+import { apiLimit, LOCAL_PROGRAMS } from "../../api-limits";
 import { AuthError, ProtocolError, UnreachableError } from "../../core/errors";
 import { errorField, HttpClient, type HttpTimers } from "../../core/http";
 import type { ProgramConfig } from "../../core/model";
@@ -67,7 +67,7 @@ export class PyClient {
       throw new AuthError(`pyload: ${this.refused} (${err || `HTTP ${res.status}`})`);
     }
     if (res.status === 429) {
-      const { max } = apiLimit("Download program in the user's network", 60);
+      const { max } = apiLimit(LOCAL_PROGRAMS, 60);
       throw new UnreachableError(`pyload: too many requests (pyLoad allows ${max} a minute) — raise the poll interval`);
     }
     if (res.status >= 400) {

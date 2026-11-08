@@ -16,12 +16,14 @@ Kanal mit Einzel-Datenpunkten, Summen für Blockly.
 ## Architektur
 
 ```
-src/main.ts                      → Lebenszyklus: I18n (erste Anweisung) → Speicher-Objekt von 0.3.x in die Datei (einmal) →
+src/main.ts                      → Lebenszyklus: I18n (erste Anweisung) → Plätze des Aufrufbudgets aus `call-budget.json` →
+                                   Speicher-Objekt von 0.3.x in die Datei (einmal) →
                                    Programme aus `native.programs` in den Speicher (einmal) → native-/common-Schlüssel
                                    migrieren → Objekt- und Wertespeicher laden → Manifest-Objekte auffrischen → settleDevices
                                    (Umzug fortsetzen, IDs vergeben, last-Umzug) → Gerätemanager bauen → subscribeStates("*")
                                    → ProgramManager.start; updateRows (frisch lesen, ändern, speichern, apply — ein Schritt in
-                                   `Serial`), learnDeviceId (My.JD-Id), onStateChange, onUnload → stop().finally(cb);
+                                   `Serial`), learnDeviceId (My.JD-Id), onStateChange, onUnload → stop().finally(Plätze
+                                   sichern, cb);
                                    ein Stopp mitten im Start (`unloading`) startet kein Programm mehr und wartet ohne Manager
                                    auf den Start (`starting`), damit nach dem Rückruf nichts mehr schreibt; `ProgramManager.stop`
                                    hält jeden Runner sofort an (eine laufende Änderung, z. B. der Umzug nach einer gelernten
@@ -60,7 +62,12 @@ src/lib/core/states.ts           → KnownStates: EIN Wertespeicher, jeder Zusta
 src/lib/core/summary.ts          → info.* und summary.* aus allen Programmen
 src/lib/core/commands.ts         → routeState: Datenpunkt-Id → pauseAll / Befehl an Programm / ignorieren
 src/lib/core/http.ts             → HttpClient: Timeout über Adapter-Timer, Cookies, keine Weiterleitungen, multipart,
-                                   502/503/504 = nicht erreichbar, 429 = bis `retry-after` keine Anfrage
+                                   502/503/504 = nicht erreichbar, 429 = bis `retry-after` keine Anfrage; jede Anfrage
+                                   wartet vorher auf ihren Platz im Aufrufbudget (die Wartezeit zählt nicht zur Frist)
+src/lib/core/call-budget.ts      → CallBudget: jeder Aufruf hält einen Platz in jedem Fenster aus `api-limits.json` (je Host
+                                   bzw. Konto, je Fensterlänge die strengste Grenze) — unterwegs, beantwortet bis ein Fenster
+                                   nach der Antwort, ohne Antwort ab dem Senden; beim Stopp nach `call-budget.json` im
+                                   Datenordner, beim Start zurück (sonst begänne der neue Prozess mit einer leeren Minute)
 src/lib/core/answer.ts           → rein: Listen und Kennungen einer Programmantwort prüfen, sonst ProtocolError (ganz abgelehnt)
 src/lib/core/emulated-pause.ts   → nachgebildete Programm-Pause (PauseStore im native des paused-Objekts)
 src/lib/core/{errors,ids,units,redact,version,status}.ts → Fehlerklassen, Kennungen, Einheiten + Lesehelfer der Antworten,
@@ -72,8 +79,9 @@ src/lib/programs/<typ>/          → client.ts (Transport + Anmeldung), map.ts (
                                    driver.ts (Fähigkeiten, Extras, Befehle)
 src/lib/{enum-carry,known-objects,err-text,native-key-migration}.ts → Kopien aus .consistency-master (byte-gleich)
 src/lib/{actionable-problems,device-icons,i18n}.ts → Flotten-Muster
-src/lib/api-limits.{json,ts}     → Limits jeder Gegenstelle (lokale Programme: pyLoads 100/min je Host; My.JDownloader: eigener
-                                   Deckel); liegt in src/, im Paket über `files`; die pyLoad-429-Meldung liest ihre Zahl daraus
+src/lib/api-limits.{json,ts}     → Limits jeder Gegenstelle (lokale Programme `network: "private"`: pyLoads 100/min je Host;
+                                   My.JDownloader: eigener Deckel je Konto); liegt in src/, im Paket über `files`; das
+                                   Aufrufbudget und die pyLoad-429-Meldung lesen ihre Zahlen daraus
 admin/jsonConfig.json, admin/icons/*.svg → Einstellungsseite (Gerätemanager + Allgemein + Spenden), Piktogramme je Familie
 ```
 
@@ -111,6 +119,7 @@ _Jede Entscheidung steht hier als Regel-Satz; Beleg, Messung und Verlauf stehen 
 28. **Eine Antwort, die ihre Form verloren hat, wird ganz abgelehnt (Flotten-Suite C26b)** — Download-Listen und ihre Kennungen gehen durch `answer.ts`, die Kennungsart (Text oder Zahl) legt jeder Treiber fest; eine leere Version behält die letzte; nur ein ausdrückliches Nein des Programms ist eine abgelehnte Anmeldung.
 29. **Ein 429 ist ein Ratenlimit (Flotten-Suite D21)** — der HTTP-Client fragt das Programm bis zum Ende von `retry-after` nicht mehr (Sekunden oder HTTP-Datum, ohne 60 s, höchstens 1 h); Fehlschläge in Folge verdoppeln den Abstand bis 120 s, ein länger eingestelltes Intervall bleibt.
 30. **Jeder Datenpunkt eines Downloads beginnt mit dem Namen des Downloads (Flottenregel D19, `same-name`)** — `tNameOf` in `i18n.ts`, geschrieben von `writeItemStates` (`tree.ts`); benennt das Programm den Download um, ziehen Kanal und Datenpunkte mit; die Datenpunkte des Programms behalten ihren eigenen Namen.
+31. **Jeder Aufruf an eine Gegenstelle wartet auf seinen Platz in den Fenstern, die `api-limits.json` für sie deklariert (Flotten-Suiten „stays within every limit it declares“ und „every limit holds when it is pressed“, Werkzeug-Runde 171)** — auch der WebSocket-Handshake von aria2; ein beantworteter Aufruf hält den Platz bis ein Fenster nach der Antwort, einer ohne Antwort ab dem Senden (gestempelt nach dem Transportaufruf), die Fenster kommen aus der geladenen Deklaration und die Plätze überdauern einen Neustart.
 
 <!-- core-decisions:begin (generated from the sealed register — change only through the Werkbank) -->
 

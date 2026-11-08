@@ -7,7 +7,7 @@ import { baseUrl, catalogEntry } from "../catalog";
 /** The part of a WebSocket the push channel uses (Node 22 has one built in). */
 export interface MiniSocket {
   /** Subscribes to an event. */
-  addEventListener(type: "message" | "close" | "error", listener: (ev: { data?: unknown }) => void): void;
+  addEventListener(type: "open" | "message" | "close" | "error", listener: (ev: { data?: unknown }) => void): void;
   /** Closes the socket. */
   close(): void;
 }

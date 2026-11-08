@@ -1,20 +1,18 @@
-import { API_COUNTERPARTS, apiLimit } from "./api-limits";
+import { API_COUNTERPARTS, apiLimit, LOCAL_PROGRAMS, MY_JDOWNLOADER } from "./api-limits";
 
 describe("api-limits", () => {
   it("gives the local programs pyLoad's documented 100 calls a minute per host", () => {
-    expect(apiLimit("Download program in the user's network", 60)).toMatchObject({ max: 100, per: "host" });
+    expect(apiLimit(LOCAL_PROGRAMS, 60)).toMatchObject({ max: 100, per: "host" });
   });
 
   it("names the counterpart or the window it does not know", () => {
-    expect(() => apiLimit("My.JDownloader", 1)).toThrow(/no 1-second limit/);
+    expect(() => apiLimit(MY_JDOWNLOADER, 1)).toThrow(/no 1-second limit/);
     expect(() => apiLimit("somewhere", 60)).toThrow(/'somewhere'/);
   });
 
-  it("keeps My.JDownloader out of the local programs' pattern", () => {
-    const local = API_COUNTERPARTS.find(c => c.name === "Download program in the user's network");
-    const pattern = new RegExp(local?.match.hostPattern ?? "^$");
-    expect(pattern.test("api.jdownloader.org")).toBe(false);
-    expect(pattern.test("pyload.fixture")).toBe(true);
-    expect(pattern.test("192.168.1.10")).toBe(true);
+  it("reaches the local programs in the user's network and My.JDownloader at its host", () => {
+    const match = (name: string): unknown => API_COUNTERPARTS.find(c => c.name === name)?.match;
+    expect(match(LOCAL_PROGRAMS)).toEqual({ network: "private", kind: "http" });
+    expect(match(MY_JDOWNLOADER)).toEqual({ host: "api.jdownloader.org", kind: "http" });
   });
 });

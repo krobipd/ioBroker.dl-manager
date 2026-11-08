@@ -2,6 +2,8 @@ import { runDriverContract, type ContractServer } from "../../../../test/helpers
 import { startFixtureServer } from "../../../../test/helpers/fixture-server";
 import { firstUrl } from "../../../../test/helpers/first-url";
 import { loadFixture } from "../../../../test/helpers/fixtures";
+import { LOCAL_PROGRAMS } from "../../api-limits";
+import { CallBudget } from "../../core/call-budget";
 import { memoryPauseStore } from "../../core/emulated-pause";
 import { ProtocolError } from "../../core/errors";
 import type { ProgramConfig } from "../../core/model";
@@ -213,6 +215,105 @@ describe("aria2 details", () => {
     });
     d.subscribe(() => undefined)();
     expect(url).toBe("wss://nas:6800/jsonrpc");
+  });
+
+  it("opens the push channel only with a place in the program's window — the handshake is a call", async () => {
+    vi.useFakeTimers({ now: 1_000_000 });
+    try {
+      const budget = new CallBudget([
+        {
+          name: LOCAL_PROGRAMS,
+          match: { network: "private" },
+          limits: [{ max: 1, seconds: 60, per: "host", source: "t" }],
+        },
+      ]);
+      const listeners: Record<string, (ev: { data?: unknown }) => void> = {};
+      let opened = 0;
+      const d = new AriaDriver(cfg("http://nas:6800"), { ...timers, log, budget }, () => {
+        opened++;
+        return {
+          addEventListener: (type, fn) => {
+            listeners[type] = fn;
+          },
+          close: () => undefined,
+        };
+      });
+      const stop = d.subscribe(() => undefined);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(opened).toBe(1);
+      listeners.open({});
+      listeners.close({});
+      // reconnect after 30 s: the window of the answered handshake is still full for another 30 s
+      await vi.advanceTimersByTimeAsync(59_999);
+      expect(opened).toBe(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(opened).toBe(2);
+      listeners.close({});
+      await vi.advanceTimersByTimeAsync(30_000);
+      // the stop gives up the wait for a place: no socket after it
+      stop();
+      await vi.advanceTimersByTimeAsync(120_000);
+      expect(opened).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("gives a handshake's place back, counted from its send, and stays quiet once stopped", async () => {
+    vi.useFakeTimers({ now: 1_000_000 });
+    try {
+      const budget = new CallBudget([
+        {
+          name: LOCAL_PROGRAMS,
+          match: { network: "private" },
+          limits: [{ max: 1, seconds: 60, per: "host", source: "t" }],
+        },
+      ]);
+      const listeners: Record<string, (ev: { data?: unknown }) => void> = {};
+      const lines: string[] = [];
+      let tries = 0;
+      const debug = (m: string): void => {
+        lines.push(m);
+      };
+      const d = new AriaDriver(cfg("http://nas:6800"), { ...timers, log: { ...log, debug }, budget }, () => {
+        tries++;
+        if (tries === 1) {
+          throw new Error("refused");
+        }
+        // opening the socket takes time: its place counts from after it
+        vi.setSystemTime(Date.now() + 5);
+        return {
+          addEventListener: (type, fn) => {
+            listeners[type] = fn;
+          },
+          close: () => undefined,
+        };
+      });
+      const stop = d.subscribe(() => undefined);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(tries).toBe(1);
+      // the socket that could not open frees its place a window after it; the retry 30 s later waits for that
+      await vi.advanceTimersByTimeAsync(59_999);
+      expect(tries).toBe(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(tries).toBe(2);
+      // no answer — error, then close: a window after the send, 5 ms after the hand-out
+      listeners.error({});
+      listeners.close({});
+      await vi.advanceTimersByTimeAsync(59_999);
+      expect(tries).toBe(2);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(tries).toBe(3);
+      // the stop gives up the wait for a place, without a line and without a retry
+      listeners.close({});
+      await vi.advanceTimersByTimeAsync(30_000);
+      stop();
+      await vi.advanceTimersByTimeAsync(120_000);
+      expect(tries).toBe(3);
+      expect(lines.filter(l => l.includes("not opened"))).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("retries a push channel that could not open, but not after stop", () => {

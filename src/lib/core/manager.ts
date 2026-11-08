@@ -22,8 +22,8 @@ export interface ManagerAdapter extends TreeAdapter, DevicesAdapter, PauseObject
 export interface ManagerDeps {
   /** Object and state access. */
   adapter: ManagerAdapter;
-  /** The adapter's timers. */
-  timers: Pick<RunnerDeps, "setTimeout" | "clearTimeout">;
+  /** The adapter's timers and the instance's call budget. */
+  timers: Pick<RunnerDeps, "setTimeout" | "clearTimeout" | "budget">;
   /** Registry lookup. */
   find: (type: string) => ProgramEntry | undefined;
   /** Actionable problems (rejected login): raised by a runner, forgotten when the program's card changes. */

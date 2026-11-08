@@ -3,6 +3,7 @@ import { I18n } from "@iobroker/adapter-core";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ActionableProblems } from "./lib/actionable-problems";
+import { BUDGET_FILE, CallBudget, readHeldPlaces, writeHeldPlaces } from "./lib/core/call-budget";
 import { parseMaxDownloads, parsePollInterval, parseTreeScope } from "./lib/core/config";
 import { settleIds } from "./lib/core/device-id";
 import { readDevices } from "./lib/core/devices";
@@ -63,6 +64,8 @@ class DownloadManagerAdapter extends utils.Adapter {
   private unloading = false;
   /** The start as it runs — a stop that comes before the programs start waits for it, so nothing writes after the stop. */
   private starting: Promise<void> = Promise.resolve();
+  /** The places of every call to a program or to My.JDownloader in the windows `api-limits.json` declares. */
+  private readonly budget = new CallBudget();
 
   /**
    * @param options Adapter options
@@ -118,6 +121,20 @@ class DownloadManagerAdapter extends utils.Adapter {
   /** @returns the store file in the instance's data folder (`common.dataFolder`, part of every ioBroker backup) */
   private get storeFile(): string {
     return join(utils.getAbsoluteInstanceDataDir(this), STORE_FILE);
+  }
+
+  /** @returns the file that hands the call budget's places to the next process, in the instance's data folder */
+  private get budgetFile(): string {
+    return join(utils.getAbsoluteInstanceDataDir(this), BUDGET_FILE);
+  }
+
+  /** Keeps the call budget's places for the next process — synchronous, at the stop. */
+  private keepBudget(): void {
+    try {
+      writeHeldPlaces(this.budgetFile, this.budget.handOver());
+    } catch (err: unknown) {
+      this.log.debug(`call budget not kept: ${errText(err)}`);
+    }
   }
 
   /** @returns the store file's text, undefined while it does not exist */
@@ -384,9 +401,13 @@ class DownloadManagerAdapter extends utils.Adapter {
     }
   }
 
-  /** The adapter's timers — they are cleared when the adapter stops. */
+  /** The adapter's timers — they are cleared when the adapter stops — and the call budget every request waits for. */
   private get timers(): HttpTimers {
-    return { setTimeout: (cb, ms) => this.setTimeout(cb, ms), clearTimeout: t => this.clearTimeout(t) };
+    return {
+      setTimeout: (cb, ms) => this.setTimeout(cb, ms),
+      clearTimeout: t => this.clearTimeout(t),
+      budget: this.budget,
+    };
   }
 
   /**
@@ -454,6 +475,9 @@ class DownloadManagerAdapter extends utils.Adapter {
   private async onReady(): Promise<void> {
     try {
       await I18n.init(join(this.adapterDir, "admin"), this);
+      // the places the last process left, before any call — a stop during the start waits for this start, then hands
+      // them over again
+      this.budget.takeOver(readHeldPlaces(this.budgetFile, Date.now()));
       await this.moveStoreObject();
       await this.takeOverPrograms();
       if (await migrateNativeKeys(this, NATIVE_KEY_MIGRATIONS, errText)) {
@@ -562,7 +586,11 @@ class DownloadManagerAdapter extends utils.Adapter {
           : this.starting.then(() => this.states.put("info.connection", { val: false, ack: true }))
       )
         .catch((err: unknown) => this.log.debug(`onUnload: final writes rejected: ${errText(err)}`))
-        .finally(callback);
+        .finally(() => {
+          // after the stop closed every client: no call is still waiting for its place
+          this.keepBudget();
+          callback();
+        });
     } catch {
       callback();
     }

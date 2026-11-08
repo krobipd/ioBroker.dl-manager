@@ -12,7 +12,7 @@
       "type": "aria2",
       "nameSource": "api",
       "idScheme": 3,
-      "address": "http://aria2.fixture:6800/jsonrpc"
+      "address": "http://aria2.local:6800/jsonrpc"
     },
     "_id": "dl-manager.0.aria2-aria2"
   },
@@ -2408,7 +2408,7 @@
       "type": "deluge",
       "nameSource": "api",
       "idScheme": 3,
-      "address": "http://deluge.fixture:8112"
+      "address": "http://deluge.local:8112"
     },
     "_id": "dl-manager.0.deluge-deluge"
   },
@@ -8485,7 +8485,7 @@
       "type": "jdownloader",
       "nameSource": "api",
       "idScheme": 3,
-      "address": "http://jdownloader.fixture:3128"
+      "address": "http://jdownloader.local:3128"
     },
     "_id": "dl-manager.0.jdownloader-jdownloader"
   },
@@ -10728,7 +10728,7 @@
       "type": "nzbget",
       "nameSource": "api",
       "idScheme": 3,
-      "address": "http://nzbget.fixture:6789"
+      "address": "http://nzbget.local:6789"
     },
     "_id": "dl-manager.0.nzbget-nzbget"
   },
@@ -13203,7 +13203,7 @@
       "type": "pyload",
       "nameSource": "api",
       "idScheme": 3,
-      "address": "http://pyload.fixture:8000"
+      "address": "http://pyload.local:8000"
     },
     "_id": "dl-manager.0.pyload-pyload"
   },
@@ -14800,7 +14800,7 @@
       "type": "qbittorrent",
       "nameSource": "api",
       "idScheme": 3,
-      "address": "http://qbittorrent.fixture:8080"
+      "address": "http://qbittorrent.local:8080"
     },
     "_id": "dl-manager.0.qbittorrent-qbittorrent"
   },
@@ -18765,7 +18765,7 @@
       "type": "sabnzbd",
       "nameSource": "api",
       "idScheme": 3,
-      "address": "http://sabnzbd.fixture:8080"
+      "address": "http://sabnzbd.local:8080"
     },
     "_id": "dl-manager.0.sabnzbd-sabnzbd"
   },
@@ -21778,7 +21778,7 @@
       "type": "transmission",
       "nameSource": "api",
       "idScheme": 3,
-      "address": "http://transmission.fixture:9091/transmission/rpc"
+      "address": "http://transmission.local:9091/transmission/rpc"
     },
     "_id": "dl-manager.0.transmission-transmission"
   },

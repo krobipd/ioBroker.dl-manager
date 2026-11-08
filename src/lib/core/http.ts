@@ -1,13 +1,17 @@
+import { LOCAL_PROGRAMS } from "../api-limits";
 import { errText } from "../err-text";
+import type { CallBudget, CallPlace } from "./call-budget";
 import { ProtocolError, UnreachableError } from "./errors";
 import { asRecord, asText } from "./units";
 
-/** The adapter's timers — the deadline never runs on a bare setTimeout. */
+/** The adapter's timers — the deadline never runs on a bare setTimeout — and the instance's call budget. */
 export interface HttpTimers {
   /** The adapter's timer. */
   setTimeout: (cb: () => void, ms: number) => ioBroker.Timeout | undefined;
   /** Clears an adapter timer. */
   clearTimeout: (t: ioBroker.Timeout | undefined) => void;
+  /** Every request waits for its place in each window `api-limits.json` declares (`call-budget.ts`); absent: no wait. */
+  budget?: CallBudget;
 }
 
 /** One request. */
@@ -66,6 +70,8 @@ export interface HttpOptions {
   resendOnClosedSocket?: boolean;
   /** The clock for the wait after a 429, `Date.now` when absent. */
   now?: () => number;
+  /** The counterpart in `api-limits.json` whose windows hold the requests — the program in the user's network by default. */
+  counterpart?: string;
 }
 
 /** A 429 without a readable `retry-after` waits this long — a limit counted per minute (pyLoad, `api-limits.json`). */
@@ -117,6 +123,28 @@ export class HttpClient {
   }
 
   /**
+   * @param url the request's address
+   * @param signal gives up the wait
+   * @returns the request's place in the call budget once there is room — none without a budget
+   */
+  private place(url: string, signal: AbortSignal): Promise<CallPlace | undefined> {
+    const budget = this.timers.budget;
+    return budget
+      ? budget.take(this.opts.counterpart ?? LOCAL_PROGRAMS, new URL(url).hostname, this.timers, signal)
+      : Promise.resolve(undefined);
+  }
+
+  /**
+   * @param place the request's place, none without a budget
+   * @param answered whether the program answered
+   */
+  private settle(place: CallPlace | undefined, answered: boolean): void {
+    if (place) {
+      this.timers.budget?.settle(place, answered);
+    }
+  }
+
+  /**
    * @param req the request
    * @returns the answer — any status
    */
@@ -155,19 +183,48 @@ export class HttpClient {
     const timeoutMs = this.opts.timeoutMs ?? 10_000;
     const abort = new AbortController();
     this.inFlight.add(abort);
+    // the place before the deadline: the wait for room in a declared window is no part of the program's answer
+    let place: CallPlace | undefined;
+    try {
+      place = await this.place(req.url, abort.signal);
+    } catch {
+      this.inFlight.delete(abort);
+      throw new UnreachableError("closed while the request waited for its place");
+    }
     const timer = this.timers.setTimeout(() => abort.abort(), timeoutMs);
     let res: Response;
     let text: string;
     try {
-      const send = (): Promise<Response> =>
-        fetch(req.url, { method: req.method, headers, body, redirect: "manual", signal: abort.signal });
+      const send = async (taken: CallPlace | undefined): Promise<Response> => {
+        try {
+          const pending = fetch(req.url, {
+            method: req.method,
+            headers,
+            body,
+            redirect: "manual",
+            signal: abort.signal,
+          });
+          // stamped after the transport call, in the same step: never before the network's own stamp of the call
+          if (taken) {
+            this.timers.budget?.sent(taken);
+          }
+          const response = await pending;
+          this.settle(taken, true);
+          return response;
+        } catch (err: unknown) {
+          // also a fetch that threw at once: the place counts from its hand-out instead of staying open for ever
+          this.settle(taken, false);
+          throw err;
+        }
+      };
       try {
-        res = await send();
+        res = await send(place);
       } catch (err: unknown) {
         if (!this.opts.resendOnClosedSocket || !closedSocket(err)) {
           throw err;
         }
-        res = await send();
+        // the second send is a call of its own, with its own place
+        res = await send(await this.place(req.url, abort.signal));
       }
       text = await res.text();
     } catch (err: unknown) {

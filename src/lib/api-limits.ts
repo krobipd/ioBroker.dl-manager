@@ -18,11 +18,16 @@ export interface ApiLimit {
 export interface ApiCounterpart {
   /** What it is. */
   name: string;
-  /** Which calls belong to it — every field given must fit; `hostPattern` is an anchored regular expression. */
-  match: { host?: string; hostPattern?: string; port?: number; kind?: "http" | "tcp" | "udp" };
+  /** Which calls belong to it — every field given must fit; `network: "private"` is every address of the user's network. */
+  match: { host?: string; network?: "private"; port?: number; kind?: "http" | "tcp" | "udp" };
   /** Its limits. */
   limits: ApiLimit[];
 }
+
+/** The counterpart of every download program the user runs — each program's host has its own window. */
+export const LOCAL_PROGRAMS = "Download program in the user's network";
+/** The counterpart of the My.JDownloader cloud — every account's calls share its window. */
+export const MY_JDOWNLOADER = "My.JDownloader";
 
 /** Every counterpart the adapter calls, defined in ONE place: `api-limits.json`. */
 export const API_COUNTERPARTS: readonly ApiCounterpart[] = limits.counterparts as ApiCounterpart[];
