@@ -241,8 +241,9 @@ globalThis.fetch = async (input, init = {}) => {
   return route(url, init, new Headers(init.headers));
 };
 
-// aria2's push channel: no socket in the fixture run, polling carries everything
-globalThis.WebSocket = class {
+// aria2's push channel: no socket in the fixture run, polling carries everything — assigned through a cast, so the type
+// check of the test files keeps node's WebSocket (a plain assignment in a JS file declares the global anew)
+/** @type {any} */ (globalThis).WebSocket = class {
   addEventListener() {}
   close() {}
 };
