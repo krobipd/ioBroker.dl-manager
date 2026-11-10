@@ -1,9 +1,8 @@
 import * as utils from "@iobroker/adapter-core";
 import { I18n } from "@iobroker/adapter-core";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { ActionableProblems } from "./lib/actionable-problems";
-import { BUDGET_FILE, CallBudget, readHeldPlaces, writeHeldPlaces } from "./lib/core/call-budget";
+import { CallBudget, readHeldPlaces, writeHeldPlaces } from "./lib/core/call-budget";
 import { parseMaxDownloads, parsePollInterval, parseTreeScope } from "./lib/core/config";
 import { settleIds } from "./lib/core/device-id";
 import { readDevices } from "./lib/core/devices";
@@ -14,6 +13,7 @@ import { Serial } from "./lib/core/serial";
 import { KnownStates } from "./lib/core/states";
 import { isRow, ProgramStore, STORE_FILE, STORE_ID, type SettingsRow } from "./lib/core/store";
 import { LAST_CHANNEL, lastChannelObject } from "./lib/core/tree";
+import { readDataFile, writeDataFile } from "./lib/data-file";
 import { deviceIcon } from "./lib/device-icons";
 import { DlDeviceManagement, type DmHost } from "./lib/device-management";
 import { errText } from "./lib/err-text";
@@ -123,42 +123,39 @@ class DownloadManagerAdapter extends utils.Adapter {
     return join(utils.getAbsoluteInstanceDataDir(this), STORE_FILE);
   }
 
-  /** @returns the file that hands the call budget's places to the next process, in the instance's data folder */
-  private get budgetFile(): string {
-    return join(utils.getAbsoluteInstanceDataDir(this), BUDGET_FILE);
-  }
-
   /** Keeps the call budget's places for the next process — synchronous, at the stop. */
   private keepBudget(): void {
     try {
-      writeHeldPlaces(this.budgetFile, this.budget.handOver());
+      writeHeldPlaces(utils.getAbsoluteInstanceDataDir(this), this.budget.handOver());
     } catch (err: unknown) {
       this.log.debug(`call budget not kept: ${errText(err)}`);
     }
   }
 
-  /** @returns the store file's text, undefined while it does not exist */
-  private async readStoreFile(): Promise<string | undefined> {
-    try {
-      return await readFile(this.storeFile, "utf8");
-    } catch (err: unknown) {
-      if ((err as NodeJS.ErrnoException).code === "ENOENT") {
-        return undefined;
-      }
-      throw err;
+  /**
+   * Reads the store file through the fleet master data-file.ts.
+   *
+   * @returns the store file's text, undefined while it does not exist
+   */
+  private readStoreFile(): Promise<string | undefined> {
+    const read = readDataFile(dirname(this.storeFile), basename(this.storeFile));
+    if (read.error !== undefined) {
+      // the start stops — the programs are never replaced by an empty list
+      return Promise.reject(new Error(`${STORE_FILE} cannot be read — fix or remove it (${read.error})`));
     }
+    // no file yet: no value, and its JSON is undefined as well
+    return Promise.resolve(JSON.stringify(read.value) as string | undefined);
   }
 
   /**
-   * Replaces the store file: written next to it, then renamed over it — a crash leaves the old or the new file.
+   * Replaces the store file through the fleet master data-file.ts: written next to it, then renamed over it — a crash
+   * leaves the old or the new file.
    *
-   * @param text the new content
+   * @param text the new content, JSON
    */
-  private async writeStoreFile(text: string): Promise<void> {
-    const file = this.storeFile;
-    await mkdir(join(file, ".."), { recursive: true });
-    await writeFile(`${file}.tmp`, text, "utf8");
-    await rename(`${file}.tmp`, file);
+  private writeStoreFile(text: string): Promise<void> {
+    writeDataFile(dirname(this.storeFile), basename(this.storeFile), JSON.parse(text));
+    return Promise.resolve();
   }
 
   /**
@@ -477,7 +474,7 @@ class DownloadManagerAdapter extends utils.Adapter {
       await I18n.init(join(this.adapterDir, "admin"), this);
       // the places the last process left, before any call — a stop during the start waits for this start, then hands
       // them over again
-      this.budget.takeOver(readHeldPlaces(this.budgetFile, Date.now()));
+      this.budget.takeOver(readHeldPlaces(utils.getAbsoluteInstanceDataDir(this), Date.now()));
       await this.moveStoreObject();
       await this.takeOverPrograms();
       if (await migrateNativeKeys(this, NATIVE_KEY_MIGRATIONS, errText)) {

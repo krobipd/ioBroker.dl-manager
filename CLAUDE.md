@@ -77,7 +77,8 @@ src/lib/programs/catalog.ts      → die EINZIGE Programmliste: Typ, Name, Famil
 src/lib/programs/registry.ts     → Katalog + Treiber (DRIVERS) → PROGRAMS, findProgram
 src/lib/programs/<typ>/          → client.ts (Transport + Anmeldung), map.ts (Rohantwort → Modell, Status-Tabelle),
                                    driver.ts (Fähigkeiten, Extras, Befehle)
-src/lib/{enum-carry,known-objects,err-text,native-key-migration}.ts → Kopien aus .consistency-master (byte-gleich)
+src/lib/{enum-carry,known-objects,err-text,native-key-migration,data-file}.ts → Kopien aus .consistency-master (byte-gleich);
+                                   jeder Zugriff auf den Datenordner (`programs.json`, `call-budget.json`) über data-file.ts
 src/lib/{actionable-problems,device-icons,i18n}.ts → Flotten-Muster
 src/lib/api-limits.{json,ts}     → Limits jeder Gegenstelle (lokale Programme `network: "private"`: pyLoads 100/min je Host;
                                    My.JDownloader: eigener Deckel je Konto); liegt in src/, im Paket über `files`; das

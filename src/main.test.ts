@@ -514,7 +514,7 @@ describe("DownloadManagerAdapter — start", () => {
         .filter(l => l.level === "error")
         .map(l => l.msg)
         .join(),
-    ).toContain("programs.json is no readable JSON");
+    ).toContain("programs.json cannot be read — fix or remove it (no JSON:");
     expect(readFileSync(storeFile(h), "utf8")).toBe("{ broken");
     expect(polls()).toBe(0);
   });

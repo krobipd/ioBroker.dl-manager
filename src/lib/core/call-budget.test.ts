@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ApiCounterpart } from "../api-limits";
-import { CallBudget, readHeldPlaces, writeHeldPlaces, type CallPlace } from "./call-budget";
+import { BUDGET_FILE, CallBudget, readHeldPlaces, writeHeldPlaces, type CallPlace } from "./call-budget";
 
 const timers = {
   setTimeout: (cb: () => void, ms: number): ioBroker.Timeout =>
@@ -197,13 +197,14 @@ describe("held places file", () => {
   it("keeps what still counts and reads nothing from a missing or broken file", () => {
     const dir = mkdtempSync(join(tmpdir(), "dl-budget-"));
     try {
-      const file = join(dir, "sub", "call-budget.json");
-      expect(readHeldPlaces(file, 100_000)).toEqual([]);
-      writeHeldPlaces(file, [{ counterpart: "local", seconds: 60, lane: "nas", times: [30_000, 50_000] }]);
+      const data = join(dir, "sub");
+      const file = join(data, BUDGET_FILE);
+      expect(readHeldPlaces(data, 100_000)).toEqual([]);
+      writeHeldPlaces(data, [{ counterpart: "local", seconds: 60, lane: "nas", times: [30_000, 50_000] }]);
       expect(JSON.parse(readFileSync(file, "utf8"))).toEqual({
         held: [{ counterpart: "local", seconds: 60, lane: "nas", times: [30_000, 50_000] }],
       });
-      expect(readHeldPlaces(file, 100_000)).toEqual([
+      expect(readHeldPlaces(data, 100_000)).toEqual([
         { counterpart: "local", seconds: 60, lane: "nas", times: [50_000] },
       ]);
       writeFileSync(
@@ -218,10 +219,10 @@ describe("held places file", () => {
           ],
         }),
       );
-      expect(readHeldPlaces(file, 100_000)).toEqual([{ counterpart: "x", seconds: 60, lane: "", times: [99_000] }]);
+      expect(readHeldPlaces(data, 100_000)).toEqual([{ counterpart: "x", seconds: 60, lane: "", times: [99_000] }]);
       for (const text of ["{", "null", "{}", '{"held":5}']) {
         writeFileSync(file, text);
-        expect(readHeldPlaces(file, 100_000)).toEqual([]);
+        expect(readHeldPlaces(data, 100_000)).toEqual([]);
       }
     } finally {
       rmSync(dir, { recursive: true, force: true });

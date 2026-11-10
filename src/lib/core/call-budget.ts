@@ -7,10 +7,9 @@
 //
 // The places outlive a restart: a host restarts the instance after a change of its object, and the new process would
 // begin with an empty minute that the old one had just filled. The places go to a file in the instance's data folder
-// at the stop and come back at the start.
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+// at the stop and come back at the start, through the fleet master data-file.ts.
 import { API_COUNTERPARTS, type ApiCounterpart } from "../api-limits";
+import { readDataFile, writeDataFile } from "../data-file";
 
 /** The file in the instance's data folder that hands the places to the next process. */
 export const BUDGET_FILE = "call-budget.json";
@@ -256,17 +255,13 @@ function keyOf(counterpart: string, seconds: number, lane: string): string {
 }
 
 /**
- * @param file the budget file in the instance's data folder
+ * @param dir the instance's data folder
  * @param now the current time (epoch ms)
  * @returns the places the previous process left that still count; none when the file is missing or unreadable
  */
-export function readHeldPlaces(file: string, now: number): HeldPlaces[] {
-  let data: unknown;
-  try {
-    data = JSON.parse(readFileSync(file, "utf8"));
-  } catch {
-    return [];
-  }
+export function readHeldPlaces(dir: string, now: number): HeldPlaces[] {
+  // a missing or unreadable file carries no value: nothing to take over
+  const data = readDataFile(dir, BUDGET_FILE).value;
   const list = data && typeof data === "object" ? (data as { held?: unknown }).held : undefined;
   if (!Array.isArray(list)) {
     return [];
@@ -286,10 +281,9 @@ export function readHeldPlaces(file: string, now: number): HeldPlaces[] {
 /**
  * Keeps the places for the next process — synchronous, so it fits the stop.
  *
- * @param file the budget file in the instance's data folder
+ * @param dir the instance's data folder
  * @param held the places per window and lane
  */
-export function writeHeldPlaces(file: string, held: readonly HeldPlaces[]): void {
-  mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, JSON.stringify({ held }));
+export function writeHeldPlaces(dir: string, held: readonly HeldPlaces[]): void {
+  writeDataFile(dir, BUDGET_FILE, { held });
 }
