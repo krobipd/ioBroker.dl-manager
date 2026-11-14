@@ -255,12 +255,22 @@ async function watchObjectWrites(harness) {
   // writable: setStateChangedAsync) — a write that changes nothing is a finding. Compared is what js-controller
   // 7.2.2 compares in setStateChangedAsync: val strictly, ack, q, c; an object value always counts as changed.
   // Round 104 (krobi 2026-09-29: adapters waste no resources, GV-05): every state, not only `indicator.*`.
+  // Round 174 (a responder's report of 2026-11-12): a write of another — the user choosing the value that stands, with
+  // ack false — changes what the database holds, and the adapter's confirmation after it is a change, as
+  // setStateChangedAsync judges it. It moves the compared state of an id the adapter wrote in this start and is never
+  // a finding itself; an id the adapter has not written yet stays without one (a seed, a value from before the restart).
   harness.on("stateChange", (id, state) => {
-    if (!id.startsWith(NS) || !state || state.from !== `system.adapter.${ADAPTER}.0`) {
+    if (!id.startsWith(NS) || !state) {
       return;
     }
     const now =
       state.val !== null && typeof state.val === "object" ? null : canonical([state.val, state.ack, state.q, state.c]);
+    if (state.from !== `system.adapter.${ADAPTER}.0`) {
+      if (states.has(id)) {
+        states.set(id, now);
+      }
+      return;
+    }
     if (now !== null && states.get(id) === now) {
       watch.unchangedStates.push(id);
     }
@@ -378,11 +388,7 @@ const PROGRAM_ROWS = [
     { username: "fixture@example.com", password: "fixture", device: "JD Fixture" },
   ],
   ["qbittorrent", "qBittorrent", { host: "qbittorrent.local", port: 8080, username: "admin", password: "fixture" }],
-  [
-    "transmission",
-    "Transmission",
-    { host: "transmission.local", port: 9091, username: "admin", password: "fixture" },
-  ],
+  ["transmission", "Transmission", { host: "transmission.local", port: 9091, username: "admin", password: "fixture" }],
   ["deluge", "Deluge", { host: "deluge.local", port: 8112, password: "fixture" }],
   ["sabnzbd", "SABnzbd", { host: "sabnzbd.local", port: 8080, apiKey: "fixture" }],
   ["nzbget", "NZBGet", { host: "nzbget.local", port: 6789, username: "admin", password: "fixture" }],
@@ -562,19 +568,28 @@ async function dumpObjects(harness) {
   for (const row of list.rows.sort((a, b) => a.id.localeCompare(b.id))) {
     const obj = { ...row.value };
     for (const key of VOLATILE) delete obj[key];
-    if (row.id === STORE && Array.isArray(obj.native?.rows)) {
-      obj.native = {
-        ...obj.native,
-        rows: obj.native.rows.map(r =>
-          Object.fromEntries(
-            Object.entries(r).map(([k, v]) => [k, ENCRYPTED_ROW_FIELDS.includes(k) && v ? ENCRYPTED_MARKER : v]),
-          ),
-        ),
-      };
-    }
+    if (obj.native) obj.native = maskEncrypted(obj.native);
     out[row.id] = obj;
   }
   return out;
+}
+
+/**
+ * Round 173: a copy of an object's native with ENCRYPTED_MARKER in place of every non-empty string under a key of
+ * ENCRYPTED_NATIVE, at any depth (a field of a row in a list too) — what dumpObjects writes into the inventory.
+ *
+ * @param {unknown} value a native, or a part of it
+ * @returns {unknown} the copy
+ */
+function maskEncrypted(value) {
+  if (Array.isArray(value)) return value.map(maskEncrypted);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value).map(([key, v]) => [
+      key,
+      ENCRYPTED_NATIVE.includes(key) && typeof v === "string" && v !== "" ? ENCRYPTED_MARKER : maskEncrypted(v),
+    ]),
+  );
 }
 
 /**
@@ -797,6 +812,16 @@ async function seedPrevious(harness, previous) {
 
 /** Round 67: the text a dump puts where the adapter stored a secret encrypted with its installation's secret. */
 const ENCRYPTED_MARKER = "<encrypted with the installation secret>";
+
+/**
+ * Round 173: adapter-specific like FIXTURE_NATIVE — the native fields the adapter stores encrypted with its installation's
+ * secret (encrypt(), encryptPassword). Their cipher differs from controller to controller; dumpObjects writes
+ * ENCRYPTED_MARKER in their place (maskEncrypted). Empty where the adapter encrypts nothing. What goes into a file in
+ * the instance data folder instead says CLAUDE_PATTERNS.md, section native „Wohin“.
+ *
+ * @type {string[]}
+ */
+const ENCRYPTED_NATIVE = [];
 
 /**
  * Round 67 (reported by dl-manager): adapter-specific like feedFixtures. The previous release's dump carries
@@ -1516,7 +1541,8 @@ function networkUse(seen) {
  * hold before the adapter starts — every `primary` port of fleet.json
  * `listenPorts` and the first device's port of a `perDevice` entry, at the value the fixture gives it — and every other
  * port the adapter declares (`secondary`, the other devices), each a path it can still talk on. `shared` ports (SSDP)
- * are no path of their own. `declared` holds every port fleet.json names, at its fixture value (F6, round 104).
+ * are no path of their own, and an answer that came in on one is none either (`shared`, round 173). `declared` holds
+ * every port fleet.json names, at its fixture value (F6, round 104).
  */
 function listenPortPlan() {
   const file = path.join(ADAPTER_DIR, "fleet.json");
@@ -1524,6 +1550,7 @@ function listenPortPlan() {
   const native = { ...require(path.join(ADAPTER_DIR, "io-package.json")).native, ...FIXTURE_NATIVE };
   const taken = [];
   const others = [];
+  const shared = [];
   const declared = new Set();
   for (const entry of fleet.listenPorts ?? []) {
     if (entry.role === "perDevice") {
@@ -1540,11 +1567,13 @@ function listenPortPlan() {
           taken.push({ protocol: entry.protocol, port });
         } else if (entry.role === "secondary") {
           others.push(port);
+        } else if (entry.role === "shared") {
+          shared.push(port);
         }
       }
     }
   }
-  return { taken, others, declared, address: native.bind || "0.0.0.0" };
+  return { taken, others, shared, declared, address: native.bind || "0.0.0.0" };
 }
 
 /**
@@ -1610,19 +1639,24 @@ function fileWrites() {
 
 /**
  * Round 104: every answer a counterpart sent (`<pid>.answers`, test/network-hook.js) from `from` until `until`, with the
- * adapter's own port it came in on (`local`).
+ * adapter's own port it came in on (`local`). Round 174: with `own` ports, a process counts only until something came in
+ * on one of them — what the adapter asks a counterpart because a client asked the adapter over its own port is no path
+ * of its own once another program holds that port. A request that reached an http server of the adapter (kind
+ * `asked`) marks that place and is never returned: the adapter serves it, no counterpart answered with it.
  */
-function readAnswers(from, until = Infinity) {
+function readAnswers(from, until = Infinity, own = new Set()) {
   return fs
     .readdirSync(RESOURCE_DIR)
     .filter(f => f.endsWith(".answers"))
-    .flatMap(f =>
-      fs
+    .flatMap(f => {
+      const all = fs
         .readFileSync(path.join(RESOURCE_DIR, f), "utf8")
         .split("\n")
         .filter(Boolean)
-        .map(l => JSON.parse(l)),
-    )
+        .map(l => JSON.parse(l));
+      const asked = all.findIndex(a => own.has(a.local));
+      return (asked < 0 ? all : all.slice(0, asked)).filter(a => a.kind !== "asked");
+    })
     .filter(a => a.t >= from && a.t < until);
 }
 
@@ -2960,7 +2994,11 @@ tests.integration(ADAPTER_DIR, {
               wrong.push(`${origin} → ${ids.join(", ")}: one recording on several datapoints`);
             } else if (ids[0] !== origin && live[origin]?.type === "state") {
               wrong.push(`${origin} → ${ids[0]}: copied while ${origin} lives on`);
-            } else if (ids[0] !== origin && live[ids[0]].common?.type !== previous[origin]?.common?.type) {
+            } else if (
+              ids[0] !== origin &&
+              MOVES[origin] !== ids[0] &&
+              live[ids[0]].common?.type !== previous[origin]?.common?.type
+            ) {
               wrong.push(`${origin} → ${ids[0]}: another value type — a new datapoint, not the same one moved`);
             }
           }

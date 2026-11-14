@@ -29,6 +29,9 @@ const dir = process.env.RESOURCE_PROBE_DIR;
 if (!dir) {
   throw new Error("network hook: RESOURCE_PROBE_DIR is not set — load it through adapterEnv()");
 }
+// the probe every start loads first (`adapterEnv()`): it keeps a datagram from the network around the test out of every
+// start, and what counts as an address of this machine is its one reading (round 173)
+const { fromThisMachine } = require("./resource-probe.js");
 const flag = path.join(dir, "outage");
 // js-controller reads <root>/iobroker-data/iobroker.json; the harness starts the adapter in <root>/node_modules/<adapter>.
 const config = process.env.IOBROKER_DATA_DIR
@@ -236,7 +239,8 @@ const handOver = (n, response) => {
     return response;
   });
 };
-// 6. It notes every answer a counterpart sends — data on a connection, a datagram, a fetch response — at most one line
+// 6. It notes every answer a counterpart sends — data on a connection, a datagram, a fetch response, and (round 174)
+//    a request that reaches an http server of the adapter — at most one line
 //    per counterpart and second in RESOURCE_PROBE_DIR/<pid>.answers (round 104, krobi 2026-10-03 12:01 for every
 //    listener: if the adapter cannot communicate, that is a fatal error — whether the adapter still
 //    talks to anything is whether an answer still arrives, not whether it still sends).
@@ -818,6 +822,13 @@ function cutServerEmit(event, ...args) {
       return write.call(this, chunk, ...rest);
     };
   }
+  // Round 174: a request that reaches an http server of the adapter is something a client sent in on the adapter's own
+  // port. Node's parser reads it off the handle, so no "data" event of the socket shows it — noted here with that port
+  // under a kind of its own: the suite "a taken port" reads where a start was first asked something over a port, and
+  // a request the adapter serves is no answer of a counterpart — no reader counts an "asked" line as a path.
+  if ((event === "request" || event === "upgrade") && args[0]?.socket instanceof net.Socket) {
+    answer("asked", args[0].socket.remoteAddress, args[0].socket.remotePort, args[0].socket.localPort);
+  }
   return serverEmit.call(this, event, ...args);
 }
 net.Server.prototype.emit = cutServerEmit;
@@ -978,6 +989,25 @@ Object.defineProperty(globalThis, "fetch", {
 });
 
 // UDP: where each socket binds, which groups it joins on which interface, where its multicast leaves, where it sends.
+// Round 173: the ports this process sent a datagram from — a datagram from one of them is its own come back (the
+// multicast loop of a responder's advertisement, `cutEmit`). A port stays OWN_LOOP_MS after its socket closed (the
+// datagram of a socket that sends and closes comes back after the close), then it is forgotten: whoever sends from it
+// later is a counterpart. R173-46: until then every port the process ever bound was its own for good — one it only
+// listens on never sends, and a closed one is another program's a moment later.
+const OWN_LOOP_MS = 1000;
+/** @type {Map<number, number>} port → 0 while a socket that sent from it lives, else the time it closed */
+const sentFrom = new Map();
+const ownPort = port => {
+  const closed = sentFrom.get(port);
+  if (closed === undefined) {
+    return false;
+  }
+  if (closed !== 0 && Date.now() - closed > OWN_LOOP_MS) {
+    sentFrom.delete(port);
+    return false;
+  }
+  return true;
+};
 const bind = /** @type {Native} */ (dgram.Socket.prototype.bind);
 /** @this {dgram.Socket} */
 function recordBind(...args) {
@@ -1056,6 +1086,11 @@ function cutSend(...args) {
   }
   if (at !== -1 && bound) {
     count("udp", target.host, target.port, hookSockets.get(this));
+    const from = this.address().port;
+    if (sentFrom.get(from) !== 0) {
+      sentFrom.set(from, 0);
+      this.once("close", () => sentFrom.set(from, Date.now()));
+    }
   }
   noteAdvert("udp", args[0]);
   if (at !== -1 && !sentTo.has(key)) {
@@ -1071,6 +1106,10 @@ function cutSend(...args) {
   }
 }
 dgram.Socket.prototype.send = cutSend;
+// Round 173 (a responder without a counterpart, measured on a Mac in a LAN with searching devices): two datagrams are
+// no counterpart of the run. One whose source is no address of this machine comes from the real network around the
+// test — the probe keeps it out of every start (`fromThisMachine`), and it is no answer here. One from this machine and
+// a port this process sent from is the adapter's own datagram come back — it arrives and is never an answer.
 const emit = /** @type {Native} */ (dgram.Socket.prototype.emit);
 /** @this {dgram.Socket} */
 function cutEmit(event, ...args) {
@@ -1081,7 +1120,13 @@ function cutEmit(event, ...args) {
   if (event === "message" && args[1] && typeof args[1].address === "string" && hung(args[1].address, args[1].port)) {
     return false;
   }
-  if (event === "message" && args[1] && typeof args[1].address === "string") {
+  if (
+    event === "message" &&
+    args[1] &&
+    typeof args[1].address === "string" &&
+    fromThisMachine(args[1].address) &&
+    !ownPort(args[1].port)
+  ) {
     let local = 0;
     try {
       local = this.address().port;

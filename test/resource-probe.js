@@ -1,5 +1,6 @@
 "use strict";
-// Loaded into the adapter process by test/inventory.js (`adapterEnv()`, first `--require`). It only observes: when the
+// Loaded into the adapter process by test/inventory.js (`adapterEnv()`, first `--require`). It observes (and keeps one
+// thing out: a datagram from the network around the test, round 173 — see `fromThisMachine` below): when the
 // process exits, it records every timer, server and socket the adapter or one of its own dependencies left open after
 // onUnload. js-controller (with everything it loads) and a test hook are not the adapter's and are left out.
 // A start marker is written at load: a process that never reaches its exit (killed, crashed) has no report.
@@ -7,6 +8,8 @@
 // id a write handed to the adapter's stateChange (<pid>.delivered, once per id) and every write of the adapter after it
 // called its unload callback (<pid>.unload) — js-controller closes the databases after the callback, such a write is
 // lost; js-controller's own last writes go through its internal client and are not counted.
+// Round 174 (the standard for secrets): it notes every log line of the adapter that carries the clear text of a secret
+// (<pid>.secrets) — see `watchLog` below.
 // Fleet master (.consistency-master/test/resource-probe.js) — never edit the copy in an adapter.
 const fs = require("node:fs");
 const net = require("node:net");
@@ -72,6 +75,78 @@ if (dir) {
       return callback.apply(this, rest);
     };
   };
+  // Round 174 (the standard for secrets, rule sentence S8; ioBroker.docs bestpractices.md: no credentials in the log, at
+  // no level): the clear texts this process knows as secrets — the settings the manifest names in `encryptedNative`
+  // (decrypted in `config` when the adapter emits `ready`) and every text that goes into `encrypt` or comes out of
+  // `decrypt` (the secret fields of the data file, master src/lib/data-file.ts, which encrypts a text as JSON) — and
+  // every log call of the adapter, whatever the instance's log level lets through. A line that carries one is noted
+  // with its level and where the secret is from, never with the text (<pid>.secrets, once per level and source); the
+  // suite "the whole run" of test/fleet-suites.js judges the notes. A text shorter than SECRET_MIN is no evidence: it is
+  // part of too many words. What the watch could follow is noted once per source — that it learned a text from it
+  // ("learn") or that the source carried one too short to follow ("short"), never the text or its length — so a run in
+  // which no log line was held to anything does not read like one in which every line was.
+  const SECRET_MIN = 8;
+  const LOG_LEVELS = ["silly", "debug", "info", "warn", "error"];
+  const LOG_WATCHED = Symbol("resourceProbeLogWatched");
+  const secretLog = path.join(dir, `${process.pid}.secrets`);
+  const secrets = new Map();
+  const noted = new Set();
+  const noteSource = (kind, what) => {
+    if (!noted.has(`${kind} ${what}`)) {
+      noted.add(`${kind} ${what}`);
+      fs.appendFileSync(secretLog, `${JSON.stringify({ t: Date.now(), kind, what })}\n`);
+    }
+  };
+  const knowSecret = (text, from) => {
+    let inner;
+    try {
+      inner = JSON.parse(text);
+    } catch {
+      inner = undefined;
+    }
+    // the secret itself is the text inside the JSON the data file master encrypts, else the text as it stands
+    const core = typeof inner === "string" ? inner : text;
+    if (typeof core === "string" && core !== "") {
+      noteSource(core.length < SECRET_MIN ? "short" : "learn", from);
+    }
+    for (const clear of [text, inner]) {
+      if (typeof clear === "string" && clear.length >= SECRET_MIN && !secrets.has(clear)) {
+        secrets.set(clear, from);
+      }
+    }
+  };
+  const watchLog = adapter => {
+    const log = adapter.log;
+    if (!log || typeof log !== "object" || log[LOG_WATCHED] || typeof adapter.encrypt !== "function") {
+      return;
+    }
+    log[LOG_WATCHED] = true;
+    try {
+      const manifest = JSON.parse(fs.readFileSync(path.join(process.cwd(), "io-package.json"), "utf8"));
+      for (const field of manifest.encryptedNative) {
+        knowSecret(adapter.config?.[field], `the setting ${field}`);
+      }
+    } catch {
+      // no manifest, or one that names no encrypted setting: no setting is a secret
+    }
+    fs.appendFileSync(secretLog, `${JSON.stringify({ t: Date.now(), kind: "watch" })}\n`);
+    for (const level of LOG_LEVELS) {
+      const original = log[level];
+      if (typeof original !== "function") {
+        continue;
+      }
+      log[level] = function watchedLog(...args) {
+        const line = String(args[0]);
+        for (const [clear, what] of secrets) {
+          if (line.includes(clear) && !noted.has(`${level} ${what}`)) {
+            noted.add(`${level} ${what}`);
+            fs.appendFileSync(secretLog, `${JSON.stringify({ t: Date.now(), kind: "log", level, what })}\n`);
+          }
+        }
+        return original.apply(this, args);
+      };
+    }
+  };
   const probeEmit = EventEmitter.prototype.emit;
   EventEmitter.prototype.emit = function handOverEmit(event, ...args) {
     if (event === "stateChange" && typeof args[0] === "string" && args[1] && args[1].ack === false) {
@@ -81,6 +156,8 @@ if (dir) {
       }
     } else if (event === "unload" && typeof args[0] === "function") {
       args[0] = watchUnload(this, args[0]);
+    } else if (event === "ready") {
+      watchLog(this);
     }
     return probeEmit.call(this, event, ...args);
   };
@@ -201,6 +278,42 @@ if (dir) {
     }
     return sendDatagram.apply(this, args);
   };
+  // Round 173 (a responder measured on a Mac in a LAN with searching devices: 47 datagrams of real devices on its port,
+  // two of them answered — connections that left the machine, .lands): a datagram whose source is no address of this
+  // machine comes from the real network around the test and never arrives — the run answers no real device and reads the
+  // same on every machine. The rule stands here because every start loads this file (R173-44: in the network hook alone it
+  // missed every start without that hook). A link-local IPv6 address is this machine's only with its zone, as node names
+  // it by interface name or number (R173-45: `fe80::1%en0` is the router, `fe80::1%lo0` the loopback of a Mac); the
+  // addresses are read when a source is unknown — one that came up after the load —, at most once a second (R173-47).
+  const MACHINE_READ_MS = 1000;
+  let machine = new Set();
+  let machineRead = 0;
+  const fromThisMachine = address => {
+    const plain = address.replace(/^::ffff:/i, "");
+    if (plain.startsWith("127.") || machine.has(plain)) {
+      return true;
+    }
+    if (Date.now() - machineRead < MACHINE_READ_MS) {
+      return false;
+    }
+    machineRead = Date.now();
+    machine = new Set(
+      Object.entries(require("node:os").networkInterfaces()).flatMap(([name, list]) =>
+        (list ?? []).flatMap(i =>
+          i.family === "IPv6" && i.scopeid ? [`${i.address}%${name}`, `${i.address}%${i.scopeid}`] : [i.address],
+        ),
+      ),
+    );
+    return machine.has(plain);
+  };
+  module.exports.fromThisMachine = fromThisMachine;
+  const emitDatagram = /** @type {(this: unknown, ...args: any[]) => any} */ (dgram.Socket.prototype.emit);
+  dgram.Socket.prototype.emit = function (event, ...args) {
+    if (event === "message" && args[1] && typeof args[1].address === "string" && !fromThisMachine(args[1].address)) {
+      return false;
+    }
+    return emitDatagram.call(this, event, ...args);
+  };
   // a server or socket gets its handle in an internal nextTick — its owner is whoever calls listen/connect/bind
   const OWNER = Symbol("resourceProbeOwner");
   for (const [proto, method] of /** @type {Array<[any, string]>} */ ([
@@ -293,6 +406,22 @@ if (dir) {
             singleReads.set(full, (singleReads.get(full) || 0) + 1);
           }
           return original.call(this, id, ...rest);
+        };
+      }
+      // round 174: encrypt(value) or encrypt(secret, value), decrypt alike — the clear text goes in or comes out
+      for (const method of ["encrypt", "decrypt"]) {
+        const original = cls.prototype[method];
+        if (typeof original !== "function") {
+          continue;
+        }
+        cls.prototype[method] = function (...args) {
+          const out = original.apply(this, args);
+          if (method === "encrypt") {
+            knowSecret(args[1] === undefined ? args[0] : args[1], "a text the adapter encrypted");
+          } else {
+            knowSecret(out, "a text the adapter decrypted");
+          }
+          return out;
         };
       }
     }

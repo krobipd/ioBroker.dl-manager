@@ -9,7 +9,8 @@
 // Suites (plan specs/2026-10-15-runde-124-plan.html, P5):
 //   "a quiet run and a clean stop"      D7 nothing above debug once the start is done · D10 an unknown message gets an
 //                                       error · D9 a button falls back to false, confirmed — a press the adapter drops
-//                                       itself stays unconfirmed (GV-13), proven by a press alone that reaches nothing ·
+//                                       itself stays unconfirmed (GV-13), proven by a press alone that reaches nothing;
+//                                       a button whose press deletes its own object is carried out (round 174) ·
 //                                       D4 the stop leaves every
 //                                       marker offline, every reason text `Unknown`, the sums at 0/false
 //   (in the same start)                D3 the connection test answers `result` while the counterpart is there and `error` while it
@@ -24,7 +25,8 @@
 //   "a counterpart that answers wrong or refuses" D6 a 500 and an empty 200 · C26b drifted JSON: the adapter runs on,
 //                                       deletes no object and empties no value the clean start had (round 148) beyond
 //                                       what the same restart with right answers empties (round 163),
-//                                       each met by a restart (network hook,
+//                                       each met by a restart that plays the fixtures of the clean start again, so
+//                                       a request that follows an incoming one is met too (round 174; network hook,
 //                                       section 7 `fault`: the first answer to each request wrong, the repeat right),
 //                                       red as well when the wrong answers reached no request past the first one of a
 //                                       clean start · D21 after a 429 with retry-after 97 no call to that host before
@@ -36,9 +38,11 @@
 //   "every call to a hung counterpart ends" D21 a start with every counterpart hung, held until each call of its first
 //                                       window ended or outlived the deadline: every call that hung — there and in the
 //                                       hang suites of the template — ended within the deadline while its process lived
-//   "every writable datapoint reaches the adapter" D10 (no start) every writable state of the inventory reached the
-//                                       adapter's stateChange in this run (resource probe; the commands of the
-//                                       template's suite "a command nobody answers stays unconfirmed")
+//   "every writable datapoint reaches the adapter" D10 every writable state of the inventory reached the adapter's
+//                                       stateChange (resource probe): with the template's suite "a command nobody
+//                                       answers stays unconfirmed" in the run its commands, read over the whole run (no
+//                                       start); without it (round 173) a start of its own and one write to every
+//                                       writable datapoint, read from that start on
 //   "every limit holds when it is pressed" (round 171) every window of every counterpart in src/lib/api-limits.json
 //                                       once more with a lowered maximum (press-hook.js: half the most calls one lane
 //                                       held in the calibration, round 172 — the same play with the declared table),
@@ -49,7 +53,12 @@
 //   "the whole run"                     (no start, round 157) D4 nothing is written after the unload callback in any stop
 //                                       of the run (resource probe) · D17 no datagram to 255.255.255.255, and every own
 //                                       address it names to others is the chosen one (network hook, section 8) · round
-//                                       171: no lane of any installation above a declared limit, any window, sliding
+//                                       171: no lane of any installation above a declared limit, any window, sliding ·
+//                                       round 174 (the standard for secrets): no field named like a secret in clear
+//                                       text in a file of the instance's data folder and none at all in its ioBroker
+//                                       file storage (read when each suite ends) · no log line of the adapter, at any
+//                                       level, carries the clear text of a secret (resource probe; one line says
+//                                       what the log watch could follow)
 const fs = require("node:fs");
 const path = require("node:path");
 const assert = require("node:assert");
@@ -164,6 +173,7 @@ const FS = {
   readFileSync: fs.readFileSync,
   statSync: fs.statSync,
   existsSync: fs.existsSync,
+  appendFileSync: fs.appendFileSync,
 };
 // The state of the run between two suites. `suite`, `start`, `reads`, `cleared`, `read` and `wrote` belong to the suite
 // running: its title, its start, what it read of an earlier suite, whether it removed the instance data before its
@@ -405,6 +415,148 @@ function pathOf(file) {
 const inside = (full, dir) => Boolean(full && dir) && (full === dir || full.startsWith(`${dir}${path.sep}`));
 const resources = () => (run.contract?.RESOURCE_DIR ? path.resolve(run.contract.RESOURCE_DIR) : "");
 const instanceData = () => (run.testDir ? path.join(run.testDir, "iobroker-data", `${run.adapter}.0`) : "");
+// Round 174 (the standard for secrets, rule sentences S6 and S7; krobi 2026-11-11 18:17 on the research of the same day):
+// a secret the adapter learns or generates lies encrypted in a file of the instance's data folder (master
+// src/lib/data-file.ts, the stored form `{ "$encrypted": … }`) and nowhere in the instance's ioBroker file storage, which
+// the web adapter hands out over HTTP. What is a secret by its name is the list of scripts/check-object-inventory.py —
+// the repository checker's, joined and read without regard to case as there; a test holds both lists equal. A secret is
+// a text: a number or a switch under such a name is a setting. The files are read when a suite ends (finishSuite) — the
+// next suite removes the data folder before its adapter starts.
+const SECRET_NAME_PHRASES = [
+  "^.*api.?key$",
+  "^.*credential$",
+  "^pass$",
+  "^.*passwd$",
+  "^.*password$",
+  "^.*passwort$",
+  "^.*pin$",
+  "^private.*",
+  "^private_pw$",
+  "^psk$",
+  "^pwd$",
+  "^.*secret$",
+  "^.*token$",
+];
+const SECRET_NAME = new RegExp(SECRET_NAME_PHRASES.join("|"), "i");
+const SEALED = "$encrypted";
+const fileStorage = () => (run.testDir ? path.join(run.testDir, "iobroker-data", "files", `${run.adapter}.0`) : "");
+/**
+ * The fields named like a secret in a JSON value, at any depth — an entry of a list under the list's path.
+ *
+ * @param {unknown} node the value
+ * @param {string} [at] the path so far
+ * @returns {Array<[string, unknown]>} path and value of each field
+ */
+function secretFields(node, at = "") {
+  if (Array.isArray(node)) {
+    return node.flatMap(item => secretFields(item, at));
+  }
+  if (!node || typeof node !== "object") {
+    return [];
+  }
+  return Object.entries(node).flatMap(([name, value]) => [
+    .../** @type {Array<[string, unknown]>} */ (SECRET_NAME.test(name) ? [[`${at}${name}`, value]] : []),
+    ...secretFields(value, `${at}${name}.`),
+  ]);
+}
+/**
+ * Each file below `dir` that holds JSON: its path relative to `dir` and its value. A file that is no JSON has no field.
+ *
+ * @param {string} dir the folder (a missing one holds nothing)
+ * @returns {Array<[string, unknown]>} path and value
+ */
+function jsonFilesOf(dir) {
+  /** @type {Array<[string, unknown]>} */
+  const out = [];
+  const walk = (at, rel) => {
+    let entries = [];
+    try {
+      entries = FS.readdirSync(at, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      const name = rel ? `${rel}/${e.name}` : e.name;
+      if (e.isDirectory()) {
+        walk(path.join(at, e.name), name);
+        continue;
+      }
+      try {
+        out.push([name, JSON.parse(FS.readFileSync(path.join(at, e.name), "utf8"))]);
+      } catch {
+        // no JSON, or gone since the listing
+      }
+    }
+  };
+  if (dir) {
+    walk(dir, "");
+  }
+  return out;
+}
+/**
+ * What the two places hold against the standard: in the data folder a field named like a secret with a text the master
+ * did not seal (clear, or encrypted by the adapter itself — no reader can tell the two apart),
+ * in the file storage such a field with a text at all — in clear or in the stored form of the master.
+ *
+ * @param {string} dataDir the instance's data folder
+ * @param {string} storageDir the instance's folder of the ioBroker file storage
+ * @returns {{ files: number, lines: string[] }} the JSON files read and one line per field
+ */
+function secretFileFindings(dataDir, storageDir) {
+  const text = v => typeof v === "string" && v !== "";
+  const stored = v => Boolean(v) && typeof v === "object" && text(/** @type {Record<string, unknown>} */ (v)[SEALED]);
+  const data = jsonFilesOf(dataDir);
+  const storage = jsonFilesOf(storageDir);
+  return {
+    files: data.length + storage.length,
+    lines: [
+      ...data.flatMap(([file, value]) =>
+        secretFields(value)
+          .filter(([, v]) => text(v))
+          .map(([field]) => `data folder ${file}: \`${field}\` is a text the master did not seal`),
+      ),
+      ...storage.flatMap(([file, value]) =>
+        secretFields(value)
+          .filter(([, v]) => text(v) || stored(v))
+          .map(([field]) => `file storage ${file}: \`${field}\``),
+      ),
+    ],
+  };
+}
+/**
+ * Round 174 (S8): what the log watch of the resource probe could follow in a run, as one line — the sources it learned a
+ * clear text from, and the sources that carried one too short to follow (test/resource-probe.js, SECRET_MIN). An
+ * adapter without a secret, or with one a protocol keeps short, is no finding: the line says that no log line was held
+ * to anything, so the green verdict below it is not read as a measurement.
+ *
+ * @param {{ kind: string, what?: string }[]} records the records of every `.secrets` file of the run
+ * @returns {string} the line
+ */
+function watchedSecrets(records) {
+  const sources = kind => [...new Set(records.filter(r => r.kind === kind).map(r => r.what))].sort();
+  const learned = sources("learn");
+  const tooShort = sources("short");
+  const tail = tooShort.length > 0 ? `; too short to follow: ${tooShort.join(", ")}` : "";
+  return learned.length > 0
+    ? `the log watch followed ${learned.length} source(s) of secrets: ${learned.join(", ")}${tail}`
+    : `the log watch learned no secret — no log line of this run was held to one${tail}`;
+}
+/** The record of one suite's files (`<time>.secrets`): that they were read, and one line per finding. */
+function recordSecretFiles(suite) {
+  const dir = resources();
+  const data = instanceData();
+  if (!dir || !data) {
+    return;
+  }
+  const { files, lines } = secretFileFindings(data, fileStorage());
+  const t = Date.now();
+  const records = [{ t, kind: "scan", suite, files }, ...lines.map(line => ({ t, kind: "file", suite, line }))];
+  try {
+    FS.appendFileSync(path.join(dir, `${t}.secrets`), records.map(r => `${JSON.stringify(r)}\n`).join(""));
+  } catch {
+    // a record that could not be written leaves the run without its reading — the suite "the whole run" is red on that
+  }
+}
 /** A suite read what an earlier suite left: `why` names the channel ("records", "instance data"). */
 function readEarlier(why) {
   if (run.start > 0 && !run.reads.includes(why)) {
@@ -781,6 +933,7 @@ function finishSuite() {
     return;
   }
   const { reads, read, wrote: written, starts } = run;
+  recordSecretFiles(p.title);
   run.pending = null;
   run.suite = "";
   run.start = 0;
@@ -1078,6 +1231,44 @@ async function droppedPress(harness, id, opts) {
     }
   }
   return false;
+}
+// D9 (round 174, a responder 2026-11-12: six "remove" buttons, each `undefined ack undefined`): a button whose press
+// deletes its own object — the remove of a device — leaves no state that could fall back. Pressed and gone is carried
+// out. Of `ids`, the buttons that have not fallen back to false with ack: `gone` where the state and the object are
+// both away, `stuck` every other — a button whose object stands is judged as before.
+async function fallenBack(harness, ids) {
+  const states = ids.length > 0 ? await harness.states.getStates(ids) : [];
+  const stuck = [];
+  const gone = [];
+  for (const [i, id] of ids.entries()) {
+    if (states[i]?.val === false && states[i]?.ack === true) {
+      continue;
+    }
+    if (!states[i] && !(await harness.objects.getObjectAsync(id))) {
+      gone.push(id);
+    } else {
+      stuck.push(id);
+    }
+  }
+  return { stuck, gone };
+}
+// D6 (round 174, a responder 2026-11-12: "reached no request of the 1 requests of a clean start"): a request that
+// follows an incoming one — a display asks, the adapter probes its target — is made only once the fixtures play. A
+// restart alone never repeats it, so no wrong answer ever met it. Every restart of the suite plays what the clean start
+// played; under a wrong answer the feed runs alongside, as in the template's hang play, because it may wait for an
+// answer the counterpart does not give, and is awaited once the right answers are back. Its error is a line, no verdict.
+function feedAlongside(feedFixtures, harness) {
+  return feedFixtures(harness).then(
+    () => undefined,
+    err => err ?? new Error("the feed was rejected"),
+  );
+}
+async function feedEnded(fed, what, capMs = START_MS) {
+  const err = await waitWindow(`D6 the feed ends after ${what}`, capMs, fed);
+  if (err) {
+    console.log(`      the fixtures did not play through ${what}: ${err.message ?? err}`);
+  }
+  return err;
 }
 // D21 (round 157, fleet-suite audit): the hang suite slept a fixed since + deadline + slack (135 s) — and since its start
 // alone takes up to 30 s, a call that never ended could hardly ever be judged (that needs it older than the deadline while
@@ -1414,12 +1605,14 @@ function calibrationGroup(declared) {
  * @param {object[]} declared the counterparts of src/lib/api-limits.json
  * @param {Set<string>} [called] the counterparts the calibration called (R172-20: a counterpart with error windows only
  *   has no peak without an error; without it, those with a peak)
+ * @param {Record<string, string[]>} [shared] sharedCalls() of the calibration — counterparts one call fits together are
+ *   never lowered in one installation (R173-12)
  * @returns {{ groups: { name: string, key: string, max: number, peak: number }[][], idle: string[], unreached: string[] }}
  *   idle: windows a lane never held two calls in, error windows declared below two — nothing to lower, the run's own
  *   demand holds them; unreached (R172-20): the windows of every counterpart the calibration never called — unproven,
  *   the suite is red on each
  */
-function pressPlan(peaks, declared, called = new Set(peaks.map(p => p.name))) {
+function pressPlan(peaks, declared, called = new Set(peaks.map(p => p.name)), shared = {}) {
   const most = new Map();
   for (const p of peaks.filter(q => !q.key.endsWith(" errors"))) {
     const id = `${p.name}\u0000${p.key}`;
@@ -1456,11 +1649,21 @@ function pressPlan(peaks, declared, called = new Set(peaks.map(p => p.name))) {
     }
   }
   const order = key => (key === "concurrent" ? Infinity : Number.parseFloat(key));
+  // R173-12: a window never shares its installation with another window of its counterpart, nor with one of a counterpart
+  // a call of it fits too (sharedCalls names each pair both ways) — without such a pair group k holds the k-th window of
+  // every counterpart
+  const apart = (a, b) => a === b || (shared[a] ?? []).includes(b);
   const groupsOf = byWindows => {
     const groups = [];
     for (const windows of byWindows.values()) {
       windows.sort((a, b) => order(a.key) - order(b.key));
-      windows.forEach((w, k) => (groups[k] = [...(groups[k] ?? []), w]));
+      let k = 0;
+      for (const w of windows) {
+        while ((groups[k] ?? []).some(other => apart(other.name, w.name))) {
+          k++;
+        }
+        groups[k] = [...(groups[k] ?? []), w];
+      }
     }
     return groups;
   };
@@ -1475,6 +1678,26 @@ function pressPlan(peaks, declared, called = new Set(peaks.map(p => p.name))) {
     }
   }
   return { groups: [...groupsOf(byName), ...groupsOf(errorsByName)], idle, unreached };
+}
+
+/**
+ * Round 173 (R173-12, govee 2026-11-10: its host-wide REST counterpart takes every call of its device-control counterpart):
+ * the counterparts one call of the calibration fits together. Lowered in one installation, the wider window turns away
+ * the calls the narrower one needs to reach its lowered maximum — "the press proved nothing", whatever the limiter does;
+ * pressPlan keeps them apart.
+ *
+ * @param {object[]} declared the counterparts of src/lib/api-limits.json
+ * @param {object[]} calls the calls of the calibration
+ * @returns {Record<string, string[]>} per counterpart the others a call of it fits too
+ */
+function sharedCalls(declared, calls) {
+  /** @type {Record<string, string[]>} */
+  const shared = {};
+  for (const d of declared) {
+    const theirs = calls.filter(c => fits(c, d.match));
+    shared[d.name] = declared.filter(e => e.name !== d.name && theirs.some(c => fits(c, e.match))).map(e => e.name);
+  }
+  return shared;
 }
 
 /** Round 171: whether a press group lowers error windows — its installation answers every call with a 500. */
@@ -1674,6 +1897,31 @@ function skippedTests(suite) {
   ];
 }
 
+/**
+ * D10 (round 173): what a writable datapoint without a value is written with where this file plays the writes itself —
+ * the first entry of its list, false, its minimum (0 without one), an empty list or object as text (as the template's
+ * commandValue, R173-48), else an empty text.
+ *
+ * @param {Record<string, any>} common the state's common
+ */
+function plainValue(common) {
+  const states = common.states && typeof common.states === "object" ? common.states : {};
+  const keys = Array.isArray(states) ? states.map(String) : Object.keys(states);
+  if (keys.length > 0) {
+    return common.type === "number" ? Number(keys[0]) : common.type === "boolean" ? keys[0] === "true" : keys[0];
+  }
+  if (common.type === "boolean") {
+    return false;
+  }
+  if (common.type === "number") {
+    return typeof common.min === "number" ? common.min : 0;
+  }
+  if (common.type === "array") {
+    return "[]";
+  }
+  return common.type === "json" || common.type === "object" ? "{}" : "";
+}
+
 module.exports = function fleetSuites(templateSuite, ctx) {
   const mutexProblem = workshopMutexProblem(ctx.ADAPTER_DIR);
   if (mutexProblem) {
@@ -1833,14 +2081,20 @@ module.exports = function fleetSuites(templateSuite, ctx) {
         await harness.states.setStateAsync(id, { val: true, ack: false });
       }
       let stuck = buttons;
+      const gone = [];
       const fellBack = async () => {
-        if (stuck.length > 0) {
-          const states = await harness.states.getStates(stuck);
-          stuck = stuck.filter((id, i) => !(states[i]?.val === false && states[i]?.ack === true));
-        }
+        const now = await fallenBack(harness, stuck);
+        stuck = now.stuck;
+        gone.push(...now.gone);
         return stuck.length === 0;
       };
       await waitWindow("D9 every button falls back", PRESS_WINDOW_MS, fellBack, 500);
+      if (gone.length > 0) {
+        console.log(`      ${gone.length} button(s) deleted their own object with the press — carried out`);
+        // round 174: the stop (D4) is judged on the tree that stands after the presses — taken before the stop, so an
+        // object the adapter deletes while it stops still shows
+        objects = await dumpObjects(harness);
+      }
       // round 142: only a button that is red so far is pressed again alone — a press that falls back stays judged as
       // before; once more a full window after the last press, so a call a slow queue sent late still marks it sent
       this.timeout(stuck.length * PRESS_TRIES * (PRESS_ALONE_MS + 1000) + PRESS_WINDOW_MS + 10000);
@@ -2232,10 +2486,21 @@ module.exports = function fleetSuites(templateSuite, ctx) {
     let errorSince = 0;
     // A cloud adapter asks at its start, then rides an event stream (homeconnect: no HTTP call in two minutes of
     // running, lab 2026-10-16) — so every wrong answer meets a restart as the host plays it, as on a real host whose
-    // cloud answers wrong while the adapter comes up.
+    // cloud answers wrong while the adapter comes up. Round 174: and every restart plays the fixtures the clean start
+    // played, so a request that only follows an incoming one meets the wrong answer too (feedAlongside).
+    let fed = Promise.resolve();
+    const feedEnds = what => {
+      const played = fed;
+      fed = Promise.resolve();
+      return feedEnded(played, what);
+    };
     before(async function () {
       this.timeout(
-        6 * (START_MS + FAULT_CAP_MS + SETTLE_MS) + 2 * BACKOFF_WINDOW_MS + ERROR_WINDOWS * ERROR_WINDOW_MS + 240000,
+        6 * (START_MS + FAULT_CAP_MS + SETTLE_MS) +
+          6 * START_MS +
+          2 * BACKOFF_WINDOW_MS +
+          ERROR_WINDOWS * ERROR_WINDOW_MS +
+          240000,
       );
       if (NET.length === 0) {
         return;
@@ -2266,6 +2531,7 @@ module.exports = function fleetSuites(templateSuite, ctx) {
         const cleanFrom = writes.length;
         await restartAsTheHost(harness, null, "with right answers", ...NET);
         const restarted = Date.now();
+        await feedFixtures(harness);
         await waitWindow("D6 a restart with right answers settles", SETTLE_MS);
         await waitWindow(
           "D6 the restart's emptied values come back",
@@ -2281,6 +2547,7 @@ module.exports = function fleetSuites(templateSuite, ctx) {
           const from = writes.length;
           const old = pidsOf(".requests", since);
           await restartAsTheHost(harness, null, `with ${mode} answers`, ...NET);
+          fed = feedAlongside(feedFixtures, harness);
           const met = () =>
             new Set(
               readRequests(at)
@@ -2306,6 +2573,7 @@ module.exports = function fleetSuites(templateSuite, ctx) {
           await waitWindow(`D6 every request met with ${mode} answers`, at + FAULT_CAP_MS - Date.now(), faultMet, 2000);
           const reached = [...met()].filter(key => clean.has(key));
           fs.rmSync(FAULT_FLAG, { force: true });
+          await feedEnds(`${mode} answers`);
           await waitWindow(`D6 settles after ${mode} answers`, SETTLE_MS);
           const after = await dumpStates(harness);
           const live = await dumpObjects(harness);
@@ -2334,6 +2602,7 @@ module.exports = function fleetSuites(templateSuite, ctx) {
         const t1 = Date.now();
         const before429 = pidsOf(".calls", since);
         await restartAsTheHost(harness, null, "with 429 answers", ...NET);
+        fed = feedAlongside(feedFixtures, harness);
         const refusedNow = () =>
           readCalls(t1).filter(c => c.kind === "http" && !c.hook && c.t >= t1 && !before429.has(c.pid));
         await waitWindow(
@@ -2342,10 +2611,14 @@ module.exports = function fleetSuites(templateSuite, ctx) {
           () => retryTooEarly(refusedNow()).length > 0,
         );
         refusedCalls = refusedNow();
+        // the feed ends on right answers before the next play starts — left running it fed into the next restart
+        fs.rmSync(FAULT_FLAG, { force: true });
+        await feedEnds("429 answers");
         fs.writeFileSync(FAULT_FLAG, "500all");
         errorSince = Date.now();
         const before500 = pidsOf(".calls", since);
         await restartAsTheHost(harness, null, "with a 500 to every answer", ...NET);
+        fed = feedAlongside(feedFixtures, harness);
         const errorsNow = () =>
           readCalls(errorSince).filter(c => c.kind === "http" && !c.hook && c.t >= errorSince && !before500.has(c.pid));
         await waitWindow(
@@ -2360,6 +2633,8 @@ module.exports = function fleetSuites(templateSuite, ctx) {
         errorCalls = errorsNow();
       } finally {
         fs.rmSync(FAULT_FLAG, { force: true });
+        // whichever play ended the suite: its feed ends before the next suite starts on a fresh database
+        await feedEnds("the wrong answers");
       }
     });
     after(() => fs.rmSync(FAULT_FLAG, { force: true }));
@@ -2597,24 +2872,48 @@ module.exports = function fleetSuites(templateSuite, ctx) {
     });
   });
 
-  // No start of its own: the template's suite "a command nobody answers stays unconfirmed" writes every writable state
-  // once; the resource probe notes each state the adapter's stateChange got.
-  suite("every writable datapoint reaches the adapter", () => {
-    it("hands every writable datapoint of the inventory to the adapter (D10)", function () {
-      const inventory = JSON.parse(fs.readFileSync(path.join(ADAPTER_DIR, "test", "objects.inventory.json"), "utf8"));
-      const writable = Object.entries(inventory)
+  // The template's suite "a command nobody answers stays unconfirmed" writes every writable state once, and the resource
+  // probe notes each state the adapter's stateChange got: with that suite in the run this one has no start of its own and
+  // reads the whole run. Round 173 (a responder without a counterpart, run 20261111-084613-771139-hand): an adapter
+  // without a counterpart carries no such suite — nobody wrote, and a datapoint it subscribes and handles read "not
+  // subscribed". Without that suite in the run this one starts the adapter itself, writes every writable datapoint once
+  // (commandEveryWritable; one without a value gets plainValue) and reads from its own start on, no earlier suite.
+  const COMMAND_SUITE = "a command nobody answers stays unconfirmed";
+  suite("every writable datapoint reaches the adapter", getHarness => {
+    const writable = () =>
+      Object.entries(JSON.parse(fs.readFileSync(path.join(ADAPTER_DIR, "test", "objects.inventory.json"), "utf8")))
         .filter(([, o]) => o?.type === "state" && o.common?.write === true)
         .map(([id]) => id);
-      if (writable.length === 0) {
+    // 0: the command suite wrote, somewhere in the run — else the start of this suite's own installation
+    let since = 0;
+    const handOver = () => {
+      const delivered = new Set(probeLines(".delivered", since).map(r => r.id));
+      return { delivered: delivered.size, missed: writable().filter(id => !delivered.has(id)) };
+    };
+    before(async function () {
+      if (protocolledTitles.has(COMMAND_SUITE) || writable().length === 0) {
+        return;
+      }
+      this.timeout(SETTLE_MS + 240000);
+      const harness = getHarness();
+      since = Date.now();
+      await start(harness, FIRST_LANGUAGE);
+      await commandEveryWritable(harness, plainValue);
+      await waitWindow("D10 every write handed over", SETTLE_MS, () => handOver().missed.length === 0, 250);
+    });
+
+    it("hands every writable datapoint of the inventory to the adapter (D10)", function () {
+      if (writable().length === 0) {
         console.log("      the inventory holds no writable datapoint — nothing to hand over");
         return;
       }
-      const delivered = new Set(probeLines(".delivered").map(r => r.id));
+      const { delivered, missed } = handOver();
       assert.ok(
-        delivered.size > 0,
-        'no write reached the adapter in this run — the suite "a command nobody answers stays unconfirmed" did not play its commands',
+        delivered > 0,
+        since === 0
+          ? 'no write reached the adapter in this run — the suite "a command nobody answers stays unconfirmed" did not play its commands'
+          : "none of this suite's own writes reached the adapter's stateChange",
       );
-      const missed = writable.filter(id => !delivered.has(id));
       assert.deepStrictEqual(
         missed,
         [],
@@ -2648,8 +2947,14 @@ module.exports = function fleetSuites(templateSuite, ctx) {
       quietFrom,
     );
 
-  // R172-3: one command to every writable datapoint — a button pressed, every other one its own value once more
-  async function commandEveryWritable(harness) {
+  /**
+   * R172-3: one command to every writable datapoint — a button pressed, every other one its own value once more; one
+   * without a value gets none, unless `valueless` gives it one (D10 without the template's command suite, round 173).
+   *
+   * @param {any} harness the test harness
+   * @param {(common: Record<string, any>) => string | number | boolean | undefined} [valueless] the value of a datapoint without one
+   */
+  async function commandEveryWritable(harness, valueless = () => undefined) {
     const objects = await dumpObjects(harness);
     for (const [id, o] of Object.entries(objects)) {
       if (o?.type !== "state" || o.common?.write !== true) {
@@ -2659,15 +2964,16 @@ module.exports = function fleetSuites(templateSuite, ctx) {
         await harness.states.setStateAsync(id, { val: true, ack: false });
         continue;
       }
-      const now = (await harness.states.getStateAsync(id))?.val;
+      const now = (await harness.states.getStateAsync(id))?.val ?? valueless(o.common);
       if (now !== null && now !== undefined) {
         await harness.states.setStateAsync(id, { val: now, ack: false });
       }
     }
   }
   // R172-3: the press play, one counted installation — the calibration plays it with the declared table, each press group
-  // with its lowered one; every phase ends as pressPhaseOver says, asked against the table of that installation
-  async function playPress(harness, group, label) {
+  // with its lowered one; every phase ends as pressPhaseOver says, asked against the table of that installation.
+  // `mayHold`: a press group, whose adapter may hold its work back by a lowered window it keeps (R173-12)
+  async function playPress(harness, group, label, mayHold) {
     clearInstanceData(harness);
     countThisInstallation();
     const since = Date.now();
@@ -2697,6 +3003,15 @@ module.exports = function fleetSuites(templateSuite, ctx) {
     );
     await feedFixtures(harness);
     await restarts.done;
+    // R173-12 (govee 2026-11-10: it subscribes at the end of its start, the calibration's commands came before and none
+    // reached it): the commands after the adapter's work, as every other suite's start waits for it — a pressed adapter
+    // may hold that work back by the window it keeps, which is what the play judges: its wait ends, the play goes on
+    await waitForAdapterWork(harness).catch(err => {
+      if (!mayHold) {
+        throw err;
+      }
+      console.log(`      ${label}: the adapter held its work back — ${err.message}`);
+    });
     await commandEveryWritable(harness);
     await waitWindow(
       `${label}: a start and one command to every writable datapoint`,
@@ -2713,7 +3028,8 @@ module.exports = function fleetSuites(templateSuite, ctx) {
     const back = Date.now();
     await waitWindow(`${label}: the counterparts back`, PRESS_DEADLINE_MS, pressedOrQuiet(group, back, back));
     await restartAsTheHost(harness, null, `${label}: a restart like the host's`, PRESS_HOOK, ...NET);
-    await feedFixtures(harness);
+    // R173-12 (homeconnect 2026-11-10: "only 0 of 2 appliances came online" after it held its day window over the restart):
+    // no fixtures fed after the restart — feeding may wait for fresh values, which a window the adapter rightly holds forbids
     const again = Date.now();
     await waitWindow(`${label}: after the restart`, PRESS_DEADLINE_MS, pressedOrQuiet(group, again, again));
     await withinDeadline(harness.stopAdapter(), STOP_MS, "the adapter did not stop");
@@ -2735,7 +3051,7 @@ module.exports = function fleetSuites(templateSuite, ctx) {
       const harness = getHarness();
       try {
         fs.rmSync(PRESS_FILE, { force: true });
-        const calibration = await playPress(harness, calibrationGroup(declaredLimits()), "calibration");
+        const calibration = await playPress(harness, calibrationGroup(declaredLimits()), "calibration", false);
         from = calibration.since;
         // what one lane held in the calibration, a window longer than a phase within one phase (R171-49)
         const measured = limitCalls(RESOURCE_DIR, readCalls(from), false, from).filter(
@@ -2749,6 +3065,7 @@ module.exports = function fleetSuites(templateSuite, ctx) {
               .filter(d => measured.some(c => fits(c, d.match)))
               .map(d => d.name),
           ),
+          sharedCalls(declaredLimits(), measured),
         );
         this.timeout((plan.groups.length + 1) * installation + 60000);
         for (const group of plan.groups) {
@@ -2763,7 +3080,7 @@ module.exports = function fleetSuites(templateSuite, ctx) {
             fs.writeFileSync(PRESS_ERRORS_FILE, JSON.stringify(pressedMatches(declaredLimits(), group)));
             fs.writeFileSync(FAULT_FLAG, "500press");
           }
-          const { install } = await playPress(harness, group, "pressed");
+          const { install } = await playPress(harness, group, "pressed", true);
           fs.rmSync(FAULT_FLAG, { force: true });
           fs.rmSync(PRESS_ERRORS_FILE, { force: true });
           pressed.push({ group, install });
@@ -2865,6 +3182,41 @@ module.exports = function fleetSuites(templateSuite, ctx) {
         `addresses of this machine named to others that are not the chosen one (${CHOSEN_ADDRESS}):\n${other.join("\n")}`,
       );
     });
+
+    // Round 174 (the standard for secrets, S6/S7): the files every suite of the run left when it ended (finishSuite)
+    it("keeps a secret encrypted in its data folder and none in its ioBroker file storage (S6, S7)", function () {
+      const records = probeLines(".secrets");
+      assert.ok(
+        records.some(r => r.kind === "scan"),
+        "no suite of this run had its files read — the data folder and the file storage stayed unjudged",
+      );
+      const found = [...new Set(records.filter(r => r.kind === "file").map(r => r.line))];
+      assert.deepStrictEqual(
+        found,
+        [],
+        `a secret the adapter learns or generates lies in a file of the instance's data folder, sealed by the master ` +
+          `(src/lib/data-file.ts, its secret fields — a text the adapter encrypted itself is not that form), and ` +
+          `never in the ioBroker file storage:\n${found.join("\n")}`,
+      );
+    });
+
+    // Round 174 (S8, ioBroker.docs bestpractices.md: no credentials in the log, at no level): the resource probe knows
+    // the clear texts of the process — the encrypted settings, and what went through encrypt and decrypt — and sees
+    // every log call, below the instance's log level too
+    it("names no secret in a log line, at any level (S8)", function () {
+      const records = probeLines(".secrets");
+      assert.ok(
+        records.some(r => r.kind === "watch"),
+        "no start of this run had its log watched — the log lines stayed unjudged",
+      );
+      console.log(`      ${watchedSecrets(records)}`);
+      const found = [...new Set(records.filter(r => r.kind === "log").map(r => `${r.level}: ${r.what}`))];
+      assert.deepStrictEqual(
+        found,
+        [],
+        `log lines that carry the clear text of a secret (a line names that a secret is there, never the secret):\n${found.join("\n")}`,
+      );
+    });
   });
 };
 module.exports.workshopMutexProblem = workshopMutexProblem;
@@ -2879,6 +3231,9 @@ module.exports.emptiedOf = emptiedOf;
 module.exports.devicesOf = devicesOf;
 module.exports.stampsOf = stampsOf;
 module.exports.droppedPress = droppedPress;
+module.exports.fallenBack = fallenBack;
+module.exports.feedAlongside = feedAlongside;
+module.exports.feedEnded = feedEnded;
 module.exports.hangDecided = hangDecided;
 module.exports.errorCountsByHost = errorCountsByHost;
 module.exports.backoffSettled = backoffSettled;
@@ -2897,6 +3252,7 @@ module.exports.reachedAt = reachedAt;
 module.exports.peaksOf = peaksOf;
 module.exports.overLimits = overLimits;
 module.exports.pressPlan = pressPlan;
+module.exports.sharedCalls = sharedCalls;
 module.exports.calibrationGroup = calibrationGroup;
 module.exports.pressVerdict = pressVerdict;
 module.exports.pressPhaseOver = pressPhaseOver;
@@ -2914,10 +3270,17 @@ module.exports.recordLines = recordLines;
 module.exports.stateText = stateText;
 module.exports.leftBehind = leftBehind;
 module.exports.tally = tally;
+module.exports.plainValue = plainValue;
+module.exports.SECRET_NAME_PHRASES = SECRET_NAME_PHRASES;
+module.exports.secretFields = secretFields;
+module.exports.secretFileFindings = secretFileFindings;
+module.exports.watchedSecrets = watchedSecrets;
 // Round 165: the suites that judge the records of the whole run — pre-release.py's run of single suites reads it through
 // scripts/inventory-suites.mjs. "every" judges each record of every process (it runs along with every partial run, and a
 // move of its own code runs D06 whole); a list names the suites whose records it needs (it runs with them, and they with
-// it). Every other suite that reads an earlier suite's records needs every suite before it.
+// it). Every other suite that reads an earlier suite's records needs every suite before it. Round 173: a listed suite
+// the template does not carry is no source — the suite that names it plays that part itself and reads its own start
+// only (D10 without the command suite); with no source left it is a suite like every other.
 module.exports.RUN_WIDE = {
   "every call to a hung counterpart ends": "every",
   "every writable datapoint reaches the adapter": ["a command nobody answers stays unconfirmed"],

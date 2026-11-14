@@ -23,10 +23,17 @@ async function rejection(p: Promise<unknown>): Promise<unknown> {
 }
 
 describe("errText — measured Node errors", () => {
-  it("fetch, unknown host: the DNS reason", async () => {
-    // `.invalid` never resolves (RFC 6761); a runner without DNS says EAI_AGAIN instead of ENOTFOUND.
-    expect(errText(await rejection(fetch("http://nonexistent.invalid/")))).toMatch(
-      /^fetch failed \(getaddrinfo E[A-Z_]+ nonexistent\.invalid\)$/,
+  it("fetch, unknown host: the DNS reason", () => {
+    // The shape fetch rejects with for a name no resolver knows (`.invalid` never resolves, RFC 6761). Built here
+    // since round 174: the real call waits for the runner's resolver, and a slow one ran into the test's time limit —
+    // a master test names no host the machine must resolve.
+    const cause = Object.assign(new Error("getaddrinfo ENOTFOUND nonexistent.invalid"), {
+      code: "ENOTFOUND",
+      syscall: "getaddrinfo",
+      hostname: "nonexistent.invalid",
+    });
+    expect(errText(new TypeError("fetch failed", { cause }))).toBe(
+      "fetch failed (getaddrinfo ENOTFOUND nonexistent.invalid)",
     );
   });
   it("fetch, refused on an address: the socket reason", async () => {
