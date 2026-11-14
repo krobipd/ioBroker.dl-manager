@@ -11,9 +11,9 @@ import { moveObjects, type MoveAdapter } from "./lib/core/move";
 import { coveredBy, KnownObjects } from "./lib/known-objects";
 import { Serial } from "./lib/core/serial";
 import { KnownStates } from "./lib/core/states";
-import { isRow, ProgramStore, STORE_FILE, STORE_ID, type SettingsRow } from "./lib/core/store";
+import { isRow, ProgramStore, SECRET_FIELDS, STORE_FILE, STORE_ID, type SettingsRow } from "./lib/core/store";
 import { LAST_CHANNEL, lastChannelObject } from "./lib/core/tree";
-import { readDataFile, writeDataFile } from "./lib/data-file";
+import { readDataFile, writeDataFile, type DataFileRead, type DataFileSecrets } from "./lib/data-file";
 import { deviceIcon } from "./lib/device-icons";
 import { DlDeviceManagement, type DmHost } from "./lib/device-management";
 import { errText } from "./lib/err-text";
@@ -58,6 +58,8 @@ class DownloadManagerAdapter extends utils.Adapter {
   private deviceManagement: DlDeviceManagement | null = null;
   /** Where the programs live (`programs.json` in the instance's data folder). */
   private readonly programs: ProgramStore;
+  /** The secrets of `programs.json` — data-file.ts seals them with the installation secret. */
+  private readonly storeSecrets: DataFileSecrets = { cipher: this, fields: SECRET_FIELDS };
   /** Changes of the program rows, one after the other (dialogs and a learned My.JDownloader id). */
   private readonly rowChanges = new Serial();
   /** Set first in `onUnload`: a start still under way starts no program. */
@@ -86,9 +88,8 @@ class DownloadManagerAdapter extends utils.Adapter {
       setState: (id, state) => this.setState(id, state),
     });
     this.programs = new ProgramStore({
-      readText: () => this.readStoreFile(),
-      writeText: text => this.writeStoreFile(text),
-      encrypt: v => this.encrypt(v),
+      read: () => this.readStoreFile(),
+      write: value => this.writeStoreFile(value),
       decrypt: v => this.decrypt(v),
     });
     this.problems = new ActionableProblems({
@@ -133,28 +134,22 @@ class DownloadManagerAdapter extends utils.Adapter {
   }
 
   /**
-   * Reads the store file through the fleet master data-file.ts.
+   * Reads the store file through the fleet master data-file.ts, its secrets decrypted.
    *
-   * @returns the store file's text, undefined while it does not exist
+   * @returns nothing (no file yet), its value, or why it is unusable
    */
-  private readStoreFile(): Promise<string | undefined> {
-    const read = readDataFile(dirname(this.storeFile), basename(this.storeFile));
-    if (read.error !== undefined) {
-      // the start stops — the programs are never replaced by an empty list
-      return Promise.reject(new Error(`${STORE_FILE} cannot be read — fix or remove it (${read.error})`));
-    }
-    // no file yet: no value, and its JSON is undefined as well
-    return Promise.resolve(JSON.stringify(read.value) as string | undefined);
+  private readStoreFile(): Promise<DataFileRead> {
+    return Promise.resolve(readDataFile(dirname(this.storeFile), basename(this.storeFile), this.storeSecrets));
   }
 
   /**
-   * Replaces the store file through the fleet master data-file.ts: written next to it, then renamed over it — a crash
-   * leaves the old or the new file.
+   * Replaces the store file through the fleet master data-file.ts, its secrets sealed: written next to it, then renamed
+   * over it — a crash leaves the old or the new file.
    *
-   * @param text the new content, JSON
+   * @param value the new content
    */
-  private writeStoreFile(text: string): Promise<void> {
-    writeDataFile(dirname(this.storeFile), basename(this.storeFile), JSON.parse(text));
+  private writeStoreFile(value: unknown): Promise<void> {
+    writeDataFile(dirname(this.storeFile), basename(this.storeFile), value, this.storeSecrets);
     return Promise.resolve();
   }
 

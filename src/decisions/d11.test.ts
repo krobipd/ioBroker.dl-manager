@@ -4,13 +4,15 @@
 // 21:19: "why is that actually a folder? dl-manager.0.programs — does it have to be stored in the object tree? can't it
 // be stored differently? besides, the password is encrypted" · 21:23 on moving the programs into a file in the data
 // folder, with dataFolder for the backup: "yes, absolutely".
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { ProgramManager, type ManagerAdapter } from "../lib/core/manager";
 import type { ProgramDriver, ProgramEntry } from "../lib/core/model";
 import type { ProgramStore } from "../lib/core/store";
-import { STORE_FILE } from "../lib/core/store";
+import { SECRET_FIELDS, STORE_FILE } from "../lib/core/store";
+import { readDataFile, type DataFileCipher } from "../lib/data-file";
 import * as mainModule from "../main";
 const { DownloadManagerAdapter } = mainModule as unknown as { DownloadManagerAdapter: new () => ioBroker.Adapter };
 
@@ -21,11 +23,11 @@ vi.mock("@iobroker/adapter-core", () => ({
     adapterDir = "/opt/iobroker/node_modules/iobroker.dl-manager";
     log = { debug: () => undefined, info: () => undefined, warn: () => undefined, error: () => undefined };
     on(): void {}
-    encrypt(v: string): string {
-      return `sealed(${v})`;
+    encrypt(value: string): string {
+      return `$/aes-192-cbc:${Buffer.from(value).toString("base64")}`;
     }
-    decrypt(v: string): string {
-      return v.replace(/^sealed\((.*)\)$/, "$1");
+    decrypt(value: string): string {
+      return Buffer.from(value.replace("$/aes-192-cbc:", ""), "base64").toString();
     }
   },
   getAbsoluteInstanceDataDir: () => "/opt/iobroker/iobroker-data/dl-manager.0",
@@ -95,29 +97,36 @@ describe("D-11 the programs live in a file of the data folder, secrets encrypted
   });
 
   it("stores password and API key encrypted with the adapter's encrypt(), the rest as typed", async () => {
-    const adapter = new DownloadManagerAdapter() as unknown as {
-      programs: ProgramStore;
-      readStoreFile: () => Promise<string | undefined>;
-      writeStoreFile: (text: string) => Promise<void>;
-    };
-    let file: string | undefined;
-    adapter.readStoreFile = () => Promise.resolve(file);
-    adapter.writeStoreFile = text => {
-      file = text;
-      return Promise.resolve();
-    };
-    const row = {
-      id: "qbittorrent-nas",
-      type: "qbittorrent",
-      host: "nas",
-      username: "admin",
-      password: "pw1",
-      apiKey: "k1",
-    };
-    await adapter.programs.write([row]);
-    const stored = (JSON.parse(file ?? "{}") as { rows: Record<string, unknown>[] }).rows[0];
-    expect(stored).toMatchObject({ username: "admin", host: "nas", password: "sealed(pw1)", apiKey: "sealed(k1)" });
-    expect(await adapter.programs.read()).toEqual([row]);
+    const dir = mkdtempSync(join(tmpdir(), "dl-manager-d11-"));
+    try {
+      const adapter = new DownloadManagerAdapter() as unknown as { programs: ProgramStore } & DataFileCipher;
+      Object.defineProperty(adapter, "storeFile", { value: join(dir, STORE_FILE) });
+      const row = {
+        id: "qbittorrent-nas",
+        type: "qbittorrent",
+        host: "nas",
+        username: "admin",
+        password: "password-of-the-nas",
+        apiKey: "api-key-of-the-nas",
+      };
+      await adapter.programs.write([row]);
+      const raw = readFileSync(join(dir, STORE_FILE), "utf8");
+      for (const secret of [row.password, row.apiKey]) {
+        expect(raw.includes(secret), secret).toBe(false);
+      }
+      expect((JSON.parse(raw) as { rows: Record<string, unknown>[] }).rows[0]).toMatchObject({
+        username: "admin",
+        host: "nas",
+      });
+      const read = readDataFile(dir, STORE_FILE, { cipher: adapter, fields: SECRET_FIELDS });
+      expect((read.value as { rows: Record<string, unknown>[] }).rows[0]).toMatchObject({
+        password: row.password,
+        apiKey: row.apiKey,
+      });
+      expect(await adapter.programs.read()).toEqual([row]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it("puts no program list into the instance or the object tree", () => {

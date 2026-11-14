@@ -60,13 +60,12 @@ vi.mock("@iobroker/adapter-core", () => {
     public subscribeStatesAsync = (): Promise<void> => Promise.resolve();
     public setTimeout = (): undefined => undefined;
     public clearTimeout = (): void => undefined;
-    public encrypt = (v: string): string => `enc:${v}`;
-    public decrypt = (v: string): string => {
-      if (!v.startsWith("enc:")) {
-        throw new Error("not ours");
-      }
-      return v.slice(4);
-    };
+    public encrypt(value: string): string {
+      return `$/aes-192-cbc:${Buffer.from(value).toString("base64")}`;
+    }
+    public decrypt(value: string): string {
+      return Buffer.from(value.replace("$/aes-192-cbc:", ""), "base64").toString();
+    }
     public registerNotification = (_scope: string, _cat: string, msg: string): Promise<void> => {
       this.notifications.push(msg);
       return Promise.resolve();
@@ -128,6 +127,16 @@ const rowsOf = (h: Harness): Record<string, unknown>[] =>
   hasStoreFile(h) ? (JSON.parse(readFileSync(storeFile(h), "utf8")) as { rows: Record<string, unknown>[] }).rows : [];
 const seedRows = (h: Harness, rows: Record<string, unknown>[]): void =>
   writeFileSync(storeFile(h), JSON.stringify({ rows }));
+/**
+ * @param v a text
+ * @returns what the installation secret makes of it — the fleet form of the stub's encrypt
+ */
+const enc = (v: string): string => `$/aes-192-cbc:${Buffer.from(v).toString("base64")}`;
+/**
+ * @param v a secret
+ * @returns the field as data-file.ts stores it
+ */
+const sealed = (v: string): { $encrypted: string } => ({ $encrypted: enc(JSON.stringify(v)) });
 const noStore = (h: Harness): void => rmSync(storeFile(h), { force: true });
 
 afterAll(() => {
@@ -320,23 +329,38 @@ describe("DownloadManagerAdapter — start", () => {
     expect(h.store.objectLog).not.toContain("dl-manager.0.summary.pauseAll");
   });
 
-  it("hands the program the secrets it stored encrypted", async () => {
+  it("hands the program the secrets 0.4.x stored encrypted, and the store holds them sealed by data-file.ts", async () => {
     const { h, configs } = make();
-    seedRows(h, [
-      { id: "qbittorrent-nas", type: "qbittorrent", host: "h1", password: "enc:p", apiKey: "enc:k", encrypted: true },
-    ]);
+    const row = { id: "qbittorrent-nas", type: "qbittorrent", host: "h1" };
+    seedRows(h, [{ ...row, password: enc("p"), apiKey: enc("k"), encrypted: true }]);
     await h.handlers.get("ready")?.();
     expect(configs.map(c => [c.password, c.apiKey])).toEqual([["p", "k"]]);
+    expect(rowsOf(h)).toEqual([{ ...row, password: sealed("p"), apiKey: sealed("k") }]);
   });
 
-  it("moves the programs out of the instance settings, secrets encrypted, and stops for the one restart", async () => {
+  it("stops the start at a sealed secret that cannot be decrypted — and keeps the file", async () => {
+    const { h, polls } = make();
+    const content = JSON.stringify({ rows: [{ id: "qbittorrent-nas", password: { $encrypted: enc("no JSON") } }] });
+    writeFileSync(storeFile(h), content);
+    await h.handlers.get("ready")?.();
+    expect(
+      h.store.logs
+        .filter(l => l.level === "error")
+        .map(l => l.msg)
+        .join(),
+    ).toContain("programs.json cannot be read — fix or remove it (secret field rows[0].password cannot be decrypted)");
+    expect(readFileSync(storeFile(h), "utf8")).toBe(content);
+    expect(polls()).toBe(0);
+  });
+
+  it("moves the programs out of the instance settings, secrets sealed, and stops for the one restart", async () => {
     const { h, polls } = make();
     noStore(h);
     const legacy = [{ enabled: true, type: "qbittorrent", key: "nas", name: "NAS", host: "h1", password: "p" }];
     h.config.programs = legacy;
     h.instanceObject = { common: {}, native: { programs: legacy, pollInterval: 10 } };
     await h.handlers.get("ready")?.();
-    expect(rowsOf(h)).toEqual([{ ...legacy[0], password: "enc:p", apiKey: "", encrypted: true }]);
+    expect(rowsOf(h)).toEqual([{ ...legacy[0], password: sealed("p"), apiKey: sealed("") }]);
     expect(h.instanceWrites).toEqual([{ id: "system.adapter.dl-manager.0", obj: { native: { programs: null } } }]);
     expect(polls()).toBe(0);
   });
@@ -465,25 +489,17 @@ describe("DownloadManagerAdapter — start", () => {
     ]);
   });
 
-  it("moves the store object of 0.3.x into the data folder as stored, deletes it and runs the programs", async () => {
+  it("moves the store object of 0.3.x into the data folder, secrets sealed, deletes it and runs the programs", async () => {
     const { h, polls } = make();
     noStore(h);
-    const stored = {
-      id: "qbittorrent-nas",
-      enabled: true,
-      type: "qbittorrent",
-      host: "h1",
-      password: "enc:p",
-      encrypted: true,
-    };
+    const row = { id: "qbittorrent-nas", enabled: true, type: "qbittorrent", host: "h1" };
     await h.store.setForeignObject(STORE, {
       type: "meta",
       common: { name: "x", type: "meta.folder" },
-      native: { rows: [stored] },
+      native: { rows: [{ ...row, password: enc("p"), encrypted: true }] },
     });
     await h.handlers.get("ready")?.();
-    // the start's id settling writes the rows once more in the store's own form — the stored cipher stays
-    expect(rowsOf(h)).toMatchObject([stored]);
+    expect(rowsOf(h)).toEqual([{ ...row, password: sealed("p"), apiKey: sealed("") }]);
     expect(h.store.objects.has(STORE)).toBe(false);
     expect(h.store.logs.filter(l => l.level === "info").map(l => l.msg)).toContain(
       "1 program(s) moved from the object dl-manager.0.programs into the data folder of the instance",
@@ -582,7 +598,7 @@ describe("DownloadManagerAdapter — device manager", () => {
 
   it("reads the rows from the store with readable secrets, skipping what is no row", async () => {
     const { h } = make();
-    seedRows(h, [{ type: "deluge", password: "enc:pw", encrypted: true }, null, "x", [1], { type: "aria2" }] as never);
+    seedRows(h, [{ type: "deluge", password: enc("pw"), encrypted: true }, null, "x", [1], { type: "aria2" }] as never);
     expect(await hostOf(h).readRows()).toEqual([{ type: "deluge", password: "pw", apiKey: "" }, { type: "aria2" }]);
     noStore(h);
     expect(await hostOf(h).readRows()).toEqual([]);
@@ -600,7 +616,14 @@ describe("DownloadManagerAdapter — device manager", () => {
     ]);
     await flush();
     expect(h.instanceWrites).toEqual([]);
-    expect(rowsOf(h)[1]).toMatchObject({ id: "qbittorrent-h2", password: "enc:x", encrypted: true });
+    expect(rowsOf(h)[1]).toEqual({
+      id: "qbittorrent-h2",
+      enabled: true,
+      type: "qbittorrent",
+      host: "h2",
+      password: sealed("x"),
+      apiKey: sealed(""),
+    });
     expect(polls()).toBe(2);
     expect(h.store.objects.has("dl-manager.0.qbittorrent-h2")).toBe(true);
     await hostOf(h).updateRows(() => rows.map(r => ({ ...r, enabled: false })));
@@ -634,10 +657,10 @@ describe("DownloadManagerAdapter — device manager", () => {
     expect(statSync(storeFile(h)).ino).toBe(before);
   });
 
-  it("writes nothing for an edit that changed nothing — a secret keeps its stored cipher", async () => {
+  it("writes nothing for an edit that changed nothing — also on a store 0.4.x left", async () => {
     const { h } = make();
     seedRows(h, [
-      { id: "qbittorrent-nas", type: "qbittorrent", host: "h1", password: "enc:p", apiKey: "", encrypted: true },
+      { id: "qbittorrent-nas", type: "qbittorrent", host: "h1", password: enc("p"), apiKey: "", encrypted: true },
     ]);
     await h.handlers.get("ready")?.();
     // the store file is replaced by a rename — a write gives it a new inode
