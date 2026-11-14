@@ -51,12 +51,11 @@ const canonical = (rows: readonly SettingsRow[]): string =>
 export const sameRow = (a: SettingsRow, b: SettingsRow): boolean => canonical([a]) === canonical([b]);
 
 /**
- * @param row a row with readable secrets
- * @returns the row to store: every secret field a text ("" when there is none), no `encrypted` mark of 0.3.0 to 0.4.x
+ * @param row a row with readable secrets (`reveal` dropped the `encrypted` mark of 0.3.0 to 0.4.x)
+ * @returns the row to store: every secret field a text, "" when there is none
  */
 const plain = (row: SettingsRow): SettingsRow => {
   const out: SettingsRow = { ...row };
-  delete out.encrypted;
   for (const f of SECRET_FIELDS) {
     out[f] = typeof row[f] === "string" ? row[f] : "";
   }
