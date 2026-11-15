@@ -219,6 +219,23 @@ export async function record(ctx) {
     console.log(`${label}: ${res.status} after ${Date.now() - t} ms`);
     return res;
   };
+  // run 43681661285: the web server answered 2.6 s after the start, while the console was still setting the login — every
+  // request, the right password too, got 401; the final settings (console listing) were right. Wait until they hold.
+  const since = Date.now();
+  let lastStatus = 0;
+  await waitFor(
+    "the plugin's login",
+    async () => {
+      const res = await new Http(base).req("POST", RPC, { headers: basic(PASS), json: {}, timeoutMs: 180_000 });
+      if (res.status !== lastStatus) {
+        console.log(`right password: ${res.status} after ${Date.now() - since} ms`);
+        lastStatus = res.status;
+      }
+      return res.status === 409 || res.status === 200;
+    },
+    300_000,
+    2000,
+  );
   const first = await timed("no session id", basic(PASS));
   let sessionId = first.headers["x-transmission-session-id"] ?? "";
   // the first session-get asks Vuze's version server and waits for it (XMWebUIPlugin.java 2820, again after 864 s):
