@@ -5,6 +5,11 @@ name: Live programs
 # under test/fixtures/ — nothing here gates a release, it measures the real programs.
 on:
   workflow_dispatch:
+    inputs:
+      program:
+        description: "Record only this program (empty: every program)"
+        required: false
+        default: ""
   push:
     branches:
       - main
@@ -56,15 +61,25 @@ jobs:
             tag: 0.5.0b3.dev101-ls255
           - program: jdownloader
             tag: v26.09.1
+          - program: rqbit
+            tag: 8.1.1
+          - program: rqbit
+            tag: 9.1.0
+    # a manual start may name one program; the other matrix entries then skip every step
+    env:
+      SELECTED: ${{ inputs.program == '' || inputs.program == matrix.program }}
     steps:
       - uses: actions/checkout@v7
+        if: env.SELECTED == 'true'
       - uses: actions/setup-node@v7
+        if: env.SELECTED == 'true'
         with:
           node-version: 22.x
       - name: Record ${{ matrix.program }} ${{ matrix.tag }}
+        if: env.SELECTED == 'true'
         run: node test/live/record.mjs "${{ matrix.program }}" "${{ matrix.tag }}"
       - name: Upload the recordings
-        if: always()
+        if: always() && env.SELECTED == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: fixtures-${{ matrix.program }}-${{ matrix.tag }}

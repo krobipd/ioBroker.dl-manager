@@ -13,13 +13,11 @@
     }
   ],
   "excluded": {
-    "Blackhole": "A watch folder Sonarr and Radarr drop .torrent and .nzb files into, not a program with an interface to read.",
     "DownloadStation": "The download package of a Synology NAS, reached through the NAS's own web API; not one of the programs dl-manager drives.",
     "Flood": "A web interface in front of rTorrent, qBittorrent, Transmission or Deluge, not a download program of its own - dl-manager talks to the program behind it.",
     "FreeboxDownload": "The download service built into the Freebox router of the French provider Free; not one of the programs dl-manager drives.",
     "Hadouken": "A headless BitTorrent client whose repository has had no change since 2020-08-30; not one of the programs dl-manager drives.",
     "NzbVortex": "A commercial Usenet client for macOS; not one of the programs dl-manager drives.",
-    "Pneumatic": "Writes .strm files for the Kodi add-on Pneumatic, not a program with an interface to read.",
     "RQBit": "A BitTorrent client written in Rust with an HTTP API; not one of the programs dl-manager drives.",
     "Tribler": "A BitTorrent client with anonymous downloading over its own onion network; not one of the programs dl-manager drives.",
     "Vuze": "A Java BitTorrent client, formerly Azureus; not one of the programs dl-manager drives.",
