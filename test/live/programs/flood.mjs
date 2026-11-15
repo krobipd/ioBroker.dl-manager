@@ -423,6 +423,18 @@ export async function record(ctx) {
   await new Promise(resolve => setTimeout(resolve, 3000));
   await snapshot("running");
 
+  // a low limit while big loads: whether the backend takes Flood's B/s as B/s (Deluge's gateway hands the number to
+  // Deluge's KiB/s settings unchanged — source only, settings-limits ran on an empty list)
+  w(
+    "commands",
+    "settings-throttle",
+    "PATCH /api/client/settings {...GET /api/client/settings, throttleGlobalDownSpeed: 102400, throttleGlobalUpSpeed: 51200}",
+    await writeLimits({ throttleGlobalDownSpeed: 102400, throttleGlobalUpSpeed: 51200 }),
+  );
+  await new Promise(resolve => setTimeout(resolve, 6000));
+  await snapshot("throttled");
+  await writeLimits({ throttleGlobalDownSpeed: 0, throttleGlobalUpSpeed: 0 });
+
   w(
     "commands",
     "check-hash",
@@ -539,6 +551,16 @@ export async function record(ctx) {
     "POST /api/torrents/delete {hashes: [unknown], deleteData: false}",
     await call("POST", "/api/torrents/delete", { hashes: [unknown], deleteData: false }),
   );
+  // Deluge and rTorrent refuse an unknown hash (500) — does the known one in the same list stop anyway?
+  w(
+    "commands",
+    "stop-mixed",
+    "POST /api/torrents/stop {hashes: [done, unknown]}",
+    await call("POST", "/api/torrents/stop", { hashes: [H("done"), unknown] }),
+  );
+  await new Promise(resolve => setTimeout(resolve, 3000));
+  await snapshot("stop-mixed");
+  await call("POST", "/api/torrents/start", { hashes: [H("done")] });
 
   // last, because it may break the backend: only the two limits, as Flood's API allows (Partial<ClientSettings>)
   w(

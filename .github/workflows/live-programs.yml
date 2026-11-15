@@ -74,8 +74,10 @@ jobs:
             tag: v8.0.7-75-g12eb5bab6
           - program: tribler
             tag: v8.4.2
+          # 4.11.0 (the last express release) does not speak rTorrent 0.16: settings 500 "method not found: false=",
+          # add 500 "method not found: load.start_throw" (run 43677990506) — recorded in front of Transmission
           - program: flood
-            tag: 4.11.0-rtorrent
+            tag: 4.11.0-transmission
           - program: flood
             tag: 4.16.4-rtorrent
           - program: flood
