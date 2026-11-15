@@ -72,11 +72,11 @@ export class RqDriver implements ProgramDriver {
         await this.client.post(`/torrents/${cmd.key}/forget`);
         return;
       case "add": {
-        const held = await this.pause.isPaused();
         const res = asRecord(await this.client.add(cmd.url));
         const added = asRecord(res.details).info_hash;
-        // rqbit adds running — while the adapter holds the program paused, the new torrent is paused and held too
-        if (held && typeof added === "string") {
+        // rqbit adds running — while the adapter holds the program paused, the new torrent is paused and held too; asked
+        // after the answer, which may come minutes later (a magnet's metadata), so a pause set meanwhile counts
+        if (typeof added === "string" && (await this.pause.isPaused())) {
           await this.client.post(`/torrents/${added}/pause`);
           await this.pause.hold(added);
         }

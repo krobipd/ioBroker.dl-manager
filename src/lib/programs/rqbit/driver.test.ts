@@ -1,3 +1,5 @@
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { runDriverContract } from "../../../../test/helpers/contract";
 import { startFixtureServer, type FixtureAnswer, type RecordedCall } from "../../../../test/helpers/fixture-server";
 import { firstUrl } from "../../../../test/helpers/first-url";
@@ -222,6 +224,53 @@ describe("rqbit driver details", () => {
       ]);
     } finally {
       await s.close();
+    }
+  });
+
+  it("pauses and holds a torrent whose add answered after the program was paused meanwhile", async () => {
+    let release = (): void => undefined;
+    const answered = new Promise<void>(resolve => (release = resolve));
+    const seen: string[] = [];
+    const server = createServer((req, res) => {
+      req.resume();
+      req.on("end", () => {
+        const path = (req.url ?? "/").split("?")[0];
+        seen.push(`${req.method} ${path}`);
+        const send = (v: unknown): void => {
+          res.setHeader("content-type", "application/json");
+          res.end(JSON.stringify(v));
+        };
+        const answers: Record<string, unknown> = {
+          "GET /": { version: "9.1.0" },
+          "GET /torrents": { torrents: [t("a".repeat(40), "live")] },
+          "GET /torrents/limits": { download_bps: null, upload_bps: null },
+        };
+        if (`${req.method} ${path}` === "POST /torrents") {
+          // rqbit answers an add once it has the metadata — here only after the pause below
+          void answered.then(() => send({ details: { info_hash: "n".repeat(40) } }));
+          return;
+        }
+        send(answers[`${req.method} ${path}`] ?? {});
+      });
+    });
+    await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+    const store = memoryPauseStore();
+    try {
+      const d = new RqDriver(cfg(`http://127.0.0.1:${(server.address() as AddressInfo).port}`), {
+        ...timers,
+        log,
+        pauseStore: store,
+      });
+      await d.poll();
+      const adding = d.command({ kind: "add", url: "magnet:?xt=urn:btih:slow" });
+      await d.command({ kind: "pauseAll" });
+      release();
+      await adding;
+      expect(seen).toContain(`POST /torrents/${"n".repeat(40)}/pause`);
+      expect(await store.load()).toEqual({ paused: true, keys: ["a".repeat(40), "n".repeat(40)] });
+    } finally {
+      server.closeAllConnections();
+      await new Promise<void>(resolve => server.close(() => resolve()));
     }
   });
 

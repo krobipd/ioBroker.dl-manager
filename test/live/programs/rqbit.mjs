@@ -156,14 +156,12 @@ export async function record(ctx) {
   );
   await snapshot("running");
 
-  // a magnet nobody seeds: rqbit resolves the metadata inside the POST — what the list shows meanwhile, and the answer
-  const magnet = post("/torrents?overwrite=true", { body: DEAD_MAGNET }).then(
-    res => res,
-    err => ({ status: 0, text: String(err), headers: {} }),
-  );
+  // a magnet nobody seeds: rqbit resolves the metadata inside the POST (up to 600 s) — what the list shows meanwhile;
+  // the recorder's own deadline ends the POST, so its "answer" is no recording
+  const magnet = post("/torrents?overwrite=true", { body: DEAD_MAGNET }).catch(() => undefined);
   await new Promise(resolve => setTimeout(resolve, 3000));
   await snapshot("metadata");
-  w("commands", "torrents-post-magnet", "POST /torrents?overwrite=true (magnet nobody seeds)", await magnet);
+  await magnet;
 
   // waiting: the seeder forgets "stopped", then it starts again — live, bytes left, no peer, nothing coming in. Not
   // every run reaches it (a peer may still be connected); what the list shows is recorded either way.
@@ -184,7 +182,8 @@ export async function record(ctx) {
   ).catch(err => console.log(`rqbit: ${err.message} — recorded as it is`));
   await snapshot("stalled");
 
-  // failed: a torrent whose file cannot be created (read-only folder) — the POST answer and what the list shows
+  // a torrent whose file cannot be created (read-only folder): rqbit refuses the add with 400 and its reason, the list
+  // never shows it — no recording reaches the error state, its rows come from the source (TorrentStatsState::Error)
   w(
     "commands",
     "torrents-post-readonly",
@@ -193,10 +192,6 @@ export async function record(ctx) {
       body: torrentOf(ctx.work, "gone").torrent,
     }),
   );
-  await waitFor("gone in error", async () => (await find(hash("gone")))?.stats?.state === "error", 30_000).catch(err =>
-    console.log(`rqbit: ${err.message} — recorded as it is`),
-  );
-  await snapshot("failed");
 
   // completed: a finished torrent paused
   await post(`/torrents/${hash("done")}/pause`);

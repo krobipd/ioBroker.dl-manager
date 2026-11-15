@@ -33,7 +33,11 @@ interface RqStats {
   live?: unknown;
 }
 
-/** Raw key `<state>:<finished>` and the status it maps to. */
+/**
+ * Raw key `<state>:<finished>` and the status it maps to. The `error:*` rows come from the source
+ * (torrent_state/stats.rs `TorrentStatsState::Error`) — no recording reaches them: a torrent whose file cannot be
+ * created is refused by the add itself (HTTP 400, `commands/torrents-post-readonly`).
+ */
 export const statusTable = [
   ["initializing:left", "checking"],
   ["initializing:done", "checking"],
