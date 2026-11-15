@@ -107,15 +107,20 @@ describe("HttpClient", () => {
     expect(cookies[2]).toBeUndefined();
   });
 
-  it("sends basic auth when configured", async () => {
+  it("sends basic auth when configured, under the header name spelled as in RFC 7235", async () => {
     let auth: string | undefined;
+    let raw: string[] = [];
     const s = await serve((req, _b, res) => {
       auth = req.headers.authorization;
+      raw = req.rawHeaders;
       res.end("");
     });
     server = s.server;
     await new HttpClient(timers, { basicAuth: { user: "u", pass: "p" } }).request({ method: "GET", url: s.url });
     expect(auth).toBe(`Basic ${Buffer.from("u:p").toString("base64")}`);
+    // Vuze's web server looks for the exact text "Authorization:" (TRTrackerServerProcessorTCP.java 873) — a lower-case
+    // name reaches it as no login at all (live-programs run 43681939522: 401 for five minutes with the right password)
+    expect(raw).toContain("Authorization");
   });
 
   it("refuses to follow a redirect — it is a login page or a wrong path", async () => {

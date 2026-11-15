@@ -194,7 +194,9 @@ const FIELDS = [
  */
 export async function record(ctx) {
   const base = "http://vuze:9091";
-  const basic = pass => ({ authorization: `Basic ${Buffer.from(`${USER}:${pass}`).toString("base64")}` });
+  // the exact spelling: Vuze's web server looks for the text "Authorization:" (TRTrackerServerProcessorTCP.java 873) —
+  // run 43681939522 sent "authorization" and got 401 for five minutes with the right password
+  const basic = pass => ({ Authorization: `Basic ${Buffer.from(`${USER}:${pass}`).toString("base64")}` });
   // every probe without the cookie jar of the others: the plugin also takes the session id from its cookie
   // (XMWebUIPlugin.java `isSessionValid`) — a shared jar made the 409 look like a 200 in run 43680925710
   await waitFor(

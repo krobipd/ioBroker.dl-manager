@@ -178,7 +178,9 @@ export class HttpClient {
     }
     if (this.opts.basicAuth) {
       const { user, pass } = this.opts.basicAuth;
-      headers.authorization = `Basic ${Buffer.from(`${user}:${pass}`).toString("base64")}`;
+      // spelled as in RFC 7235: Vuze's web server finds the login only under the exact text "Authorization:"
+      // (TRTrackerServerProcessorTCP.java 873), and fetch sends a header name as it is written
+      headers.Authorization = `Basic ${Buffer.from(`${user}:${pass}`).toString("base64")}`;
     }
     if (this.cookies.size) {
       headers.cookie = [...this.cookies].map(([k, v]) => `${k}=${v}`).join("; ");
