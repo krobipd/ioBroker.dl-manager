@@ -1,6 +1,6 @@
 import { loadFixture } from "../../../../test/helpers/fixtures";
 import { ProtocolError } from "../../core/errors";
-import { entryOf, isRunning, limitOf, rawStatus, toSnapshot, versionOf } from "./map";
+import { entryOf, fieldOf, isRunning, limitOf, rawStatus, toSnapshot, versionOf } from "./map";
 
 /** The fixture queue: 11 loading, 12 waiting, 13 paused, 14 unpacking, 15 done, 16 failed. */
 const rows = (): Record<string, unknown>[] =>
@@ -84,6 +84,21 @@ describe("NZBVortex map", () => {
     expect(limitOf({ speedlimit_enabled: 0 })).toBe(0);
     expect(limitOf({ speedlimit_enabled: true })).toBeNull();
     expect(limitOf({ speedlimit: 512 })).toBeNull();
+  });
+
+  it("reads the group as category whatever the case of its key, the exact key first", () => {
+    const { groupName, ...loading } = rows()[0];
+    expect(groupName).toBeTypeOf("string");
+    const items = toSnapshot(
+      "3.4.3",
+      [entryOf({ ...loading, GroupName: "Movies" }), entryOf({ ...loading, id: 22, groupname: "TV" })],
+      0,
+      false,
+      quiet,
+    ).items;
+    expect(items.map(i => i.category)).toEqual(["Movies", "TV"]);
+    expect(fieldOf({ groupName: "a", GroupName: "b" }, "groupName")).toBe("a");
+    expect(fieldOf({ other: 1 }, "groupName")).toBeUndefined();
   });
 
   it("refuses an answer without the version", () => {

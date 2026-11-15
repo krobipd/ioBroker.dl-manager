@@ -1,9 +1,8 @@
 # NZBVortex fixtures — where they come from
 
-Nothing here is recorded by `live-programs.yml`. NZBVortex runs on macOS only (no container), and its licence allows the
-paid forms on the buyer's household computers only and network access only with a site licence, so it is not run on a
-CI runner either. Each file's `_source.origin` names where its answer comes from; `recordedAt` says whether a running
-NZBVortex gave it.
+Nothing here is recorded by `live-programs.yml`. NZBVortex runs on macOS only — there is no container to start — and it
+is not installed on a CI runner. Each file's `_source.origin` names where its answer comes from; `recordedAt` says
+whether a running NZBVortex gave it.
 
 - **Captures of a running NZBVortex** (the version is not named in either source):
   - `auth/nonce.json`, `auth/login.json`, `queue/list-empty.json` — Sonarr's trace log in the attachment
@@ -17,5 +16,6 @@ NZBVortex gave it.
   typographic quotes and comments; here they are the plain JSON they describe.
 - **Built by the adapter** — no source holds a non-empty queue of a running NZBVortex:
   - `queue/list.json`: every key of an entry and its type as the documentation lists them (p. 15), the states from its
-    table (p. 35), `groupName` as Sonarr's `NzbVortexQueueItem` reads it. Every value is the adapter's own.
+    table (p. 35), `groupName` for the group Sonarr reads as `NzbVortexQueueItem.GroupName` (no JSON name given,
+    matched ignoring case — the driver reads the key the same way). Every value is the adapter's own.
   - `commands/add.json`: the form of p. 17–18 with an `add_uuid` of the adapter's own.

@@ -132,6 +132,22 @@ export function versionOf(answer: Record<string, unknown>): string {
 }
 
 /**
+ * @param row one entry
+ * @param name the key
+ * @returns the value under the key, else under the first key that differs only in case — Sonarr's `NzbVortexQueueItem`
+ *   reads `GroupName` that way (Newtonsoft matches a property name ignoring case), and the documentation names no group
+ *   key, so its case is not settled
+ */
+export function fieldOf(row: Record<string, unknown>, name: string): unknown {
+  if (name in row) {
+    return row[name];
+  }
+  const lower = name.toLowerCase();
+  const key = Object.keys(row).find(k => k.toLowerCase() === lower);
+  return key === undefined ? undefined : row[key];
+}
+
+/**
  * One poll into the common model.
  *
  * @param version NZBVortex's version
@@ -166,7 +182,7 @@ export function toSnapshot(
       // NZBVortex reports no time left: what is still to load over the rate
       etaSeconds: speed && size !== null && done !== null && size > done ? Math.round((size - done) / speed) : null,
       // the group the NZB went into — Sonarr reads it as the category (NzbVortex.cs)
-      category: asText(e.row.groupName),
+      category: asText(fieldOf(e.row, "groupName")),
       error: status === "failed" ? asText(e.row.statusText).trim() || (FAILED[e.state] ?? "") : "",
     };
   });
