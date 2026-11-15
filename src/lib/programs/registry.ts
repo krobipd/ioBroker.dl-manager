@@ -10,6 +10,7 @@ import { RqDriver } from "./rqbit/driver";
 import { RtDriver } from "./rtorrent/driver";
 import { SabDriver } from "./sabnzbd/driver";
 import { TrDriver } from "./transmission/driver";
+import { TblDriver } from "./tribler/driver";
 
 /** The driver of each program type — the catalog says what else there is to know about it. */
 const DRIVERS: Readonly<Record<ProgramType, (cfg: ProgramConfig, deps: DriverDeps) => ProgramDriver>> = {
@@ -24,6 +25,7 @@ const DRIVERS: Readonly<Record<ProgramType, (cfg: ProgramConfig, deps: DriverDep
   pyload: (cfg, deps) => new PyDriver(cfg, deps),
   rqbit: (cfg, deps) => new RqDriver(cfg, deps),
   rtorrent: (cfg, deps) => new RtDriver(cfg, deps),
+  tribler: (cfg, deps) => new TblDriver(cfg, deps),
 };
 
 /** THE program list — one entry per catalog type. */

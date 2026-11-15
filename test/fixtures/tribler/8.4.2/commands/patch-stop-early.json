@@ -1,0 +1,16 @@
+{
+  "_source": {
+    "program": "tribler",
+    "version": "8.4.2",
+    "request": "PATCH /api/downloads/53ac3e699aa08e11dad739081321db0b879fe521 {state: stop} (right after its add)",
+    "recordedAt": "2026-11-15T04:10:32.845Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "modified": true,
+    "infohash": "53ac3e699aa08e11dad739081321db0b879fe521"
+  }
+}

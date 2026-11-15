@@ -1,0 +1,60 @@
+{
+  "_source": {
+    "program": "tribler",
+    "version": "8.0.7",
+    "request": "GET /api/downloads",
+    "recordedAt": "2026-11-15T04:10:25.580Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "downloads": [
+      {
+        "name": "big.bin",
+        "progress": 0.265625,
+        "infohash": "885bd0670addf14ec2c3014998ab3ef2f810fabf",
+        "speed_down": 869903,
+        "speed_up": 0,
+        "status": "DOWNLOADING",
+        "status_code": 3,
+        "size": 33554432,
+        "eta": 27.56897520065696,
+        "num_peers": 0,
+        "num_seeds": 0,
+        "num_connected_peers": 0,
+        "num_connected_seeds": 1,
+        "all_time_upload": 0,
+        "all_time_download": 8323072,
+        "all_time_ratio": 0,
+        "trackers": [
+          {
+            "url": "[DHT]",
+            "peers": 0,
+            "status": "Working"
+          },
+          {
+            "url": "[PeX]",
+            "peers": 0,
+            "status": "Working"
+          }
+        ],
+        "hops": 0,
+        "anon_download": false,
+        "safe_seeding": true,
+        "max_upload_speed": 51200,
+        "max_download_speed": 102400,
+        "destination": "/downloads",
+        "total_pieces": 128,
+        "error": "",
+        "time_added": 1794715785
+      }
+    ],
+    "checkpoints": {
+      "total": 0,
+      "loaded": 0,
+      "all_loaded": true
+    }
+  }
+}

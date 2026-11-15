@@ -249,6 +249,24 @@ function rtorrent(url, init) {
   return xml("commands", "d-stop");
 }
 
+// ---- Tribler 8.4.2 (REST, the API key in X-Api-Key on every request) ----
+// `error` is the state with the most statuses at once: downloading, stopped, seeding, metadata, exit nodes, failed
+const TBL_READS = {
+  "GET /api/versioning/versions/current": ["auth", "version"],
+  "GET /api/downloads": ["error", "downloads"],
+  "GET /api/settings": ["error", "settings"],
+};
+function tribler(url, init) {
+  if (REJECTED) return json(body("tribler", "8.4.2", "auth", "downloads-wrong-key"), 401);
+  const method = init.method ?? "GET";
+  const r = TBL_READS[`${method} ${url.pathname}`];
+  if (r) return json(body("tribler", "8.4.2", r[0], r[1]));
+  if (method === "PUT") return json(body("tribler", "8.4.2", "commands", "put-uri"));
+  if (method === "DELETE") return json(body("tribler", "8.4.2", "commands", "delete"));
+  if (method === "POST") return json(body("tribler", "8.4.2", "commands", "settings-limits"));
+  return json(body("tribler", "8.4.2", "commands", "patch-resume"));
+}
+
 const ROUTES = {
   "jdownloader.local": jdLocal,
   "api.jdownloader.org": myjd,
@@ -261,6 +279,7 @@ const ROUTES = {
   "pyload.local": pyload,
   "rqbit.local": rqbit,
   "rtorrent.local": rtorrent,
+  "tribler.local": tribler,
 };
 
 globalThis.fetch = async (input, init = {}) => {

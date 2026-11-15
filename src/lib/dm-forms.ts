@@ -73,6 +73,7 @@ const HINT: Readonly<Record<ProgramType, I18nKey>> = {
   pyload: "hint_pyload",
   rqbit: "hint_rqbit",
   rtorrent: "hint_rtorrent",
+  tribler: "hint_tribler",
 };
 
 /**

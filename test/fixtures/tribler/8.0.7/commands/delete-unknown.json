@@ -1,0 +1,18 @@
+{
+  "_source": {
+    "program": "tribler",
+    "version": "8.0.7",
+    "request": "DELETE /api/downloads/<unknown> {remove_data: false}",
+    "recordedAt": "2026-11-15T04:12:13.654Z"
+  },
+  "status": 404,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "error": {
+      "handled": true,
+      "message": "this download does not exist"
+    }
+  }
+}

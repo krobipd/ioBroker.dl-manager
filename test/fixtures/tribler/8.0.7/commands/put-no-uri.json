@@ -1,0 +1,18 @@
+{
+  "_source": {
+    "program": "tribler",
+    "version": "8.0.7",
+    "request": "PUT /api/downloads {}",
+    "recordedAt": "2026-11-15T04:12:13.655Z"
+  },
+  "status": 400,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "error": {
+      "handled": true,
+      "message": "uri parameter missing"
+    }
+  }
+}

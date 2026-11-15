@@ -141,6 +141,7 @@
   "hint_rtorrent": "rTorrent отвечает на XML-RPC только через веб-сервер перед ним (nginx, lighttpd, образ ruTorrent) — укажите адрес этого сервера. Пользователь и пароль — это HTTP-вход веб-сервера, если он его запрашивает.",
   "hint_sabnzbd": "Ключ API находится в Config → General. SABnzbd отклоняет неизвестные имена хостов — укажите IP-адрес или добавьте имя в host_whitelist.",
   "hint_transmission": "Transmission отвечает только адресам из своего rpc-whitelist — добавьте туда адрес сервера ioBroker.",
+  "hint_tribler": "API Tribler слушает 127.0.0.1 и, пока порт не задан, при каждом запуске новый порт: задайте порт (CORE_API_PORT или api.http_port в ~/.Tribler/8.0/configuration.json) и, если ioBroker работает на другом компьютере, установите в том же файле api.http_host в 0.0.0.0. Порт и ключ API видны в адресе веб-интерфейса Tribler (…:port/ui/#/downloads/all?key=…).",
   "itemError": "Ошибка",
   "itemPaused": "Приостановлено",
   "label_addResumes": "Новая ссылка возобновляет приостановленную программу",

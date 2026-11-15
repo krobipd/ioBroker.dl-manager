@@ -1,0 +1,15 @@
+{
+  "_source": {
+    "program": "tribler",
+    "version": "8.4.2",
+    "request": "GET /api/versioning/versions/current",
+    "recordedAt": "2026-11-15T04:09:42.488Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "version": "8.4.2"
+  }
+}

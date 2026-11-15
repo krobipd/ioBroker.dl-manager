@@ -1,0 +1,16 @@
+{
+  "_source": {
+    "program": "tribler",
+    "version": "8.4.2",
+    "request": "PUT /api/downloads?anon_hops=0&safe_seeding=false&destination=… (.torrent bytes)",
+    "recordedAt": "2026-11-15T04:09:42.595Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "started": true,
+    "infohash": "885bd0670addf14ec2c3014998ab3ef2f810fabf"
+  }
+}

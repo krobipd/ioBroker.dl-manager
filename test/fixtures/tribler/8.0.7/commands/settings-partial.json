@@ -1,0 +1,15 @@
+{
+  "_source": {
+    "program": "tribler",
+    "version": "8.0.7",
+    "request": "POST /api/settings {libtorrent: {max_download_rate}} (one value alone)",
+    "recordedAt": "2026-11-15T04:12:13.659Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "modified": true
+  }
+}

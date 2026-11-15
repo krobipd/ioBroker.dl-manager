@@ -1,0 +1,20 @@
+{
+  "_source": {
+    "program": "tribler",
+    "version": "8.4.2",
+    "request": "GET /api/downloads",
+    "recordedAt": "2026-11-15T04:09:42.492Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "downloads": [],
+    "checkpoints": {
+      "total": 0,
+      "loaded": 0,
+      "all_loaded": true
+    }
+  }
+}

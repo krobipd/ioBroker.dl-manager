@@ -1,0 +1,333 @@
+{
+  "_source": {
+    "program": "tribler",
+    "version": "8.0.7",
+    "request": "GET /api/downloads",
+    "recordedAt": "2026-11-15T04:12:13.642Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "downloads": [
+      {
+        "name": "stopped.bin",
+        "progress": 0,
+        "infohash": "53ac3e699aa08e11dad739081321db0b879fe521",
+        "speed_down": 0,
+        "speed_up": 0,
+        "status": "STOPPED",
+        "status_code": 5,
+        "size": 4194304,
+        "eta": 4194304000000,
+        "num_peers": 0,
+        "num_seeds": 0,
+        "num_connected_peers": 0,
+        "num_connected_seeds": 0,
+        "all_time_upload": 0,
+        "all_time_download": 0,
+        "all_time_ratio": 0,
+        "trackers": [
+          {
+            "url": "[DHT]",
+            "peers": 0,
+            "status": "Working"
+          },
+          {
+            "url": "[PeX]",
+            "peers": 0,
+            "status": "Working"
+          }
+        ],
+        "hops": 0,
+        "anon_download": false,
+        "safe_seeding": true,
+        "max_upload_speed": 51200,
+        "max_download_speed": 102400,
+        "destination": "/downloads",
+        "total_pieces": 16,
+        "error": "",
+        "time_added": 1794715825
+      },
+      {
+        "name": "big.bin",
+        "progress": 1,
+        "infohash": "885bd0670addf14ec2c3014998ab3ef2f810fabf",
+        "speed_down": 0,
+        "speed_up": 0,
+        "status": "SEEDING",
+        "status_code": 4,
+        "size": 33554432,
+        "eta": 0,
+        "num_peers": 0,
+        "num_seeds": 0,
+        "num_connected_peers": 0,
+        "num_connected_seeds": 0,
+        "all_time_upload": 0,
+        "all_time_download": 33292288,
+        "all_time_ratio": 0,
+        "trackers": [
+          {
+            "url": "[DHT]",
+            "peers": 0,
+            "status": "Working"
+          },
+          {
+            "url": "[PeX]",
+            "peers": 0,
+            "status": "Working"
+          }
+        ],
+        "hops": 1,
+        "anon_download": true,
+        "safe_seeding": false,
+        "max_upload_speed": 51200,
+        "max_download_speed": 102400,
+        "destination": "/downloads",
+        "total_pieces": 128,
+        "error": "",
+        "time_added": 1794715785
+      },
+      {
+        "name": "done.bin",
+        "progress": 1,
+        "infohash": "e2a552aaf122722a7eb9c5ab7558b13533df2b16",
+        "speed_down": 0,
+        "speed_up": 0,
+        "status": "SEEDING",
+        "status_code": 4,
+        "size": 2097152,
+        "eta": 0,
+        "num_peers": 0,
+        "num_seeds": 0,
+        "num_connected_peers": 0,
+        "num_connected_seeds": 0,
+        "all_time_upload": 0,
+        "all_time_download": 0,
+        "all_time_ratio": 0,
+        "trackers": [
+          {
+            "url": "[DHT]",
+            "peers": 0,
+            "status": "Working"
+          },
+          {
+            "url": "[PeX]",
+            "peers": 0,
+            "status": "Working"
+          }
+        ],
+        "hops": 1,
+        "anon_download": true,
+        "safe_seeding": false,
+        "max_upload_speed": 51200,
+        "max_download_speed": 102400,
+        "destination": "/downloads",
+        "total_pieces": 8,
+        "error": "",
+        "time_added": 1794715825
+      },
+      {
+        "name": "nobody-seeds-this",
+        "progress": 0,
+        "infohash": "0123456789abcdef0123456789abcdef01234567",
+        "speed_down": 0,
+        "speed_up": 0,
+        "status": "METADATA",
+        "status_code": 7,
+        "size": 0,
+        "eta": 0,
+        "num_peers": 0,
+        "num_seeds": 0,
+        "num_connected_peers": 0,
+        "num_connected_seeds": 0,
+        "all_time_upload": 0,
+        "all_time_download": 0,
+        "all_time_ratio": 0,
+        "trackers": [
+          {
+            "url": "[DHT]",
+            "peers": 0,
+            "status": "Working"
+          },
+          {
+            "url": "[PeX]",
+            "peers": 0,
+            "status": "Working"
+          }
+        ],
+        "hops": 0,
+        "anon_download": false,
+        "safe_seeding": true,
+        "max_upload_speed": 51200,
+        "max_download_speed": 102400,
+        "destination": "/root/Downloads",
+        "total_pieces": 0,
+        "error": "",
+        "time_added": 1794715859
+      },
+      {
+        "name": "default-hops",
+        "progress": 0,
+        "infohash": "fedcba9876543210fedcba9876543210fedcba98",
+        "speed_down": 0,
+        "speed_up": 0,
+        "status": "METADATA",
+        "status_code": 7,
+        "size": 0,
+        "eta": 0,
+        "num_peers": 0,
+        "num_seeds": 0,
+        "num_connected_peers": 0,
+        "num_connected_seeds": 0,
+        "all_time_upload": 0,
+        "all_time_download": 0,
+        "all_time_ratio": 0,
+        "trackers": [
+          {
+            "url": "[DHT]",
+            "peers": 0,
+            "status": "Working"
+          },
+          {
+            "url": "[PeX]",
+            "peers": 0,
+            "status": "Working"
+          }
+        ],
+        "hops": 1,
+        "anon_download": true,
+        "safe_seeding": true,
+        "max_upload_speed": 51200,
+        "max_download_speed": 102400,
+        "destination": "/root/Downloads",
+        "total_pieces": 0,
+        "error": "",
+        "time_added": 1794715859
+      },
+      {
+        "name": "check.bin",
+        "progress": 1,
+        "infohash": "ccc4c11770321ec2ee5cc52b5829fce13232883d",
+        "speed_down": 0,
+        "speed_up": 0,
+        "status": "SEEDING",
+        "status_code": 4,
+        "size": 1073741824,
+        "eta": 0,
+        "num_peers": 0,
+        "num_seeds": 0,
+        "num_connected_peers": 0,
+        "num_connected_seeds": 0,
+        "all_time_upload": 0,
+        "all_time_download": 0,
+        "all_time_ratio": 0,
+        "trackers": [
+          {
+            "url": "[DHT]",
+            "peers": 0,
+            "status": "Working"
+          },
+          {
+            "url": "[PeX]",
+            "peers": 0,
+            "status": "Working"
+          }
+        ],
+        "hops": 1,
+        "anon_download": true,
+        "safe_seeding": false,
+        "max_upload_speed": 51200,
+        "max_download_speed": 102400,
+        "destination": "/downloads",
+        "total_pieces": 256,
+        "error": "",
+        "time_added": 1794715825
+      },
+      {
+        "name": "queued.bin",
+        "progress": 1,
+        "infohash": "38b12b1a4fffb255161b45e772882bebe94d3b30",
+        "speed_down": 0,
+        "speed_up": 0,
+        "status": "SEEDING",
+        "status_code": 4,
+        "size": 4194304,
+        "eta": 0,
+        "num_peers": 0,
+        "num_seeds": 0,
+        "num_connected_peers": 0,
+        "num_connected_seeds": 0,
+        "all_time_upload": 0,
+        "all_time_download": 4128768,
+        "all_time_ratio": 0,
+        "trackers": [
+          {
+            "url": "[DHT]",
+            "peers": 0,
+            "status": "Working"
+          },
+          {
+            "url": "[PeX]",
+            "peers": 0,
+            "status": "Working"
+          }
+        ],
+        "hops": 1,
+        "anon_download": true,
+        "safe_seeding": false,
+        "max_upload_speed": 51200,
+        "max_download_speed": 102400,
+        "destination": "/downloads",
+        "total_pieces": 16,
+        "error": "",
+        "time_added": 1794715825
+      },
+      {
+        "name": "ro.bin",
+        "progress": 0,
+        "infohash": "35348dca50af1f377398cbc8cadd641e86379adf",
+        "speed_down": 20,
+        "speed_up": 0,
+        "status": "DOWNLOADING",
+        "status_code": 3,
+        "size": 2097152,
+        "eta": 104857.6,
+        "num_peers": 0,
+        "num_seeds": 0,
+        "num_connected_peers": 0,
+        "num_connected_seeds": 0,
+        "all_time_upload": 0,
+        "all_time_download": 262144,
+        "all_time_ratio": 0,
+        "trackers": [
+          {
+            "url": "[DHT]",
+            "peers": 0,
+            "status": "Working"
+          },
+          {
+            "url": "[PeX]",
+            "peers": 0,
+            "status": "Working"
+          }
+        ],
+        "hops": 0,
+        "anon_download": false,
+        "safe_seeding": true,
+        "max_upload_speed": 51200,
+        "max_download_speed": 102400,
+        "destination": "/ro",
+        "total_pieces": 8,
+        "error": "",
+        "time_added": 1794715864
+      }
+    ],
+    "checkpoints": {
+      "total": 0,
+      "loaded": 0,
+      "all_loaded": true
+    }
+  }
+}

@@ -12,7 +12,7 @@ export type Family = "jdownloader" | "torrent" | "usenet" | "aria2" | "pyload";
  * - `none` — no login (JDownloader's local API)
  * - `account` — My.JDownloader: e-mail, password, the JDownloader instance of the account
  * - `password` — a password only (Deluge's web interface), required
- * - `apiKey` — an API key, required (SABnzbd)
+ * - `apiKey` — an API key, required (SABnzbd, Tribler)
  * - `secret` — an optional RPC secret in the API key field (aria2)
  * - `user` — user and password, both optional (NZBGet, rqbit, rTorrent)
  * - `optionalUser` — user and password behind a switch (Transmission)
@@ -33,7 +33,8 @@ export type ProgramType =
   | "aria2"
   | "pyload"
   | "rqbit"
-  | "rtorrent";
+  | "rtorrent"
+  | "tribler";
 
 /** One program type. */
 export interface ProgramInfo {
@@ -71,6 +72,7 @@ export const CATALOG: readonly ProgramInfo[] = [
   { type: "pyload", label: "pyLoad", family: "pyload", port: 8000, path: "", login: "keyOrUser" },
   { type: "rqbit", label: "rqbit", family: "torrent", port: 3030, path: "", login: "user" },
   { type: "rtorrent", label: "rTorrent", family: "torrent", port: 8080, path: "/RPC2", login: "user" },
+  { type: "tribler", label: "Tribler", family: "torrent", port: 20100, path: "", login: "apiKey" },
 ];
 
 /**

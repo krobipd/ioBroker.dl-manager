@@ -1,0 +1,18 @@
+{
+  "_source": {
+    "program": "tribler",
+    "version": "8.4.2",
+    "request": "GET /api/downloads (no key)",
+    "recordedAt": "2026-11-15T04:09:42.486Z"
+  },
+  "status": 401,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "error": {
+      "handled": true,
+      "message": "Unauthorized access"
+    }
+  }
+}
