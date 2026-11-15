@@ -1,0 +1,83 @@
+{
+  "_source": {
+    "program": "downloadstation",
+    "version": "4.1-5012",
+    "request": "POST /webapi/DownloadStation/task.cgi api=SYNO.DownloadStation.Task&version=1&method=list&additional=detail,transfer",
+    "recordedAt": "2026-10-10 (vdsm DSM 7.2.2, Download Station 4.1-5012, cmeans issue #123)",
+    "origin": "cmeans/mcp-synology@5d4e202f3c0e185601b7cdc0612f1850c28e9c0b (Apache-2.0) tests/modules/downloadstation/fixtures/dsm-7.2.2-ds-4.1-5012.json key task_list_v1 (username replaced)"
+  },
+  "status": 200,
+  "body": {
+    "data": {
+      "offset": 0,
+      "tasks": [
+        {
+          "additional": {
+            "detail": {
+              "completed_time": 0,
+              "connected_leechers": 0,
+              "connected_peers": 0,
+              "connected_seeders": 0,
+              "create_time": 1791647736,
+              "destination": "writable",
+              "seedelapsed": 0,
+              "started_time": 1791647738,
+              "total_peers": 0,
+              "total_pieces": 0,
+              "unzip_password": "",
+              "uri": "magnet:?xt=urn:btih:dddddddddddddddddddddddddddddddddddddddd&dn=capture-magnet",
+              "waiting_seconds": 0
+            },
+            "transfer": {
+              "downloaded_pieces": 0,
+              "size_downloaded": 0,
+              "size_uploaded": 0,
+              "speed_download": 0,
+              "speed_upload": 0
+            }
+          },
+          "id": "dbid_1",
+          "size": 0,
+          "status": "downloading",
+          "title": "capture-magnet",
+          "type": "bt",
+          "username": "PLACEHOLDER_USER"
+        },
+        {
+          "additional": {
+            "detail": {
+              "completed_time": 1791647740,
+              "connected_leechers": 0,
+              "connected_peers": 0,
+              "connected_seeders": 0,
+              "create_time": 1791647736,
+              "destination": "writable",
+              "seedelapsed": 0,
+              "started_time": 1791647739,
+              "total_peers": 0,
+              "total_pieces": 0,
+              "unzip_password": "",
+              "uri": "http://example.com/",
+              "waiting_seconds": 0
+            },
+            "transfer": {
+              "downloaded_pieces": 0,
+              "size_downloaded": 577,
+              "size_uploaded": 0,
+              "speed_download": 0,
+              "speed_upload": 0
+            }
+          },
+          "id": "dbid_2",
+          "size": 577,
+          "status": "finished",
+          "title": "Unknown",
+          "type": "http",
+          "username": "PLACEHOLDER_USER"
+        }
+      ],
+      "total": 2
+    },
+    "success": true
+  }
+}

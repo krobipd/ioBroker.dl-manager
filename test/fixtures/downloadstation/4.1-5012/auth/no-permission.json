@@ -1,0 +1,16 @@
+{
+  "_source": {
+    "program": "downloadstation",
+    "version": "4.1-5012",
+    "request": "SYNO.DownloadStation2.Settings.Scheduler get as a non-manager — the envelope of a 105",
+    "recordedAt": "2026-10-10 (vdsm DSM 7.2.2, Download Station 4.1-5012, cmeans issue #123)",
+    "origin": "cmeans/mcp-synology@5d4e202f3c0e185601b7cdc0612f1850c28e9c0b (Apache-2.0) tests/modules/downloadstation/fixtures/dsm-7.2.2-ds-4.1-5012.json key ds2_scheduler_get_user"
+  },
+  "status": 200,
+  "body": {
+    "error": {
+      "code": 105
+    },
+    "success": false
+  }
+}

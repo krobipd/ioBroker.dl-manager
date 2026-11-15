@@ -1,0 +1,30 @@
+{
+  "_source": {
+    "program": "downloadstation",
+    "version": "3.8-3543",
+    "request": "GET /webapi/query.cgi?api=SYNO.API.Info&version=1&method=query&query=SYNO.API.Auth,SYNO.DownloadStation.Info,SYNO.DownloadStation.Task",
+    "recordedAt": "test data of py-synologydsm-api, whether a capture stands behind it the repository does not say",
+    "origin": "mib1185/py-synologydsm-api@9aca699eec2a49c8817828c9cc9c5afec6ffc670 (MIT) tests/api_data/dsm_6/const_6_api_info.py DSM_6_API_INFO, the three keys asked for (DSM 6.2)"
+  },
+  "status": 200,
+  "body": {
+    "data": {
+      "SYNO.API.Auth": {
+        "maxVersion": 6,
+        "minVersion": 1,
+        "path": "auth.cgi"
+      },
+      "SYNO.DownloadStation.Info": {
+        "maxVersion": 2,
+        "minVersion": 1,
+        "path": "DownloadStation/info.cgi"
+      },
+      "SYNO.DownloadStation.Task": {
+        "maxVersion": 3,
+        "minVersion": 1,
+        "path": "DownloadStation/task.cgi"
+      }
+    },
+    "success": true
+  }
+}

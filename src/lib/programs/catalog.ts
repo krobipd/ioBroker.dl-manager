@@ -5,7 +5,7 @@
 import type { RequiredField } from "../core/model";
 
 /** Program family — one pictogram per family (`admin/icons/<family>.svg`). */
-export type Family = "jdownloader" | "torrent" | "usenet" | "aria2" | "pyload";
+export type Family = "jdownloader" | "torrent" | "usenet" | "aria2" | "pyload" | "downloadstation";
 
 /**
  * How a program is logged into, which decides the fields of its settings dialog:
@@ -15,11 +15,22 @@ export type Family = "jdownloader" | "torrent" | "usenet" | "aria2" | "pyload";
  * - `apiKey` — an API key, required (SABnzbd, Tribler)
  * - `secret` — an optional RPC secret in the API key field (aria2)
  * - `user` — user and password, both optional (NZBGet, rqbit, rTorrent, Flood, µTorrent, Hadouken)
+ * - `requiredUser` — user and password, the user required (Download Station: a DSM account — an empty login would only
+ *   count toward DSM's block of the address)
  * - `optionalUser` — user and password behind a switch (Transmission, Vuze)
  * - `userOrKey` / `keyOrUser` — user and password OR an API key, the first one preselected (qBittorrent / pyLoad)
  */
 export type Login =
-  "none" | "account" | "password" | "apiKey" | "secret" | "user" | "optionalUser" | "userOrKey" | "keyOrUser";
+  | "none"
+  | "account"
+  | "password"
+  | "apiKey"
+  | "secret"
+  | "user"
+  | "requiredUser"
+  | "optionalUser"
+  | "userOrKey"
+  | "keyOrUser";
 
 /** Every program type the catalog carries. */
 export type ProgramType =
@@ -38,7 +49,8 @@ export type ProgramType =
   | "flood"
   | "vuze"
   | "utorrent"
-  | "hadouken";
+  | "hadouken"
+  | "downloadstation";
 
 /** One program type. */
 export interface ProgramInfo {
@@ -84,6 +96,15 @@ export const CATALOG: readonly ProgramInfo[] = [
   { type: "utorrent", label: "µTorrent", family: "torrent", port: 8080, path: "/gui", login: "user" },
   // JSON-RPC under <root>api (Sonarr HadoukenProxy.cs; Hadouken 5.2.0 hadouken.json.template: port 7070, root "/")
   { type: "hadouken", label: "Hadouken", family: "torrent", port: 7070, path: "/api", login: "user" },
+  // Synology's Web API below /webapi/ on DSM's own port (Sonarr DownloadStationSettings.cs: port 5000, no URL base)
+  {
+    type: "downloadstation",
+    label: "Download Station",
+    family: "downloadstation",
+    port: 5000,
+    path: "",
+    login: "requiredUser",
+  },
 ];
 
 /**
@@ -118,6 +139,8 @@ export function needsOf(info: Pick<ProgramInfo, "login">): RequiredField[] {
       return ["host", "password"];
     case "apiKey":
       return ["host", "apiKey"];
+    case "requiredUser":
+      return ["host", "username"];
     default:
       return ["host"];
   }

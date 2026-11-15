@@ -1,0 +1,18 @@
+{
+  "_source": {
+    "program": "downloadstation",
+    "version": "3.8-3543",
+    "request": "POST /webapi/auth.cgi api=SYNO.API.Auth&version=2&method=login&session=DownloadStation&format=sid",
+    "recordedAt": "test data of py-synologydsm-api, whether a capture stands behind it the repository does not say",
+    "origin": "mib1185/py-synologydsm-api@9aca699eec2a49c8817828c9cc9c5afec6ffc670 (MIT) tests/api_data/dsm_6/const_6_api_auth.py DSM_6_AUTH_LOGIN"
+  },
+  "status": 200,
+  "body": {
+    "data": {
+      "is_portal_port": false,
+      "sid": "session_id",
+      "synotoken": "Syñ0_T0k€ñ"
+    },
+    "success": true
+  }
+}

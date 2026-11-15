@@ -1,0 +1,16 @@
+{
+  "_source": {
+    "program": "downloadstation",
+    "version": "4.1-5012",
+    "request": "any call with a session DSM no longer knows",
+    "recordedAt": "test data, no capture",
+    "origin": "cmeans/mcp-synology@5d4e202f3c0e185601b7cdc0612f1850c28e9c0b (Apache-2.0) tests/core/test_auth.py L963 (the mock answer for an old sid)"
+  },
+  "status": 200,
+  "body": {
+    "success": false,
+    "error": {
+      "code": 119
+    }
+  }
+}

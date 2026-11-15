@@ -1,0 +1,18 @@
+{
+  "_source": {
+    "program": "downloadstation",
+    "version": "3.8-3543",
+    "request": "POST /webapi/DownloadStation/info.cgi api=SYNO.DownloadStation.Info&version=1&method=getinfo",
+    "recordedAt": "test data of py-synologydsm-api, whether a capture stands behind it the repository does not say",
+    "origin": "mib1185/py-synologydsm-api@9aca699eec2a49c8817828c9cc9c5afec6ffc670 (MIT) tests/api_data/dsm_6/download_station/const_6_download_station_info.py"
+  },
+  "status": 200,
+  "body": {
+    "data": {
+      "is_manager": true,
+      "version": 3543,
+      "version_string": "3.8-3543"
+    },
+    "success": true
+  }
+}

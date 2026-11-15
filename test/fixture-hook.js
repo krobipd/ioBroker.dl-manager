@@ -322,6 +322,31 @@ function flood(url, init) {
   return text("");
 }
 
+// ---- Download Station 4.1-5012 on DSM 7.2.2 (Synology Web API: query.cgi, a login, form POSTs with the session) ----
+// No recording: live captures of cmeans/mcp-synology and test data of py-synologydsm-api (test/fixtures/downloadstation/
+// SOURCES.md). A command per id answers each id it was given: the recorded code for dbid_1 and dbid_2, 0 for any other.
+const DS = "4.1-5012";
+const DS_READS = {
+  "info.cgi getinfo": ["running", "info"],
+  "info.cgi getconfig": ["running", "config"],
+  "info.cgi setserverconfig": ["commands", "setserverconfig"],
+  "task.cgi list": ["running", "list"],
+  "task.cgi create": ["commands", "create"],
+};
+function downloadstation(url, init) {
+  if (url.pathname === "/webapi/query.cgi") return json(body("downloadstation", DS, "auth", "api-info"));
+  const form = new URLSearchParams(String(init.body ?? ""));
+  const method = form.get("method");
+  if (method === "login") return json(body("downloadstation", DS, "auth", REJECTED ? "login-wrong" : "login"));
+  if (method === "pause" || method === "resume" || method === "delete") {
+    const errors = new Map(body("downloadstation", DS, "commands", method).data.map(e => [e.id, e.error]));
+    const ids = String(form.get("id") ?? "").split(",");
+    return json({ data: ids.map(id => ({ error: errors.get(id) ?? 0, id })), success: true });
+  }
+  const r = DS_READS[`${url.pathname.split("/").pop()} ${method}`];
+  return json(r ? body("downloadstation", DS, r[0], r[1]) : { error: { code: 103 }, success: false });
+}
+
 // ---- Hadouken 5.2.0 (JSON-RPC behind basic auth) ----
 // The adapter sends through node:http (Hadouken reads a body only behind the header named exactly "Content-Length"), so
 // the answers come from a real server on loopback: the network hook's hang and outage act on the socket, a request
@@ -396,6 +421,7 @@ const ROUTES = {
   "flood.local": flood,
   "vuze.local": vuze,
   "utorrent.local": utorrent,
+  "downloadstation.local": downloadstation,
 };
 
 globalThis.fetch = async (input, init = {}) => {

@@ -1,10 +1,17 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-/** One recorded answer from `test/fixtures/` (live-programs.yml). */
+/** One answer from `test/fixtures/` — recorded by live-programs.yml, or taken from the source its `origin` names. */
 export interface Fixture {
   /** Where and when it was recorded. */
-  _source: { program: string; version: string; request: string; recordedAt: string };
+  _source: {
+    program: string;
+    version: string;
+    request: string;
+    recordedAt: string;
+    /** Where an answer not recorded by live-programs.yml comes from (repository, commit, file). */
+    origin?: string;
+  };
   /** HTTP status. */
   status: number;
   /** Response headers the drivers read. */

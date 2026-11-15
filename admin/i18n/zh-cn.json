@@ -132,6 +132,7 @@
   "help_treeScope": "哪些下载拥有自己的通道。程序保留全部下载，汇总始终统计每一个下载。",
   "hint_aria2": "aria2 必须以 --enable-rpc 运行。RPC 密钥即 --rpc-secret 的值。",
   "hint_deluge": "Web UI 插件必须在运行。Deluge 要求的是网页界面密码，而不是用户名。",
+  "hint_downloadstation": "Download Station 运行在 DiskStation 上：主机和端口与 DSM 相同——5000，HTTPS 为 5001。该账户需要有使用 Download Station 的权限（DSM 中的应用程序权限）；只有管理 Download Station 的账户才能读取和设置限速。启用两步验证的账户无法登录。",
   "hint_flood": "请填写 Flood 本身的地址（端口 3000，除非用其他 --port 启动）以及登录 Flood 所用的用户——而不是其后面的种子程序的登录信息。用 --auth none 启动的 Flood 两者都不需要。",
   "hint_hadouken": "Hadouken 在端口 7070 的 /api 下响应（其 hadouken.json 中的 http.port 和 http.root）。用户名和密码为该文件中 http.auth.basic 的设置——未设置时为 admin 和 admin。",
   "hint_jdownloader": "在 JDownloader 的高级设置中启用“DeprecatedApi”。该接口没有密码——只在同一台计算机或同一 Docker 网络中使用。",

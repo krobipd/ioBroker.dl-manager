@@ -1,0 +1,16 @@
+{
+  "_source": {
+    "program": "downloadstation",
+    "version": "4.1-5012",
+    "request": "POST /webapi/entry.cgi api=SYNO.API.Auth&version=6&method=login (wrong password)",
+    "recordedAt": "test data, no capture",
+    "origin": "mib1185/py-synologydsm-api@9aca699eec2a49c8817828c9cc9c5afec6ffc670 (MIT) tests/const.py ERROR_AUTH_INVALID_CREDENTIALS"
+  },
+  "status": 200,
+  "body": {
+    "error": {
+      "code": 400
+    },
+    "success": false
+  }
+}

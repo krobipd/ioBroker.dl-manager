@@ -78,6 +78,7 @@ const HINT: Readonly<Record<ProgramType, I18nKey>> = {
   vuze: "hint_vuze",
   utorrent: "hint_utorrent",
   hadouken: "hint_hadouken",
+  downloadstation: "hint_downloadstation",
 };
 
 /**
@@ -241,6 +242,7 @@ export function formToRow(
     case "secret":
       return { ...row, apiKey: form.apiKey.trim() };
     case "user":
+    case "requiredUser":
       return { ...row, ...user };
     case "optionalUser":
       return form.needLogin ? { ...row, ...user } : row;
@@ -525,6 +527,8 @@ function loginItems(info: ProgramInfo): Record<string, unknown> {
       return key("dmSecret", "false", false, "dmSecretHelp");
     case "user":
       return user("false", false);
+    case "requiredUser":
+      return user("false", true);
     case "optionalUser":
       return {
         needLogin: { type: "checkbox", label: tName("dmNeedLogin"), newLine: true, sm: 12 },

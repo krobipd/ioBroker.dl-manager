@@ -1,0 +1,30 @@
+{
+  "_source": {
+    "program": "downloadstation",
+    "version": "4.1-5012",
+    "request": "GET /webapi/query.cgi?api=SYNO.API.Info&version=1&method=query&query=SYNO.API.Auth,SYNO.DownloadStation.Info,SYNO.DownloadStation.Task",
+    "recordedAt": "composed",
+    "origin": "composed: SYNO.DownloadStation.Info and .Task from the live capture cmeans/mcp-synology@5d4e202f3c0e185601b7cdc0612f1850c28e9c0b (Apache-2.0) tests/modules/downloadstation/fixtures/dsm-7.2.2-ds-4.1-5012.json key api_info_ds (DSM 7.2.2); SYNO.API.Auth from mib1185/py-synologydsm-api@9aca699eec2a49c8817828c9cc9c5afec6ffc670 (MIT) tests/api_data/dsm_7/const_7_api_info.py DSM_7_API_INFO (DSM 7 test data) — the capture holds no Auth key"
+  },
+  "status": 200,
+  "body": {
+    "data": {
+      "SYNO.API.Auth": {
+        "maxVersion": 7,
+        "minVersion": 1,
+        "path": "entry.cgi"
+      },
+      "SYNO.DownloadStation.Info": {
+        "maxVersion": 2,
+        "minVersion": 1,
+        "path": "DownloadStation/info.cgi"
+      },
+      "SYNO.DownloadStation.Task": {
+        "maxVersion": 3,
+        "minVersion": 1,
+        "path": "DownloadStation/task.cgi"
+      }
+    },
+    "success": true
+  }
+}

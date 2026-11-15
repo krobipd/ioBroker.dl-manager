@@ -132,6 +132,7 @@
   "help_treeScope": "Które pobierania dostają własny kanał. Program zachowuje wszystkie, a sumy zawsze liczą każde pobieranie.",
   "hint_aria2": "aria2 musi działać z --enable-rpc. Sekret RPC to wartość --rpc-secret.",
   "hint_deluge": "Wtyczka Web UI musi działać. Deluge pyta o hasło interfejsu WWW, a nie o użytkownika.",
+  "hint_downloadstation": "Download Station działa na DiskStation: host i port to te z DSM — 5000, z HTTPS 5001. Konto potrzebuje prawa do korzystania z Download Station (uprawnienia aplikacji w DSM); tylko konto, które zarządza Download Station, może odczytywać i ustawiać limity. Konto z weryfikacją dwuetapową nie może się zalogować.",
   "hint_flood": "Wpisz adres samego Flood (port 3000, o ile nie uruchomiono go z innym --port) i użytkownika, którym logujesz się do Flood — nie dane logowania programu torrent za nim. Flood uruchomiony z --auth none nie potrzebuje ani jednego, ani drugiego.",
   "hint_hadouken": "Hadouken odpowiada na porcie 7070 pod /api (http.port i http.root w jego hadouken.json). Użytkownik i hasło to te z http.auth.basic w tym pliku — admin i admin, jeśli nie są ustawione.",
   "hint_jdownloader": "W JDownloader włącz „DeprecatedApi” w ustawieniach zaawansowanych. Ten interfejs nie ma hasła — używaj go tylko na tym samym komputerze lub w tej samej sieci Docker.",

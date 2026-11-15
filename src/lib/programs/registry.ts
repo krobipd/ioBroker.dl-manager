@@ -2,6 +2,7 @@ import type { DriverDeps, ProgramConfig, ProgramDriver, ProgramEntry } from "../
 import { CATALOG, needsOf, type ProgramType } from "./catalog";
 import { AriaDriver } from "./aria2/driver";
 import { DlDriver } from "./deluge/driver";
+import { DsDriver } from "./downloadstation/driver";
 import { FloodDriver } from "./flood/driver";
 import { JdDriver } from "./jdownloader/driver";
 import { NzbDriver } from "./nzbget/driver";
@@ -33,6 +34,7 @@ const DRIVERS: Readonly<Record<ProgramType, (cfg: ProgramConfig, deps: DriverDep
   vuze: (cfg, deps) => new TrDriver(cfg, deps),
   utorrent: (cfg, deps) => new UtDriver(cfg, deps),
   hadouken: (cfg, deps) => new HkDriver(cfg, deps),
+  downloadstation: (cfg, deps) => new DsDriver(cfg, deps),
 };
 
 /** THE program list — one entry per catalog type. */

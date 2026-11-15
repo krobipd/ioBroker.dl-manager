@@ -36,6 +36,8 @@ export function loginHint(cfg: ProgramConfig): LoginHint {
       return hasUser
         ? { action: "check user and password on its card" }
         : { cause: NONE_SET, action: "enter user and password on its card" };
+    case "requiredUser":
+      return { action: "check user and password on its card" };
     case "optionalUser":
       return hasUser
         ? { action: "check user and password on its card" }

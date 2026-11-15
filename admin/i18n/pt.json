@@ -132,6 +132,7 @@
   "help_treeScope": "Que downloads recebem um canal próprio. O programa mantém todos, e os totais contam sempre cada download.",
   "hint_aria2": "O aria2 tem de correr com --enable-rpc. O segredo RPC é o valor de --rpc-secret.",
   "hint_deluge": "O plugin Web UI tem de estar a correr. O Deluge pede a palavra-passe da interface web, não um utilizador.",
+  "hint_downloadstation": "O Download Station corre na DiskStation: o anfitrião e a porta são os do DSM — 5000, com HTTPS 5001. A conta precisa do direito de usar o Download Station (privilégios de aplicações no DSM); só uma conta que gere o Download Station pode ler e definir os limites. Uma conta com verificação em 2 passos não consegue iniciar sessão.",
   "hint_flood": "Introduza o endereço do próprio Flood (porta 3000, a não ser que tenha sido iniciado com outro --port) e o utilizador com que inicia sessão no Flood — não o início de sessão do programa de torrents por trás dele. Um Flood iniciado com --auth none não precisa de nenhum dos dois.",
   "hint_hadouken": "O Hadouken responde na porta 7070 em /api (http.port e http.root no seu hadouken.json). Utilizador e palavra-passe são os de http.auth.basic aí — admin e admin quando não estão definidos.",
   "hint_jdownloader": "No JDownloader, ative “DeprecatedApi” nas Definições avançadas. Esta interface não tem palavra-passe — use-a só no mesmo computador ou na mesma rede Docker.",
