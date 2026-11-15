@@ -267,16 +267,6 @@ export async function record(ctx) {
   );
   await snapshot("running");
 
-  // the unit of max_dl_rate, measured: Hadouken's Web UI calls it kB/s, libtorrent's session takes bytes per second — a
-  // limit of 50000 while the web seed loads holds the rates near 50 kB/s or near nothing at all
-  const rates = async () => (await list()).reduce((sum, t) => sum + Number(t[ROW.downSpeed]), 0);
-  console.log(`download rate before the limit: ${await rates()} B/s`);
-  w("commands", "set-settings-limit-measured", await rpc("webui.setSettings", [{ max_dl_rate: 50000 }]));
-  await new Promise(r => setTimeout(r, 10_000));
-  console.log(`download rate under max_dl_rate 50000: ${await rates()} B/s`);
-  await snapshot("limit-applied");
-  await rpc("webui.setSettings", [{ max_dl_rate: 0 }]);
-
   w("commands", "set-properties-label", await rpc("webui.setProperties", [[hash("done")], { label: "tv" }]));
   // the magnet without metadata, forced (webui_perform.js `forcestart`: auto-managed off, resume)
   w("commands", "forcestart", await rpc("webui.perform", ["forcestart", [DEAD_MAGNET_HASH]]));
