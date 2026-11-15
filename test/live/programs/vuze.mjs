@@ -328,9 +328,21 @@ export async function record(ctx) {
 
   await snapshot("empty");
   w("commands", "torrent-add-metainfo", await add("big"));
-  await reach("big downloading", async () => (await statusOf("big")) === 4, 120_000);
+  // run 43682528277: big loaded 32 MiB in 37 s (the seed server's 1 MiB/s) — the snapshot comes while it loads
+  await reach(
+    "big loading",
+    async () => {
+      const t = await find(hash("big"));
+      return t?.status === 4 && Number(t.rateDownload) > 0;
+    },
+    120_000,
+  );
   await add("queued");
   w("commands", "torrent-add-paused", await add("stopped", { paused: true }));
+  // one download at a time ("max downloads" 1): queued waits as 3
+  await reach("queued waiting", async () => (await statusOf("queued")) === 3, 15_000);
+  await snapshot("downloading");
+  // no verify after adding: Vuze leaves a verified torrent stopped (run 43682528277: done, gone, check stayed 0)
   for (const name of ["done", "gone", "check"]) {
     await add(name);
   }
@@ -339,14 +351,13 @@ export async function record(ctx) {
     "torrent-add-magnet",
     await rpc("torrent-add", { filename: DEAD_MAGNET, "download-dir": "/downloads" }),
   );
-  w("commands", "torrent-verify", await rpc("torrent-verify", { ids: [hash("done"), hash("gone"), hash("check")] }));
   await reach(
-    "mixed states",
+    "present payloads seeding",
     async () => {
-      const [q, s, d, c] = await Promise.all(["queued", "stopped", "done", "check"].map(statusOf));
-      return q === 3 && s === 0 && d === 6 && c === 6;
+      const st = await Promise.all(["done", "gone", "check"].map(statusOf));
+      return st.every(x => x === 5 || x === 6);
     },
-    180_000,
+    120_000,
   );
   await snapshot("running");
 
@@ -357,7 +368,7 @@ export async function record(ctx) {
   await rpc("torrent-stop", { ids: [DEAD_MAGNET_HASH.toUpperCase()] });
 
   // checking
-  await rpc("torrent-verify", { ids: [hash("check")] });
+  w("commands", "torrent-verify", await rpc("torrent-verify", { ids: [hash("check")] }));
   await reach("check checking", async () => [1, 2].includes(Number(await statusOf("check"))), 30_000);
   await snapshot("checking");
 
@@ -406,10 +417,15 @@ export async function record(ctx) {
   await reach("big seeding", async () => (await statusOf("big")) === 6, 900_000);
   await snapshot("finished");
 
-  // the emulated pause: stop by hash list, start exactly those
+  // the emulated pause: stop by hash list, start exactly those — a metadata download (metadataPercentComplete 0) is
+  // in no id list of torrent-stop/-start (XMWebUIPlugin.java `getDownloads(ids, false)`): run 43682528277 kept it at 4
   const running = (await list()).filter(t => t.status !== 0).map(t => t.hashString);
   w("commands", "torrent-stop-list", await rpc("torrent-stop", { ids: running }));
-  await reach("listed stopped", async () => (await list()).every(t => t.status === 0), 30_000);
+  await reach(
+    "listed stopped",
+    async () => (await list()).every(t => t.status === 0 || t.metadataPercentComplete === 0),
+    30_000,
+  );
   await snapshot("all-stopped");
   w("commands", "torrent-start-list", await rpc("torrent-start", { ids: running }));
   await reach("listed started", async () => (await list()).filter(t => t.status !== 0).length > 0, 30_000);
