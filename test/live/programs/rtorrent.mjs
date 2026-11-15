@@ -405,6 +405,21 @@ export async function record(ctx) {
   w("commands", "d-pause", `POST /RPC2 d.pause(${hash("done")})`, await send("d.pause", [hash("done")]));
   await waitFor("done paused", async () => Number((await find("done"))?.["d.is_active"]) === 0);
   await snapshot("pausing");
+  // does d.start (ruTorrent's unpause) resume a d.pause'd download, or does it need d.resume?
+  w(
+    "commands",
+    "d-start-paused",
+    `POST /RPC2 d.start(${hash("done")}) (paused)`,
+    await send("d.start", [hash("done")]),
+  );
+  await waitFor(
+    "done active after d.start",
+    async () => Number((await find("done"))?.["d.is_active"]) === 1,
+    10_000,
+  ).catch(err =>
+    console.log(`rtorrent: ${err.message} — d.start does not resume a paused download, recorded as it is`),
+  );
+  await snapshot("unpaused");
   await rpc("d.resume", hash("done"));
   await rpc("d.stop", hash("done"));
   w("commands", "d-close", `POST /RPC2 d.close(${hash("done")})`, await send("d.close", [hash("done")]));
@@ -420,6 +435,30 @@ export async function record(ctx) {
     console.log(`rtorrent: ${err.message} — d.start does not open a closed download`),
   );
   await snapshot("reopened");
+
+  // a hash check stopped halfway: what state, active and hashing say during and after — the global pause stops it?
+  w(
+    "commands",
+    "d-check-hash-check",
+    `POST /RPC2 d.check_hash(${hash("check")})`,
+    await send("d.check_hash", [hash("check")]),
+  );
+  await waitFor(
+    "check hashing again",
+    async () => Number((await find("check"))?.["d.is_hash_checking"]) === 1,
+    30_000,
+    20,
+  );
+  w(
+    "commands",
+    "d-stop-checking",
+    `POST /RPC2 d.stop(${hash("check")}) (checking)`,
+    await send("d.stop", [hash("check")]),
+  );
+  await snapshot("check-stopped");
+  await waitFor("check settled", async () => Number((await find("check"))?.["d.is_hash_checking"]) === 0, 120_000, 500);
+  await snapshot("check-settled");
+  await rpc("d.start", hash("check"));
 
   // limits in bytes per second, 0 = unlimited
   w(
@@ -444,6 +483,42 @@ export async function record(ctx) {
 
   // remove one, keep its files; a command on a hash rTorrent does not know
   w("commands", "d-erase", `POST /RPC2 d.erase(${hash("queued")})`, await send("d.erase", [hash("queued")]));
+
+  // the driver's add while the adapter holds the program paused: loaded stopped and marked, then released by the next
+  // poll — d.start and the mark taken off in one multicall — and the metadata arrives after the start. The magnet is
+  // the erased "queued", which the seeder still seeds.
+  const queuedMagnet = `magnet:?xt=urn:btih:${torrentOf(ctx.work, "queued").hash}&dn=queued.bin`;
+  w(
+    "commands",
+    "load-normal-held",
+    "POST /RPC2 load.normal('', <magnet>, d.custom.set=dlm_held,1)",
+    await send("load.normal", ["", queuedMagnet, "d.custom.set=dlm_held,1"]),
+  );
+  await waitFor("held magnet listed", async () => Boolean(await find("queued")), 30_000);
+  await new Promise(resolve => setTimeout(resolve, 3000));
+  await snapshot("held");
+  w(
+    "commands",
+    "release",
+    "POST /RPC2 system.multicall (d.start, d.custom.set dlm_held '')",
+    await send("system.multicall", [
+      [
+        { methodName: "d.start", params: [hash("queued")] },
+        { methodName: "d.custom.set", params: [hash("queued"), "dlm_held", ""] },
+      ],
+    ]),
+  );
+  await rpc("add_peer", hash("queued"), peer).catch(err =>
+    console.log(`rtorrent: add_peer on the magnet: ${err.message}`),
+  );
+  await waitFor(
+    "released magnet has its metadata",
+    async () => String((await find("queued"))?.["d.name"]) === "queued.bin",
+    60_000,
+    500,
+  ).catch(err => console.log(`rtorrent: ${err.message} — recorded as it is`));
+  await new Promise(resolve => setTimeout(resolve, 3000));
+  await snapshot("released");
   w("commands", "d-unknown", "POST /RPC2 d.stop(<unknown hash>)", await send("d.stop", ["0".repeat(40)]));
   w(
     "commands",

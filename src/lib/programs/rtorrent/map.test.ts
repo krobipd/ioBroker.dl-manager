@@ -156,6 +156,8 @@ describe("rTorrent snapshot from the recorded answers", () => {
       expect(byName("missing")["gone.bin"]).toMatchObject({
         status: "failed",
         error: "Download registered as completed, but hash check returned unfinished chunks.",
+        // rTorrent keeps the finish time of the first run — the download is not finished any more
+        finishedMs: null,
       });
     });
 

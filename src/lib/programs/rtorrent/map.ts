@@ -238,7 +238,8 @@ export function toSnapshot(
       // rTorrent tells no time left — the bytes left at the rate of now, like aria2
       etaSeconds: status === "downloading" && t.down && left !== null && left > 0 ? Math.round(left / t.down) : null,
       addedMs: epochMs(t.loaded),
-      finishedMs: epochMs(t.finished),
+      // rTorrent keeps the finish time when a recheck finds chunks missing (recording `missing`)
+      finishedMs: t.complete ? epochMs(t.finished) : null,
       category: t.label,
       error: errorOf(t),
     };
