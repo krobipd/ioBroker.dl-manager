@@ -6,9 +6,9 @@
 // with pairing on (the default) the plugin sets the user `vuze` and the pairing code as the password itself
 // (WebPlugin.java `setupAccessCode`).
 import { createHash } from "node:crypto";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { Http, prepareTorrents, Recorder, sh, torrentOf, waitFor } from "../lib.mjs";
+import { DEAD_MAGNET, DEAD_MAGNET_HASH, Http, prepareTorrents, Recorder, sh, torrentOf, waitFor } from "../lib.mjs";
 
 const USER = "admin";
 const PASS = "testpass1";
@@ -122,6 +122,20 @@ export function prepare(work, tag) {
       "max active torrents": 0,
     }),
   );
+  // run 43680925710: the file's download folder took, its login did not (wrong password and none answered 200) — the
+  // console shows the plugin's keys, sets the login itself (Set.java: `password` stores the SHA-1) and shows them again
+  writeFileSync(
+    join(config, "console-setup.txt"),
+    [
+      "set Plugin.xmwebui.*",
+      'set "Plugin.xmwebui.Pairing Enable" false boolean',
+      `set "Plugin.xmwebui.User" ${USER} string`,
+      `set "Plugin.xmwebui.Password" ${PASS} password`,
+      'set "Plugin.xmwebui.Password Enable" true boolean',
+      "set Plugin.xmwebui.*",
+      "",
+    ].join("\n"),
+  );
   const java = [
     "java",
     "-Xmx512m",
@@ -136,9 +150,9 @@ export function prepare(work, tag) {
   return {
     image: "eclipse-temurin:8-jre",
     name: "vuze",
-    // the console UI reads its commands from stdin — kept open, or the end of input ends Vuze
+    // the console UI reads its commands from stdin — the setup first, then kept open, or the end of input ends Vuze
     entrypoint: "sh",
-    args: ["-c", `tail -f /dev/null | ${java}`],
+    args: ["-c", `(cat /config/console-setup.txt; tail -f /dev/null) | ${java}`],
     volumes: [`${join(install, "vuze")}:/opt/vuze`, `${config}:/config`, `${join(work, "downloads")}:/downloads`],
   };
 }
@@ -181,8 +195,14 @@ const FIELDS = [
 export async function record(ctx) {
   const base = "http://vuze:9091";
   const basic = pass => ({ authorization: `Basic ${Buffer.from(`${USER}:${pass}`).toString("base64")}` });
-  const probe = new Http(base);
-  await waitFor("Vuze Web Remote", async () => (await probe.req("POST", RPC, { json: {} })).status > 0, 300_000, 2000);
+  // every probe without the cookie jar of the others: the plugin also takes the session id from its cookie
+  // (XMWebUIPlugin.java `isSessionValid`) — a shared jar made the 409 look like a 200 in run 43680925710
+  await waitFor(
+    "Vuze Web Remote",
+    async () => (await new Http(base).req("POST", RPC, { json: {} })).status > 0,
+    300_000,
+    2000,
+  );
 
   /**
    * @param {string} label what is asked
@@ -191,14 +211,18 @@ export async function record(ctx) {
    */
   const timed = async (label, headers) => {
     const t = Date.now();
-    const res = await probe.req("POST", RPC, { headers, json: { method: "session-get" }, timeoutMs: 180_000 });
+    const res = await new Http(base).req("POST", RPC, {
+      headers,
+      json: { method: "session-get" },
+      timeoutMs: 180_000,
+    });
     console.log(`${label}: ${res.status} after ${Date.now() - t} ms`);
     return res;
   };
-  // the first session-get asks Vuze's version server and waits for it (XMWebUIPlugin.java 2820, again after 864 s) —
-  // in the closed network until every transport failed; measured here before anything else
   const first = await timed("no session id", basic(PASS));
   let sessionId = first.headers["x-transmission-session-id"] ?? "";
+  // the first session-get asks Vuze's version server and waits for it (XMWebUIPlugin.java 2820, again after 864 s):
+  // 89.9 s in the closed network (run 43680925710)
   await timed("first session-get", { ...basic(PASS), "x-transmission-session-id": sessionId });
   await timed("second session-get", { ...basic(PASS), "x-transmission-session-id": sessionId });
   const wrong = await timed("wrong password", { ...basic("wrong"), "x-transmission-session-id": sessionId });
@@ -241,29 +265,141 @@ export async function record(ctx) {
     w(state, "free-space", await rpc("free-space", { path: "/downloads" }));
   };
   const list = async () => /** @type {Record<string, unknown>[]} */ (argsOf(await torrentGet()).torrents ?? []);
-  const hash = name => torrentOf(ctx.work, name).hash;
+
+  // Vuze lists the hash in upper case (probe of run 43680925710) and matches ids against it (`getDownloadListFromIDs`)
+  const hash = name => torrentOf(ctx.work, name).hash.toUpperCase();
+  const find = async h => (await list()).find(t => t.hashString === h);
+  const seen = new Map();
+  /**
+   * Waits for a state, logs the statuses seen on the way and goes on without it — one run records every state Vuze
+   * reaches, the log names the ones it did not.
+   *
+   * @param {string} label the state
+   * @param {() => Promise<boolean>} probe reached?
+   * @param {number} timeoutMs how long
+   * @returns {Promise<boolean>} reached
+   */
+  const reach = async (label, probe, timeoutMs) => {
+    try {
+      await waitFor(label, probe, timeoutMs, 1000);
+      return true;
+    } catch (err) {
+      const t = await list();
+      const why = err instanceof Error ? err.message : String(err);
+      console.log(`NOT REACHED ${label}: ${why} — ${t.map(x => `${String(x.name)}:${String(x.status)}`).join(" ")}`);
+      return false;
+    }
+  };
+  /**
+   * @param {string} name torrent
+   * @returns {Promise<number | undefined>} its status now
+   */
+  const statusOf = async name => {
+    const raw = (await find(hash(name)))?.status;
+    const st = typeof raw === "number" ? raw : undefined;
+    seen.set(name, [...new Set([...(seen.get(name) ?? []), st])]);
+    return st;
+  };
+  const add = (name, extra = {}) =>
+    rpc("torrent-add", {
+      metainfo: torrentOf(ctx.work, name).torrent.toString("base64"),
+      "download-dir": "/downloads",
+      ...extra,
+    });
 
   await snapshot("empty");
-  // the probe: one web-seeded torrent — does the plugin take it, and does Vuze load from the seed server?
+  w("commands", "torrent-add-metainfo", await add("big"));
+  await reach("big downloading", async () => (await statusOf("big")) === 4, 120_000);
+  await add("queued");
+  w("commands", "torrent-add-paused", await add("stopped", { paused: true }));
+  for (const name of ["done", "gone", "check"]) {
+    await add(name);
+  }
   w(
     "commands",
-    "torrent-add-metainfo",
-    await rpc("torrent-add", {
-      metainfo: torrentOf(ctx.work, "big").torrent.toString("base64"),
-      "download-dir": "/downloads",
+    "torrent-add-magnet",
+    await rpc("torrent-add", { filename: DEAD_MAGNET, "download-dir": "/downloads" }),
+  );
+  w("commands", "torrent-verify", await rpc("torrent-verify", { ids: [hash("done"), hash("gone"), hash("check")] }));
+  await reach(
+    "mixed states",
+    async () => {
+      const [q, s, d, c] = await Promise.all(["queued", "stopped", "done", "check"].map(statusOf));
+      return q === 3 && s === 0 && d === 6 && c === 6;
+    },
+    180_000,
+  );
+  await snapshot("running");
+
+  // a magnet without metadata: started past the queue
+  w("commands", "torrent-start-now", await rpc("torrent-start-now", { ids: [DEAD_MAGNET_HASH.toUpperCase()] }));
+  await new Promise(r => setTimeout(r, 5000));
+  await snapshot("metadata");
+  await rpc("torrent-stop", { ids: [DEAD_MAGNET_HASH.toUpperCase()] });
+
+  // checking
+  await rpc("torrent-verify", { ids: [hash("check")] });
+  await reach("check checking", async () => [1, 2].includes(Number(await statusOf("check"))), 30_000);
+  await snapshot("checking");
+
+  // failed: payload gone, verify, start
+  rmSync(join(ctx.work, "downloads", "gone.bin"));
+  await rpc("torrent-verify", { ids: [hash("gone")] });
+  await rpc("torrent-start", { ids: [hash("gone")] });
+  await reach(
+    "gone failing",
+    async () => {
+      const t = await find(hash("gone"));
+      return t !== undefined && (t.error !== 0 || Number(t.percentDone) < 1);
+    },
+    60_000,
+  );
+  await snapshot("missing");
+
+  // completed: stop the finished one
+  w("commands", "torrent-stop", await rpc("torrent-stop", { ids: [hash("done")] }));
+  await reach("done stopped", async () => (await statusOf("done")) === 0, 30_000);
+  await snapshot("completed");
+  w("commands", "torrent-start", await rpc("torrent-start", { ids: [hash("done")] }));
+
+  // limits (KB/s — XMWebUIPlugin.java `speed-limit-down`: CORE_PARAM_INT_MAX_DOWNLOAD_SPEED_KBYTES_PER_SEC) and the
+  // alternative speed, which session-get only fakes (fixed 50/50, always off)
+  w(
+    "commands",
+    "session-set-limits",
+    await rpc("session-set", {
+      "speed-limit-down": 2000,
+      "speed-limit-down-enabled": true,
+      "speed-limit-up": 500,
+      "speed-limit-up-enabled": true,
     }),
   );
-  const statuses = new Set();
-  await waitFor(
-    "big downloading",
-    async () => {
-      const t = (await list()).find(x => String(x.hashString).toLowerCase() === hash("big"));
-      statuses.add(t?.status);
-      return t?.status === 4 && Number(t.rateDownload) > 0;
-    },
-    120_000,
-    1000,
-  ).catch(err => console.log(`${err.message} — statuses seen: ${[...statuses].join(", ")}`));
-  await snapshot("probe");
+  w("commands", "session-set-alt-speed", await rpc("session-set", { "alt-speed-enabled": true }));
+  await snapshot("limited");
+  w(
+    "commands",
+    "session-set-unlimited",
+    await rpc("session-set", { "speed-limit-down-enabled": false, "speed-limit-up-enabled": false }),
+  );
+  await snapshot("unlimited");
+
+  // seeding: the web-seeded download finishes (Vuze took 32 KiB/s from the seed server in the probe)
+  await reach("big seeding", async () => (await statusOf("big")) === 6, 900_000);
+  await snapshot("finished");
+
+  // the emulated pause: stop by hash list, start exactly those
+  const running = (await list()).filter(t => t.status !== 0).map(t => t.hashString);
+  w("commands", "torrent-stop-list", await rpc("torrent-stop", { ids: running }));
+  await reach("listed stopped", async () => (await list()).every(t => t.status === 0), 30_000);
+  await snapshot("all-stopped");
+  w("commands", "torrent-start-list", await rpc("torrent-start", { ids: running }));
+  await reach("listed started", async () => (await list()).filter(t => t.status !== 0).length > 0, 30_000);
+  await snapshot("resumed");
+
+  // remove one without its data, then an unknown hash
+  w("commands", "torrent-remove", await rpc("torrent-remove", { ids: [hash("queued")], "delete-local-data": false }));
+  w("commands", "torrent-remove-unknown", await rpc("torrent-remove", { ids: ["F".repeat(40)] }));
+  await snapshot("removed");
+  console.log("statuses seen:", JSON.stringify(Object.fromEntries(seen)));
   return rec;
 }
