@@ -373,6 +373,32 @@ export async function record(ctx) {
   await reach("listed started", async () => (await list()).some(t => (Number(t[ROW.status]) & 1) === 1), 30_000);
   await snapshot("resumed");
 
+  // the same with µTorrent's own pause (the Web UI's "pause all": pause on every torrent that is started or queued and
+  // not paused, webui.js `perform`/`getHashes`) — run 43684732968: start after stop made the forced magnet (137) a
+  // queued one (200); unpause is to give each one back as it was, the forced one forced
+  await gui(`action=forcestart&hash=${DEAD_MAGNET_HASH.toUpperCase()}`);
+  await reach("magnet forced", async () => (await find(DEAD_MAGNET_HASH.toUpperCase()))?.[ROW.status] === 137, 15_000);
+  const before = new Map((await list()).map(t => [String(t[ROW.hash]), Number(t[ROW.status])]));
+  console.log("before pause-list:", JSON.stringify(Object.fromEntries(before)));
+  const pausable = [...before].filter(([, st]) => (st & 32) === 0 && (st & (1 | 64)) !== 0).map(([h]) => h);
+  w("commands", "pause-list", await gui(`action=pause&${pausable.map(h => `hash=${h}`).join("&")}`));
+  await reach(
+    "listed paused",
+    async () =>
+      (await list())
+        .filter(t => pausable.includes(String(t[ROW.hash])))
+        .every(t => (Number(t[ROW.status]) & 32) === 32),
+    30_000,
+  );
+  await snapshot("all-paused");
+  w("commands", "unpause-list", await gui(`action=unpause&${pausable.map(h => `hash=${h}`).join("&")}`));
+  await reach("listed unpaused", async () => (await list()).every(t => (Number(t[ROW.status]) & 32) === 0), 30_000);
+  await snapshot("unpaused");
+  console.log(
+    "after unpause-list:",
+    JSON.stringify(Object.fromEntries((await list()).map(t => [String(t[ROW.hash]), t[ROW.status]]))),
+  );
+
   // remove one without its data, then an unknown hash
   w("commands", "remove", await gui(`action=remove&${hashes(["queued"])}`));
   w("commands", "remove-unknown", await gui(`action=remove&hash=${"F".repeat(40)}`));
