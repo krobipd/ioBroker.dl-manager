@@ -1,3 +1,5 @@
+import { request as httpRequest, type IncomingMessage } from "node:http";
+import { request as httpsRequest } from "node:https";
 import { LOCAL_PROGRAMS } from "../api-limits";
 import { errText } from "../err-text";
 import type { CallBudget, CallPlace } from "./call-budget";
@@ -75,6 +77,25 @@ export interface HttpOptions {
   now?: () => number;
   /** The counterpart in `api-limits.json` whose windows hold the requests — the program in the user's network by default. */
   counterpart?: string;
+  /**
+   * Send through node:http, which writes every header name as given and the body's length as `Content-Length` — Hadouken
+   * reads a body only behind exactly that text and drops the connection otherwise (src/http/connection_handler.cpp,
+   * live-programs run 43714685079), and fetch writes it in lower case. A connection of its own per request; no
+   * multipart body.
+   */
+  exactHeaderNames?: boolean;
+}
+
+/** The head of an answer as it arrives, and its body to follow — the same from fetch and from node:http. */
+interface Answer {
+  /** HTTP status. */
+  status: number;
+  /** Its reason phrase. */
+  statusText: string;
+  /** Response headers. */
+  headers: Headers;
+  /** The body as text; rejects when the connection breaks before it ended. */
+  read(): Promise<string>;
 }
 
 /** A 429 without a readable `retry-after` waits this long — a limit counted per minute (pyLoad, `api-limits.json`). */
@@ -94,8 +115,9 @@ export function retryAfterMs(header: string | null, now: number): number {
 }
 
 /**
- * fetch with a deadline on the adapter's timers, JSON and form bodies, a cookie jar per program and no redirects —
- * a redirect from a download program's API means a login page or a wrong path, never the answer.
+ * fetch (or node:http, `exactHeaderNames`) with a deadline on the adapter's timers, JSON and form bodies, a cookie jar per
+ * program and no redirects — a redirect from a download program's API means a login page or a wrong path, never the
+ * answer.
  */
 export class HttpClient {
   private readonly cookies = new Map<string, string>();
@@ -167,6 +189,9 @@ export class HttpClient {
       headers["content-type"] = "application/json";
       body = JSON.stringify(req.json);
     } else if (req.multipart) {
+      if (this.opts.exactHeaderNames) {
+        throw new ProtocolError("a multipart body is sent through fetch only");
+      }
       const form = new FormData();
       for (const [k, v] of Object.entries(req.multipart)) {
         form.append(k, v);
@@ -197,18 +222,21 @@ export class HttpClient {
       throw new UnreachableError("closed while the request waited for its place");
     }
     const timer = this.timers.setTimeout(() => abort.abort(), timeoutMs);
-    let res: Response;
+    let res: Answer;
     let text: string;
     try {
-      const send = async (taken: CallPlace | undefined): Promise<Response> => {
+      const send = async (taken: CallPlace | undefined): Promise<Answer> => {
         try {
-          const pending = fetch(req.url, {
-            method: req.method,
-            headers,
-            body,
-            redirect: "manual",
-            signal: abort.signal,
-          });
+          const pending = this.opts.exactHeaderNames
+            ? exactSend(req.method, req.url, headers, typeof body === "string" ? body : undefined, abort.signal)
+            : fetch(req.url, { method: req.method, headers, body, redirect: "manual", signal: abort.signal }).then(
+                (r): Answer => ({
+                  status: r.status,
+                  statusText: r.statusText,
+                  headers: r.headers,
+                  read: () => r.text(),
+                }),
+              );
           // stamped after the transport call, in the same step: never before the network's own stamp of the call
           if (taken) {
             this.timers.budget?.sent(taken);
@@ -231,7 +259,7 @@ export class HttpClient {
         // the second send is a call of its own, with its own place
         res = await send(await this.place(req.url, abort.signal));
       }
-      text = await res.text();
+      text = await res.read();
     } catch (err: unknown) {
       if (abort.signal.aborted) {
         throw new UnreachableError(`no answer within ${timeoutMs / 1000} s`);
@@ -272,6 +300,86 @@ export class HttpClient {
       },
     };
   }
+}
+
+/**
+ * One request through node:http(s): every header name as given, the body's length as `Content-Length`, a connection of
+ * its own. Resolves with the head when the response begins, as fetch does; the body follows through `read`.
+ *
+ * @param method HTTP method
+ * @param url full URL
+ * @param headers request headers
+ * @param body request body
+ * @param signal gives the request up
+ * @returns the answer's head
+ */
+function exactSend(
+  method: string,
+  url: string,
+  headers: Record<string, string>,
+  body: string | undefined,
+  signal: AbortSignal,
+): Promise<Answer> {
+  return new Promise<Answer>((resolve, reject) => {
+    const data = body === undefined ? undefined : Buffer.from(body);
+    const target = new URL(url);
+    const req = (target.protocol === "https:" ? httpsRequest : httpRequest)(target, {
+      method,
+      agent: false,
+      headers: data ? { ...headers, "Content-Length": String(data.length) } : headers,
+    });
+    // once the head is out, a failure breaks the body instead
+    let breakBody: ((err: unknown) => void) | undefined;
+    const fail = (err: unknown): void => {
+      (breakBody ?? reject)(err);
+      req.destroy();
+    };
+    signal.addEventListener("abort", () => fail(signal.reason), { once: true });
+    req.on("error", fail);
+    req.on("response", (res: IncomingMessage) => {
+      let head: Headers;
+      try {
+        head = headersOf(res.headers);
+      } catch (err: unknown) {
+        fail(new ProtocolError(`the answer carries an unreadable header: ${errText(err)}`));
+        return;
+      }
+      const text = new Promise<string>((done, broke) => {
+        breakBody = broke;
+        const chunks: Buffer[] = [];
+        let ended = false;
+        res.on("data", (chunk: Buffer) => chunks.push(chunk));
+        res.on("end", () => {
+          ended = true;
+          done(Buffer.concat(chunks).toString("utf8"));
+        });
+        res.on("error", fail);
+        res.on("close", () => {
+          if (!ended) {
+            fail(new Error("the connection closed before the answer ended"));
+          }
+        });
+      });
+      // `read` hands a failure on — until it is asked, the failure is no unhandled rejection
+      text.catch(() => undefined);
+      resolve({ status: res.statusCode ?? 0, statusText: res.statusMessage ?? "", headers: head, read: () => text });
+    });
+    req.end(data);
+  });
+}
+
+/**
+ * @param raw node's response headers (`set-cookie` a list)
+ * @returns them as fetch's Headers
+ */
+function headersOf(raw: IncomingMessage["headers"]): Headers {
+  const out = new Headers();
+  for (const [name, value] of Object.entries(raw)) {
+    for (const v of Array.isArray(value) ? value : value === undefined ? [] : [value]) {
+      out.append(name, v);
+    }
+  }
+  return out;
 }
 
 /**

@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import type { AddressInfo } from "node:net";
+import { createServer as createNetServer, type AddressInfo, type Socket } from "node:net";
 import { LOCAL_PROGRAMS } from "../api-limits";
 import { CallBudget } from "./call-budget";
 import { ProtocolError, UnreachableError } from "./errors";
@@ -15,6 +15,42 @@ async function serve(handler: Handler): Promise<{ url: string; server: Server }>
   });
   await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
   return { url: `http://127.0.0.1:${(server.address() as AddressInfo).port}`, server };
+}
+
+/**
+ * A TCP server that sees a request as the bytes on the wire — node:http's server would hand every header name over in lower
+ * case.
+ *
+ * @param onRequest gets the raw request (head and body) once it is complete, and the socket to answer on
+ * @returns its address and a close that drops every connection
+ */
+async function serveRaw(
+  onRequest: (raw: string, socket: Socket) => void,
+): Promise<{ url: string; close(): Promise<void> }> {
+  const sockets = new Set<Socket>();
+  const s = createNetServer(socket => {
+    sockets.add(socket);
+    let raw = "";
+    let seen = false;
+    socket.on("data", (chunk: Buffer) => {
+      raw += chunk.toString("latin1");
+      const end = raw.indexOf("\r\n\r\n");
+      const length = Number(/\r\ncontent-length: *(\d+)/i.exec(raw.slice(0, end))?.[1] ?? 0);
+      if (!seen && end >= 0 && raw.length >= end + 4 + length) {
+        seen = true;
+        onRequest(raw, socket);
+      }
+    });
+  });
+  await new Promise<void>(resolve => s.listen(0, "127.0.0.1", resolve));
+  return {
+    url: `http://127.0.0.1:${(s.address() as AddressInfo).port}`,
+    close: () =>
+      new Promise<void>(resolve => {
+        sockets.forEach(socket => socket.destroy());
+        s.close(() => resolve());
+      }),
+  };
 }
 
 const timers = {
@@ -121,6 +157,95 @@ describe("HttpClient", () => {
     // Vuze's web server looks for the exact text "Authorization:" (TRTrackerServerProcessorTCP.java 873) — a lower-case
     // name reaches it as no login at all (live-programs run 43681939522: 401 for five minutes with the right password)
     expect(raw).toContain("Authorization");
+  });
+
+  it("writes header names as given and the body's length as Content-Length with exactHeaderNames (Hadouken)", async () => {
+    const raws: string[] = [];
+    const s = await serveRaw((raw, socket) => {
+      raws.push(raw);
+      socket.end('HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 11\r\n\r\n{"ok":true}');
+    });
+    try {
+      const auth = { basicAuth: { user: "u", pass: "p" } };
+      const r = await new HttpClient(timers, { ...auth, exactHeaderNames: true }).request({
+        method: "POST",
+        url: `${s.url}/api`,
+        json: { method: "x", note: "ä" },
+      });
+      expect(r.json()).toEqual({ ok: true });
+      // Hadouken 5.2.0 looks for exactly these two texts (connection_handler.cpp, http_server.cpp); the length counts
+      // bytes, not characters
+      const body = JSON.stringify({ method: "x", note: "ä" });
+      expect(raws[0]).toContain(`\r\nContent-Length: ${Buffer.byteLength(body)}\r\n`);
+      expect(raws[0]).toContain(`\r\nAuthorization: Basic ${Buffer.from("u:p").toString("base64")}\r\n`);
+      // fetch writes the length in lower case — Hadouken drops that connection without an answer (run 43714685079)
+      await new HttpClient(timers, auth).request({ method: "POST", url: `${s.url}/api`, json: {} });
+      expect(raws[1]).toMatch(/\r\ncontent-length: 2\r\n/);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("reads status, headers, cookies and an empty 204 the same through node:http", async () => {
+    const answers = [
+      (res: ServerResponse): void => {
+        res.setHeader("set-cookie", ["SID=abc; HttpOnly", "lang=de"]);
+        res.end('{"a":1}');
+      },
+      (res: ServerResponse): void => {
+        res.statusCode = 204;
+        res.end();
+      },
+      (res: ServerResponse): void => {
+        res.statusCode = 503;
+        res.end("down");
+      },
+    ];
+    const cookies: (string | undefined)[] = [];
+    const s = await serve((req, _b, res) => {
+      cookies.push(req.headers.cookie);
+      answers[cookies.length - 1](res);
+    });
+    server = s.server;
+    const c = new HttpClient(timers, { exactHeaderNames: true });
+    const first = await c.request({ method: "GET", url: s.url });
+    expect([first.status, first.json(), first.headers.get("content-length")]).toEqual([200, { a: 1 }, "7"]);
+    const empty = await c.request({ method: "GET", url: s.url });
+    expect([empty.status, empty.text]).toEqual([204, ""]);
+    expect(cookies[1]).toBe("SID=abc; lang=de");
+    await expect(c.request({ method: "GET", url: s.url })).rejects.toThrow(/HTTP 503 Service Unavailable/);
+  });
+
+  it("calls a connection that breaks or stalls inside the body unreachable through node:http", async () => {
+    let stall = false;
+    const s = await serveRaw((_raw, socket) => {
+      socket.write("HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\n0123456789");
+      if (!stall) {
+        socket.destroy();
+      }
+    });
+    try {
+      const c = new HttpClient(timers, { exactHeaderNames: true, timeoutMs: 100 });
+      await expect(c.request({ method: "GET", url: s.url })).rejects.toThrow(UnreachableError);
+      stall = true;
+      await expect(c.request({ method: "GET", url: s.url })).rejects.toThrow(/no answer within 0.1 s/);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("gives a node:http request up at close() and sends no multipart body through it", async () => {
+    const s = await serve(() => undefined);
+    server = s.server;
+    const c = new HttpClient(timers, { exactHeaderNames: true, timeoutMs: 60_000 });
+    const pending = c.request({ method: "GET", url: s.url });
+    await new Promise(resolve => setTimeout(resolve, 50));
+    c.close();
+    await expect(pending).rejects.toThrow(UnreachableError);
+    server.closeAllConnections();
+    const multipart = c.request({ method: "POST", url: s.url, multipart: { a: "b" } });
+    await expect(multipart).rejects.toThrow(ProtocolError);
+    await expect(multipart).rejects.toThrow(/multipart body is sent through fetch only/);
   });
 
   it("refuses to follow a redirect — it is a login page or a wrong path", async () => {
