@@ -176,15 +176,18 @@ export async function record(ctx) {
   }
   const version = await gui("action=getversion");
   console.log(`getversion: ${version.status} ${version.text.slice(0, 400)}`);
+  // run 43684224740: utserver 30470 answers getversion with major/minor/tiny_version beside the build
   let label = `build-${String(build)}`;
   try {
     const v = /** @type {{ version?: Record<string, unknown> }} */ (version.json()).version;
-    if (v && typeof v.ui_version === "string") {
-      label = `${v.ui_version}`;
+    if (v && typeof v.major_version === "number") {
+      label = `${String(v.major_version)}.${String(v.minor_version)}.${String(v.tiny_version)}.${String(build)}`;
     }
   } catch {
-    // older builds have no getversion — the build number names the recording
+    // a build without getversion — the build number names the recording
   }
+  // what a build without getversion would answer: an action utserver does not know
+  const unknownAction = await gui("action=nonsense");
   const rec = new Recorder("utorrent", label);
   const w = (state, name, res) => rec.write(state, name, res.sent, res);
   rec.write("auth", "token-wrong", "GET /gui/token.html (basic auth, wrong password)", wrong.res);
@@ -198,6 +201,7 @@ export async function record(ctx) {
   w("auth", "no-cookie", noCookie);
   w("auth", "no-auth", noAuth);
   w("probe", "getversion", version);
+  w("probe", "unknown-action", unknownAction);
 
   const list = async () =>
     /** @type {unknown[][]} */ (
@@ -312,15 +316,21 @@ export async function record(ctx) {
   await snapshot("paused");
   w("commands", "unpause", await gui(`action=unpause&${hashes(["big"])}`));
 
-  // checking
+  // checking: run 43684224740 sent recheck to the seeding torrent and it went on seeding — stopped first
+  await gui(`action=stop&${hashes(["check"])}`);
+  await reach("check stopped", async () => (((await statusOf("check")) ?? 1) & 1) === 0, 30_000);
   w("commands", "recheck", await gui(`action=recheck&${hashes(["check"])}`));
   await reach("check checking", async () => (((await statusOf("check")) ?? 0) & 2) === 2, 30_000);
   await snapshot("checking");
+  await reach("check checked", async () => (((await statusOf("check")) ?? 2) & 2) === 0, 120_000);
+  await gui(`action=start&${hashes(["check"])}`);
 
-  // error: the payload of gone replaced by a folder of the same name, then checked and started
+  // error: run 43684224740 got "Error: Files missing from job. Please recheck." (status 152) when the torrent started
+  // again after its payload became a folder of the same name — the seeding one held the file open, so stopped first
+  await gui(`action=stop&${hashes(["gone"])}`);
+  await reach("gone stopped", async () => (((await statusOf("gone")) ?? 1) & 1) === 0, 30_000);
   rmSync(join(ctx.work, "downloads", "gone.bin"));
   mkdirSync(join(ctx.work, "downloads", "gone.bin"));
-  await gui(`action=recheck&${hashes(["gone"])}`);
   await gui(`action=start&${hashes(["gone"])}`);
   await reach("gone failing", async () => (((await statusOf("gone")) ?? 0) & 16) === 16, 60_000);
   await snapshot("error");
@@ -349,10 +359,15 @@ export async function record(ctx) {
   );
   await snapshot("finished");
 
-  // the emulated pause: stop by a hash list, start exactly those
-  const running = (await list()).filter(t => (Number(t[ROW.status]) & 1) === 1).map(t => String(t[ROW.hash]));
+  // the emulated pause: stop by a hash list, start exactly those — started, checking and queued ones, as the Web UI's
+  // stop takes them (webui.js `getHashes`: stop skips a torrent without bits 1, 2, 16 and 64); run 43684224740 left the
+  // queued seed done.bin (200) out
+  const ACTIVE = 1 | 2 | 64;
+  const running = (await list())
+    .filter(t => (Number(t[ROW.status]) & ACTIVE) !== 0 && (Number(t[ROW.status]) & 32) === 0)
+    .map(t => String(t[ROW.hash]));
   w("commands", "stop-list", await gui(`action=stop&${running.map(h => `hash=${h}`).join("&")}`));
-  await reach("listed stopped", async () => (await list()).every(t => (Number(t[ROW.status]) & 1) === 0), 30_000);
+  await reach("listed stopped", async () => (await list()).every(t => (Number(t[ROW.status]) & ACTIVE) === 0), 30_000);
   await snapshot("all-stopped");
   w("commands", "start-list", await gui(`action=start&${running.map(h => `hash=${h}`).join("&")}`));
   await reach("listed started", async () => (await list()).some(t => (Number(t[ROW.status]) & 1) === 1), 30_000);
