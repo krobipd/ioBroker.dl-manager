@@ -285,6 +285,10 @@ export async function record(ctx) {
     120_000,
   );
   const peer = `${(await lookup("rqseed", { family: 4 })).address}:4240`;
+  // the image tries an encrypted handshake first (.rtorrent.rc `protocol.encryption.set =
+  // allow_incoming,try_outgoing,enable_retry`), rqbit speaks none — 0.9.8 got its plain retry through in one of three
+  // runs; outgoing handshakes go plain from here on
+  await rpc("protocol.encryption.set", "", "allow_incoming", "enable_retry");
 
   const hash = name => torrentOf(ctx.work, name).hash.toUpperCase();
   /** @returns {Promise<Record<string, Record<string, unknown>>>} every torrent by hash, keyed by field */
