@@ -69,7 +69,9 @@ if (mode === "--inside") {
   const volArgs = (c.volumes ?? []).flatMap(v => ["-v", v]);
   // A program that loads parts of itself on its first start begins in the default network and joins `dm` after.
   const net = c.internet ? [] : ["--network", "dm"];
-  sh("docker", ["run", "-d", "--name", c.name, ...net, ...envArgs, ...volArgs, c.image, ...(c.args ?? [])]);
+  // `entrypoint`: a program that has to be started in two steps gets a script of its own (Tribler)
+  const entry = c.entrypoint ? ["--entrypoint", c.entrypoint] : [];
+  sh("docker", ["run", "-d", "--name", c.name, ...net, ...envArgs, ...volArgs, ...entry, c.image, ...(c.args ?? [])]);
   if (c.internet) {
     sh("docker", ["network", "connect", "dm", c.name]);
   }

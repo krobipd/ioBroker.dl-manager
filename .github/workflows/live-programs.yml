@@ -69,6 +69,11 @@ jobs:
             tag: 4.3.1-0.9.8_3-0.13.8_2
           - program: rtorrent
             tag: 5.3.18-0.16.25
+          # the image installs the stable .deb of its build day: this tag carries 8.0.7 (Sonarr's tested version)
+          - program: tribler
+            tag: v8.0.7-75-g12eb5bab6
+          - program: tribler
+            tag: v8.4.2
     # a manual start may name one program; the other matrix entries then skip every step
     env:
       SELECTED: ${{ inputs.program == '' || inputs.program == matrix.program }}
