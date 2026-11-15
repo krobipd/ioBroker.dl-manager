@@ -394,6 +394,7 @@ const PROGRAM_ROWS = [
   ["nzbget", "NZBGet", { host: "nzbget.local", port: 6789, username: "admin", password: "fixture" }],
   ["aria2", "aria2", { host: "aria2.local", port: 6800, apiKey: "fixture" }],
   ["pyload", "pyLoad", { host: "pyload.local", port: 8000, apiKey: "fixture" }],
+  ["rqbit", "rqbit", { host: "rqbit.local", port: 3030, username: "admin", password: "fixture" }],
 ];
 /**
  * Device id of each row: the program and the machine it runs on, My.JDownloader the last four characters of the id

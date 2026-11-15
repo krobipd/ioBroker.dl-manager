@@ -1,0 +1,18 @@
+{
+  "_source": {
+    "program": "rqbit",
+    "version": "9.1.0",
+    "request": "POST /torrents?overwrite=true&output_folder=/ro (.torrent bytes, read-only folder)",
+    "recordedAt": "2026-11-15T02:27:23.916Z"
+  },
+  "status": 400,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "error_kind": "internal_error",
+    "human_readable": "error adding torrent: error opening \"/ro/gone.bin\" in read/write mode: Read-only file system (os error 30)",
+    "status": 400,
+    "status_text": "400 Bad Request"
+  }
+}

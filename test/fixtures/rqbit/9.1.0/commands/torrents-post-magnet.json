@@ -1,0 +1,11 @@
+{
+  "_source": {
+    "program": "rqbit",
+    "version": "9.1.0",
+    "request": "POST /torrents?overwrite=true (magnet nobody seeds)",
+    "recordedAt": "2026-11-15T02:27:23.905Z"
+  },
+  "status": 0,
+  "headers": {},
+  "body": "TimeoutError: The operation was aborted due to timeout"
+}

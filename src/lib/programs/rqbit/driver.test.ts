@@ -1,0 +1,302 @@
+import { runDriverContract } from "../../../../test/helpers/contract";
+import { startFixtureServer, type FixtureAnswer, type RecordedCall } from "../../../../test/helpers/fixture-server";
+import { firstUrl } from "../../../../test/helpers/first-url";
+import { loadFixture } from "../../../../test/helpers/fixtures";
+import { memoryPauseStore } from "../../core/emulated-pause";
+import { AuthError, ProtocolError } from "../../core/errors";
+import type { ProgramConfig } from "../../core/model";
+import { RqDriver } from "./driver";
+import { mapRqStatus, statusTable } from "./map";
+
+const timers = {
+  setTimeout: (cb: () => void, ms: number): ioBroker.Timeout =>
+    globalThis.setTimeout(cb, ms) as unknown as ioBroker.Timeout,
+  clearTimeout: (t: ioBroker.Timeout | undefined): void =>
+    globalThis.clearTimeout(t as unknown as ReturnType<typeof setTimeout>),
+};
+const log = { debug: (): void => undefined, info: (): void => undefined, warn: (): void => undefined };
+const cfg = (base: string, pass = "good"): ProgramConfig => {
+  const u = new URL(base);
+  return {
+    type: "rqbit",
+    deviceId: "",
+    name: "",
+    host: u.hostname,
+    port: Number(u.port),
+    https: false,
+    path: "",
+    username: "admin",
+    password: pass,
+    apiKey: "",
+    device: "",
+  };
+};
+
+/**
+ * @param version recorded version
+ * @param state state folder
+ * @param name file name
+ * @returns the recording as the fixture server's answer
+ */
+const recorded = (version: string, state: string, name: string): FixtureAnswer => {
+  const f = loadFixture("rqbit", version, state, name);
+  return { status: f.status, body: f.body, headers: f.headers };
+};
+
+/** The torrents of the 9.1.0 running recording, in the program's order. */
+const RUNNING = (
+  loadFixture("rqbit", "9.1.0", "running", "torrents").body as {
+    torrents: { info_hash: string; stats: { state: string } }[];
+  }
+).torrents;
+/** The first torrent of the list — the contract pauses it, and the global pause stops it first. */
+const FIRST = RUNNING[0].info_hash;
+
+/** Requests rqbit answered with 401 — its "login" is basic auth on every request. */
+const rejected = new Set<RecordedCall>();
+
+/**
+ * rqbit from the recordings: basic auth on every request, reads and commands by route.
+ *
+ * @param version recorded version (8.1.1 answers 405 for the limits, 9.1.0 tells them)
+ * @returns the running server
+ */
+async function rqServer(version = "9.1.0"): Promise<Awaited<ReturnType<typeof startFixtureServer>>> {
+  const good = `Basic ${Buffer.from("admin:good").toString("base64")}`;
+  const known = new Set(RUNNING.map(t => t.info_hash));
+  return startFixtureServer(call => {
+    if (call.headers.authorization !== good) {
+      rejected.add(call);
+      return recorded(version, "auth", call.headers.authorization ? "root-wrong" : "root-no-auth");
+    }
+    const route = `${call.method} ${call.path}`;
+    const action = /^POST \/torrents\/([0-9a-f]{40})\/(pause|start|forget)$/.exec(route);
+    if (action) {
+      return known.has(action[1])
+        ? recorded(version, "commands", "torrent-pause")
+        : recorded(version, "commands", "torrent-unknown");
+    }
+    const routes: Record<string, [string, string]> = {
+      "GET /": ["auth", "root"],
+      "GET /torrents": ["running", "torrents"],
+      "GET /stats": ["running", "stats"],
+      "GET /torrents/limits": ["running", "limits"],
+      "POST /torrents": ["commands", "torrents-post-file"],
+      "POST /torrents/limits": ["commands", "limits-set"],
+    };
+    const hit = routes[route];
+    return hit ? recorded(version, ...hit) : { status: 404, body: "" };
+  });
+}
+
+runDriverContract({
+  type: "rqbit",
+  server: () => rqServer(),
+  makeDriver: (base, creds) => new RqDriver(cfg(base, creds.good ? "good" : "bad"), { ...timers, log }),
+  mapStatus: mapRqStatus,
+  statusTable,
+  unknownStatus: "frozen:left",
+  commandCalls: {
+    pauseAll: { method: "POST", path: `/torrents/${FIRST}/pause` },
+    resumeAll: { method: "POST", path: `/torrents/${FIRST}/start` },
+    pause: { method: "POST", path: `/torrents/${FIRST}/pause` },
+    resume: { method: "POST", path: `/torrents/${FIRST}/start` },
+    remove: { method: "POST", path: `/torrents/${FIRST}/forget` },
+    add: { method: "POST", path: "/torrents", bodyContains: "magnet:?xt=urn:btih:" },
+    setSpeedLimit: { method: "POST", path: "/torrents/limits", bodyContains: '"download_bps":2000000' },
+    setUploadLimit: { method: "POST", path: "/torrents/limits", bodyContains: '"upload_bps":2000000' },
+  },
+  isLoginCall: call => rejected.has(call),
+});
+
+/** What a synthetic rqbit answers; the test changes it between calls. */
+interface RqState {
+  torrents: unknown[];
+  /** `GET /torrents/limits`, undefined = the route of 8.x (405). */
+  limits?: unknown;
+  /** The answer of `POST /torrents`. */
+  add?: FixtureAnswer;
+}
+
+/**
+ * @param state the answers, read at every request
+ * @returns the running server
+ */
+async function rqSynth(state: RqState): Promise<Awaited<ReturnType<typeof startFixtureServer>>> {
+  return startFixtureServer(call => {
+    switch (`${call.method} ${call.path}`) {
+      case "GET /":
+        return { body: { version: "9.1.0" } };
+      case "GET /torrents":
+        return { body: { torrents: state.torrents } };
+      case "GET /stats":
+        return { body: { download_speed: { mbps: 0 }, upload_speed: { mbps: 0 } } };
+      case "GET /torrents/limits":
+        return state.limits === undefined ? { status: 405, body: "" } : { body: state.limits };
+      case "POST /torrents":
+        return state.add ?? { body: { id: 9, details: { info_hash: "n".repeat(40) } } };
+      default:
+        return { body: {} };
+    }
+  });
+}
+const posts = (s: { calls: RecordedCall[] }): string[] =>
+  s.calls.filter(c => c.method === "POST").map(c => `${c.path}${c.body ? ` ${c.body}` : ""}`);
+const t = (hash: string, state: string): Record<string, unknown> => ({
+  info_hash: hash,
+  name: hash,
+  stats: { state, finished: false, progress_bytes: 0, total_bytes: 1 },
+});
+
+describe("rqbit driver on 8.1.1", () => {
+  it("polls the recorded answers and leaves the limits unknown, the route answers 405", async () => {
+    const s = await rqServer("8.1.1");
+    try {
+      const snap = await new RqDriver(cfg(s.baseUrl), { ...timers, log }).poll();
+      expect(snap.status).toMatchObject({ version: "8.1.1", speedLimitBps: null, uploadLimitBps: null });
+      expect(snap.items.find(i => i.name === "big.bin")?.status).toBe("downloading");
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("sets one limit and keeps the other the adapter set last — unlimited after a start", async () => {
+    const s = await rqSynth({ torrents: [] });
+    try {
+      const d = new RqDriver(cfg(s.baseUrl), { ...timers, log });
+      await d.poll();
+      await d.command({ kind: "setSpeedLimit", bps: 2_000_000 });
+      await d.poll();
+      await d.command({ kind: "setUploadLimit", bps: 500_000 });
+      await d.command({ kind: "setSpeedLimit", bps: 0 });
+      expect(posts(s)).toEqual([
+        '/torrents/limits {"download_bps":2000000,"upload_bps":null}',
+        '/torrents/limits {"download_bps":2000000,"upload_bps":500000}',
+        '/torrents/limits {"download_bps":null,"upload_bps":500000}',
+      ]);
+    } finally {
+      await s.close();
+    }
+  });
+});
+
+describe("rqbit driver details", () => {
+  it("keeps the other limit as the last poll read it (9.x)", async () => {
+    const s = await rqSynth({ torrents: [], limits: { download_bps: 1000, upload_bps: null } });
+    try {
+      const d = new RqDriver(cfg(s.baseUrl), { ...timers, log });
+      expect((await d.poll()).status).toMatchObject({ speedLimitBps: 1000, uploadLimitBps: 0 });
+      await d.command({ kind: "setUploadLimit", bps: 500 });
+      expect(posts(s)).toEqual(['/torrents/limits {"download_bps":1000,"upload_bps":500}']);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("pauses only live and initializing torrents, holds one added meanwhile and resumes exactly these", async () => {
+    const state: RqState = {
+      torrents: [
+        t("a".repeat(40), "live"),
+        t("b".repeat(40), "paused"),
+        t("c".repeat(40), "error"),
+        t("d".repeat(40), "initializing"),
+      ],
+    };
+    const s = await rqSynth(state);
+    const store = memoryPauseStore();
+    try {
+      const d = new RqDriver(cfg(s.baseUrl), { ...timers, log, pauseStore: store });
+      await d.poll();
+      await d.command({ kind: "pauseAll" });
+      await d.command({ kind: "add", url: "magnet:?xt=urn:btih:new" });
+      expect(await store.load()).toEqual({ paused: true, keys: ["a".repeat(40), "d".repeat(40), "n".repeat(40)] });
+      await d.command({ kind: "resumeAll" });
+      expect(posts(s)).toEqual([
+        `/torrents/${"a".repeat(40)}/pause`,
+        `/torrents/${"d".repeat(40)}/pause`,
+        "/torrents magnet:?xt=urn:btih:new",
+        `/torrents/${"n".repeat(40)}/pause`,
+        `/torrents/${"a".repeat(40)}/start`,
+        `/torrents/${"d".repeat(40)}/start`,
+        `/torrents/${"n".repeat(40)}/start`,
+      ]);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("adds a link as the text body with overwrite, and reports rqbit's reason when it refuses the torrent", async () => {
+    const s = await rqSynth({ torrents: [], add: recorded("9.1.0", "commands", "torrents-post-readonly") });
+    try {
+      const d = new RqDriver(cfg(s.baseUrl), { ...timers, log });
+      await expect(d.command({ kind: "add", url: "https://example.org/x.torrent" })).rejects.toThrow(
+        /HTTP 400 \(error adding torrent: .*Read-only file system/,
+      );
+      const call = s.calls.find(c => c.path === "/torrents");
+      expect(call).toMatchObject({ query: "overwrite=true", body: "https://example.org/x.torrent" });
+      expect(call?.headers["content-type"]).toBe("text/plain");
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("refuses a command on a torrent rqbit does not know with its text", async () => {
+    const s = await rqServer();
+    try {
+      await expect(
+        new RqDriver(cfg(s.baseUrl), { ...timers, log }).command({ kind: "pause", key: "0".repeat(40) }),
+      ).rejects.toThrow(/HTTP 404 \(torrent not found/);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("reads the version once and again after a failed poll", async () => {
+    const state: RqState = { torrents: [] };
+    const s = await rqSynth(state);
+    const roots = (): number => s.calls.filter(c => c.path === "/").length;
+    try {
+      const d = new RqDriver(cfg(s.baseUrl), { ...timers, log });
+      await d.poll();
+      await d.poll();
+      expect(roots()).toBe(1);
+      state.torrents = "broken" as unknown as unknown[];
+      await expect(d.poll()).rejects.toThrow(ProtocolError);
+      state.torrents = [];
+      await d.poll();
+      expect(roots()).toBe(2);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("refuses a torrent list with an empty entry or a torrent without its hash (fleet C26b)", async () => {
+    for (const odd of [null, { info_hash: 7, stats: { state: "live" } }]) {
+      const s = await rqSynth({ torrents: [odd, t("h".repeat(40), "live")] });
+      try {
+        await expect(new RqDriver(cfg(s.baseUrl), { ...timers, log }).poll()).rejects.toThrow(ProtocolError);
+      } finally {
+        await s.close();
+      }
+    }
+  });
+
+  it("asks the default port without a path, sends basic auth only with a user, rejects a wrong password", async () => {
+    expect(await firstUrl(() => new RqDriver({ ...cfg("http://nas:1"), port: 0 }, { ...timers, log }).poll())).toBe(
+      "http://nas:3030/",
+    );
+    const s = await rqSynth({ torrents: [] });
+    try {
+      await new RqDriver({ ...cfg(s.baseUrl), username: "", password: "" }, { ...timers, log }).poll();
+      expect(s.calls.every(c => c.headers.authorization === undefined)).toBe(true);
+    } finally {
+      await s.close();
+    }
+    const r = await rqServer();
+    try {
+      await expect(new RqDriver(cfg(r.baseUrl, "bad"), { ...timers, log }).poll()).rejects.toThrow(AuthError);
+    } finally {
+      await r.close();
+    }
+  });
+});

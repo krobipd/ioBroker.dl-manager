@@ -1,0 +1,13 @@
+{
+  "_source": {
+    "program": "rqbit",
+    "version": "8.1.1",
+    "request": "GET / (no basic auth)",
+    "recordedAt": "2026-11-15T02:26:48.436Z"
+  },
+  "status": 401,
+  "headers": {
+    "www-authenticate": "Basic realm=\"API\""
+  },
+  "body": ""
+}

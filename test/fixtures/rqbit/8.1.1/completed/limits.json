@@ -1,0 +1,11 @@
+{
+  "_source": {
+    "program": "rqbit",
+    "version": "8.1.1",
+    "request": "GET /torrents/limits",
+    "recordedAt": "2026-11-15T02:27:50.119Z"
+  },
+  "status": 405,
+  "headers": {},
+  "body": ""
+}

@@ -1,0 +1,38 @@
+{
+  "_source": {
+    "program": "rqbit",
+    "version": "9.1.0",
+    "request": "POST /torrents?overwrite=true&output_folder=… (.torrent bytes)",
+    "recordedAt": "2026-11-15T02:26:52.373Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "id": 0,
+    "details": {
+      "id": 0,
+      "info_hash": "885bd0670addf14ec2c3014998ab3ef2f810fabf",
+      "name": "big.bin",
+      "output_folder": "/home/rqbit/downloads",
+      "total_pieces": 128,
+      "files": [
+        {
+          "name": "big.bin",
+          "components": ["big.bin"],
+          "length": 33554432,
+          "included": true,
+          "attributes": {
+            "symlink": false,
+            "hidden": false,
+            "padding": false,
+            "executable": false
+          }
+        }
+      ]
+    },
+    "output_folder": "/home/rqbit/downloads",
+    "seen_peers": null
+  }
+}

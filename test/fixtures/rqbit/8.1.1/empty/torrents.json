@@ -1,0 +1,15 @@
+{
+  "_source": {
+    "program": "rqbit",
+    "version": "8.1.1",
+    "request": "GET /torrents?with_stats=true",
+    "recordedAt": "2026-11-15T02:26:48.482Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "torrents": []
+  }
+}

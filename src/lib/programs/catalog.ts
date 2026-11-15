@@ -14,7 +14,7 @@ export type Family = "jdownloader" | "torrent" | "usenet" | "aria2" | "pyload";
  * - `password` — a password only (Deluge's web interface), required
  * - `apiKey` — an API key, required (SABnzbd)
  * - `secret` — an optional RPC secret in the API key field (aria2)
- * - `user` — user and password, both optional (NZBGet)
+ * - `user` — user and password, both optional (NZBGet, rqbit)
  * - `optionalUser` — user and password behind a switch (Transmission)
  * - `userOrKey` / `keyOrUser` — user and password OR an API key, the first one preselected (qBittorrent / pyLoad)
  */
@@ -31,7 +31,8 @@ export type ProgramType =
   | "sabnzbd"
   | "nzbget"
   | "aria2"
-  | "pyload";
+  | "pyload"
+  | "rqbit";
 
 /** One program type. */
 export interface ProgramInfo {
@@ -67,6 +68,7 @@ export const CATALOG: readonly ProgramInfo[] = [
   { type: "nzbget", label: "NZBGet", family: "usenet", port: 6789, path: "", login: "user" },
   { type: "aria2", label: "aria2", family: "aria2", port: 6800, path: "/jsonrpc", login: "secret" },
   { type: "pyload", label: "pyLoad", family: "pyload", port: 8000, path: "", login: "keyOrUser" },
+  { type: "rqbit", label: "rqbit", family: "torrent", port: 3030, path: "", login: "user" },
 ];
 
 /**

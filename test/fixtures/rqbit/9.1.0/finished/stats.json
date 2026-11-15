@@ -1,0 +1,80 @@
+{
+  "_source": {
+    "program": "rqbit",
+    "version": "9.1.0",
+    "request": "GET /stats",
+    "recordedAt": "2026-11-15T02:27:54.019Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "counters": {
+      "fetched_bytes": 37748736,
+      "uploaded_bytes": 0,
+      "blocked_incoming": 0,
+      "blocked_outgoing": 0
+    },
+    "download_speed": {
+      "mbps": 0,
+      "human_readable": "0.00 MiB/s"
+    },
+    "upload_speed": {
+      "mbps": 0,
+      "human_readable": "0.00 MiB/s"
+    },
+    "peers": {
+      "queued": 0,
+      "connecting": 0,
+      "live": 0,
+      "live_tcp": 0,
+      "live_utp": 0,
+      "live_socks": 0,
+      "live_seeders": 0,
+      "seen": 5,
+      "dead": 2,
+      "not_needed": 4,
+      "steals": 0
+    },
+    "uptime_seconds": 62,
+    "connections": {
+      "socks": {
+        "v4": {
+          "attempts": 0,
+          "successes": 0,
+          "errors": 0
+        },
+        "v6": {
+          "attempts": 0,
+          "successes": 0,
+          "errors": 0
+        }
+      },
+      "tcp": {
+        "v4": {
+          "attempts": 7,
+          "successes": 7,
+          "errors": 0
+        },
+        "v6": {
+          "attempts": 0,
+          "successes": 0,
+          "errors": 0
+        }
+      },
+      "utp": {
+        "v4": {
+          "attempts": 0,
+          "successes": 0,
+          "errors": 0
+        },
+        "v6": {
+          "attempts": 0,
+          "successes": 0,
+          "errors": 0
+        }
+      }
+    }
+  }
+}

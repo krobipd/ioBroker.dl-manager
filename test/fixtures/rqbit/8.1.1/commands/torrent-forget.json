@@ -1,0 +1,13 @@
+{
+  "_source": {
+    "program": "rqbit",
+    "version": "8.1.1",
+    "request": "POST /torrents/38b12b1a4fffb255161b45e772882bebe94d3b30/forget",
+    "recordedAt": "2026-11-15T02:27:50.129Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {}
+}

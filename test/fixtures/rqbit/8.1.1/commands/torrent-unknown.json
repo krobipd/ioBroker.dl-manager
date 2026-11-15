@@ -1,0 +1,19 @@
+{
+  "_source": {
+    "program": "rqbit",
+    "version": "8.1.1",
+    "request": "POST /torrents/<unknown>/pause",
+    "recordedAt": "2026-11-15T02:27:50.130Z"
+  },
+  "status": 404,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "error_kind": "torrent_not_found",
+    "human_readable": "torrent 0000000000000000000000000000000000000000 not found",
+    "status": 404,
+    "status_text": "404 Not Found",
+    "id": "0000000000000000000000000000000000000000"
+  }
+}

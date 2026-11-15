@@ -1,0 +1,18 @@
+{
+  "_source": {
+    "program": "rqbit",
+    "version": "9.1.0",
+    "request": "GET / (basic auth, wrong password)",
+    "recordedAt": "2026-11-15T02:26:51.820Z"
+  },
+  "status": 401,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "error_kind": "unauthorized",
+    "human_readable": "unauthorized",
+    "status": 401,
+    "status_text": "401 Unauthorized"
+  }
+}

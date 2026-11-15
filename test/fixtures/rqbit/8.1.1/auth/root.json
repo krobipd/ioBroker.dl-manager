@@ -1,0 +1,39 @@
+{
+  "_source": {
+    "program": "rqbit",
+    "version": "8.1.1",
+    "request": "GET / (basic auth)",
+    "recordedAt": "2026-11-15T02:26:48.441Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "apis": {
+      "GET /": "list all available APIs",
+      "GET /dht/stats": "DHT stats",
+      "GET /dht/table": "DHT routing table",
+      "GET /stats": "Global session stats",
+      "GET /torrents": "List torrents",
+      "GET /torrents/playlist": "Generate M3U8 playlist for all files in all torrents",
+      "GET /torrents/{id_or_infohash}": "Torrent details",
+      "GET /torrents/{id_or_infohash}/haves": "The bitfield of have pieces",
+      "GET /torrents/{id_or_infohash}/peer_stats": "Per peer stats",
+      "GET /torrents/{id_or_infohash}/playlist": "Generate M3U8 playlist for this torrent",
+      "GET /torrents/{id_or_infohash}/stats/v1": "Torrent stats",
+      "GET /torrents/{id_or_infohash}/stream/{file_idx}": "Stream a file. Accepts Range header to seek.",
+      "GET /web/": "Web UI",
+      "POST /rust_log": "Set RUST_LOG to this post launch (for debugging)",
+      "POST /torrents": "Add a torrent here. magnet: or http:// or a local file.",
+      "POST /torrents/resolve_magnet": "Resolve a magnet to torrent file bytes",
+      "POST /torrents/{id_or_infohash}/delete": "Forget about the torrent, remove the files",
+      "POST /torrents/{id_or_infohash}/forget": "Forget about the torrent, keep the files",
+      "POST /torrents/{id_or_infohash}/pause": "Pause torrent",
+      "POST /torrents/{id_or_infohash}/start": "Resume torrent",
+      "POST /torrents/{id_or_infohash}/update_only_files": "Change the selection of files to download. You need to POST json of the following form {\"only_files\": [0, 1, 2]}"
+    },
+    "server": "rqbit",
+    "version": "8.1.1"
+  }
+}

@@ -220,6 +220,21 @@ function pyload(url) {
   return json(fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")).body : null);
 }
 
+// ---- rqbit 9.1.0 (basic auth on every request) ----
+const RQ_READS = {
+  "/": ["auth", "root"],
+  "/torrents": ["running", "torrents"],
+  "/stats": ["running", "stats"],
+  "/torrents/limits": ["running", "limits"],
+};
+function rqbit(url, init) {
+  if (REJECTED) return json(body("rqbit", "9.1.0", "auth", "root-wrong"), 401);
+  const r = (init.method ?? "GET") === "GET" ? RQ_READS[url.pathname] : undefined;
+  if (r) return json(body("rqbit", "9.1.0", r[0], r[1]));
+  if (url.pathname === "/torrents") return json(body("rqbit", "9.1.0", "commands", "torrents-post-file"));
+  return json({});
+}
+
 const ROUTES = {
   "jdownloader.local": jdLocal,
   "api.jdownloader.org": myjd,
@@ -230,6 +245,7 @@ const ROUTES = {
   "nzbget.local": nzbget,
   "aria2.local": aria2,
   "pyload.local": pyload,
+  "rqbit.local": rqbit,
 };
 
 globalThis.fetch = async (input, init = {}) => {

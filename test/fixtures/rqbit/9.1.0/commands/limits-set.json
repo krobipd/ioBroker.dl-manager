@@ -1,0 +1,13 @@
+{
+  "_source": {
+    "program": "rqbit",
+    "version": "9.1.0",
+    "request": "POST /torrents/limits",
+    "recordedAt": "2026-11-15T02:27:54.013Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {}
+}

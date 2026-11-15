@@ -71,6 +71,7 @@ const HINT: Readonly<Record<ProgramType, I18nKey>> = {
   nzbget: "hint_nzbget",
   aria2: "hint_aria2",
   pyload: "hint_pyload",
+  rqbit: "hint_rqbit",
 };
 
 /**

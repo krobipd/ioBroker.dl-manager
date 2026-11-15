@@ -4,6 +4,7 @@ vi.mock("./i18n", () => ({
 }));
 
 import { programKey } from "./core/config";
+import { CATALOG } from "./programs/catalog";
 import {
   applyRuleOf,
   dialogType,
@@ -58,8 +59,7 @@ const ctx = { takenKeys: [] as string[] };
 
 describe("rows and dialog data", () => {
   it("offers every program but My.JDownloader, which is a switch of the JDownloader dialog", () => {
-    expect(OFFERED.map(p => p.type)).not.toContain("jdownloader-cloud");
-    expect(OFFERED).toHaveLength(8);
+    expect(OFFERED.map(p => p.type)).toEqual(CATALOG.map(p => p.type).filter(t => t !== "jdownloader-cloud"));
   });
 
   it("maps a stored row to the dialog it is edited in", () => {
