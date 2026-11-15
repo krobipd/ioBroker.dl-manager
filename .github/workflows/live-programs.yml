@@ -89,6 +89,9 @@ jobs:
           # Vuze 5.7.6.0 (the last release) with its Web Remote plugin, fetched and checked by the module
           - program: vuze
             tag: 5.7.6.0-xmwebui-0.6.5
+          # µTorrent Server for Linux (utserver alpha 3.3) in ekho/utorrent, pinned by digest in the module
+          - program: utorrent
+            tag: "2021-04-22"
     # a manual start may name one program; the other matrix entries then skip every step
     env:
       SELECTED: ${{ inputs.program == '' || inputs.program == matrix.program }}
