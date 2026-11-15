@@ -25,9 +25,10 @@ export type TrType = "transmission" | "vuze";
 
 /**
  * Vuze's first session-get waits for Vuze's version server (XMWebUIPlugin.java 2820, again after 864 s): 89.9 s in a
- * network without it (live-programs run 43680925710) — every other answer came within 50 ms.
+ * network without it (live-programs run 43680925710) — every other answer came within 50 ms. The abort comes with
+ * room before the 120 s in which the fleet suite D21 wants every call to a hung counterpart ended.
  */
-const VUZE_TIMEOUT_MS = 120_000;
+const VUZE_TIMEOUT_MS = 110_000;
 
 /**
  * Transmission RPC (api-torrent.md § 2): basic auth per request, the 409 round for the session id (repeated once),

@@ -4,10 +4,13 @@ import type { ProgramConfig } from "../../core/model";
 import { baseUrl, catalogEntry } from "../catalog";
 
 /**
- * How long rqbit itself waits in `POST /torrents` for a magnet's metadata or a `.torrent` link (`Timeout<600_000, …>`
- * in handlers/torrents.rs, 8.1.1 and 9.1.0) — the adapter waits ten seconds longer, so rqbit's own answer comes first.
+ * How long rqbit waits in `POST /torrents` for a magnet's metadata or a `.torrent` link: 600 s unless the call names
+ * `timeout_ms` (`Timeout<600_000, 3_600_000>` in handlers/torrents.rs, http_api/timeout.rs, 8.1.1 and 9.1.0). The
+ * adapter names 100 s and waits ten seconds longer, so rqbit's own answer comes first and the call ends with room
+ * before the 120 s in which the fleet suite D21 wants every call to a hung counterpart ended.
  */
-const ADD_TIMEOUT_MS = 610_000;
+const RQBIT_ADD_TIMEOUT_MS = 100_000;
+const ADD_TIMEOUT_MS = RQBIT_ADD_TIMEOUT_MS + 10_000;
 
 /** A JSON body (`POST /torrents/limits`). */
 type JsonBody = { json: unknown };
@@ -61,13 +64,20 @@ export class RqClient {
   }
 
   /**
-   * `POST /torrents` with a magnet or a `.torrent` link as the body — rqbit answers once it has the metadata.
+   * `POST /torrents` with a magnet or a `.torrent` link as the body — rqbit answers once it has the metadata, or with its
+   * timeout error after `RQBIT_ADD_TIMEOUT_MS`.
    *
    * @param link the link
    * @returns the answer's JSON
    */
   public add(link: string): Promise<unknown> {
-    return this.send("POST", "/torrents?overwrite=true", { text: link }, false, this.addHttp);
+    return this.send(
+      "POST",
+      `/torrents?overwrite=true&timeout_ms=${RQBIT_ADD_TIMEOUT_MS}`,
+      { text: link },
+      false,
+      this.addHttp,
+    );
   }
 
   /** Aborts what is still waiting. */

@@ -340,8 +340,36 @@ describe("rqbit driver details", () => {
         /HTTP 400 \(error adding torrent: .*Read-only file system/,
       );
       const call = s.calls.find(c => c.path === "/torrents");
-      expect(call).toMatchObject({ query: "overwrite=true", body: "https://example.org/x.torrent" });
+      expect(call).toMatchObject({ query: "overwrite=true&timeout_ms=100000", body: "https://example.org/x.torrent" });
       expect(call?.headers["content-type"]).toBe("text/plain");
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("asks rqbit to give up an add before the adapter does, both with room before the fleet's hang deadline (D21)", async () => {
+    const waits: number[] = [];
+    const counting = {
+      setTimeout: (cb: () => void, ms: number): ioBroker.Timeout => {
+        waits.push(ms);
+        return timers.setTimeout(cb, ms);
+      },
+      clearTimeout: timers.clearTimeout,
+    };
+    const s = await rqSynth({ torrents: [] });
+    try {
+      await new RqDriver(cfg(s.baseUrl), { ...counting, log }).command({
+        kind: "add",
+        url: `magnet:?xt=urn:btih:${"a".repeat(40)}`,
+      });
+      const add = s.calls.find(c => c.method === "POST" && c.path === "/torrents");
+      const asked = Number(new URLSearchParams(add?.query).get("timeout_ms"));
+      const wait = Math.max(...waits);
+      // rqbit waits 600 s for a magnet's metadata unless told otherwise (handlers/torrents.rs `Timeout<600_000, …>`); its
+      // own answer names the cause, and the fleet suite measures a hung call from outside against 120 s
+      expect(asked).toBeGreaterThan(0);
+      expect(wait).toBeGreaterThan(asked);
+      expect(wait).toBeLessThanOrEqual(120_000 - 10_000);
     } finally {
       await s.close();
     }

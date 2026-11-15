@@ -112,6 +112,29 @@ describe("Vuze through Transmission's driver", () => {
     }
   });
 
+  it("gives up an unanswered call after Vuze's slow first answer and with room before the fleet's hang deadline (D21)", async () => {
+    const waits: number[] = [];
+    const counting = {
+      setTimeout: (cb: () => void, ms: number): ioBroker.Timeout => {
+        waits.push(ms);
+        return timers.setTimeout(cb, ms);
+      },
+      clearTimeout: timers.clearTimeout,
+    };
+    const s = await vuzeServer();
+    try {
+      await new TrDriver(cfg(s.baseUrl), { ...counting, log }).poll();
+      const wait = Math.max(...waits);
+      // Vuze's first session-get waited 89.9 s for its version server (live-programs run 43680925710); the fleet suite
+      // measures a hung call from outside against 120 s, so the abort comes with room before it (an abort at exactly
+      // 120 s ended after 120001 ms there)
+      expect(wait).toBeGreaterThan(89_900);
+      expect(wait).toBeLessThanOrEqual(120_000 - 10_000);
+    } finally {
+      await s.close();
+    }
+  });
+
   it("reads a loading and a queued torrent, and Vuze's overflowed infinity as no estimate", async () => {
     const at = async (
       state: string,
