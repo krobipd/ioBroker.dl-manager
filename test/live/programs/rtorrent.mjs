@@ -323,10 +323,15 @@ export async function record(ctx) {
     "POST /RPC2 load.raw_start('', <.torrent>, d.directory.set=…)",
     await load("big", true),
   );
+  // the seeder is handed again every 10 s: one run of 0.9.8 waited 120 s on a first add_peer that never connected
+  let probes = 0;
   await waitFor(
     "big downloading",
     async () => {
       const t = await find("big");
+      if (++probes % 20 === 0) {
+        await rpc("add_peer", hash("big"), peer).catch(err => console.log(`rtorrent: add_peer again: ${err.message}`));
+      }
       return t && Number(t["d.completed_bytes"]) > 0 && Number(t["d.complete"]) === 0;
     },
     120_000,
@@ -420,7 +425,26 @@ export async function record(ctx) {
     console.log(`rtorrent: ${err.message} — d.start does not resume a paused download, recorded as it is`),
   );
   await snapshot("unpaused");
-  await rpc("d.resume", hash("done"));
+  // d.resume on the paused download, and on a stopped one: does it start what d.stop stopped?
+  w("commands", "d-resume", `POST /RPC2 d.resume(${hash("done")}) (paused)`, await send("d.resume", [hash("done")]));
+  await waitFor(
+    "done active after d.resume",
+    async () => Number((await find("done"))?.["d.is_active"]) === 1,
+    10_000,
+  ).catch(err => console.log(`rtorrent: ${err.message} — recorded as it is`));
+  await snapshot("resumed");
+  await rpc("d.stop", hash("done"));
+  await waitFor("done stopped again", async () => Number((await find("done"))?.["d.state"]) === 0);
+  w(
+    "commands",
+    "d-resume-stopped",
+    `POST /RPC2 d.resume(${hash("done")}) (stopped)`,
+    await send("d.resume", [hash("done")]),
+  );
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  await snapshot("resumed-stopped");
+  // d.stop alone leaves a download active that d.resume woke while stopped — d.pause first (a no-op when inactive)
+  await rpc("d.pause", hash("done"));
   await rpc("d.stop", hash("done"));
   w("commands", "d-close", `POST /RPC2 d.close(${hash("done")})`, await send("d.close", [hash("done")]));
   await waitFor("done closed", async () => Number((await find("done"))?.["d.is_open"]) === 0);
@@ -519,6 +543,25 @@ export async function record(ctx) {
   ).catch(err => console.log(`rtorrent: ${err.message} — recorded as it is`));
   await new Promise(resolve => setTimeout(resolve, 3000));
   await snapshot("released");
+  // rTorrent builds the torrent anew from the metadata with the commands of the first load — stopped, closed and
+  // marked (recording `released`): the next poll of the driver releases it once more
+  w(
+    "commands",
+    "release-again",
+    "POST /RPC2 system.multicall (d.start, d.custom.set dlm_held '') on the torrent built from the metadata",
+    await send("system.multicall", [
+      [
+        { methodName: "d.start", params: [hash("queued")] },
+        { methodName: "d.custom.set", params: [hash("queued"), "dlm_held", ""] },
+      ],
+    ]),
+  );
+  await waitFor(
+    "released torrent started",
+    async () => Number((await find("queued"))?.["d.state"]) === 1,
+    10_000,
+  ).catch(err => console.log(`rtorrent: ${err.message} — recorded as it is`));
+  await snapshot("rereleased");
   w("commands", "d-unknown", "POST /RPC2 d.stop(<unknown hash>)", await send("d.stop", ["0".repeat(40)]));
   w(
     "commands",
