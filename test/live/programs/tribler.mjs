@@ -64,6 +64,10 @@ export function prepare(work, tag) {
   return {
     image: `ghcr.io/tribler/tribler:${tag}`,
     name: "tribler",
+    // libtorrent puts peers on a private network into its local peer class, which the session's rate limits do not
+    // cover (libtorrent manual, peer classes): on a Docker range the seed server is such a peer and Tribler's limit
+    // never bites — on a public-looking range (still `--internal`) it does
+    subnet: "11.22.33.0/24",
     entrypoint: "/bin/bash",
     args: ["/live/tribler-start.sh"],
     env: { CORE_API_PORT: String(PORT), CORE_API_KEY: KEY, TSTATEDIR: STATE },
@@ -117,6 +121,27 @@ export async function record(ctx) {
     w(state, "settings", "GET /api/settings", await get("/api/settings"));
   };
   /**
+   * Waits until every named download of the recorder has its status; a timeout names what was seen last.
+   *
+   * @param {string} label what is waited for
+   * @param {Record<string, string>} want status per torrent name
+   * @param {number} timeout milliseconds
+   */
+  const waitStates = async (label, want, timeout) => {
+    let seen = {};
+    await waitFor(
+      label,
+      async () => {
+        const all = await list();
+        seen = Object.fromEntries(Object.keys(want).map(n => [n, all.find(d => d.infohash === hash(n))?.status]));
+        return Object.entries(want).every(([n, st]) => seen[n] === st);
+      },
+      timeout,
+    ).catch(err => {
+      throw new Error(`${err.message} — last seen ${JSON.stringify(seen)}`);
+    });
+  };
+  /**
    * @param {string} name torrent of the recorder
    * @param {string} [dest] download folder
    * @returns {ReturnType<Http["req"]>} the answer of the add
@@ -145,24 +170,27 @@ export async function record(ctx) {
     120_000,
   );
   // limits in bytes per second, 0 = unlimited (download_manager.py set_session_limits → libtorrent's rate limits).
-  // 200 KiB/s is below the seed server's 1 MiB/s, so the download's rate shows whether the unit is bytes — and it keeps
-  // the 32 MiB download running until the pause below stops it
+  // 100 KiB/s is far below the seed server's 1 MiB/s, so the download's rate shows whether the unit is bytes — and it
+  // keeps the 32 MiB download running until the pause below stops it
   w(
     "commands",
     "settings-limits",
     "POST /api/settings {libtorrent: {max_download_rate, max_upload_rate}}",
-    await json("POST", "/api/settings", { libtorrent: { max_download_rate: 204800, max_upload_rate: 102400 } }),
+    await json("POST", "/api/settings", { libtorrent: { max_download_rate: 102400, max_upload_rate: 51200 } }),
   );
-  await new Promise(resolve => setTimeout(resolve, 6000));
+  await new Promise(resolve => setTimeout(resolve, 8000));
   await snapshot("limited");
   await addFile("queued");
+  // a stop right after the add — what the adapter's emulated pause does with a download it adds: Tribler has no
+  // libtorrent handle yet, so Download.stop only marks the download user_stopped (download.py stop)
   await addFile("stopped");
   w(
     "commands",
-    "patch-stop",
-    `PATCH /api/downloads/${hash("stopped")} {state: stop}`,
+    "patch-stop-early",
+    `PATCH /api/downloads/${hash("stopped")} {state: stop} (right after its add)`,
     await patch(hash("stopped"), { state: "stop" }),
   );
+  await snapshot("added");
   await addFile("done");
   await addFile("check");
   // checking: the 1 GiB payload is still hashed while the next answer is read
@@ -178,14 +206,21 @@ export async function record(ctx) {
     20,
   ).catch(err => console.log(`tribler: ${err.message} — states seen: ${[...seen].join(", ")}, recorded as it is`));
   await snapshot("checking");
-  await waitFor(
-    "mixed states",
-    async () => {
-      const [s, d, c] = await Promise.all(["stopped", "done", "check"].map(n => statusOf(hash(n))));
-      return s === "STOPPED" && d === "SEEDING" && c === "SEEDING";
-    },
-    180_000,
+  // does the early stop hold once the download has its handle? (download.py on_add_torrent_alert resumes a download
+  // without resume data for its check and pauses it after the check)
+  await waitFor("early stop held", async () => (await statusOf(hash("stopped"))) === "STOPPED", 30_000).catch(
+    async err => console.log(`tribler: ${err.message} — stopped.bin is ${await statusOf(hash("stopped"))}`),
   );
+  await snapshot("early-stop");
+  if ((await statusOf(hash("stopped"))) !== "STOPPED") {
+    w(
+      "commands",
+      "patch-stop",
+      `PATCH /api/downloads/${hash("stopped")} {state: stop}`,
+      await patch(hash("stopped"), { state: "stop" }),
+    );
+  }
+  await waitStates("mixed states", { stopped: "STOPPED", done: "SEEDING", check: "SEEDING" }, 180_000);
   await snapshot("running");
 
   // a magnet nobody seeds, 0 hops: metadata never comes
@@ -251,7 +286,7 @@ export async function record(ctx) {
   await json("POST", "/api/settings", { libtorrent: { max_download_rate: 0, max_upload_rate: 0 } });
 
   // seeding: the big download finishes and keeps going
-  await waitFor("big finished", async () => (await statusOf(hash("big"))) === "SEEDING", 300_000, 1000);
+  await waitStates("big finished", { big: "SEEDING" }, 300_000);
   await snapshot("finished");
 
   // remove one, keep its files; commands on a hash Tribler does not know; an add without uri

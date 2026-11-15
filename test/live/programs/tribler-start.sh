@@ -5,6 +5,14 @@
 # API answers, the host is changed in the file Tribler wrote, and Tribler starts again — the settings it then answers
 # are those of a real installation, not a file the recorder wrote.
 set -u
+# IPv8 tries to reach Tribler's bootstrap servers on the Internet the container does not have: one line per packet,
+# hundreds a minute — they would bury everything else in the log the recorder prints on a failure
+exec > >(grep --line-buffered -v 'rust_endpoint\] Could not send packet') 2>&1
+echo "tribler-start: $(id)"
+# 8.0.7 keeps its IPv8 keys in ~/.Tribler whatever TSTATEDIR says (tribler_config.py DEFAULT_CONFIG ipv8.keys; 8.4's
+# run_tribler.py moves them below TSTATEDIR) and does not create the folder: without it the first start ends in a
+# FileNotFoundError on ec_multichain.pem
+mkdir -p "$HOME/.Tribler"
 /usr/share/tribler/tribler -s &
 pid=$!
 for _ in $(seq 1 240); do
