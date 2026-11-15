@@ -3,7 +3,7 @@
     "program": "rtorrent",
     "version": "0.9.8",
     "request": "POST /RPC2 d.stop(<unknown hash>)",
-    "recordedAt": "2026-11-15T02:47:45.247Z"
+    "recordedAt": "2026-11-15T03:35:13.259Z"
   },
   "status": 200,
   "headers": {

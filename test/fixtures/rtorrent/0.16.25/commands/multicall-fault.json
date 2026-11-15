@@ -3,11 +3,11 @@
     "program": "rtorrent",
     "version": "0.16.25",
     "request": "POST /RPC2 system.multicall (one unknown method)",
-    "recordedAt": "2026-11-15T02:47:34.627Z"
+    "recordedAt": "2026-11-15T03:35:07.968Z"
   },
   "status": 200,
   "headers": {
     "content-type": "text/xml"
   },
-  "body": "<?xml version=\"1.0\"?><methodResponse><params><param><value><array><data><value><array><data><value><i8>629653</i8></value></data></array></value><value><struct><member><name>faultCode</name><value><i8>-506</i8></value></member><member><name>faultString</name><value><string>method 'no.such.method' not defined</string></value></member></struct></value></data></array></value></param></params></methodResponse>"
+  "body": "<?xml version=\"1.0\"?><methodResponse><params><param><value><array><data><value><array><data><value><i8>629670</i8></value></data></array></value><value><struct><member><name>faultCode</name><value><i8>-506</i8></value></member><member><name>faultString</name><value><string>method 'no.such.method' not defined</string></value></member></struct></value></data></array></value></param></params></methodResponse>"
 }

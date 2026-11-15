@@ -3,7 +3,7 @@
     "program": "rtorrent",
     "version": "0.16.25",
     "request": "POST /RPC2 throttle.global_down.max_rate.set('', 2048000)",
-    "recordedAt": "2026-11-15T02:47:03.525Z"
+    "recordedAt": "2026-11-15T03:34:43.381Z"
   },
   "status": 200,
   "headers": {

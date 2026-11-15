@@ -83,12 +83,25 @@ const sent = (s: FixtureServer): string[] =>
       c.method === "system.multicall" ? `multicall ${c.strings.join(" ")}` : `${c.method} ${c.strings.join(" ")}`,
     );
 
-/** The torrents of the 0.16.25 running recording. */
-const RUNNING = (
+/**
+ * @param version recorded version
+ * @param state state folder
+ * @returns hash and name of every torrent of that poll
+ */
+const hashesOf = (version: string, state: string): [string, string][] =>
   (
-    parseResponse(loadFixture("rtorrent", "0.16.25", "running", "poll").body as string) as unknown[][]
-  )[4][0] as unknown[][]
-).map(r => r[0] as string);
+    (parseResponse(loadFixture("rtorrent", version, state, "poll").body as string) as unknown[][])[4][0] as unknown[][]
+  ).map(r => [r[0] as string, r[1] as string]);
+/**
+ * @param version recorded version
+ * @param state state folder
+ * @param prefix start of the torrent's name
+ * @returns the hash of the first torrent whose name starts so
+ */
+const hashOf = (version: string, state: string, prefix: string): string =>
+  hashesOf(version, state).find(([, n]) => n.startsWith(prefix))?.[0] ?? "";
+/** The torrents of the 0.16.25 running recording. */
+const RUNNING = hashesOf("0.16.25", "running").map(([h]) => h);
 /** The first torrent of the list — started and active, the contract pauses it and the global pause stops it first. */
 const FIRST = RUNNING[0];
 
@@ -99,11 +112,15 @@ const rejected = new Set<RecordedCall>();
  * rTorrent from the recordings: basic auth on every request, every call by its method name.
  *
  * @param version recorded version
+ * @param state the state folder whose poll every poll answers
  * @returns the running server
  */
-async function rtServer(version = "0.16.25"): Promise<Awaited<ReturnType<typeof startFixtureServer>>> {
+async function rtServer(
+  version = "0.16.25",
+  state = "running",
+): Promise<Awaited<ReturnType<typeof startFixtureServer>>> {
   const good = `Basic ${Buffer.from("admin:good").toString("base64")}`;
-  const known = new Set(RUNNING);
+  const known = new Set(hashesOf(version, state).map(([h]) => h));
   return startFixtureServer(call => {
     if (call.headers.authorization !== good) {
       rejected.add(call);
@@ -114,9 +131,10 @@ async function rtServer(version = "0.16.25"): Promise<Awaited<ReturnType<typeof 
       case "system.client_version":
         return recorded(version, "auth", "version");
       case "system.multicall":
-        return inner.includes("d.multicall2") ? recorded(version, "running", "poll") : answer(inner.map(() => [0]));
+        return inner.includes("d.multicall2") ? recorded(version, state, "poll") : answer(inner.map(() => [0]));
       case "d.stop":
       case "d.start":
+      case "d.resume":
       case "d.erase":
         return known.has(strings[0])
           ? recorded(version, "commands", "d-stop")
@@ -179,6 +197,8 @@ interface Row {
   state?: number;
   open?: number;
   active?: number;
+  /** `d.hashing` — non-zero while a hash check waits or runs. */
+  hashing?: number;
   held?: string;
 }
 
@@ -193,8 +213,8 @@ const rowOf = (r: Row): RpcParam[] => [
   r.open ?? 1,
   r.active ?? 1,
   0,
-  0,
-  0,
+  r.hashing ?? 0,
+  r.hashing ? 1 : 0,
   1000,
   500,
   10,
@@ -251,6 +271,61 @@ describe("rTorrent driver on 0.9.8", () => {
   });
 });
 
+describe("rTorrent driver on the recorded pause, hash check and held magnet", () => {
+  for (const version of ["0.9.8", "0.16.25"]) {
+    it(`releases the torrent ${version} builds anew from a released magnet's metadata — stopped and marked again`, async () => {
+      const s = await rtServer(version, "released");
+      try {
+        await new RtDriver(cfg(s.baseUrl), { ...timers, log }).poll();
+        const h = hashOf(version, "released", "queued.bin");
+        expect(h).toMatch(/^38B12B1A/);
+        expect(sent(s)).toEqual([`multicall d.start ${h} d.custom.set ${h} dlm_held `]);
+      } finally {
+        await s.close();
+      }
+    });
+
+    it(`takes the magnet ${version} added stopped and marked into a pause that lasts, without starting it`, async () => {
+      const s = await rtServer(version, "held");
+      const store = memoryPauseStore();
+      await store.save({ paused: true, keys: [] });
+      try {
+        await new RtDriver(cfg(s.baseUrl), { ...timers, log, pauseStore: store }).poll();
+        const h = hashOf(version, "held", "38B12B1A");
+        expect(sent(s)).toEqual([`multicall d.custom.set ${h} dlm_held `]);
+        expect((await store.load()).keys).toEqual([h]);
+      } finally {
+        await s.close();
+      }
+    });
+
+    it(`stops the torrent in its hash check with the pause of everything on ${version}`, async () => {
+      const s = await rtServer(version, "checking");
+      try {
+        const d = new RtDriver(cfg(s.baseUrl), { ...timers, log });
+        await d.poll();
+        await d.command({ kind: "pauseAll" });
+        expect(sent(s)).toContain(`d.stop ${hashOf(version, "checking", "check.bin")}`);
+      } finally {
+        await s.close();
+      }
+    });
+
+    it(`resumes the torrent d.pause halted on ${version} with d.resume — d.start leaves it inactive`, async () => {
+      const s = await rtServer(version, "pausing");
+      try {
+        const d = new RtDriver(cfg(s.baseUrl), { ...timers, log });
+        await d.poll();
+        const h = hashOf(version, "pausing", "done.bin");
+        await d.command({ kind: "resume", key: h });
+        expect(sent(s)).toEqual([`d.resume ${h}`]);
+      } finally {
+        await s.close();
+      }
+    });
+  }
+});
+
 describe("rTorrent driver details", () => {
   it("asks for the fields of the recorder in one multicall with the global rates and limits", async () => {
     const s = await rtSynth({ rows: [] });
@@ -297,6 +372,44 @@ describe("rTorrent driver details", () => {
         "d.start A",
         "d.start N",
       ]);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("takes a started torrent in its hash check into the pause — it starts by itself after the check", async () => {
+    const s = await rtSynth({
+      rows: [
+        { hash: "K", active: 0, hashing: 3 },
+        { hash: "W", state: 0, active: 0, hashing: 1 },
+      ],
+    });
+    try {
+      const d = new RtDriver(cfg(s.baseUrl), { ...timers, log });
+      await d.poll();
+      await d.command({ kind: "pauseAll" });
+      expect(sent(s)).toEqual(["d.stop K"]);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("resumes a torrent d.pause halted with d.resume, a stopped or closed one with d.start", async () => {
+    const s = await rtSynth({
+      rows: [
+        { hash: "P", active: 0 },
+        { hash: "S", state: 0, active: 0 },
+        { hash: "C", open: 0, state: 0, active: 0 },
+        { hash: "K", active: 0, hashing: 3 },
+      ],
+    });
+    try {
+      const d = new RtDriver(cfg(s.baseUrl), { ...timers, log });
+      await d.poll();
+      for (const key of ["P", "S", "C", "K"]) {
+        await d.command({ kind: "resume", key });
+      }
+      expect(sent(s)).toEqual(["d.resume P", "d.start S", "d.start C", "d.start K"]);
     } finally {
       await s.close();
     }

@@ -20,7 +20,8 @@ const POLL: readonly RpcCall[] = [
 /**
  * rTorrent over XML-RPC. It has no pause for everything — the adapter makes it (plan § 5.3), like Transmission's.
  * Pause and resume are ruTorrent's (js/rtorrent.js: pause `d.stop`, unpause `d.start`); `d.start` also opens a closed
- * torrent (recording `reopened`).
+ * torrent (recording `reopened`), but does not wake one that `d.pause` halted — that takes `d.resume` (recordings
+ * `unpaused`, `resumed`).
  */
 export class RtDriver implements ProgramDriver {
   public readonly type = "rtorrent";
@@ -44,6 +45,8 @@ export class RtDriver implements ProgramDriver {
   private readonly pause: EmulatedPause;
   private readonly version = new ProgramVersion();
   private running: string[] = [];
+  /** Started, open and inactive at the last poll — halted by `d.pause`, which only `d.resume` ends. */
+  private halted = new Set<string>();
 
   /**
    * @param cfg the settings row
@@ -72,7 +75,7 @@ export class RtDriver implements ProgramDriver {
         await this.client.call("d.stop", cmd.key);
         return;
       case "resume":
-        await this.client.call("d.start", cmd.key);
+        await this.client.call(this.halted.has(cmd.key) ? "d.resume" : "d.start", cmd.key);
         return;
       case "remove":
         // d.erase takes the torrent out of the session and leaves its files — ruTorrent deletes data only when it set
@@ -129,8 +132,10 @@ export class RtDriver implements ProgramDriver {
     const [down, up, downMax, upMax, rows] = await this.client.multicall(POLL);
     const torrents = listIn(rows, "rTorrent's torrent list").map(torrentOf);
     await this.release(torrents.filter(t => t.held === "1"));
-    // what the global pause stops: the started torrents that are not paused
-    this.running = torrents.filter(t => t.open && t.state && t.active).map(t => t.hash);
+    // what the global pause stops: the started torrents that run or are hashed — a started torrent is inactive during
+    // its hash check and starts by itself after it (recording `checking`); d.stop ends the check (`check-stopped`)
+    this.running = torrents.filter(t => t.open && t.state && (t.active || t.hashing)).map(t => t.hash);
+    this.halted = new Set(torrents.filter(t => t.open && t.state && !t.active && !t.hashing).map(t => t.hash));
     const paused = await this.pause.observe(new Set(this.running), new Set(torrents.map(t => t.hash)));
     return toSnapshot(version, torrents, { down, up, downMax, upMax }, paused, m => this.deps.log.debug(m));
   }

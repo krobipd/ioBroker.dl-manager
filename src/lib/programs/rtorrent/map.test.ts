@@ -169,6 +169,26 @@ describe("rTorrent snapshot from the recorded answers", () => {
       expect(byName("finished")["big.bin"]).toMatchObject({ status: "seeding", etaSeconds: null });
     });
 
+    it(`maps what d.start, d.resume and a stopped hash check leave behind on ${version}`, () => {
+      // d.start does not wake a torrent d.pause halted (recording unpaused), d.resume does (resumed)
+      expect(byName("unpaused")["done.bin"].status).toBe("completed");
+      expect(byName("resumed")["done.bin"].status).toBe("seeding");
+      // d.resume on a stopped torrent: state 0 with active 1 — the driver never sends it there, a stopped torrent stays
+      // what its state says
+      expect(byName("resumed-stopped")["done.bin"].status).toBe("completed");
+      // a hash check stopped halfway: rTorrent keeps d.complete and reports the bytes checked so far (0.9.8: none,
+      // 0.16: 4 MiB) — finished by the program's own word; the next start checks it whole again (recording held)
+      expect(byName("check-stopped")["check.bin"]).toMatchObject({ status: "completed", sizeBytes: 1073741824 });
+      expect(byName("check-stopped")["check.bin"].doneBytes).toBeLessThan(1073741824);
+    });
+
+    it(`maps a magnet added stopped and marked, and the torrent built from its metadata, of ${version}`, () => {
+      const meta = Object.values(byName("held")).find(i => i.name.startsWith("38B12B1A"));
+      expect(meta).toMatchObject({ status: "paused", name: "38B12B1A4FFFB255161B45E772882BEBE94D3B30.meta" });
+      expect(byName("released")["queued.bin"]).toMatchObject({ status: "paused", sizeBytes: 4194304 });
+      expect(byName("rereleased")["queued.bin"].status).not.toBe("paused");
+    });
+
     it(`reads the limits and rates of ${version}`, () => {
       expect(snap(version, "limited").status).toMatchObject({ speedLimitBps: 2048000, uploadLimitBps: 512000 });
       // ruTorrent's maximum stands in one recording of each version — unlimited either way
