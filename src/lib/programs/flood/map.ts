@@ -1,6 +1,6 @@
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
 import { statusFrom } from "../../core/status";
-import { asText, epochMs, eta, nonNegative, num, round2, sizeOf } from "../../core/units";
+import { asText, epochMs, eta, fromKiB, nonNegative, num, round2, sizeOf } from "../../core/units";
 import { UNLIMITED_BPS } from "../rtorrent/map";
 
 /**
@@ -171,14 +171,37 @@ export function mapFloodStatus(raw: string | number, debug: (msg: string) => voi
 }
 
 /**
- * @param value `throttleGlobalDownSpeed` / `throttleGlobalUpSpeed` of `GET /api/client/settings`
- * @returns bytes per second as Flood reports them, 0 = unlimited — also Deluge's -1, which Flood passes on as it is,
- *   and ruTorrent's maximum, which rTorrent behind Flood reported as well (run 43677990506, 4.16.4-rtorrent from
- *   `finished` on — the value the rTorrent driver reads as unlimited)
+ * Settings that Flood's Deluge gateway alone sends as a fixed -1 (server/services/Deluge/clientGatewayService.ts
+ * `getClientSettings`, 4.11.0, 4.16.4 and master): the gateways of qBittorrent, Transmission and Neptune send 0, rTorrent's
+ * the values rTorrent keeps (recording 4.16.4-rtorrent `completed`: 4096 and 32768).
  */
-export function limitBps(value: unknown): number | null {
+const DELUGE_FIXED = ["networkMaxOpenFiles", "piecesMemoryMax"] as const;
+
+/**
+ * @param settings `GET /api/client/settings`
+ * @returns Deluge stands behind Flood: its gateway passes Deluge's limits on as Deluge keeps them, in KiB/s
+ *   (core/preferencesmanager.py multiplies by 1024 for libtorrent), where Flood names bytes per second
+ *   (shared/types/ClientSettings.ts) — the Transmission gateway converts, the Deluge gateway does not
+ */
+export function behindDeluge(settings: Record<string, unknown>): boolean {
+  return DELUGE_FIXED.every(k => settings[k] === -1);
+}
+
+/**
+ * @param value `throttleGlobalDownSpeed` / `throttleGlobalUpSpeed` of `GET /api/client/settings`
+ * @param kib Deluge stands behind Flood ({@link behindDeluge}): the value is KiB/s, -1 = unlimited
+ * @returns bytes per second, 0 = unlimited — also ruTorrent's maximum, which rTorrent behind Flood reported as well
+ *   (run 43677990506, 4.16.4-rtorrent from `finished` on — the value the rTorrent driver reads as unlimited)
+ */
+export function limitBps(value: unknown, kib: boolean): number | null {
   const v = num(value);
-  return v === null ? null : v < 0 || v >= UNLIMITED_BPS ? 0 : Math.round(v);
+  if (v === null) {
+    return null;
+  }
+  if (kib) {
+    return fromKiB(v);
+  }
+  return v < 0 || v >= UNLIMITED_BPS ? 0 : Math.round(v);
 }
 
 /**
@@ -234,6 +257,7 @@ export function toSnapshot(
   }
   const sum = (pick: (i: DownloadItem) => number | null | undefined): number =>
     items.reduce((total, i) => total + (pick(i) ?? 0), 0);
+  const kib = settings !== null && behindDeluge(settings);
   return {
     status: {
       version,
@@ -241,8 +265,8 @@ export function toSnapshot(
       // the list carries every torrent's rates; Flood's own summary comes only over its event stream
       downloadBps: sum(i => i.speedBps),
       uploadBps: sum(i => i.uploadBps),
-      speedLimitBps: settings ? limitBps(settings.throttleGlobalDownSpeed) : null,
-      uploadLimitBps: settings ? limitBps(settings.throttleGlobalUpSpeed) : null,
+      speedLimitBps: settings ? limitBps(settings.throttleGlobalDownSpeed, kib) : null,
+      uploadLimitBps: settings ? limitBps(settings.throttleGlobalUpSpeed, kib) : null,
     },
     items,
     complete: true,

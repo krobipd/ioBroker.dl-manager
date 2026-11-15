@@ -183,12 +183,14 @@ describe("Flood snapshot", () => {
     expect(d["stopped.bin"].ratio).toBeNull();
   });
 
-  it("reads the limits in bytes per second, 0 = unlimited — Deluge's -1 and ruTorrent's maximum too", () => {
+  it("reads the limits in bytes per second, 0 = unlimited — Deluge's KiB/s and -1, ruTorrent's maximum too", () => {
     for (const v of VERSIONS) {
+      // Flood wrote 102400 and 51200; Deluge keeps them as KiB/s, its gateway passes them on unchanged
+      const unit = v.endsWith("-deluge") ? 1024 : 1;
       expect([v, snap(v, "limited").status.speedLimitBps, snap(v, "limited").status.uploadLimitBps]).toEqual([
         v,
-        102400,
-        51200,
+        102400 * unit,
+        51200 * unit,
       ]);
     }
     expect(loadFixture("flood", "4.16.4-deluge", "empty", "settings").body).toMatchObject({
@@ -196,8 +198,15 @@ describe("Flood snapshot", () => {
     });
     expect(snap("4.16.4-deluge", "empty").status.speedLimitBps).toBe(0);
     // rTorrent behind Flood reported ruTorrent's maximum in run 43677990506 (4.16.4-rtorrent from `finished` on)
-    expect([limitBps(335488000), limitBps(335487999), limitBps(-1)]).toEqual([0, 335487999, 0]);
-    expect([limitBps(undefined), limitBps("x"), limitBps(1.6)]).toEqual([null, null, 2]);
+    expect([limitBps(335488000, false), limitBps(335487999, false), limitBps(-1, false)]).toEqual([0, 335487999, 0]);
+    expect([limitBps(undefined, false), limitBps("x", false), limitBps(1.6, false)]).toEqual([null, null, 2]);
+    // KiB/s as Deluge keeps them: a float, -1 = off; ruTorrent's maximum means nothing there
+    expect([limitBps(97.65625, true), limitBps(-1, true), limitBps(335488000, true), limitBps("x", true)]).toEqual([
+      100000,
+      0,
+      335488000 * 1024,
+      null,
+    ]);
   });
 
   it("has no limits when Flood refused the settings", () => {

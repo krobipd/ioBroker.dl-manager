@@ -1,3 +1,5 @@
+import { existsSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { runDriverContract, type ContractServer } from "../../../../test/helpers/contract";
 import { startFixtureServer, type FixtureAnswer, type RecordedCall } from "../../../../test/helpers/fixture-server";
 import { firstUrl } from "../../../../test/helpers/first-url";
@@ -6,7 +8,7 @@ import { memoryPauseStore } from "../../core/emulated-pause";
 import { AuthError, ProtocolError } from "../../core/errors";
 import type { ProgramConfig } from "../../core/model";
 import { FloodDriver } from "./driver";
-import { mapFloodStatus, statusTable } from "./map";
+import { behindDeluge, mapFloodStatus, statusTable } from "./map";
 
 const timers = {
   setTimeout: (cb: () => void, ms: number): ioBroker.Timeout =>
@@ -212,19 +214,57 @@ describe("Flood driver — limits", () => {
       (loadFixture("flood", "4.16.4-transmission", "partial", "settings").body as Record<string, unknown>)
         .throttleMaxUploadsGlobal,
     ]).toEqual([0, 10]);
-    const settings = loadFixture("flood", "4.16.4-deluge", "empty", "settings").body as Record<string, unknown>;
-    const s = await floodServer("4.16.4-deluge", { torrents: "empty" });
-    try {
-      const d = new FloodDriver(cfg(s.baseUrl), { ...timers, log });
-      await d.command({ kind: "setSpeedLimit", bps: 102400 });
-      await d.command({ kind: "setUploadLimit", bps: -5 });
-      const patches = s.calls.filter(c => c.method === "PATCH").map(c => JSON.parse(c.body) as Record<string, unknown>);
-      expect(patches).toEqual([
-        { ...settings, throttleGlobalDownSpeed: 102400 },
-        { ...settings, throttleGlobalUpSpeed: 0 },
-      ]);
-    } finally {
-      await s.close();
+    for (const [version, down, off] of [
+      // Deluge behind Flood keeps KiB/s, -1 = off (its gateway passes the value on unchanged)
+      ["4.16.4-deluge", 100, -1],
+      ["4.16.4-transmission", 102400, 0],
+    ] as const) {
+      const settings = loadFixture("flood", version, "empty", "settings").body as Record<string, unknown>;
+      const s = await floodServer(version, { torrents: "empty" });
+      try {
+        const d = new FloodDriver(cfg(s.baseUrl), { ...timers, log });
+        await d.command({ kind: "setSpeedLimit", bps: 102400 });
+        await d.command({ kind: "setUploadLimit", bps: -5 });
+        const patches = s.calls
+          .filter(c => c.method === "PATCH")
+          .map(c => JSON.parse(c.body) as Record<string, unknown>);
+        expect(patches, version).toEqual([
+          { ...settings, throttleGlobalDownSpeed: down },
+          { ...settings, throttleGlobalUpSpeed: off },
+        ]);
+      } finally {
+        await s.close();
+      }
+    }
+  });
+
+  it("knows Deluge behind Flood from the settings its gateway fixes, and reads its KiB/s as bytes per second", async () => {
+    const root = join(__dirname, "../../../../test/fixtures/flood");
+    const read = readdirSync(root).flatMap(version =>
+      readdirSync(join(root, version))
+        .filter(state => existsSync(join(root, version, state, "settings.json")))
+        .map(state => [version, state, loadFixture("flood", version, state, "settings")] as const)
+        .filter(([, , f]) => f.status === 200),
+    );
+    // every backend recorded, and only the Deluge recordings are taken for Deluge
+    expect(new Set(read.map(([v]) => v.replace(/^[\d.]+-/, "")))).toEqual(
+      new Set(["deluge", "qbittorrent", "rtorrent", "transmission"]),
+    );
+    for (const [version, state, f] of read) {
+      expect(behindDeluge(f.body as Record<string, unknown>), `${version}/${state}`).toBe(version.endsWith("-deluge"));
+    }
+    // the same limits written through Flood (recordings `throttled`: 102400 down, 51200 up)
+    for (const [version, down, up] of [
+      ["4.16.4-deluge", 102400 * 1024, 51200 * 1024],
+      ["4.16.4-qbittorrent", 102400, 51200],
+    ] as const) {
+      const s = await floodServer(version, { torrents: "throttled" });
+      try {
+        const snap = await new FloodDriver(cfg(s.baseUrl), { ...timers, log }).poll();
+        expect([snap.status.speedLimitBps, snap.status.uploadLimitBps], version).toEqual([down, up]);
+      } finally {
+        await s.close();
+      }
     }
   });
 

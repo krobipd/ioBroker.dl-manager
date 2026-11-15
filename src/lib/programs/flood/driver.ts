@@ -5,15 +5,16 @@ import type { Capability, Command, DriverDeps, ProgramConfig, ProgramDriver, Pro
 import { ProgramVersion } from "../../core/version";
 import { errText } from "../../err-text";
 import { FloodClient } from "./client";
-import { isLoading, isRunning, limitBps, toSnapshot, type FloodTorrent } from "./map";
+import { behindDeluge, isLoading, isRunning, limitBps, toSnapshot, type FloodTorrent } from "./map";
 
-/** The two limits the commands change (bytes per second, 0 = unlimited — shared/types/ClientSettings.ts). */
+/** The two limits the commands change (B/s, 0 = unlimited — shared/types/ClientSettings.ts; KiB/s behind Deluge). */
 type LimitKey = "throttleGlobalDownSpeed" | "throttleGlobalUpSpeed";
 
 /**
  * Flood (jesec/flood) in front of rTorrent, qBittorrent, Transmission or Deluge: one torrent list for all of them, keyed
  * by the upper-case info hash. Flood has no pause for everything — the adapter makes it (plan § 5.3), like
- * Transmission's: stop what runs, start exactly those. Which backend stands behind it, the API does not say.
+ * Transmission's: stop what runs, start exactly those. Which backend stands behind it, the API does not say; Deluge shows
+ * in the settings its gateway fixes ({@link behindDeluge}), and its limits are KiB/s.
  */
 export class FloodDriver implements ProgramDriver {
   public readonly type = "flood";
@@ -216,7 +217,8 @@ export class FloodDriver implements ProgramDriver {
    * `partial`: every settings read 500 afterwards), and its Transmission gateway switches the seed queue on when
    * `throttleMaxUploadsGlobal` is missing (`partial`: 0 → 10). rTorrent refuses its own empty local address in the same
    * call (500 "Tried to set local address to an any address.") and takes the limits anyway (recording 4.16.4-rtorrent
-   * `limited`) — an error answer counts as done when the settings read back show the limit.
+   * `limited`) — an error answer counts as done when the settings read back show the limit. Behind Deluge the limit goes
+   * out in KiB/s, the unit the Deluge gateway passes on ({@link behindDeluge}).
    *
    * @param key the limit
    * @param bps bytes per second, 0 = unlimited
@@ -225,15 +227,19 @@ export class FloodDriver implements ProgramDriver {
     const value = Math.max(0, Math.round(bps));
     const read = async (): Promise<Record<string, unknown>> =>
       recordIn(await this.client.send("GET", "/client/settings"), "Flood's client settings");
+    const current = await read();
+    const kib = behindDeluge(current);
+    // Deluge takes KiB/s as a float, -1 = off — as the Deluge driver writes it
+    const sent = kib ? (value > 0 ? value / 1024 : -1) : value;
     try {
-      await this.client.send("PATCH", "/client/settings", { ...(await read()), [key]: value });
+      await this.client.send("PATCH", "/client/settings", { ...current, [key]: sent });
     } catch (err) {
       if (!(err instanceof ProtocolError)) {
         throw err;
       }
       // within one KiB: a backend may keep the limit in KiB/s (Transmission's gateway divides by 1024)
-      const now = limitBps((await read().catch((): Record<string, unknown> => ({})))[key]);
-      if (now === null || Math.abs(now - (limitBps(value) ?? value)) >= 1024) {
+      const now = limitBps((await read().catch((): Record<string, unknown> => ({})))[key], kib);
+      if (now === null || Math.abs(now - (limitBps(sent, kib) ?? value)) >= 1024) {
         throw err;
       }
       this.deps.log.debug(`Flood: ${key} ${value} B/s took effect despite ${errText(err)}`);
