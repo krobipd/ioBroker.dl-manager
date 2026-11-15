@@ -143,6 +143,7 @@
   "hint_sabnzbd": "A chave de API está em Config → General. O SABnzbd recusa nomes de host desconhecidos — introduza um endereço IP ou adicione o nome a host_whitelist.",
   "hint_transmission": "O Transmission só responde a endereços da sua rpc-whitelist — adicione lá o endereço do servidor ioBroker.",
   "hint_tribler": "A API do Tribler escuta em 127.0.0.1 e, enquanto a porta não for fixada, numa porta nova a cada arranque: fixe a porta (CORE_API_PORT ou api.http_port em ~/.Tribler/8.0/configuration.json) e, se o ioBroker correr noutra máquina, defina no mesmo ficheiro api.http_host como 0.0.0.0. A porta e a chave da API aparecem no endereço da interface web do Tribler (…:port/ui/#/downloads/all?key=…).",
+  "hint_vuze": "O Vuze responde através do seu plugin Web Remote (porta 9091). Sem palavra-passe própria no plugin e com o emparelhamento ligado (ambos como instalado), o utilizador é vuze e a palavra-passe é o código de acesso do emparelhamento; caso contrário, o utilizador e a palavra-passe definidos no plugin.",
   "itemError": "Erro",
   "itemPaused": "Pausado",
   "label_addResumes": "Uma nova ligação retoma um programa em pausa",

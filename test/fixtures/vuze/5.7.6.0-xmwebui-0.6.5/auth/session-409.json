@@ -1,0 +1,15 @@
+{
+  "_source": {
+    "program": "vuze",
+    "version": "5.7.6.0-xmwebui-0.6.5",
+    "request": "POST /transmission/rpc (no session id)",
+    "recordedAt": "2026-11-15T05:58:50.387Z"
+  },
+  "status": 409,
+  "headers": {
+    "content-type": "text/html",
+    "x-transmission-session-id": "<session-id>",
+    "set-cookie": "<omitted>"
+  },
+  "body": "You_didn_t_set_the_X-Transmission-Session-Id"
+}

@@ -1,0 +1,19 @@
+{
+  "_source": {
+    "program": "vuze",
+    "version": "5.7.6.0-xmwebui-0.6.5",
+    "request": "POST /transmission/rpc {\"method\":\"torrent-stop\",\"arguments\":{\"ids\":[\"885BD0670ADDF14EC2C3014998AB3EF2F810FABF\",\"38B12B1A4FFFB255161B45E772882BEBE94D3B30\",\"E2A552AAF122722A7EB9C5AB7558B13533DF2B16\",\"E6739AEAD82F3BEFD4630694F10091769D00DDF1\",\"0123456789ABCDEF0123456789ABCDEF01234567\"]},\"tag\":125}",
+    "recordedAt": "2026-11-15T06:00:04.861Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=UTF-8",
+    "x-transmission-session-id": "<session-id>",
+    "set-cookie": "<omitted>"
+  },
+  "body": {
+    "tag": 125,
+    "result": "success",
+    "arguments": {}
+  }
+}

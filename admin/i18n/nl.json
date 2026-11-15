@@ -143,6 +143,7 @@
   "hint_sabnzbd": "De API-sleutel staat onder Config → General. SABnzbd weigert onbekende hostnamen — vul een IP-adres in of neem de naam op in host_whitelist.",
   "hint_transmission": "Transmission antwoordt alleen adressen uit zijn rpc-whitelist — voeg daar het adres van de ioBroker-server toe.",
   "hint_tribler": "De API van Tribler luistert op 127.0.0.1 en, zolang de poort niet vastligt, bij elke start op een nieuwe poort: leg de poort vast (CORE_API_PORT of api.http_port in ~/.Tribler/8.0/configuration.json) en zet, als ioBroker op een andere computer draait, in hetzelfde bestand api.http_host op 0.0.0.0. Poort en API-sleutel staan in het adres van de webinterface van Tribler (…:port/ui/#/downloads/all?key=…).",
+  "hint_vuze": "Vuze antwoordt via zijn plug-in Web Remote (poort 9091). Zonder eigen wachtwoord in de plug-in en met koppelen ingeschakeld (beide zoals geïnstalleerd) is de gebruiker vuze en het wachtwoord de toegangscode van het koppelen; anders de gebruiker en het wachtwoord uit de plug-in.",
   "itemError": "Fout",
   "itemPaused": "Gepauzeerd",
   "label_addResumes": "Een nieuwe link hervat een gepauzeerd programma",

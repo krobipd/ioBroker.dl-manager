@@ -1,0 +1,19 @@
+{
+  "_source": {
+    "program": "vuze",
+    "version": "5.7.6.0-xmwebui-0.6.5",
+    "request": "POST /transmission/rpc {\"method\":\"torrent-start-now\",\"arguments\":{\"ids\":[\"0123456789ABCDEF0123456789ABCDEF01234567\"]},\"tag\":31}",
+    "recordedAt": "2026-11-15T05:59:06.681Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=UTF-8",
+    "x-transmission-session-id": "<session-id>",
+    "set-cookie": "<omitted>"
+  },
+  "body": {
+    "tag": 31,
+    "result": "success",
+    "arguments": {}
+  }
+}

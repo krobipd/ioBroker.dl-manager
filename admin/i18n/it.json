@@ -143,6 +143,7 @@
   "hint_sabnzbd": "La chiave API si trova in Config → General. SABnzbd rifiuta i nomi host sconosciuti — inserisci un indirizzo IP o aggiungi il nome a host_whitelist.",
   "hint_transmission": "Transmission risponde solo agli indirizzi della sua rpc-whitelist — aggiungi lì l'indirizzo del server ioBroker.",
   "hint_tribler": "L'API di Tribler ascolta su 127.0.0.1 e, finché la porta non è fissata, su una porta nuova a ogni avvio: fissa la porta (CORE_API_PORT o api.http_port in ~/.Tribler/8.0/configuration.json) e, se ioBroker gira su un'altra macchina, imposta nello stesso file api.http_host a 0.0.0.0. Porta e chiave API compaiono nell'indirizzo dell'interfaccia web di Tribler (…:port/ui/#/downloads/all?key=…).",
+  "hint_vuze": "Vuze risponde tramite il suo plugin Web Remote (porta 9091). Senza una password propria nel plugin e con l'abbinamento attivo (entrambi come da installazione), l'utente è vuze e la password è il codice di accesso dell'abbinamento; altrimenti utente e password impostati nel plugin.",
   "itemError": "Errore",
   "itemPaused": "In pausa",
   "label_addResumes": "Un nuovo link riprende un programma in pausa",

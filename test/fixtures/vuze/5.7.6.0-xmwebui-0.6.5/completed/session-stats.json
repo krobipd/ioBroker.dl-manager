@@ -1,0 +1,38 @@
+{
+  "_source": {
+    "program": "vuze",
+    "version": "5.7.6.0-xmwebui-0.6.5",
+    "request": "POST /transmission/rpc {\"method\":\"session-stats\",\"arguments\":{},\"tag\":54}",
+    "recordedAt": "2026-11-15T05:59:12.756Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=UTF-8",
+    "x-transmission-session-id": "<session-id>",
+    "set-cookie": "<omitted>"
+  },
+  "body": {
+    "tag": 54,
+    "result": "success",
+    "arguments": {
+      "torrentCount": 6,
+      "activeTorrentCount": 0,
+      "uploadSpeed": 0,
+      "cumulative-stats": {
+        "sessionCount": 0,
+        "uploadedBytes": 0,
+        "downloadedBytes": 0,
+        "secondsActive": 0,
+        "ratio": 0
+      },
+      "current-stats": {
+        "uploadedBytes": 0,
+        "downloadedBytes": 18939904,
+        "secondsActive": 0,
+        "ratio": 0
+      },
+      "pausedTorrentCount": 0,
+      "downloadSpeed": 1042022
+    }
+  }
+}

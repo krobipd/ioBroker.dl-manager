@@ -28,6 +28,7 @@ const DRIVERS: Readonly<Record<ProgramType, (cfg: ProgramConfig, deps: DriverDep
   rtorrent: (cfg, deps) => new RtDriver(cfg, deps),
   tribler: (cfg, deps) => new TblDriver(cfg, deps),
   flood: (cfg, deps) => new FloodDriver(cfg, deps),
+  vuze: (cfg, deps) => new TrDriver(cfg, deps),
 };
 
 /** THE program list — one entry per catalog type. */

@@ -1,0 +1,22 @@
+{
+  "_source": {
+    "program": "vuze",
+    "version": "5.7.6.0-xmwebui-0.6.5",
+    "request": "POST /transmission/rpc {\"method\":\"free-space\",\"arguments\":{\"path\":\"/downloads\"},\"tag\":30}",
+    "recordedAt": "2026-11-15T05:59:06.629Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=UTF-8",
+    "x-transmission-session-id": "<session-id>",
+    "set-cookie": "<omitted>"
+  },
+  "body": {
+    "tag": 30,
+    "result": "success",
+    "arguments": {
+      "path": "/downloads",
+      "size-bytes": 91743576064
+    }
+  }
+}

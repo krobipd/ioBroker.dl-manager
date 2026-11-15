@@ -143,6 +143,7 @@
   "hint_sabnzbd": "API 密钥在 Config → General 中。SABnzbd 会拒绝未知的主机名——请填写 IP 地址或把主机名加入 host_whitelist。",
   "hint_transmission": "Transmission 只响应其 rpc-whitelist 中的地址——请把 ioBroker 服务器的地址加进去。",
   "hint_tribler": "Tribler 的 API 只监听 127.0.0.1，并且在端口未固定时每次启动都使用新端口：请固定端口（CORE_API_PORT，或 ~/.Tribler/8.0/configuration.json 中的 api.http_port）；如果 ioBroker 运行在另一台机器上，请在同一文件中将 api.http_host 设为 0.0.0.0。端口和 API 密钥显示在 Tribler 网页界面的地址中（…:port/ui/#/downloads/all?key=…）。",
+  "hint_vuze": "Vuze 通过其 Web Remote 插件响应（端口 9091）。如果插件中没有设置自己的密码且已开启配对（两者均为安装时的默认），用户名为 vuze，密码为配对访问码；否则为插件中设置的用户名和密码。",
   "itemError": "错误",
   "itemPaused": "已暂停",
   "label_addResumes": "新链接会让已暂停的程序继续运行",

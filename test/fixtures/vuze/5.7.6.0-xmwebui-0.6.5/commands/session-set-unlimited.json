@@ -1,0 +1,19 @@
+{
+  "_source": {
+    "program": "vuze",
+    "version": "5.7.6.0-xmwebui-0.6.5",
+    "request": "POST /transmission/rpc {\"method\":\"session-set\",\"arguments\":{\"speed-limit-down-enabled\":false,\"speed-limit-up-enabled\":false},\"tag\":63}",
+    "recordedAt": "2026-11-15T05:59:13.179Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=UTF-8",
+    "x-transmission-session-id": "<session-id>",
+    "set-cookie": "<omitted>"
+  },
+  "body": {
+    "tag": 63,
+    "result": "success",
+    "arguments": {}
+  }
+}

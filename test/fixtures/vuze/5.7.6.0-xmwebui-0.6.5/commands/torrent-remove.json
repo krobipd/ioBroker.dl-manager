@@ -1,0 +1,19 @@
+{
+  "_source": {
+    "program": "vuze",
+    "version": "5.7.6.0-xmwebui-0.6.5",
+    "request": "POST /transmission/rpc {\"method\":\"torrent-remove\",\"arguments\":{\"ids\":[\"38B12B1A4FFFB255161B45E772882BEBE94D3B30\"],\"delete-local-data\":false},\"tag\":137}",
+    "recordedAt": "2026-11-15T06:00:05.391Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=UTF-8",
+    "x-transmission-session-id": "<session-id>",
+    "set-cookie": "<omitted>"
+  },
+  "body": {
+    "tag": 137,
+    "result": "success",
+    "arguments": {}
+  }
+}

@@ -143,6 +143,7 @@
   "hint_sabnzbd": "La clave de API está en Config → General. SABnzbd rechaza nombres de host desconocidos — introduce una dirección IP o añade el nombre a host_whitelist.",
   "hint_transmission": "Transmission solo responde a las direcciones de su rpc-whitelist — añade allí la dirección del servidor ioBroker.",
   "hint_tribler": "La API de Tribler escucha en 127.0.0.1 y, mientras su puerto no esté fijado, en un puerto nuevo en cada inicio: fija el puerto (CORE_API_PORT o api.http_port en ~/.Tribler/8.0/configuration.json) y, si ioBroker se ejecuta en otro equipo, pon en el mismo archivo api.http_host a 0.0.0.0. El puerto y la clave de API aparecen en la dirección de la interfaz web de Tribler (…:port/ui/#/downloads/all?key=…).",
+  "hint_vuze": "Vuze responde a través de su complemento Web Remote (puerto 9091). Sin contraseña propia en el complemento y con el emparejamiento activado (ambos como tras la instalación), el usuario es vuze y la contraseña es el código de acceso del emparejamiento; si no, el usuario y la contraseña definidos en el complemento.",
   "itemError": "Error",
   "itemPaused": "Pausado",
   "label_addResumes": "Un enlace nuevo reanuda un programa en pausa",

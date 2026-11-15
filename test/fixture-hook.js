@@ -136,6 +136,18 @@ function transmission(url, init, headers) {
   return json(read ? body("transmission", "4.1.3", "running", read) : { jsonrpc: "2.0", result: {}, id: 1 });
 }
 
+// ---- Vuze 5.7.6.0 with its Web Remote plugin 0.6.5 (Transmission's legacy RPC, the 409 session round) ----
+const VUZE = "5.7.6.0-xmwebui-0.6.5";
+const VZ_READS = new Set(["torrent-get", "session-get", "session-stats", "free-space"]);
+function vuze(url, init, headers) {
+  if (REJECTED) return text("Access Denied\r\n", 401);
+  if (headers.get("x-transmission-session-id") !== "fixture") {
+    return text("You_didn_t_set_the_X-Transmission-Session-Id", 409, { "x-transmission-session-id": "fixture" });
+  }
+  const { method } = JSON.parse(String(init.body));
+  return json(VZ_READS.has(method) ? body("vuze", VUZE, "running", method) : { arguments: {}, result: "success" });
+}
+
 // ---- Deluge 2.2.0 ----
 const DL_READS = {
   "web.get_hosts": ["auth", "get-hosts"],
@@ -302,6 +314,7 @@ const ROUTES = {
   "rtorrent.local": rtorrent,
   "tribler.local": tribler,
   "flood.local": flood,
+  "vuze.local": vuze,
 };
 
 globalThis.fetch = async (input, init = {}) => {

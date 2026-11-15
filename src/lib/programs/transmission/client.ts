@@ -20,13 +20,24 @@ const LEGACY: Readonly<Record<string, string>> = {
 
 const camel = (s: string): string => s.replace(/_([a-z])/g, (_m, c: string) => c.toUpperCase());
 
+/** The programs that speak Transmission's RPC. */
+export type TrType = "transmission" | "vuze";
+
+/**
+ * Vuze's first session-get waits for Vuze's version server (XMWebUIPlugin.java 2820, again after 864 s): 89.9 s in a
+ * network without it (live-programs run 43680925710) — every other answer came within 50 ms.
+ */
+const VUZE_TIMEOUT_MS = 120_000;
+
 /**
  * Transmission RPC (api-torrent.md § 2): basic auth per request, the 409 round for the session id (repeated once),
- * JSON-RPC 2.0 with snake_case from 4.1 (`X-Transmission-Rpc-Version` ≥ 6), the legacy protocol before.
+ * JSON-RPC 2.0 with snake_case from 4.1 (`X-Transmission-Rpc-Version` ≥ 6), the legacy protocol before. Vuze's Web
+ * Remote plugin speaks the legacy protocol (RPC 15, no version header) under Transmission's path.
  */
 export class TrClient {
   private readonly http: HttpClient;
   private readonly url: string;
+  private readonly type: TrType;
   private sessionId = "";
   private modern: boolean | null = null;
   private seq = 0;
@@ -36,8 +47,12 @@ export class TrClient {
    * @param timers the adapter's timers
    */
   public constructor(cfg: ProgramConfig, timers: HttpTimers) {
-    this.http = new HttpClient(timers, cfg.username ? { basicAuth: { user: cfg.username, pass: cfg.password } } : {});
-    this.url = baseUrl(cfg, catalogEntry("transmission"));
+    this.type = cfg.type === "vuze" ? "vuze" : "transmission";
+    this.http = new HttpClient(timers, {
+      ...(cfg.username ? { basicAuth: { user: cfg.username, pass: cfg.password } } : {}),
+      ...(this.type === "vuze" ? { timeoutMs: VUZE_TIMEOUT_MS } : {}),
+    });
+    this.url = baseUrl(cfg, catalogEntry(this.type));
   }
 
   /**
@@ -68,17 +83,17 @@ export class TrClient {
     this.check(res.status);
     const body = res.json() as Record<string, unknown> | null;
     if (!body || typeof body !== "object") {
-      throw new ProtocolError(`transmission: ${method} answered without a body`);
+      throw new ProtocolError(`${this.type}: ${method} answered without a body`);
     }
     if (this.modern) {
       if (body.error) {
         const e = body.error as { message?: unknown };
-        throw new ProtocolError(`transmission: ${method} failed: ${String(e.message)}`);
+        throw new ProtocolError(`${this.type}: ${method} failed: ${String(e.message)}`);
       }
       return snakeKeys(body.result ?? {}) as Record<string, unknown>;
     }
     if (body.result !== "success") {
-      throw new ProtocolError(`transmission: ${method} failed: ${String(body.result)}`);
+      throw new ProtocolError(`${this.type}: ${method} failed: ${String(body.result)}`);
     }
     return snakeKeys(body.arguments ?? {}) as Record<string, unknown>;
   }
@@ -102,7 +117,13 @@ export class TrClient {
 
   private check(status: number): void {
     if (status === 401) {
-      throw new AuthError("transmission: login rejected");
+      throw new AuthError(`${this.type}: login rejected`);
+    }
+    // WebPlugin.java 2546–2593: an address outside the plugin's Access setting gets 403 and a text, no login is asked
+    if (status === 403 && this.type === "vuze") {
+      throw new AuthError(
+        "vuze: the Web Remote plugin does not serve this address — set its Access to all or add the address",
+      );
     }
     if (status === 403) {
       throw new AuthError(
@@ -115,7 +136,7 @@ export class TrClient {
       );
     }
     if (status >= 400) {
-      throw new ProtocolError(`transmission: HTTP ${status}`);
+      throw new ProtocolError(`${this.type}: HTTP ${status}`);
     }
   }
 

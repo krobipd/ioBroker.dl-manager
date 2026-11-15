@@ -1,0 +1,25 @@
+{
+  "_source": {
+    "program": "vuze",
+    "version": "5.7.6.0-xmwebui-0.6.5",
+    "request": "POST /transmission/rpc {\"method\":\"torrent-add\",\"arguments\":{\"filename\":\"magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567&dn=nobody-seeds-this\",\"download-dir\":\"/downloads\"},\"tag\":23}",
+    "recordedAt": "2026-11-15T05:59:06.406Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=UTF-8",
+    "x-transmission-session-id": "<session-id>",
+    "set-cookie": "<omitted>"
+  },
+  "body": {
+    "tag": 23,
+    "result": "success",
+    "arguments": {
+      "torrent-added": {
+        "name": "Magnet download for 'nobody-seeds-this'",
+        "id": 7,
+        "hashString": "0123456789ABCDEF0123456789ABCDEF01234567"
+      }
+    }
+  }
+}

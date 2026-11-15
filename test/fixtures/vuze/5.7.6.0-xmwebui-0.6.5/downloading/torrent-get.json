@@ -1,0 +1,100 @@
+{
+  "_source": {
+    "program": "vuze",
+    "version": "5.7.6.0-xmwebui-0.6.5",
+    "request": "POST /transmission/rpc {\"method\":\"torrent-get\",\"arguments\":{\"fields\":[\"id\",\"hashString\",\"name\",\"status\",\"percentDone\",\"sizeWhenDone\",\"totalSize\",\"leftUntilDone\",\"downloadedEver\",\"uploadedEver\",\"rateDownload\",\"rateUpload\",\"eta\",\"uploadRatio\",\"addedDate\",\"doneDate\",\"error\",\"errorString\",\"labels\",\"downloadDir\",\"isFinished\",\"isStalled\",\"metadataPercentComplete\",\"recheckProgress\",\"queuePosition\"]},\"tag\":16}",
+    "recordedAt": "2026-11-15T05:58:56.005Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=UTF-8",
+    "x-transmission-session-id": "<session-id>",
+    "set-cookie": "<omitted>"
+  },
+  "body": {
+    "tag": 16,
+    "result": "success",
+    "arguments": {
+      "torrents": [
+        {
+          "rateUpload": 0,
+          "recheckProgress": 1,
+          "error": 0,
+          "rateDownload": 117964,
+          "uploadRatio": 0,
+          "name": "big.bin",
+          "addedDate": 1794722330,
+          "doneDate": 0,
+          "eta": 113,
+          "queuePosition": 1,
+          "id": 1,
+          "uploadedEver": 0,
+          "downloadedEver": 1966080,
+          "downloadDir": "/downloads",
+          "percentDone": 0.031,
+          "totalSize": 33554432,
+          "metadataPercentComplete": 1,
+          "status": 4,
+          "isStalled": false,
+          "errorString": "",
+          "leftUntilDone": 32505856,
+          "isFinished": false,
+          "sizeWhenDone": 33554432,
+          "hashString": "885BD0670ADDF14EC2C3014998AB3EF2F810FABF"
+        },
+        {
+          "rateUpload": 0,
+          "recheckProgress": 1,
+          "error": 0,
+          "rateDownload": 0,
+          "uploadRatio": -1,
+          "name": "queued.bin",
+          "addedDate": 1794722334,
+          "doneDate": 0,
+          "eta": -1,
+          "queuePosition": 2,
+          "id": 2,
+          "uploadedEver": 0,
+          "downloadedEver": 0,
+          "downloadDir": "/downloads",
+          "percentDone": 0,
+          "totalSize": 4194304,
+          "metadataPercentComplete": 1,
+          "status": 3,
+          "isStalled": false,
+          "errorString": "",
+          "leftUntilDone": 4194304,
+          "isFinished": false,
+          "sizeWhenDone": 4194304,
+          "hashString": "38B12B1A4FFFB255161B45E772882BEBE94D3B30"
+        },
+        {
+          "rateUpload": 0,
+          "recheckProgress": 1,
+          "error": 0,
+          "rateDownload": 0,
+          "uploadRatio": -1,
+          "name": "stopped.bin",
+          "addedDate": 1794722334,
+          "doneDate": 0,
+          "eta": -1,
+          "queuePosition": 3,
+          "id": 3,
+          "uploadedEver": 0,
+          "downloadedEver": 0,
+          "downloadDir": "/downloads",
+          "percentDone": 0,
+          "totalSize": 4194304,
+          "metadataPercentComplete": 1,
+          "status": 0,
+          "isStalled": false,
+          "errorString": "",
+          "leftUntilDone": 4194304,
+          "isFinished": false,
+          "sizeWhenDone": 4194304,
+          "hashString": "53AC3E699AA08E11DAD739081321DB0B879FE521"
+        }
+      ]
+    }
+  }
+}

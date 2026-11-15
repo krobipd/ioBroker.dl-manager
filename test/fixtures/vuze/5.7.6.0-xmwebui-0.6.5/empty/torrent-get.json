@@ -1,0 +1,21 @@
+{
+  "_source": {
+    "program": "vuze",
+    "version": "5.7.6.0-xmwebui-0.6.5",
+    "request": "POST /transmission/rpc {\"method\":\"torrent-get\",\"arguments\":{\"fields\":[\"id\",\"hashString\",\"name\",\"status\",\"percentDone\",\"sizeWhenDone\",\"totalSize\",\"leftUntilDone\",\"downloadedEver\",\"uploadedEver\",\"rateDownload\",\"rateUpload\",\"eta\",\"uploadRatio\",\"addedDate\",\"doneDate\",\"error\",\"errorString\",\"labels\",\"downloadDir\",\"isFinished\",\"isStalled\",\"metadataPercentComplete\",\"recheckProgress\",\"queuePosition\"]},\"tag\":2}",
+    "recordedAt": "2026-11-15T05:58:50.434Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=UTF-8",
+    "x-transmission-session-id": "<session-id>",
+    "set-cookie": "<omitted>"
+  },
+  "body": {
+    "tag": 2,
+    "result": "success",
+    "arguments": {
+      "torrents": []
+    }
+  }
+}

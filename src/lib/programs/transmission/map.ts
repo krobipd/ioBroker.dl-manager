@@ -161,6 +161,8 @@ export function speedUnit(session: Record<string, unknown>): number {
  * @param free `free_space(download_dir)`
  * @param paused the adapter holds the program paused
  * @param debug debug log
+ * @param unit bytes per "kB" of the speed limits — Transmission says it in `units`, Vuze always means 1024
+ * @param etaUnknown ETA values that mean "no estimate" beyond Transmission's negative ones (Vuze's overflowed infinity)
  * @returns the snapshot
  */
 export function toSnapshot(
@@ -171,8 +173,9 @@ export function toSnapshot(
   free: Record<string, unknown>,
   paused: boolean,
   debug: (msg: string) => void,
+  unit = speedUnit(session),
+  etaUnknown: readonly number[] = [],
 ): ProgramSnapshot {
-  const unit = speedUnit(session);
   const limit = (value: unknown, enabled: unknown): number => (enabled === true ? fromKiB(value, unit) : 0);
   const items: DownloadItem[] = [];
   for (const raw of torrents) {
@@ -193,7 +196,7 @@ export function toSnapshot(
       uploadBps: nonNegative(t.rate_upload),
       // TR_RATIO_INF -2 is infinite, TR_RATIO_NA -1 is no ratio at all
       ratio: t.upload_ratio === -2 ? RATIO_INFINITE : nonNegative(t.upload_ratio),
-      etaSeconds: eta(t.eta, []),
+      etaSeconds: eta(t.eta, etaUnknown),
       addedMs: epochMs(t.added_date),
       finishedMs: epochMs(t.done_date),
       category: Array.isArray(t.labels) ? t.labels.filter(l => typeof l === "string").join(", ") : "",

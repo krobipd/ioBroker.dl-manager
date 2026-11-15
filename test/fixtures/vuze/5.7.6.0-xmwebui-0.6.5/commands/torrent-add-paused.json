@@ -1,0 +1,25 @@
+{
+  "_source": {
+    "program": "vuze",
+    "version": "5.7.6.0-xmwebui-0.6.5",
+    "request": "POST /transmission/rpc {\"method\":\"torrent-add\",\"arguments\":{\"metainfo\":\"ZDQ6aW5mb2Q2Omxlbmd0aGk0MTk0MzA0ZTQ6bmFtZTExOnN0b3BwZWQuYmluMTI6cGllY2UgbGVuZ3RoaTI2MjE0NGU2OnBpZWNlczMyMDrhGZdrX8HmnUPaqWT6SQl6kAQwRlUylmNyy4FFrlpax+fxphdATcLUVZhA2Etu6H5EZYLAxHTAMAnBHe1pFl/efVQGIB6hnmwDq5xf68flqeculv7cbQlIN6jtee7YBgS2wiDua0iVNh0HWXx1Fun3K032P8bPL9+7CrfeM70ojEiesT4rWD83UBbZt54KvqJZZoBgq6/w7Wi6urGKEF0gCLlF+aJix6oPv4EJDPEvnKnrQn+ksVnSjKfCGiS0vjVipKeLb4MMwGTBIJz2Wzmqd1+yDq1TAVQ1/Mw0aNlprHiDN6GRfBMbKpt6bjwwSZbQl74wHFxRPVvbAEyuEc+lotwAvZt/xNTuLVe6oW++WyDqHSH00RzIQ/VKHOesQcavFClde6aqdNhWVLhcW1FAhtb8P+ugJUJlhs48dIM64GU4OnVybC1saXN0Mjg6aHR0cDovL3NlZWQ6ODA4MC9zdG9wcGVkLmJpbmU=\",\"download-dir\":\"/downloads\",\"paused\":true},\"tag\":13}",
+    "recordedAt": "2026-11-15T05:58:54.913Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=UTF-8",
+    "x-transmission-session-id": "<session-id>",
+    "set-cookie": "<omitted>"
+  },
+  "body": {
+    "tag": 13,
+    "result": "success",
+    "arguments": {
+      "torrent-added": {
+        "name": "stopped.bin",
+        "id": 3,
+        "hashString": "53AC3E699AA08E11DAD739081321DB0B879FE521"
+      }
+    }
+  }
+}

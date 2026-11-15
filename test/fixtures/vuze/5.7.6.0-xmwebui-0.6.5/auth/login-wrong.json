@@ -1,0 +1,13 @@
+{
+  "_source": {
+    "program": "vuze",
+    "version": "5.7.6.0-xmwebui-0.6.5",
+    "request": "POST /transmission/rpc (basic auth, wrong password)",
+    "recordedAt": "2026-11-15T05:58:50.386Z"
+  },
+  "status": 401,
+  "headers": {
+    "www-authenticate": "Basic realm=\"Vuze - Vuze Web Remote\""
+  },
+  "body": "Access Denied\r\n"
+}
