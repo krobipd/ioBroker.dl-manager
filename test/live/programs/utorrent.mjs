@@ -378,6 +378,9 @@ export async function record(ctx) {
   // queued one (200); unpause is to give each one back as it was, the forced one forced
   await gui(`action=forcestart&hash=${DEAD_MAGNET_HASH.toUpperCase()}`);
   await reach("magnet forced", async () => (await find(DEAD_MAGNET_HASH.toUpperCase()))?.[ROW.status] === 137, 15_000);
+  // run 43684983680 had no torrent waiting in the queue at this point: two active ones at most, so the others wait (200)
+  await gui("action=setsetting&s=max_active_torrent&v=2");
+  await reach("some waiting", async () => (await list()).some(t => (Number(t[ROW.status]) & (1 | 64)) === 64), 30_000);
   const before = new Map((await list()).map(t => [String(t[ROW.hash]), Number(t[ROW.status])]));
   console.log("before pause-list:", JSON.stringify(Object.fromEntries(before)));
   const pausable = [...before].filter(([, st]) => (st & 32) === 0 && (st & (1 | 64)) !== 0).map(([h]) => h);
@@ -390,6 +393,8 @@ export async function record(ctx) {
         .every(t => (Number(t[ROW.status]) & 32) === 32),
     30_000,
   );
+  // whether a paused one that waited starts when its turn comes
+  await new Promise(r => setTimeout(r, 5000));
   await snapshot("all-paused");
   w("commands", "unpause-list", await gui(`action=unpause&${pausable.map(h => `hash=${h}`).join("&")}`));
   await reach("listed unpaused", async () => (await list()).every(t => (Number(t[ROW.status]) & 32) === 0), 30_000);
@@ -398,6 +403,7 @@ export async function record(ctx) {
     "after unpause-list:",
     JSON.stringify(Object.fromEntries((await list()).map(t => [String(t[ROW.hash]), t[ROW.status]]))),
   );
+  await gui("action=setsetting&s=max_active_torrent&v=10");
 
   // remove one without its data, then an unknown hash
   w("commands", "remove", await gui(`action=remove&${hashes(["queued"])}`));
