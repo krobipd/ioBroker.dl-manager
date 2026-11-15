@@ -289,8 +289,8 @@ export async function record(ctx) {
   // allow_incoming,try_outgoing,enable_retry`) and rqbit speaks none — not the cause of 0.9.8's stuck first download
   // (red with and without it), kept so the handshake is one thing less in question
   await rpc("protocol.encryption.set", "", "allow_incoming", "enable_retry");
-  // rTorrent's own log of connections and peers, read when the first download does not start (0.9.8: three runs of
-  // four never connected to the seeder)
+  // rTorrent's own log of connections and peers, read when the first download does not start (it showed why 0.9.8
+  // never connected to the seeder in three runs of four — see `load`)
   const RT_LOG = "rt-debug.log";
   await rpc("log.open_file", "", "dbg", `${DOWNLOADS}/${RT_LOG}`).catch(err =>
     console.log(`rtorrent: log: ${err.message}`),
@@ -323,7 +323,16 @@ export async function record(ctx) {
   const load = async (name, withPeer) => {
     const res = await send("load.raw_start", ["", torrentOf(ctx.work, name).torrent, `d.directory.set=${DOWNLOADS}`]);
     if (withPeer) {
-      await waitFor(`${name} loaded`, async () => Boolean(await find(name)));
+      // the peer only once the start is through: 0.9.8 pauses and resumes a torrent it just loaded before its hash
+      // check, drops the handshake begun meanwhile ("Handshake dropped: download inactive", its debug log) and never
+      // tries that address again
+      await waitFor(
+        `${name} started`,
+        async () =>
+          Boolean(await find(name)) &&
+          Number(await rpc("d.is_hash_checked", hash(name))) === 1 &&
+          Number(await rpc("d.is_active", hash(name))) === 1,
+      );
       await rpc("add_peer", hash(name), peer);
     }
     return res;
@@ -336,7 +345,7 @@ export async function record(ctx) {
     "POST /RPC2 load.raw_start('', <.torrent>, d.directory.set=…)",
     await load("big", true),
   );
-  // the seeder is handed again every 10 s: one run of 0.9.8 waited 120 s on a first add_peer that never connected
+  // the seeder is handed again every 10 s — a second safety net next to the wait for the start in `load`
   let probes = 0;
   await waitFor(
     "big downloading",
