@@ -3,7 +3,9 @@
 // downloads_endpoint.py, core/restapi/settings_endpoint.py and core/versioning/restapi/versioning_endpoint.py (v8.0.7,
 // v8.4.3). The downloads come from the seed server's web seed (libtorrent reads BEP 19). Every add of the recorder asks
 // for 0 hops: the container has no Internet and no Tribler peer to build an anonymous circuit with — except one add in
-// the driver's shape ({uri} alone), which shows what a default installation's tunnel settings make of it.
+// the driver's shape ({uri} alone), which shows what a default installation's tunnel settings make of it. 8.0.7 only
+// ever switches safe seeding on (downloads_endpoint.py create_dconfig_from_params), so the default — on — stays: its
+// finished downloads seed over 1 hop.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import {
@@ -281,7 +283,7 @@ export async function record(ctx) {
     `PATCH /api/downloads/${hash("big")} {state: resume}`,
     await patch(hash("big"), { state: "resume" }),
   );
-  for (const h of halted.slice(1)) {
+  for (const h of halted.filter(h => h !== hash("big"))) {
     await patch(h, { state: "resume" });
   }
   await new Promise(resolve => setTimeout(resolve, 3000));
