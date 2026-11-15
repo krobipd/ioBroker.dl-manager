@@ -1,0 +1,13 @@
+{
+  "_source": {
+    "program": "rtorrent",
+    "version": "0.9.8",
+    "request": "POST /RPC2 system.multicall (one unknown method)",
+    "recordedAt": "2026-11-15T02:47:45.248Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "text/xml"
+  },
+  "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<methodResponse>\r\n<params>\r\n<param><value><array><data>\r\n<value><array><data>\r\n<value><i8>631611</i8></value>\r\n</data></array></value>\r\n<value><struct>\r\n<member><name>faultCode</name>\r\n<value><i4>-506</i4></value></member>\r\n<member><name>faultString</name>\r\n<value><string>Method 'no.such.method' not defined</string></value></member>\r\n</struct></value>\r\n</data></array></value></param>\r\n</params>\r\n</methodResponse>\r\n"
+}

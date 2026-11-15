@@ -7,6 +7,7 @@ import { NzbDriver } from "./nzbget/driver";
 import { PyDriver } from "./pyload/driver";
 import { QbDriver } from "./qbittorrent/driver";
 import { RqDriver } from "./rqbit/driver";
+import { RtDriver } from "./rtorrent/driver";
 import { SabDriver } from "./sabnzbd/driver";
 import { TrDriver } from "./transmission/driver";
 
@@ -22,6 +23,7 @@ const DRIVERS: Readonly<Record<ProgramType, (cfg: ProgramConfig, deps: DriverDep
   aria2: (cfg, deps) => new AriaDriver(cfg, deps),
   pyload: (cfg, deps) => new PyDriver(cfg, deps),
   rqbit: (cfg, deps) => new RqDriver(cfg, deps),
+  rtorrent: (cfg, deps) => new RtDriver(cfg, deps),
 };
 
 /** THE program list — one entry per catalog type. */

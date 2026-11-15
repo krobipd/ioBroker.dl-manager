@@ -1,0 +1,13 @@
+{
+  "_source": {
+    "program": "rtorrent",
+    "version": "0.16.25",
+    "request": "POST /RPC2 d.stop(<unknown hash>)",
+    "recordedAt": "2026-11-15T02:47:34.625Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "text/xml"
+  },
+  "body": "<?xml version=\"1.0\"?><methodResponse><fault><value><struct><member><name>faultCode</name><value><i8>-500</i8></value></member><member><name>faultString</name><value><string>invalid parameters: info-hash not found</string></value></member></struct></value></fault></methodResponse>"
+}

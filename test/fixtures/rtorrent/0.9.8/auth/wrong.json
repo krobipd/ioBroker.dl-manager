@@ -1,0 +1,14 @@
+{
+  "_source": {
+    "program": "rtorrent",
+    "version": "0.9.8",
+    "request": "POST /RPC2 system.client_version (wrong password)",
+    "recordedAt": "2026-11-15T02:47:07.932Z"
+  },
+  "status": 401,
+  "headers": {
+    "content-type": "text/html",
+    "www-authenticate": "Basic realm=\"rTorrent XMLRPC restricted access\""
+  },
+  "body": "<html>\r\n<head><title>401 Authorization Required</title></head>\r\n<body>\r\n<center><h1>401 Authorization Required</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n"
+}

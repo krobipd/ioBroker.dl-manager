@@ -235,6 +235,20 @@ function rqbit(url, init) {
   return json({});
 }
 
+// ---- rTorrent 0.16.25 (XML-RPC behind the web server's basic auth, every call by its method name) ----
+function rtorrent(url, init) {
+  const xml = (state, name, status = 200) =>
+    text(body("rtorrent", "0.16.25", state, name), status, { "content-type": status === 200 ? "text/xml" : "text/html" });
+  if (REJECTED) return xml("auth", "wrong", 401);
+  const call = String(init.body ?? "");
+  const method = /<methodName>([^<]*)<\/methodName>/.exec(call)?.[1];
+  if (method === "system.client_version") return xml("auth", "version");
+  // the poll; no recorded torrent carries the adapter's mark, so no other multicall is asked
+  if (method === "system.multicall") return call.includes("d.multicall2") ? xml("running", "poll") : text("", 404);
+  // every single command rTorrent answers with 0 (d.stop, d.start, d.erase, load.*, throttle.*.set — recorded alike)
+  return xml("commands", "d-stop");
+}
+
 const ROUTES = {
   "jdownloader.local": jdLocal,
   "api.jdownloader.org": myjd,
@@ -246,6 +260,7 @@ const ROUTES = {
   "aria2.local": aria2,
   "pyload.local": pyload,
   "rqbit.local": rqbit,
+  "rtorrent.local": rtorrent,
 };
 
 globalThis.fetch = async (input, init = {}) => {

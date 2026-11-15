@@ -138,6 +138,7 @@
   "hint_pyload": "pyLoad-ng 0.5 ou ultérieur. Une clé API est la connexion à privilégier ; l'utilisateur et le mot de passe fonctionnent aussi.",
   "hint_qbittorrent": "Activez l'interface web (Options → Interface web). À partir de qBittorrent 5.2, une clé API fonctionne aussi à la place de l'utilisateur et du mot de passe.",
   "hint_rqbit": "Par défaut, rqbit ne répond que sur 127.0.0.1 — lancez-le avec --http-api-listen-addr 0.0.0.0:3030 (l'image Docker le fait). Utilisateur et mot de passe seulement si RQBIT_HTTP_BASIC_AUTH_USERPASS est défini.",
+  "hint_rtorrent": "rTorrent ne répond en XML-RPC qu'à travers un serveur web placé devant lui (nginx, lighttpd, l'image ruTorrent) — indiquez l'adresse de ce serveur. Utilisateur et mot de passe sont l'identification HTTP du serveur web, s'il en demande une.",
   "hint_sabnzbd": "La clé API se trouve sous Config → General. SABnzbd refuse les noms d'hôte inconnus — saisissez une adresse IP ou ajoutez le nom à host_whitelist.",
   "hint_transmission": "Transmission ne répond qu'aux adresses de sa rpc-whitelist — ajoutez-y l'adresse du serveur ioBroker.",
   "itemError": "Erreur",

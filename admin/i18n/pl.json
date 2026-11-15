@@ -138,6 +138,7 @@
   "hint_pyload": "pyLoad-ng 0.5 lub nowszy. Zalecane logowanie to klucz API; użytkownik i hasło też działają.",
   "hint_qbittorrent": "Włącz interfejs WWW (Opcje → Interfejs WWW). Od qBittorrent 5.2 zamiast użytkownika i hasła działa też klucz API.",
   "hint_rqbit": "Domyślnie rqbit odpowiada tylko na 127.0.0.1 — uruchom go z --http-api-listen-addr 0.0.0.0:3030 (obraz Docker tak robi). Użytkownik i hasło tylko wtedy, gdy ustawiono RQBIT_HTTP_BASIC_AUTH_USERPASS.",
+  "hint_rtorrent": "rTorrent odpowiada na XML-RPC tylko przez serwer WWW przed nim (nginx, lighttpd, obraz ruTorrent) — wpisz adres tego serwera. Użytkownik i hasło to logowanie HTTP serwera WWW, jeśli go wymaga.",
   "hint_sabnzbd": "Klucz API jest w Config → General. SABnzbd odrzuca nieznane nazwy hostów — wpisz adres IP lub dodaj nazwę do host_whitelist.",
   "hint_transmission": "Transmission odpowiada tylko adresom z jego rpc-whitelist — dodaj tam adres serwera ioBroker.",
   "itemError": "Błąd",

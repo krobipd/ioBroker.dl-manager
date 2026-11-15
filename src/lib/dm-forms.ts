@@ -72,6 +72,7 @@ const HINT: Readonly<Record<ProgramType, I18nKey>> = {
   aria2: "hint_aria2",
   pyload: "hint_pyload",
   rqbit: "hint_rqbit",
+  rtorrent: "hint_rtorrent",
 };
 
 /**

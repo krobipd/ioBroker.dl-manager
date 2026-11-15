@@ -138,6 +138,7 @@
   "hint_pyload": "pyLoad-ng 0.5 或更高版本。推荐使用 API 密钥登录；用户名和密码也可以。",
   "hint_qbittorrent": "请启用 Web UI（选项 → Web UI）。从 qBittorrent 5.2 起，也可以用 API 密钥代替用户名和密码。",
   "hint_rqbit": "rqbit 默认只在 127.0.0.1 上响应——请用 --http-api-listen-addr 0.0.0.0:3030 启动（Docker 镜像已这样做）。只有设置了 RQBIT_HTTP_BASIC_AUTH_USERPASS 时才需要用户名和密码。",
+  "hint_rtorrent": "rTorrent 只通过其前面的 Web 服务器（nginx、lighttpd、ruTorrent 镜像）响应 XML-RPC——请填写该服务器的地址。用户名和密码是 Web 服务器的 HTTP 登录信息（如果它要求的话）。",
   "hint_sabnzbd": "API 密钥在 Config → General 中。SABnzbd 会拒绝未知的主机名——请填写 IP 地址或把主机名加入 host_whitelist。",
   "hint_transmission": "Transmission 只响应其 rpc-whitelist 中的地址——请把 ioBroker 服务器的地址加进去。",
   "itemError": "错误",

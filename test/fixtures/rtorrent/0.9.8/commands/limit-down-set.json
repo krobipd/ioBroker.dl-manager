@@ -1,0 +1,13 @@
+{
+  "_source": {
+    "program": "rtorrent",
+    "version": "0.9.8",
+    "request": "POST /RPC2 throttle.global_down.max_rate.set('', 2048000)",
+    "recordedAt": "2026-11-15T02:47:14.150Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "text/xml"
+  },
+  "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<methodResponse>\r\n<params>\r\n<param><value><i4>0</i4></value></param>\r\n</params>\r\n</methodResponse>\r\n"
+}

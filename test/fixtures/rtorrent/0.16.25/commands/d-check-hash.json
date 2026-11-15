@@ -1,0 +1,13 @@
+{
+  "_source": {
+    "program": "rtorrent",
+    "version": "0.16.25",
+    "request": "POST /RPC2 d.check_hash(E6739AEAD82F3BEFD4630694F10091769D00DDF1)",
+    "recordedAt": "2026-11-15T02:47:03.490Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "text/xml"
+  },
+  "body": "<?xml version=\"1.0\"?><methodResponse><params><param><value><i8>0</i8></value></param></params></methodResponse>"
+}

@@ -138,6 +138,7 @@
   "hint_pyload": "pyLoad-ng 0.5 або новіший. Бажаний вхід — ключ API; користувач і пароль теж підходять.",
   "hint_qbittorrent": "Увімкніть веб-інтерфейс (Параметри → Веб-інтерфейс). Починаючи з qBittorrent 5.2 замість користувача та пароля підходить ключ API.",
   "hint_rqbit": "Типово rqbit відповідає лише на 127.0.0.1 — запустіть його з --http-api-listen-addr 0.0.0.0:3030 (образ Docker так і робить). Користувач і пароль потрібні, лише якщо задано RQBIT_HTTP_BASIC_AUTH_USERPASS.",
+  "hint_rtorrent": "rTorrent відповідає на XML-RPC лише через вебсервер перед ним (nginx, lighttpd, образ ruTorrent) — вкажіть адресу цього сервера. Користувач і пароль — це HTTP-вхід вебсервера, якщо він його вимагає.",
   "hint_sabnzbd": "Ключ API знаходиться в Config → General. SABnzbd відхиляє невідомі імена хостів — вкажіть IP-адресу або додайте ім'я до host_whitelist.",
   "hint_transmission": "Transmission відповідає лише адресам зі свого rpc-whitelist — додайте туди адресу сервера ioBroker.",
   "itemError": "Помилка",

@@ -138,6 +138,7 @@
   "hint_pyload": "pyLoad-ng ab 0.5. Ein API-Schlüssel ist die bevorzugte Anmeldung; Benutzer und Passwort gehen auch.",
   "hint_qbittorrent": "Die Web-UI muss eingeschaltet sein (Optionen → Web-UI). Ab qBittorrent 5.2 geht statt Benutzer und Passwort auch ein API-Schlüssel.",
   "hint_rqbit": "rqbit antwortet von Haus aus nur auf 127.0.0.1 — mit --http-api-listen-addr 0.0.0.0:3030 starten (das Docker-Image tut das). Benutzer und Passwort nur, wenn RQBIT_HTTP_BASIC_AUTH_USERPASS gesetzt ist.",
+  "hint_rtorrent": "rTorrent antwortet auf XML-RPC nur über einen Webserver davor (nginx, lighttpd, das ruTorrent-Image) — dessen Adresse eintragen. Benutzer und Passwort sind die HTTP-Anmeldung des Webservers, wenn er eine verlangt.",
   "hint_sabnzbd": "Der API-Schlüssel steht unter Konfiguration → Allgemein. SABnzbd lehnt unbekannte Hostnamen ab — eine IP-Adresse eintragen oder den Namen in host_whitelist aufnehmen.",
   "hint_transmission": "Transmission antwortet nur Adressen aus seiner rpc-whitelist — die Adresse des ioBroker-Servers dort eintragen.",
   "itemError": "Fehler",

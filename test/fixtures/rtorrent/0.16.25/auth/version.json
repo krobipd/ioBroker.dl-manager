@@ -1,0 +1,13 @@
+{
+  "_source": {
+    "program": "rtorrent",
+    "version": "0.16.25",
+    "request": "POST /RPC2 system.client_version",
+    "recordedAt": "2026-11-15T02:46:58.872Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "text/xml"
+  },
+  "body": "<?xml version=\"1.0\"?><methodResponse><params><param><value><string>0.16.25</string></value></param></params></methodResponse>"
+}

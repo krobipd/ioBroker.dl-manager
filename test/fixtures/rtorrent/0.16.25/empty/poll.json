@@ -1,0 +1,13 @@
+{
+  "_source": {
+    "program": "rtorrent",
+    "version": "0.16.25",
+    "request": "POST /RPC2 system.multicall (global rates and limits, d.multicall2 main)",
+    "recordedAt": "2026-11-15T02:46:58.916Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "text/xml"
+  },
+  "body": "<?xml version=\"1.0\"?><methodResponse><params><param><value><array><data><value><array><data><value><i8>0</i8></value></data></array></value><value><array><data><value><i8>0</i8></value></data></array></value><value><array><data><value><i8>0</i8></value></data></array></value><value><array><data><value><i8>0</i8></value></data></array></value><value><array><data><value><array><data/></array></value></data></array></value></data></array></value></param></params></methodResponse>"
+}
