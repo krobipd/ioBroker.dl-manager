@@ -1,0 +1,14 @@
+{
+  "_source": {
+    "program": "nzbvortex",
+    "version": "doc-1.7",
+    "request": "GET /api/nzb/add?url=…&sessionid=…",
+    "recordedAt": "no capture",
+    "origin": "NZBVortex Network API documentation rev. 1.7 (API level 2.3, NZBVortex 3.2.0, nzbvortex.com/developerconnect), p. 17–18 (add_uuid from API level 2.3); the uuid is the adapter's own"
+  },
+  "status": 200,
+  "body": {
+    "result": "ok",
+    "add_uuid": "{0D4E1F2A-0000-4000-8000-000000000021}"
+  }
+}

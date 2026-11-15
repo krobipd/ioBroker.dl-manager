@@ -1,0 +1,15 @@
+{
+  "_source": {
+    "program": "nzbvortex",
+    "version": "doc-1.7",
+    "request": "GET /api/auth/login?nonce=…&cnonce=…&hash=…",
+    "recordedAt": "2016-03-03, a running NZBVortex",
+    "origin": "Sonarr/Sonarr issue #1168, attachment nzbdrone.copy.txt (Sonarr's trace of a running NZBVortex, 2016-03-03; the NZBVortex version is not named), line 4588; the session id replaced"
+  },
+  "status": 200,
+  "body": {
+    "result": "ok",
+    "loginResult": "successful",
+    "sessionID": "22222222-2222-2222-2222-222222222222"
+  }
+}

@@ -6,6 +6,7 @@ import { DsDriver } from "./downloadstation/driver";
 import { FloodDriver } from "./flood/driver";
 import { JdDriver } from "./jdownloader/driver";
 import { NzbDriver } from "./nzbget/driver";
+import { NvDriver } from "./nzbvortex/driver";
 import { PyDriver } from "./pyload/driver";
 import { QbDriver } from "./qbittorrent/driver";
 import { RqDriver } from "./rqbit/driver";
@@ -35,6 +36,7 @@ const DRIVERS: Readonly<Record<ProgramType, (cfg: ProgramConfig, deps: DriverDep
   utorrent: (cfg, deps) => new UtDriver(cfg, deps),
   hadouken: (cfg, deps) => new HkDriver(cfg, deps),
   downloadstation: (cfg, deps) => new DsDriver(cfg, deps),
+  nzbvortex: (cfg, deps) => new NvDriver(cfg, deps),
 };
 
 /** THE program list — one entry per catalog type. */

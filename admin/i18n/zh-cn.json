@@ -138,6 +138,7 @@
   "hint_jdownloader": "在 JDownloader 的高级设置中启用“DeprecatedApi”。该接口没有密码——只在同一台计算机或同一 Docker 网络中使用。",
   "hint_jdownloaderCloud": "使用 My.JDownloader 账户登录。接着选择此条目查询该账户中的哪个 JDownloader。My.JDownloader 最多每 30 秒查询一次。",
   "hint_nzbget": "用户名和密码即 Settings → Security 中的 ControlUsername 和 ControlPassword。",
+  "hint_nzbvortex": "请在 NZBVortex 中开启 Preferences → Remote → Web interface，并从 NZBVortex 的偏好设置中获取 API 密钥。若启用了 IP 白名单，请把 ioBroker 的地址加入其中。NZBVortex 使用自带的自签名证书提供 HTTPS，适配器会不经校验地接受它；若在 NZBVortex 中关闭了 SSL，此处也请关闭 HTTPS。",
   "hint_pyload": "pyLoad-ng 0.5 或更高版本。推荐使用 API 密钥登录；用户名和密码也可以。",
   "hint_qbittorrent": "请启用 Web UI（选项 → Web UI）。从 qBittorrent 5.2 起，也可以用 API 密钥代替用户名和密码。",
   "hint_rqbit": "rqbit 默认只在 127.0.0.1 上响应——请用 --http-api-listen-addr 0.0.0.0:3030 启动（Docker 镜像已这样做）。只有设置了 RQBIT_HTTP_BASIC_AUTH_USERPASS 时才需要用户名和密码。",

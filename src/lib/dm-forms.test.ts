@@ -74,7 +74,11 @@ describe("rows and dialog data", () => {
   it("opens pyLoad on the API key and qBittorrent on user and password", () => {
     expect(emptyForm("pyload").login).toBe("key");
     expect(emptyForm("qbittorrent").login).toBe("user");
-    expect(emptyForm("deluge")).toMatchObject({ enabled: true, advanced: false, mode: "local" });
+    expect(emptyForm("deluge")).toMatchObject({ enabled: true, advanced: false, https: false, mode: "local" });
+  });
+
+  it("opens NZBVortex with HTTPS on, as the program answers out of the box", () => {
+    expect(emptyForm("nzbvortex")).toMatchObject({ advanced: true, https: true, login: "user" });
   });
 
   it("reads a stored row into the dialog: login, advanced part, switch-off", () => {

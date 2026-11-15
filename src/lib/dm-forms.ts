@@ -79,6 +79,7 @@ const HINT: Readonly<Record<ProgramType, I18nKey>> = {
   utorrent: "hint_utorrent",
   hadouken: "hint_hadouken",
   downloadstation: "hint_downloadstation",
+  nzbvortex: "hint_nzbvortex",
 };
 
 /**
@@ -129,18 +130,21 @@ export function rowToForm(row: SettingsRow): ProgramForm {
  * @returns the data of an empty dialog
  */
 export function emptyForm(type: ProgramType): ProgramForm {
+  const info = catalogEntry(type);
+  // a program that speaks HTTPS out of the box (NZBVortex) starts with the switch on and the advanced part open
+  const tls = info.tls === true;
   return {
     name: "",
     mode: "local",
     host: "",
     port: "",
-    login: catalogEntry(type).login === "keyOrUser" ? "key" : "user",
+    login: info.login === "keyOrUser" ? "key" : "user",
     needLogin: false,
     username: "",
     password: "",
     apiKey: "",
-    advanced: false,
-    https: false,
+    advanced: tls,
+    https: tls,
     path: "",
     enabled: true,
   };

@@ -1,0 +1,14 @@
+{
+  "_source": {
+    "program": "nzbvortex",
+    "version": "doc-1.7",
+    "request": "GET /api/app/appversion",
+    "recordedAt": "no capture",
+    "origin": "NZBVortex Network API documentation rev. 1.7 (API level 2.3, NZBVortex 3.2.0, nzbvortex.com/developerconnect), p. 13, the example"
+  },
+  "status": 200,
+  "body": {
+    "result": "ok",
+    "appversion": "2.9.0"
+  }
+}

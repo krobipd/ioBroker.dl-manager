@@ -50,7 +50,8 @@ export type ProgramType =
   | "vuze"
   | "utorrent"
   | "hadouken"
-  | "downloadstation";
+  | "downloadstation"
+  | "nzbvortex";
 
 /** One program type. */
 export interface ProgramInfo {
@@ -66,6 +67,8 @@ export interface ProgramInfo {
   readonly path: string;
   /** How the program is logged into. */
   readonly login: Login;
+  /** The program answers over HTTPS out of the box — a new settings dialog starts with HTTPS on. */
+  readonly tls?: boolean;
 }
 
 /** THE list of program types, in the order the settings dialog offers them. */
@@ -105,6 +108,9 @@ export const CATALOG: readonly ProgramInfo[] = [
     path: "",
     login: "requiredUser",
   },
+  // HTTPS on port 4321 with a self-signed certificate out of the box (Sonarr NzbVortexSettings.cs and NzbVortexProxy.cs;
+  // Network API documentation p. 6), the API below /api/
+  { type: "nzbvortex", label: "NZBVortex", family: "usenet", port: 4321, path: "", login: "apiKey", tls: true },
 ];
 
 /**

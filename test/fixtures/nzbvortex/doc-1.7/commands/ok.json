@@ -1,0 +1,13 @@
+{
+  "_source": {
+    "program": "nzbvortex",
+    "version": "doc-1.7",
+    "request": "GET /api/nzb/<id>/pause|resume|cancel?sessionid=…",
+    "recordedAt": "no capture",
+    "origin": "NZBVortex Network API documentation rev. 1.7 (API level 2.3, NZBVortex 3.2.0, nzbvortex.com/developerconnect), p. 19–24: every command answers this on success"
+  },
+  "status": 200,
+  "body": {
+    "result": "ok"
+  }
+}

@@ -138,6 +138,7 @@
   "hint_jdownloader": "Zet in JDownloader bij Geavanceerde instellingen “DeprecatedApi” aan. Die interface heeft geen wachtwoord — gebruik hem alleen op dezelfde computer of in hetzelfde Docker-netwerk.",
   "hint_jdownloaderCloud": "Meld je aan met je My.JDownloader-account. Daarna kies je welke JDownloader van het account deze vermelding opvraagt. My.JDownloader wordt hoogstens elke 30 s opgevraagd.",
   "hint_nzbget": "Gebruiker en wachtwoord zijn ControlUsername en ControlPassword onder Settings → Security.",
+  "hint_nzbvortex": "Schakel in NZBVortex Preferences → Remote → Web interface in en neem de API-sleutel over uit de voorkeuren van NZBVortex. Staat de IP-whitelist aan, voeg dan het adres van ioBroker toe. NZBVortex spreekt HTTPS met een eigen, zelfondertekend certificaat, dat de adapter zonder controle accepteert; is SSL in NZBVortex uitgeschakeld, schakel HTTPS hier dan ook uit.",
   "hint_pyload": "pyLoad-ng 0.5 of later. Een API-sleutel is de voorkeursaanmelding; gebruiker en wachtwoord werken ook.",
   "hint_qbittorrent": "Zet de Web-UI aan (Opties → Web-UI). Vanaf qBittorrent 5.2 werkt ook een API-sleutel in plaats van gebruiker en wachtwoord.",
   "hint_rqbit": "rqbit antwoordt standaard alleen op 127.0.0.1 — start het met --http-api-listen-addr 0.0.0.0:3030 (de Docker-image doet dat). Gebruiker en wachtwoord alleen als RQBIT_HTTP_BASIC_AUTH_USERPASS is ingesteld.",

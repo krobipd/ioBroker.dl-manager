@@ -84,6 +84,13 @@ export interface HttpOptions {
    * multipart body.
    */
   exactHeaderNames?: boolean;
+  /**
+   * Over TLS, accept the certificate without checking it, through node:https (the `exactHeaderNames` path; fetch takes no
+   * TLS options) — for a program that ships with a self-signed certificate and has no other (NZBVortex, Network API
+   * documentation p. 6: "the current default installation will use a self-signed certificate for HTTPS"). Plain HTTP
+   * keeps fetch.
+   */
+  selfSignedTls?: boolean;
 }
 
 /** The head of an answer as it arrives, and its body to follow — the same from fetch and from node:http. */
@@ -115,7 +122,7 @@ export function retryAfterMs(header: string | null, now: number): number {
 }
 
 /**
- * fetch (or node:http, `exactHeaderNames`) with a deadline on the adapter's timers, JSON and form bodies, a cookie jar per
+ * fetch (or node:http(s), `exactHeaderNames` and `selfSignedTls`) with a deadline on the adapter's timers, JSON and form bodies, a cookie jar per
  * program and no redirects — a redirect from a download program's API means a login page or a wrong path, never the
  * answer.
  */
@@ -184,12 +191,14 @@ export class HttpClient {
       throw new UnreachableError(`rate limited (HTTP 429) — next call in ${Math.ceil(remaining / 1000)} s`);
     }
     const headers: Record<string, string> = { ...req.headers };
+    const unchecked = this.opts.selfSignedTls === true && req.url.startsWith("https:");
+    const exact = this.opts.exactHeaderNames === true || unchecked;
     let body: string | FormData | undefined = req.body;
     if (req.json !== undefined) {
       headers["content-type"] = "application/json";
       body = JSON.stringify(req.json);
     } else if (req.multipart) {
-      if (this.opts.exactHeaderNames) {
+      if (exact) {
         throw new ProtocolError("a multipart body is sent through fetch only");
       }
       const form = new FormData();
@@ -227,8 +236,15 @@ export class HttpClient {
     try {
       const send = async (taken: CallPlace | undefined): Promise<Answer> => {
         try {
-          const pending = this.opts.exactHeaderNames
-            ? exactSend(req.method, req.url, headers, typeof body === "string" ? body : undefined, abort.signal)
+          const pending = exact
+            ? exactSend(
+                req.method,
+                req.url,
+                headers,
+                typeof body === "string" ? body : undefined,
+                abort.signal,
+                unchecked,
+              )
             : fetch(req.url, { method: req.method, headers, body, redirect: "manual", signal: abort.signal }).then(
                 (r): Answer => ({
                   status: r.status,
@@ -311,6 +327,7 @@ export class HttpClient {
  * @param headers request headers
  * @param body request body
  * @param signal gives the request up
+ * @param unchecked over TLS, accept the program's certificate without checking it (`selfSignedTls`)
  * @returns the answer's head
  */
 function exactSend(
@@ -319,15 +336,20 @@ function exactSend(
   headers: Record<string, string>,
   body: string | undefined,
   signal: AbortSignal,
+  unchecked = false,
 ): Promise<Answer> {
   return new Promise<Answer>((resolve, reject) => {
     const data = body === undefined ? undefined : Buffer.from(body);
     const target = new URL(url);
-    const req = (target.protocol === "https:" ? httpsRequest : httpRequest)(target, {
+    const options = {
       method,
-      agent: false,
+      agent: false as const,
       headers: data ? { ...headers, "Content-Length": String(data.length) } : headers,
-    });
+    };
+    const req =
+      target.protocol === "https:"
+        ? httpsRequest(target, unchecked ? { ...options, rejectUnauthorized: false } : options)
+        : httpRequest(target, options);
     // once the head is out, a failure breaks the body instead
     let breakBody: ((err: unknown) => void) | undefined;
     const fail = (err: unknown): void => {

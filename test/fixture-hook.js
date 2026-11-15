@@ -347,6 +347,31 @@ function downloadstation(url, init) {
   return json(r ? body("downloadstation", DS, r[0], r[1]) : { error: { code: 103 }, success: false });
 }
 
+// ---- NZBVortex (Network API: a nonce, a login with the hash, GETs below /api/ with the session) ----
+// No recording: captures in Sonarr's logs and the examples of the Network API documentation rev. 1.7, the queue built
+// after it (test/fixtures/nzbvortex/SOURCES.md). A lapsed or missing session answers 403 not_logged_in.
+const NV = "doc-1.7";
+const NV_SESSION = "22222222-2222-2222-2222-222222222222";
+const NV_READS = {
+  "/api/app/appversion": ["app", "appversion"],
+  "/api/nzb": ["queue", "list"],
+  "/api/nzb/add": ["commands", "add"],
+  "/api/speedlimit": ["speedlimit", "get"],
+  "/api/speedlimit/enable": ["speedlimit", "enable"],
+  "/api/speedlimit/disable": ["speedlimit", "disable"],
+};
+function nzbvortex(url) {
+  if (url.pathname === "/api/auth/nonce") return json(body("nzbvortex", NV, "auth", "nonce"));
+  if (url.pathname === "/api/auth/login")
+    return json(body("nzbvortex", NV, "auth", REJECTED ? "login-failed" : "login"));
+  if (url.searchParams.get("sessionid") !== NV_SESSION)
+    return json(body("nzbvortex", NV, "auth", "not-logged-in"), 403);
+  if (/^\/api\/nzb\/\d+\/(pause|resume|cancel)$/.test(url.pathname))
+    return json(body("nzbvortex", NV, "commands", "ok"));
+  const r = NV_READS[url.pathname];
+  return r ? json(body("nzbvortex", NV, r[0], r[1])) : json({ result: "unknown_command" }, 404);
+}
+
 // ---- Hadouken 5.2.0 (JSON-RPC behind basic auth) ----
 // The adapter sends through node:http (Hadouken reads a body only behind the header named exactly "Content-Length"), so
 // the answers come from a real server on loopback: the network hook's hang and outage act on the socket, a request
@@ -422,6 +447,7 @@ const ROUTES = {
   "vuze.local": vuze,
   "utorrent.local": utorrent,
   "downloadstation.local": downloadstation,
+  "nzbvortex.local": nzbvortex,
 };
 
 globalThis.fetch = async (input, init = {}) => {

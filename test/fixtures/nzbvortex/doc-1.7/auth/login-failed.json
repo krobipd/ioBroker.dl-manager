@@ -1,0 +1,13 @@
+{
+  "_source": {
+    "program": "nzbvortex",
+    "version": "doc-1.7",
+    "request": "GET /api/auth/login?nonce=…&cnonce=…&hash=…",
+    "recordedAt": "no capture",
+    "origin": "NZBVortex Network API documentation rev. 1.7 (API level 2.3, NZBVortex 3.2.0, nzbvortex.com/developerconnect), p. 11, the example of a refused login — no capture of one exists"
+  },
+  "status": 200,
+  "body": {
+    "loginResult": "failed"
+  }
+}

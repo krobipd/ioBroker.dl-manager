@@ -1,0 +1,13 @@
+{
+  "_source": {
+    "program": "nzbvortex",
+    "version": "doc-1.7",
+    "request": "GET /api/nzb?…&sessionid=…",
+    "recordedAt": "2017-10-25, a running NZBVortex",
+    "origin": "Sonarr forum thread 16517 (forums.sonarr.tv/raw/16517), post 1: Sonarr v2.0.0.4949's log of a running NZBVortex, 403.Forbidden with this body for a lapsed session"
+  },
+  "status": 403,
+  "body": {
+    "result": "not_logged_in"
+  }
+}

@@ -406,6 +406,8 @@ const PROGRAM_ROWS = [
     "Download Station",
     { host: "downloadstation.local", port: 5000, username: "admin", password: "fixture" },
   ],
+  // with SSL switched off in NZBVortex: the fixture hook answers fetch, the HTTPS path goes through node:https
+  ["nzbvortex", "NZBVortex", { host: "nzbvortex.local", port: 4321, apiKey: "fixture" }],
 ];
 /**
  * Device id of each row: the program and the machine it runs on, My.JDownloader the last four characters of the id

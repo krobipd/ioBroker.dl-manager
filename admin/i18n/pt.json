@@ -138,6 +138,7 @@
   "hint_jdownloader": "No JDownloader, ative “DeprecatedApi” nas Definições avançadas. Esta interface não tem palavra-passe — use-a só no mesmo computador ou na mesma rede Docker.",
   "hint_jdownloaderCloud": "Inicie sessão com a sua conta My.JDownloader. Depois escolhe que JDownloader da conta esta entrada consulta. O My.JDownloader é consultado no máximo a cada 30 s.",
   "hint_nzbget": "Utilizador e palavra-passe são ControlUsername e ControlPassword em Settings → Security.",
+  "hint_nzbvortex": "No NZBVortex, ative Preferences → Remote → Web interface e copie a chave de API das preferências do NZBVortex. Com a lista branca de IP ativa, adicione-lhe o endereço do ioBroker. O NZBVortex fala HTTPS com um certificado próprio autoassinado, que o adaptador aceita sem o verificar; com o SSL desligado no NZBVortex, desligue também aqui o HTTPS.",
   "hint_pyload": "pyLoad-ng 0.5 ou posterior. Uma chave de API é o início de sessão preferido; utilizador e palavra-passe também funcionam.",
   "hint_qbittorrent": "Ative a Web UI (Opções → Web UI). A partir do qBittorrent 5.2 funciona também uma chave de API em vez de utilizador e palavra-passe.",
   "hint_rqbit": "Por omissão, o rqbit só responde em 127.0.0.1 — inicie-o com --http-api-listen-addr 0.0.0.0:3030 (a imagem Docker já o faz). Utilizador e palavra-passe só quando RQBIT_HTTP_BASIC_AUTH_USERPASS estiver definido.",

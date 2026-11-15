@@ -1,0 +1,14 @@
+{
+  "_source": {
+    "program": "nzbvortex",
+    "version": "doc-1.7",
+    "request": "GET /api/auth/nonce",
+    "recordedAt": "2016-03-03, a running NZBVortex",
+    "origin": "Sonarr/Sonarr issue #1168, attachment nzbdrone.copy.txt (Sonarr's trace of a running NZBVortex, 2016-03-03; the NZBVortex version is not named), line 4586; the nonce replaced"
+  },
+  "status": 200,
+  "body": {
+    "result": "ok",
+    "authNonce": "11111111-1111-1111-1111-111111111111"
+  }
+}
