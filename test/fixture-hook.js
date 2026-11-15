@@ -267,6 +267,27 @@ function tribler(url, init) {
   return json(body("tribler", "8.4.2", "commands", "patch-resume"));
 }
 
+// ---- Flood 4.16.4 in front of qBittorrent (REST, the session in the cookie jwt) ----
+// `missing` is the state with the most statuses at once: downloading, waiting, seeding, stopped, failed
+const FL_READS = {
+  "GET /api/openapi.json": ["auth", "openapi"],
+  "GET /api/torrents": ["missing", "torrents"],
+  "GET /api/client/settings": ["missing", "settings"],
+};
+function flood(url, init) {
+  const method = init.method ?? "GET";
+  if (url.pathname === "/api/auth/authenticate") {
+    return REJECTED
+      ? json(body("flood", "4.16.4-qbittorrent", "auth", "authenticate-wrong"), 401)
+      : json(body("flood", "4.16.4-qbittorrent", "auth", "authenticate-ok"), 200, { "set-cookie": "jwt=fixture; HttpOnly" });
+  }
+  const r = FL_READS[`${method} ${url.pathname}`];
+  if (r) return json(body("flood", "4.16.4-qbittorrent", r[0], r[1]));
+  // an add names no hash for a magnet (recorded 202 []); stop, start, delete and the settings write answer nothing
+  if (url.pathname === "/api/torrents/add-urls") return json(body("flood", "4.16.4-qbittorrent", "commands", "add-urls-magnet"), 202);
+  return text("");
+}
+
 const ROUTES = {
   "jdownloader.local": jdLocal,
   "api.jdownloader.org": myjd,
@@ -280,6 +301,7 @@ const ROUTES = {
   "rqbit.local": rqbit,
   "rtorrent.local": rtorrent,
   "tribler.local": tribler,
+  "flood.local": flood,
 };
 
 globalThis.fetch = async (input, init = {}) => {

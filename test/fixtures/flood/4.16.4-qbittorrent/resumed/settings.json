@@ -1,0 +1,37 @@
+{
+  "_source": {
+    "program": "flood",
+    "version": "4.16.4-qbittorrent",
+    "request": "GET /api/client/settings",
+    "recordedAt": "2026-11-15T04:57:11.149Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=utf-8"
+  },
+  "body": {
+    "dht": false,
+    "dhtPort": 1187,
+    "directoryDefault": "/downloads",
+    "networkHttpMaxOpen": 500,
+    "networkLocalAddress": [""],
+    "networkMaxOpenFiles": 0,
+    "networkPortOpen": true,
+    "networkPortRandom": false,
+    "networkPortRange": "1187",
+    "piecesHashOnCompletion": false,
+    "piecesMemoryMax": 0,
+    "protocolPex": false,
+    "throttleGlobalDownSpeed": 0,
+    "throttleGlobalUpSpeed": 0,
+    "throttleMaxPeersNormal": 0,
+    "throttleMaxPeersSeed": 0,
+    "throttleMaxDownloads": 0,
+    "throttleMaxDownloadsGlobal": 0,
+    "throttleMaxUploads": 4,
+    "throttleMaxUploadsGlobal": 20,
+    "throttleMinPeersNormal": 0,
+    "throttleMinPeersSeed": 0,
+    "trackersNumWant": 0
+  }
+}

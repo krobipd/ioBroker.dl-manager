@@ -74,6 +74,7 @@ const HINT: Readonly<Record<ProgramType, I18nKey>> = {
   rqbit: "hint_rqbit",
   rtorrent: "hint_rtorrent",
   tribler: "hint_tribler",
+  flood: "hint_flood",
 };
 
 /**

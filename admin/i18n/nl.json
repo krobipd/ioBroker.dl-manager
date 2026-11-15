@@ -132,6 +132,7 @@
   "help_treeScope": "Welke downloads een eigen kanaal krijgen. Het programma houdt ze allemaal, en de totalen tellen altijd elke download.",
   "hint_aria2": "aria2 moet draaien met --enable-rpc. Het RPC-geheim is de waarde van --rpc-secret.",
   "hint_deluge": "De Web UI-plug-in moet draaien. Deluge vraagt om het wachtwoord van de webinterface, niet om een gebruiker.",
+  "hint_flood": "Vul het adres van Flood zelf in (poort 3000, tenzij gestart met een andere --port) en de gebruiker waarmee je bij Flood inlogt — niet de aanmelding van het torrentprogramma erachter. Een met --auth none gestarte Flood heeft geen van beide nodig.",
   "hint_jdownloader": "Zet in JDownloader bij Geavanceerde instellingen “DeprecatedApi” aan. Die interface heeft geen wachtwoord — gebruik hem alleen op dezelfde computer of in hetzelfde Docker-netwerk.",
   "hint_jdownloaderCloud": "Meld je aan met je My.JDownloader-account. Daarna kies je welke JDownloader van het account deze vermelding opvraagt. My.JDownloader wordt hoogstens elke 30 s opgevraagd.",
   "hint_nzbget": "Gebruiker en wachtwoord zijn ControlUsername en ControlPassword onder Settings → Security.",

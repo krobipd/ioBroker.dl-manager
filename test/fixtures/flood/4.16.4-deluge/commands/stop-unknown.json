@@ -1,0 +1,16 @@
+{
+  "_source": {
+    "program": "flood",
+    "version": "4.16.4-deluge",
+    "request": "POST /api/torrents/stop {hashes: [unknown]}",
+    "recordedAt": "2026-11-15T04:57:17.557Z"
+  },
+  "status": 500,
+  "headers": {
+    "content-type": "application/json; charset=utf-8"
+  },
+  "body": {
+    "code": "INTERNAL_SERVER_ERROR",
+    "message": "\"WrappedException\": [\"'ffffffffffffffffffffffffffffffffffffffff'\",\"KeyError\",\"Traceback (most recent call last):\\n  File \\\"/lsiopy/lib/python3.12/site-packages/deluge/core/rpcserver.py\\\", line 342, in dispatch\\n    ret = self.factory.methods[method](*args, **kwargs)\\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\n  File \\\"/lsiopy/lib/python3.12/site-packages/deluge/core/core.py\\\", line 670, in pause_torrents\\n    self.pause_torrent(torrent_id)\\n  File \\\"/lsiopy/lib/python3.12/site-packages/deluge/core/core.py\\\", line 662, in pause_torrent\\n    self.torrentmanager[torrent_id].pause()\\n    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^\\n  File \\\"/lsiopy/lib/python3.12/site-packages/deluge/core/torrentmanager.py\\\", line 307, in __getitem__\\n    return self.torrents[torrent_id]\\n           ~~~~~~~~~~~~~^^^^^^^^^^^^\\nKeyError: 'ffffffffffffffffffffffffffffffffffffffff'\\n\"]"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "_source": {
+    "program": "flood",
+    "version": "4.11.0-transmission",
+    "request": "GET /api/torrents (no cookie)",
+    "recordedAt": "2026-11-15T04:56:30.787Z"
+  },
+  "status": 401,
+  "headers": {},
+  "body": "Unauthorized"
+}

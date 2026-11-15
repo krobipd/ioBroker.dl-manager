@@ -1,0 +1,13 @@
+{
+  "_source": {
+    "program": "flood",
+    "version": "4.16.4-deluge",
+    "request": "POST /api/torrents/add-files {files: [<.torrent>], start: false}",
+    "recordedAt": "2026-11-15T04:56:44.414Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=utf-8"
+  },
+  "body": ["53AC3E699AA08E11DAD739081321DB0B879FE521"]
+}

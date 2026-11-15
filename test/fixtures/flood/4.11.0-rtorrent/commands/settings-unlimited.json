@@ -1,0 +1,15 @@
+{
+  "_source": {
+    "program": "flood",
+    "version": "4.11.0-rtorrent",
+    "request": "PATCH /api/client/settings {...GET /api/client/settings, throttleGlobalDownSpeed: 0, throttleGlobalUpSpeed: 0}",
+    "recordedAt": "2026-11-15T04:43:57.426Z"
+  },
+  "status": 500,
+  "headers": {
+    "content-type": "application/json; charset=utf-8"
+  },
+  "body": {
+    "message": "Cannot read properties of undefined (reading 'methodCall')"
+  }
+}

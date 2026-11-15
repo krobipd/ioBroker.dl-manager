@@ -1,0 +1,18 @@
+{
+  "_source": {
+    "program": "flood",
+    "version": "4.16.4-deluge",
+    "request": "POST /api/auth/authenticate {username, password}",
+    "recordedAt": "2026-11-15T04:56:39.724Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=utf-8",
+    "set-cookie": "<omitted>"
+  },
+  "body": {
+    "success": true,
+    "username": "admin",
+    "level": 10
+  }
+}

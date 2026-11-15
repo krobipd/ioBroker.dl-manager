@@ -1,0 +1,16 @@
+{
+  "_source": {
+    "program": "flood",
+    "version": "4.16.4-deluge",
+    "request": "GET /api/torrents (no cookie)",
+    "recordedAt": "2026-11-15T04:56:39.729Z"
+  },
+  "status": 401,
+  "headers": {
+    "content-type": "application/json; charset=utf-8"
+  },
+  "body": {
+    "code": "FLOOD_UNAUTHORIZED",
+    "message": "Unauthorized"
+  }
+}

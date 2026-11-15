@@ -1,0 +1,13 @@
+{
+  "_source": {
+    "program": "flood",
+    "version": "4.16.4-rtorrent",
+    "request": "POST /api/torrents/add-urls {urls: [<magnet>], start: true}",
+    "recordedAt": "2026-11-15T04:56:42.311Z"
+  },
+  "status": 202,
+  "headers": {
+    "content-type": "application/json; charset=utf-8"
+  },
+  "body": []
+}

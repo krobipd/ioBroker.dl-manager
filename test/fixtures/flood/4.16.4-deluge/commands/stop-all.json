@@ -1,0 +1,13 @@
+{
+  "_source": {
+    "program": "flood",
+    "version": "4.16.4-deluge",
+    "request": "POST /api/torrents/stop {hashes: <every running>}",
+    "recordedAt": "2026-11-15T04:57:13.998Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=utf-8"
+  },
+  "body": ""
+}

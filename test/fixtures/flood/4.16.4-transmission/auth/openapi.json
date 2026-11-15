@@ -1,0 +1,19 @@
+{
+  "_source": {
+    "program": "flood",
+    "version": "4.16.4-transmission",
+    "request": "GET /api/openapi.json (kept: openapi, info)",
+    "recordedAt": "2026-11-15T04:56:34.053Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=utf-8"
+  },
+  "body": {
+    "openapi": "3.0.3",
+    "info": {
+      "title": "Flood API",
+      "version": "4.16.4"
+    }
+  }
+}

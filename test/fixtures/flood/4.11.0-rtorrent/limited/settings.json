@@ -1,0 +1,16 @@
+{
+  "_source": {
+    "program": "flood",
+    "version": "4.11.0-rtorrent",
+    "request": "GET /api/client/settings",
+    "recordedAt": "2026-11-15T04:43:57.423Z"
+  },
+  "status": 500,
+  "headers": {
+    "content-type": "application/json; charset=utf-8"
+  },
+  "body": {
+    "code": -32601,
+    "message": "method not found: false="
+  }
+}

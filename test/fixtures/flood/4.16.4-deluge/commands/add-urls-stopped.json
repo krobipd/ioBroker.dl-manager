@@ -1,0 +1,13 @@
+{
+  "_source": {
+    "program": "flood",
+    "version": "4.16.4-deluge",
+    "request": "POST /api/torrents/add-urls {urls: [http://seed:8080/late.torrent], start: false}",
+    "recordedAt": "2026-11-15T04:57:13.976Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=utf-8"
+  },
+  "body": ["DAEE86729B4ACBE6D96FC30FFF451A0F193D971F"]
+}

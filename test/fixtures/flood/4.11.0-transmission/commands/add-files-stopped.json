@@ -1,0 +1,13 @@
+{
+  "_source": {
+    "program": "flood",
+    "version": "4.11.0-transmission",
+    "request": "POST /api/torrents/add-files {files: [<.torrent>], start: false}",
+    "recordedAt": "2026-11-15T04:56:33.381Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=utf-8"
+  },
+  "body": ["53ac3e699aa08e11dad739081321db0b879fe521"]
+}

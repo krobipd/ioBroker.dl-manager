@@ -2,6 +2,7 @@ import type { DriverDeps, ProgramConfig, ProgramDriver, ProgramEntry } from "../
 import { CATALOG, needsOf, type ProgramType } from "./catalog";
 import { AriaDriver } from "./aria2/driver";
 import { DlDriver } from "./deluge/driver";
+import { FloodDriver } from "./flood/driver";
 import { JdDriver } from "./jdownloader/driver";
 import { NzbDriver } from "./nzbget/driver";
 import { PyDriver } from "./pyload/driver";
@@ -26,6 +27,7 @@ const DRIVERS: Readonly<Record<ProgramType, (cfg: ProgramConfig, deps: DriverDep
   rqbit: (cfg, deps) => new RqDriver(cfg, deps),
   rtorrent: (cfg, deps) => new RtDriver(cfg, deps),
   tribler: (cfg, deps) => new TblDriver(cfg, deps),
+  flood: (cfg, deps) => new FloodDriver(cfg, deps),
 };
 
 /** THE program list — one entry per catalog type. */

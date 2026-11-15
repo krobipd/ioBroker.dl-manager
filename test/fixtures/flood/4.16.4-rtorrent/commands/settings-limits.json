@@ -1,0 +1,16 @@
+{
+  "_source": {
+    "program": "flood",
+    "version": "4.16.4-rtorrent",
+    "request": "PATCH /api/client/settings {...GET /api/client/settings, throttleGlobalDownSpeed: 102400, throttleGlobalUpSpeed: 51200}",
+    "recordedAt": "2026-11-15T04:56:41.752Z"
+  },
+  "status": 500,
+  "headers": {
+    "content-type": "application/json; charset=utf-8"
+  },
+  "body": {
+    "code": -32602,
+    "message": "Tried to set local address to an any address."
+  }
+}

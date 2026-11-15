@@ -132,6 +132,7 @@
   "help_treeScope": "Que downloads recebem um canal próprio. O programa mantém todos, e os totais contam sempre cada download.",
   "hint_aria2": "O aria2 tem de correr com --enable-rpc. O segredo RPC é o valor de --rpc-secret.",
   "hint_deluge": "O plugin Web UI tem de estar a correr. O Deluge pede a palavra-passe da interface web, não um utilizador.",
+  "hint_flood": "Introduza o endereço do próprio Flood (porta 3000, a não ser que tenha sido iniciado com outro --port) e o utilizador com que inicia sessão no Flood — não o início de sessão do programa de torrents por trás dele. Um Flood iniciado com --auth none não precisa de nenhum dos dois.",
   "hint_jdownloader": "No JDownloader, ative “DeprecatedApi” nas Definições avançadas. Esta interface não tem palavra-passe — use-a só no mesmo computador ou na mesma rede Docker.",
   "hint_jdownloaderCloud": "Inicie sessão com a sua conta My.JDownloader. Depois escolhe que JDownloader da conta esta entrada consulta. O My.JDownloader é consultado no máximo a cada 30 s.",
   "hint_nzbget": "Utilizador e palavra-passe são ControlUsername e ControlPassword em Settings → Security.",

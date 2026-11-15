@@ -1,0 +1,16 @@
+{
+  "_source": {
+    "program": "flood",
+    "version": "4.16.4-deluge",
+    "request": "GET /api/client/settings",
+    "recordedAt": "2026-11-15T04:57:20.593Z"
+  },
+  "status": 500,
+  "headers": {
+    "content-type": "application/json; charset=utf-8"
+  },
+  "body": {
+    "code": "INTERNAL_SERVER_ERROR",
+    "message": "Cannot read properties of null (reading '0')"
+  }
+}

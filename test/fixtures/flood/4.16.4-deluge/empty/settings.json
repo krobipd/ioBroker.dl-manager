@@ -1,0 +1,37 @@
+{
+  "_source": {
+    "program": "flood",
+    "version": "4.16.4-deluge",
+    "request": "GET /api/client/settings",
+    "recordedAt": "2026-11-15T04:56:39.799Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=utf-8"
+  },
+  "body": {
+    "dht": false,
+    "dhtPort": 6881,
+    "directoryDefault": "/downloads",
+    "networkHttpMaxOpen": -1,
+    "networkLocalAddress": [""],
+    "networkMaxOpenFiles": -1,
+    "networkPortOpen": true,
+    "networkPortRandom": true,
+    "networkPortRange": "6881-6891",
+    "piecesHashOnCompletion": false,
+    "piecesMemoryMax": -1,
+    "protocolPex": false,
+    "throttleGlobalDownSpeed": -1,
+    "throttleGlobalUpSpeed": -1,
+    "throttleMaxPeersNormal": -1,
+    "throttleMaxPeersSeed": -1,
+    "throttleMaxDownloads": -1,
+    "throttleMaxDownloadsGlobal": -1,
+    "throttleMaxUploads": -1,
+    "throttleMaxUploadsGlobal": 4,
+    "throttleMinPeersNormal": -1,
+    "throttleMinPeersSeed": -1,
+    "trackersNumWant": -1
+  }
+}

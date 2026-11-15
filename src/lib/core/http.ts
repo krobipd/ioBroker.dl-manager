@@ -16,7 +16,10 @@ export interface HttpTimers {
 
 /** One request. */
 export interface HttpRequest {
-  /** HTTP method — Tribler's REST API also takes PUT (add), PATCH (stop, resume) and DELETE (remove). */
+  /**
+   * HTTP method — Tribler's REST API also takes PUT (add), PATCH (stop, resume) and DELETE (remove), Flood's PATCH
+   * (client settings).
+   */
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   /** Full URL. */
   url: string;

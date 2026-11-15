@@ -1,0 +1,16 @@
+{
+  "_source": {
+    "program": "flood",
+    "version": "4.16.4-transmission",
+    "request": "POST /api/torrents/add-urls {urls: [], start: true}",
+    "recordedAt": "2026-11-15T04:56:36.644Z"
+  },
+  "status": 400,
+  "headers": {
+    "content-type": "application/json; charset=utf-8"
+  },
+  "body": {
+    "code": "FST_ERR_VALIDATION",
+    "message": "body/urls Too small: expected array to have >=1 items"
+  }
+}

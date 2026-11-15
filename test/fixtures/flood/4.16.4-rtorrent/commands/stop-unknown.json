@@ -1,0 +1,16 @@
+{
+  "_source": {
+    "program": "flood",
+    "version": "4.16.4-rtorrent",
+    "request": "POST /api/torrents/stop {hashes: [unknown]}",
+    "recordedAt": "2026-11-15T04:57:23.710Z"
+  },
+  "status": 500,
+  "headers": {
+    "content-type": "application/json; charset=utf-8"
+  },
+  "body": {
+    "code": -32602,
+    "message": "invalid parameters: info-hash not found"
+  }
+}

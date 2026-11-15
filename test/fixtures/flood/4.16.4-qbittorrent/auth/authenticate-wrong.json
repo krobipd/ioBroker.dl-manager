@@ -1,0 +1,15 @@
+{
+  "_source": {
+    "program": "flood",
+    "version": "4.16.4-qbittorrent",
+    "request": "POST /api/auth/authenticate {username, password: wrong}",
+    "recordedAt": "2026-11-15T04:56:35.761Z"
+  },
+  "status": 401,
+  "headers": {
+    "content-type": "application/json; charset=utf-8"
+  },
+  "body": {
+    "message": "Failed login."
+  }
+}

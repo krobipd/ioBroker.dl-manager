@@ -1,0 +1,13 @@
+{
+  "_source": {
+    "program": "flood",
+    "version": "4.16.4-rtorrent",
+    "request": "POST /api/torrents/delete {hashes: [queued], deleteData: false}",
+    "recordedAt": "2026-11-15T04:57:23.691Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=utf-8"
+  },
+  "body": ""
+}

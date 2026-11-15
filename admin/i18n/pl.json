@@ -132,6 +132,7 @@
   "help_treeScope": "Które pobierania dostają własny kanał. Program zachowuje wszystkie, a sumy zawsze liczą każde pobieranie.",
   "hint_aria2": "aria2 musi działać z --enable-rpc. Sekret RPC to wartość --rpc-secret.",
   "hint_deluge": "Wtyczka Web UI musi działać. Deluge pyta o hasło interfejsu WWW, a nie o użytkownika.",
+  "hint_flood": "Wpisz adres samego Flood (port 3000, o ile nie uruchomiono go z innym --port) i użytkownika, którym logujesz się do Flood — nie dane logowania programu torrent za nim. Flood uruchomiony z --auth none nie potrzebuje ani jednego, ani drugiego.",
   "hint_jdownloader": "W JDownloader włącz „DeprecatedApi” w ustawieniach zaawansowanych. Ten interfejs nie ma hasła — używaj go tylko na tym samym komputerze lub w tej samej sieci Docker.",
   "hint_jdownloaderCloud": "Zaloguj się kontem My.JDownloader. Następnie wybierzesz, który JDownloader z konta odpytuje ten wpis. My.JDownloader jest odpytywany najwyżej co 30 s.",
   "hint_nzbget": "Użytkownik i hasło to ControlUsername i ControlPassword w Settings → Security.",

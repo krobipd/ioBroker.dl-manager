@@ -1,0 +1,35 @@
+{
+  "_source": {
+    "program": "flood",
+    "version": "4.16.4-rtorrent",
+    "request": "GET /api/client/settings",
+    "recordedAt": "2026-11-15T04:57:26.723Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=utf-8"
+  },
+  "body": {
+    "dht": true,
+    "dhtPort": 6881,
+    "directoryDefault": "/downloads/temp/",
+    "networkHttpMaxOpen": 128,
+    "networkLocalAddress": [""],
+    "networkMaxOpenFiles": 4096,
+    "networkPortRange": "50000-50000",
+    "piecesHashOnCompletion": true,
+    "piecesMemoryMax": 32768,
+    "protocolPex": true,
+    "throttleGlobalDownSpeed": 0,
+    "throttleGlobalUpSpeed": 0,
+    "throttleMaxDownloads": 50,
+    "throttleMaxDownloadsGlobal": 0,
+    "throttleMaxPeersNormal": 100,
+    "throttleMaxPeersSeed": 50,
+    "throttleMaxUploads": 15,
+    "throttleMaxUploadsGlobal": 0,
+    "throttleMinPeersNormal": 1,
+    "throttleMinPeersSeed": 1,
+    "trackersNumWant": -1
+  }
+}
