@@ -60,6 +60,7 @@ if (mode === "--inside") {
       "--network",
       "dm",
       ...(side.entrypoint ? ["--entrypoint", side.entrypoint] : []),
+      ...Object.entries(side.env ?? {}).flatMap(([k, v]) => ["-e", `${k}=${v}`]),
       ...(side.volumes ?? []).flatMap(v => ["-v", v]),
       side.image,
       ...(side.args ?? []),
@@ -71,7 +72,21 @@ if (mode === "--inside") {
   const net = c.internet ? [] : ["--network", "dm"];
   // `entrypoint`: a program that has to be started in two steps gets a script of its own (Tribler)
   const entry = c.entrypoint ? ["--entrypoint", c.entrypoint] : [];
-  sh("docker", ["run", "-d", "--name", c.name, ...net, ...envArgs, ...volArgs, ...entry, c.image, ...(c.args ?? [])]);
+  // `user`: a program that has to share a socket with a sidecar runs under the sidecar's ids (Flood with rTorrent)
+  const user = c.user ? ["--user", c.user] : [];
+  sh("docker", [
+    "run",
+    "-d",
+    "--name",
+    c.name,
+    ...net,
+    ...envArgs,
+    ...volArgs,
+    ...entry,
+    ...user,
+    c.image,
+    ...(c.args ?? []),
+  ]);
   if (c.internet) {
     sh("docker", ["network", "connect", "dm", c.name]);
   }

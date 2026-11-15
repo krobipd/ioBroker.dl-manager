@@ -12,9 +12,9 @@ import { DEAD_MAGNET, Http, prepareTorrents, Recorder, TORRENT_FILES, torrentOf,
 const USER = "admin";
 const PASS = "testpass1";
 const DOWNLOADS = "/downloads";
-const SEEDER = "ikatson/rqbit:9.1.0";
+export const SEEDER = "ikatson/rqbit:9.1.0";
 /** The seeder's upload limit: 1 MiB/s keeps the 32 MiB download running for half a minute. */
-const SEED_BPS = 1024 * 1024;
+export const SEED_BPS = 1024 * 1024;
 
 /** What one poll of the driver asks for every torrent (`d.multicall2` on the view `main`). */
 export const FIELDS = [
@@ -85,7 +85,7 @@ function value(v) {
  * @param {unknown[]} params parameters
  * @returns {string} the request body
  */
-const methodCall = (method, params) =>
+export const methodCall = (method, params) =>
   `<?xml version="1.0"?><methodCall><methodName>${method}</methodName><params>${params
     .map(p => `<param>${value(p)}</param>`)
     .join("")}</params></methodCall>`;
@@ -166,7 +166,7 @@ function fromValue(v) {
  * @param {string} text a `methodResponse`
  * @returns {{ value?: unknown, fault?: unknown }} the result or the fault
  */
-function parseResponse(text) {
+export function parseResponse(text) {
   const resp = xmlTree(text).children.find(c => c.name === "methodResponse");
   const fault = resp?.children.find(c => c.name === "fault");
   if (fault) {

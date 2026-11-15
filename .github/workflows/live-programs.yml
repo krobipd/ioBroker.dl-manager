@@ -74,6 +74,16 @@ jobs:
             tag: v8.0.7-75-g12eb5bab6
           - program: tribler
             tag: v8.4.2
+          - program: flood
+            tag: 4.11.0-rtorrent
+          - program: flood
+            tag: 4.16.4-rtorrent
+          - program: flood
+            tag: 4.16.4-qbittorrent
+          - program: flood
+            tag: 4.16.4-transmission
+          - program: flood
+            tag: 4.16.4-deluge
     # a manual start may name one program; the other matrix entries then skip every step
     env:
       SELECTED: ${{ inputs.program == '' || inputs.program == matrix.program }}
