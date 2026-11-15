@@ -2,25 +2,45 @@
 
 The adapter connects ioBroker to your download programs. Each program you add becomes a device, each of its
 downloads a channel with its own datapoints. Everything the adapter shows comes from the program itself; the adapter
-never downloads anything on its own and never deletes files.
+never downloads anything on its own and never asks a program to delete files.
 
 ## Supported programs
 
-| Program                        | Access                   | What you need                                                                                                                                                      |
-| ------------------------------ | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| JDownloader 2 (local)          | local API, port 3128     | In JDownloader: Settings → Advanced settings → `DeprecatedApiEnabled` on; if ioBroker runs on another computer or container, also `DeprecatedApiLocalhostOnly` off |
-| JDownloader 2 (My.JDownloader) | the My.JDownloader cloud | your My.JDownloader e-mail and password — the JDownloader is picked from your account                                                                              |
-| qBittorrent                    | Web UI, port 8080        | user and password of the Web UI, or an API key (qBittorrent 5.2 and newer)                                                                                         |
-| Transmission                   | RPC, port 9091           | user and password if you set one; the ioBroker host must be allowed in `rpc-whitelist`                                                                             |
-| Deluge                         | Web UI, port 8112        | the Web UI password                                                                                                                                                |
-| SABnzbd                        | API, port 8080           | the API key (Config → General)                                                                                                                                     |
-| NZBGet                         | API, port 6789           | control user and password                                                                                                                                          |
-| aria2                          | JSON-RPC, port 6800      | the RPC secret (`--rpc-secret`)                                                                                                                                    |
-| pyLoad                         | API, port 8000           | an API key (pyLoad 0.5.0b3.dev97 and newer) or user and password                                                                                                   |
+| Program                        | Access                                                | What you need                                                                                                                                                                               |
+| ------------------------------ | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| JDownloader 2 (local)          | local API, port 3128                                  | In JDownloader: Settings → Advanced settings → `DeprecatedApiEnabled` on; if ioBroker runs on another computer or container, also `DeprecatedApiLocalhostOnly` off                          |
+| JDownloader 2 (My.JDownloader) | the My.JDownloader cloud                              | your My.JDownloader e-mail and password — the JDownloader is picked from your account                                                                                                       |
+| qBittorrent                    | Web UI, port 8080                                     | user and password of the Web UI, or an API key (qBittorrent 5.2 and newer)                                                                                                                  |
+| Transmission                   | RPC, port 9091                                        | user and password if you set one; the ioBroker host must be allowed in `rpc-whitelist`                                                                                                      |
+| Deluge                         | Web UI, port 8112                                     | the Web UI password                                                                                                                                                                         |
+| SABnzbd                        | API, port 8080                                        | the API key (Config → General)                                                                                                                                                              |
+| NZBGet                         | API, port 6789                                        | control user and password                                                                                                                                                                   |
+| aria2                          | JSON-RPC, port 6800                                   | the RPC secret (`--rpc-secret`)                                                                                                                                                             |
+| pyLoad                         | API, port 8000                                        | an API key (pyLoad 0.5.0b3.dev97 and newer) or user and password                                                                                                                            |
+| rqbit                          | HTTP API, port 3030                                   | user and password only if rqbit runs with `RQBIT_HTTP_BASIC_AUTH_USERPASS`; rqbit answers only on 127.0.0.1 unless started with `--http-api-listen-addr 0.0.0.0:3030` (the Docker image is) |
+| rTorrent                       | XML-RPC through a web server, port 8080, path `/RPC2` | the address of the web server in front of rTorrent (nginx, lighttpd, the ruTorrent image) and its HTTP login, if it asks for one                                                            |
+| Tribler                        | REST API, port 20100                                  | the API key; a fixed port (`CORE_API_PORT`, or `api.http_port` in Tribler's `configuration.json`), and `api.http_host` 0.0.0.0 when ioBroker runs on another machine                        |
+| Flood                          | REST API, port 3000                                   | the user you log in to Flood with — not the login of the torrent program behind it; none when Flood runs with `--auth none`                                                                 |
+| Vuze                           | Web Remote plugin, port 9091                          | the plugin's user and password — as installed, the user `vuze` and the pairing access code                                                                                                  |
+| µTorrent                       | Web UI, port 8080 (µTorrent Server)                   | user and password of the Web UI (Preferences → Advanced → Web UI); the ioBroker host on its list of allowed IPs, if there is one                                                            |
+| Hadouken                       | JSON-RPC, port 7070, path `/api`                      | user and password of `http.auth.basic` in `hadouken.json` — admin and admin when none are set                                                                                               |
+| Download Station               | DSM Web API, port 5000 (HTTPS 5001)                   | a DSM account with the right to use Download Station and without 2-step verification; only an account that manages Download Station reads and sets the limits                               |
+| NZBVortex                      | Network API, HTTPS, port 4321                         | Preferences → Remote → Web interface on, and the API key; ioBroker's address on its IP whitelist, if that is on                                                                             |
+| Freebox                        | Freebox OS API, HTTPS, `mafreebox.freebox.fr`         | nothing to type: saving the card asks the Freebox for access, and you confirm it on the Freebox's display — from the Freebox's own network                                                  |
 
 **About the JDownloader local API:** it has no password. Anyone in the network who reaches the port can change
 JDownloader's settings or shut it down. Use it only when JDownloader runs on the ioBroker host or in the same Docker
 network; otherwise use My.JDownloader.
+
+**About NZBVortex:** it speaks HTTPS with a self-signed certificate of its own, which the adapter accepts without
+checking it. With SSL switched off in NZBVortex, switch HTTPS off on its card too.
+
+**About the Freebox:** keep `mafreebox.freebox.fr` as host — the adapter checks the Freebox's certificate against Free's
+own root certificates, and it holds for that name, not for the box's IP address. With HTTPS switched off, the Freebox
+answers on port 80. The access the Freebox grants is stored encrypted like a password. If the app _ioBroker dl-manager_
+lacks the right to the downloads, grant it in Freebox OS (Paramètres de la Freebox › Gestion des accès › Applications)
+and switch its card off and on. If you removed the app on the Freebox, tick _Pair with the Freebox again_ in the card's
+dialog and confirm on the display once more.
 
 ## Setup
 
@@ -73,7 +93,8 @@ program that quickly adds up to thousands, which puts a load on the ioBroker dat
 admin down. The settings page shows a warning then, and the log warns once per program when more than 200 downloads
 actually stand in the tree.
 
-`remove` on a download takes it off the program's list; the files always stay on disk.
+`remove` on a download takes it off the program's list; the files stay on disk. Only Download Station discards the
+partial data of a task that is not finished yet — it does so on its own, whatever the adapter asks.
 
 ## A new link while a program is paused
 

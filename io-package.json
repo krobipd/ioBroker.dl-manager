@@ -96,17 +96,17 @@
       "zh-cn": "下载管理器"
     },
     "desc": {
-      "en": "Monitors and controls download programs: JDownloader, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 and pyLoad",
-      "de": "Überwacht und steuert Download-Programme: JDownloader, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 und pyLoad",
-      "ru": "Отслеживает и управляет программами загрузки: JDownloader, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 и pyLoad",
-      "pt": "Monitoriza e controla programas de download: JDownloader, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 e pyLoad",
-      "nl": "Bewaakt en bestuurt downloadprogramma's: JDownloader, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 en pyLoad",
-      "fr": "Surveille et pilote les programmes de téléchargement : JDownloader, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 et pyLoad",
-      "it": "Monitora e controlla i programmi di download: JDownloader, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 e pyLoad",
-      "es": "Supervisa y controla programas de descarga: JDownloader, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 y pyLoad",
-      "pl": "Monitoruje i steruje programami do pobierania: JDownloader, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 i pyLoad",
-      "uk": "Відстежує та керує програмами завантаження: JDownloader, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 і pyLoad",
-      "zh-cn": "监控和控制下载程序：JDownloader、qBittorrent、Transmission、Deluge、SABnzbd、NZBGet、aria2 和 pyLoad"
+      "en": "Monitors and controls download programs: JDownloader, qBittorrent, Transmission, Deluge, rTorrent, rqbit, Flood, Tribler, Vuze, µTorrent, Hadouken, SABnzbd, NZBGet, NZBVortex, aria2, pyLoad, Synology Download Station and Freebox",
+      "de": "Überwacht und steuert Download-Programme: JDownloader, qBittorrent, Transmission, Deluge, rTorrent, rqbit, Flood, Tribler, Vuze, µTorrent, Hadouken, SABnzbd, NZBGet, NZBVortex, aria2, pyLoad, Synology Download Station und Freebox",
+      "ru": "Отслеживает и управляет программами загрузки: JDownloader, qBittorrent, Transmission, Deluge, rTorrent, rqbit, Flood, Tribler, Vuze, µTorrent, Hadouken, SABnzbd, NZBGet, NZBVortex, aria2, pyLoad, Synology Download Station и Freebox",
+      "pt": "Monitoriza e controla programas de download: JDownloader, qBittorrent, Transmission, Deluge, rTorrent, rqbit, Flood, Tribler, Vuze, µTorrent, Hadouken, SABnzbd, NZBGet, NZBVortex, aria2, pyLoad, Synology Download Station e Freebox",
+      "nl": "Bewaakt en bestuurt downloadprogramma's: JDownloader, qBittorrent, Transmission, Deluge, rTorrent, rqbit, Flood, Tribler, Vuze, µTorrent, Hadouken, SABnzbd, NZBGet, NZBVortex, aria2, pyLoad, Synology Download Station en Freebox",
+      "fr": "Surveille et pilote les programmes de téléchargement : JDownloader, qBittorrent, Transmission, Deluge, rTorrent, rqbit, Flood, Tribler, Vuze, µTorrent, Hadouken, SABnzbd, NZBGet, NZBVortex, aria2, pyLoad, Synology Download Station et Freebox",
+      "it": "Monitora e controlla i programmi di download: JDownloader, qBittorrent, Transmission, Deluge, rTorrent, rqbit, Flood, Tribler, Vuze, µTorrent, Hadouken, SABnzbd, NZBGet, NZBVortex, aria2, pyLoad, Synology Download Station e Freebox",
+      "es": "Supervisa y controla programas de descarga: JDownloader, qBittorrent, Transmission, Deluge, rTorrent, rqbit, Flood, Tribler, Vuze, µTorrent, Hadouken, SABnzbd, NZBGet, NZBVortex, aria2, pyLoad, Synology Download Station y Freebox",
+      "pl": "Monitoruje i steruje programami do pobierania: JDownloader, qBittorrent, Transmission, Deluge, rTorrent, rqbit, Flood, Tribler, Vuze, µTorrent, Hadouken, SABnzbd, NZBGet, NZBVortex, aria2, pyLoad, Synology Download Station i Freebox",
+      "uk": "Відстежує та керує програмами завантаження: JDownloader, qBittorrent, Transmission, Deluge, rTorrent, rqbit, Flood, Tribler, Vuze, µTorrent, Hadouken, SABnzbd, NZBGet, NZBVortex, aria2, pyLoad, Synology Download Station і Freebox",
+      "zh-cn": "监控和控制下载程序：JDownloader、qBittorrent、Transmission、Deluge、rTorrent、rqbit、Flood、Tribler、Vuze、µTorrent、Hadouken、SABnzbd、NZBGet、NZBVortex、aria2、pyLoad、Synology Download Station 和 Freebox"
     },
     "plugins": {
       "sentry": {
@@ -139,7 +139,18 @@
       "aria2",
       "pyload",
       "torrent",
-      "usenet"
+      "usenet",
+      "rtorrent",
+      "rqbit",
+      "flood",
+      "tribler",
+      "vuze",
+      "utorrent",
+      "hadouken",
+      "download station",
+      "synology",
+      "nzbvortex",
+      "freebox"
     ],
     "licenseInformation": {
       "license": "MIT",

@@ -2,25 +2,45 @@
 
 Der Adapter verbindet ioBroker mit deinen Download-Programmen. Jedes Programm, das du einträgst, wird ein Gerät, jeder
 seiner Downloads ein Kanal mit eigenen Datenpunkten. Alles, was der Adapter zeigt, kommt vom Programm selbst; der
-Adapter lädt nie selbst etwas herunter und löscht nie Dateien.
+Adapter lädt nie selbst etwas herunter und bittet nie ein Programm, Dateien zu löschen.
 
 ## Unterstützte Programme
 
-| Programm                       | Zugang                          | Was du brauchst                                                                                                                                                                            |
-| ------------------------------ | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| JDownloader 2 (lokal)          | lokale Schnittstelle, Port 3128 | In JDownloader: Einstellungen → Erweiterte Einstellungen → `DeprecatedApiEnabled` an; läuft ioBroker auf einem anderen Rechner oder Container, zusätzlich `DeprecatedApiLocalhostOnly` aus |
-| JDownloader 2 (My.JDownloader) | die My.JDownloader-Cloud        | deine My.JDownloader-E-Mail und dein Passwort — den JDownloader wählst du aus deinem Konto                                                                                                 |
-| qBittorrent                    | Weboberfläche, Port 8080        | Benutzer und Passwort der Weboberfläche oder einen API-Schlüssel (ab qBittorrent 5.2)                                                                                                      |
-| Transmission                   | RPC, Port 9091                  | Benutzer und Passwort, falls gesetzt; der ioBroker-Rechner muss in `rpc-whitelist` erlaubt sein                                                                                            |
-| Deluge                         | Weboberfläche, Port 8112        | das Passwort der Weboberfläche                                                                                                                                                             |
-| SABnzbd                        | API, Port 8080                  | den API-Schlüssel (Config → General)                                                                                                                                                       |
-| NZBGet                         | API, Port 6789                  | Steuer-Benutzer und Passwort                                                                                                                                                               |
-| aria2                          | JSON-RPC, Port 6800             | das RPC-Geheimnis (`--rpc-secret`)                                                                                                                                                         |
-| pyLoad                         | API, Port 8000                  | einen API-Schlüssel (ab pyLoad 0.5.0b3.dev97) oder Benutzer und Passwort                                                                                                                   |
+| Programm                       | Zugang                                                | Was du brauchst                                                                                                                                                                                           |
+| ------------------------------ | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| JDownloader 2 (lokal)          | lokale Schnittstelle, Port 3128                       | In JDownloader: Einstellungen → Erweiterte Einstellungen → `DeprecatedApiEnabled` an; läuft ioBroker auf einem anderen Rechner oder Container, zusätzlich `DeprecatedApiLocalhostOnly` aus                |
+| JDownloader 2 (My.JDownloader) | die My.JDownloader-Cloud                              | deine My.JDownloader-E-Mail und dein Passwort — den JDownloader wählst du aus deinem Konto                                                                                                                |
+| qBittorrent                    | Weboberfläche, Port 8080                              | Benutzer und Passwort der Weboberfläche oder einen API-Schlüssel (ab qBittorrent 5.2)                                                                                                                     |
+| Transmission                   | RPC, Port 9091                                        | Benutzer und Passwort, falls gesetzt; der ioBroker-Rechner muss in `rpc-whitelist` erlaubt sein                                                                                                           |
+| Deluge                         | Weboberfläche, Port 8112                              | das Passwort der Weboberfläche                                                                                                                                                                            |
+| SABnzbd                        | API, Port 8080                                        | den API-Schlüssel (Config → General)                                                                                                                                                                      |
+| NZBGet                         | API, Port 6789                                        | Steuer-Benutzer und Passwort                                                                                                                                                                              |
+| aria2                          | JSON-RPC, Port 6800                                   | das RPC-Geheimnis (`--rpc-secret`)                                                                                                                                                                        |
+| pyLoad                         | API, Port 8000                                        | einen API-Schlüssel (ab pyLoad 0.5.0b3.dev97) oder Benutzer und Passwort                                                                                                                                  |
+| rqbit                          | HTTP-API, Port 3030                                   | Benutzer und Passwort nur, wenn rqbit mit `RQBIT_HTTP_BASIC_AUTH_USERPASS` läuft; rqbit antwortet nur auf 127.0.0.1, außer es startet mit `--http-api-listen-addr 0.0.0.0:3030` (das Docker-Image tut es) |
+| rTorrent                       | XML-RPC über einen Webserver, Port 8080, Pfad `/RPC2` | die Adresse des Webservers vor rTorrent (nginx, lighttpd, das ruTorrent-Image) und seine HTTP-Anmeldung, falls er eine verlangt                                                                           |
+| Tribler                        | REST-API, Port 20100                                  | den API-Schlüssel; einen festen Port (`CORE_API_PORT` oder `api.http_port` in Triblers `configuration.json`) und `api.http_host` 0.0.0.0, wenn ioBroker auf einem anderen Rechner läuft                   |
+| Flood                          | REST-API, Port 3000                                   | den Benutzer, mit dem du dich bei Flood anmeldest — nicht die Anmeldung des Torrent-Programms dahinter; keinen, wenn Flood mit `--auth none` läuft                                                        |
+| Vuze                           | Plugin Web Remote, Port 9091                          | Benutzer und Passwort des Plugins — wie installiert der Benutzer `vuze` und der Zugangscode des Pairings                                                                                                  |
+| µTorrent                       | Weboberfläche, Port 8080 (µTorrent Server)            | Benutzer und Passwort des Web-Zugriffs (Einstellungen → Erweitert → Web-Zugriff); den ioBroker-Rechner in der Liste erlaubter IPs, falls es eine gibt                                                     |
+| Hadouken                       | JSON-RPC, Port 7070, Pfad `/api`                      | Benutzer und Passwort aus `http.auth.basic` in `hadouken.json` — admin und admin, wenn keine gesetzt sind                                                                                                 |
+| Download Station               | DSM-Web-API, Port 5000 (HTTPS 5001)                   | ein DSM-Konto mit dem Recht, Download Station zu nutzen, und ohne 2-Schritt-Verifizierung; nur ein Konto, das Download Station verwaltet, liest und setzt die Limits                                      |
+| NZBVortex                      | Network-API, HTTPS, Port 4321                         | Preferences → Remote → Web interface an und den API-Schlüssel; die Adresse von ioBroker in seiner IP-Whitelist, falls die an ist                                                                          |
+| Freebox                        | Freebox-OS-API, HTTPS, `mafreebox.freebox.fr`         | nichts einzutippen: beim Speichern der Karte bittet der Adapter die Freebox um Zugang, und du bestätigst ihn am Display der Freebox — aus dem eigenen Netz der Freebox                                    |
 
 **Zur lokalen JDownloader-Schnittstelle:** Sie hat kein Passwort. Wer im Netz den Port erreicht, kann JDownloaders
 Einstellungen ändern oder ihn beenden. Nutze sie nur, wenn JDownloader auf dem ioBroker-Rechner oder im selben
 Docker-Netz läuft; sonst nimm My.JDownloader.
+
+**Zu NZBVortex:** Es spricht HTTPS mit einem eigenen, selbstsignierten Zertifikat, das der Adapter ungeprüft annimmt.
+Ist SSL in NZBVortex abgeschaltet, schalte auch auf seiner Karte HTTPS ab.
+
+**Zur Freebox:** Lass `mafreebox.freebox.fr` als Host stehen — der Adapter prüft das Zertifikat der Freebox gegen die
+eigenen Stammzertifikate von Free, und es gilt für diesen Namen, nicht für die IP-Adresse der Box. Mit abgeschaltetem
+HTTPS antwortet die Freebox auf Port 80. Der Zugang, den die Freebox gewährt, wird verschlüsselt gespeichert wie ein
+Passwort. Fehlt der App _ioBroker dl-manager_ das Recht auf die Downloads, gewähre es in Freebox OS (Paramètres de la
+Freebox › Gestion des accès › Applications) und schalte die Karte der Freebox aus und wieder ein. Hast du die App auf
+der Freebox entfernt, hake im Dialog der Karte _Neu mit der Freebox koppeln_ an und bestätige noch einmal am Display.
 
 ## Einrichtung
 
@@ -77,7 +97,8 @@ Downloads je Programm werden es schnell Tausende; das belastet die ioBroker-Date
 langsam. Die Einstellungsseite zeigt dann eine Warnung, und das Log warnt einmal je Programm, wenn tatsächlich mehr als
 200 Downloads im Objektbaum stehen.
 
-`remove` an einem Download nimmt ihn aus der Liste des Programms; die Dateien bleiben immer erhalten.
+`remove` an einem Download nimmt ihn aus der Liste des Programms; die Dateien bleiben erhalten. Nur Download Station
+verwirft die Teildaten einer Aufgabe, die noch nicht fertig ist — von sich aus, gleich was der Adapter verlangt.
 
 ## Ein neuer Link, während ein Programm pausiert ist
 

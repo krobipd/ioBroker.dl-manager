@@ -4,9 +4,9 @@
 
 ## Projekt
 
-**ioBroker Download Manager** — ein Adapter, eine Instanz, acht Download-Programme (JDownloader 2 lokal und über
-My.JDownloader, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2, pyLoad). Je Programm ein Gerät, je Download ein
-Kanal mit Einzel-Datenpunkten, Summen für Blockly.
+**ioBroker Download Manager** — ein Adapter, eine Instanz, jedes Download-Programm, das der Katalog kennt
+(`src/lib/programs/catalog.ts` ist die Liste; Gate A15 hält sie gegen die Download-Clients von Sonarr und Radarr).
+Je Programm ein Gerät, je Download ein Kanal mit Einzel-Datenpunkten, Summen für Blockly.
 
 - **Version:** `io-package.json` ist die Wahrheit; interne Geschichte samt Belegen in `.claude/dev-history.md` (lokal).
 - **GitHub:** https://github.com/krobipd/ioBroker.dl-manager
@@ -108,7 +108,7 @@ _Jede Entscheidung steht hier als Regel-Satz; Beleg, Messung und Verlauf stehen 
 9. **Passwort und API-Schlüssel liegen mit `encrypt()` verschlüsselt im Programm-Speicher (`store.ts`), versiegelt vom Flotten-Master `data-file.ts` (`secrets`, Werkzeug-Runde 174)** — eine Zeile von 0.3.0–0.4.x (`encrypted`) wird einmal mit `decrypt()` geöffnet und dem Master im Klartext gegeben, eine Zeile ohne `encrypted` (bis 0.2.0) hält sie wie eingetippt; ein versiegeltes Geheimnis, das sich nicht entschlüsseln lässt, beendet den Start (Code 6); nie `encryptedNative`-Punkt-Schlüssel (Prüfbot W1093/W1103).
 10. **Dateien löscht der Adapter nie** — `remove` nimmt einen Download nur aus der Liste des Programms.
 11. **JDownloader über My.JDownloader ist ein eigener Programmtyp** (`jdownloader-cloud`) mit demselben Treiber und zweitem Transport, höchstens alle 30 s, ohne Push.
-12. **Fehlt dem Programm eine Programm-Pause, wird sie nachgebildet** (Transmission, aria2, qBittorrent < 5.3) — nur Laufende anhalten, genau diese fortsetzen (dazu, was der Adapter während der Pause angehalten hinzufügt), Stand übersteht den Neustart.
+12. **Fehlt dem Programm eine Programm-Pause, wird sie nachgebildet** (jedes Programm außer JDownloader, Deluge, SABnzbd, NZBGet, pyLoad und qBittorrent ≥ 5.3) — nur Laufende anhalten, genau diese fortsetzen (dazu, was der Adapter während der Pause angehalten hinzufügt), Stand übersteht den Neustart.
 13. **Ein Gerät zieht nur über `move.ts` um (Werte, Aufzeichnung mit `aliasId`, Räume/Funktionen, Aliase, Kinder zuerst gelöscht, Journal an der alten Wurzel)** — eine gelöschte Zeile nimmt ihr Gerät mit, eine ausgeschaltete behält es offline.
 14. **Die Programme richtet der Gerätemanager ein (dm-utils, Karten wie yamaha) und sie liegen in `programs.json` im Datenordner der Instanz (`common.dataFolder`, Teil jeder ioBroker-Sicherung), nie im Instanzobjekt und nicht im Objektbaum** — jede Kartenänderung wird gespeichert und live übernommen (`ProgramManager.apply`), die Instanz startet nicht neu und die Einstellungsseite kann keine Programmliste zurückschreiben; je Programm ein Dialog nur mit dessen Feldern aus `catalog.ts`; Radio-Beschriftungen sind einfache Zeichenketten (`tText`), weil json-configs Radio-Zweig `label` roh rendert.
 15. **Beliebig viele Einträge je Programm, doppelt ist dasselbe Programm** — gleiche Adresse (Host, tatsächlicher Port und Pfad, ohne Schema) oder gleiches My.JDownloader-Konto samt Instanz; der Dialog weist es ab, der Adapter fragt die zweite Zeile nicht (`same program as <id>`).
@@ -157,10 +157,13 @@ krobi's decisions for this adapter. The register with his verbatim words lives i
 
 1. `src/lib/programs/<typ>/` mit `client.ts` (Adresse über `baseUrl`), `map.ts` (Status-Tabelle), `driver.ts`; Zeile in `catalog.ts` (Typ, Name, Familie, Port, Pfad, Anmeldeart), Treiber in `DRIVERS` (`registry.ts`).
 2. `driver.test.ts` über `runDriverContract` (`test/helpers/contract.ts`) plus die programmeigenen Fälle.
-3. Container-Modul `test/live/programs/<typ>.mjs` + Matrix-Zeile in `.github/workflows/live-programs.yml`; Lauf, dann `test/live/import.mjs` → `test/fixtures/<typ>/<version>/`.
+3. Container-Modul `test/live/programs/<typ>.mjs` + Matrix-Zeile in `.github/workflows/live-programs.yml`; Lauf, dann `test/live/import.mjs` → `test/fixtures/<typ>/<version>/`. Läuft das Programm in keinem Container (Download Station, NZBVortex, Freebox), stammen die Fixtures aus fremden Mitschnitten und der Doku, je Datei `_source.origin`, und `test/fixtures/<typ>/SOURCES.md` nennt Quelle, Commit, Zeile und Lizenz; ersetzt werden nur Kennungen und Geheimnisse.
 4. Route in `test/fixture-hook.js` + Zeile in `PROGRAM_ROWS` (`test/inventory.js`), Inventar neu erzeugen.
 5. Dialog-Hinweis: Schlüssel `hint_<typ>` in `HINT` (`dm-forms.ts`) und Text in allen elf `admin/i18n/*.json` (erzeugt vom lokalen i18n-Quellskript, nie von Hand einzeln); Piktogramm und Dialogfelder folgen dem Katalog.
-6. README-Tabelle „Tested with“, `docs/<sprache>/datapoints.md` (Matrix von Hand, gegen `datapoints.ts` und die Fähigkeiten der Treiber — einen Generator gibt es nicht).
+6. README: Programmliste, Tabelle „Tested with“, Changelog; `docs/<sprache>/README.md` (Programmtabelle, Hinweise),
+   `docs/<sprache>/datapoints.md` (je eine Zeile in den beiden Verfügbarkeits-Tabellen, von Hand gegen `datapoints.ts`
+   und die Fähigkeiten des Treibers — einen Generator gibt es nicht), `faq.md` bei einer Aufrufer-Sperre;
+   `common.desc` (elf Sprachen), `common.keywords` und `package.json`.
 
 ## Tests
 
@@ -174,8 +177,8 @@ krobi's decisions for this adapter. The register with his verbatim words lives i
   Wiederaufnahme) — die Aufzeichnungs-Prüfung des Inventars sieht eine beim Umzug verlorene Aufzeichnung nicht.
 - **Fixtures** `test/fixtures/<typ>/<version>/<zustand>/*.json` — aufgezeichnet von `live-programs.yml` (Container je
   Programm und Version, `test/live/record.mjs`), maskiert und importiert mit `test/live/import.mjs`.
-- **Objekt-Inventar** `test/inventory.js` + `test/fixture-hook.js` (ersetzt `fetch` nur im Adapter-Prozess): alle neun
-  Programmtypen aus den Aufzeichnungen, Ergebnis `test/objects.inventory.json`; nur über `with-werkstatt-lock.py`.
+- **Objekt-Inventar** `test/inventory.js` + `test/fixture-hook.js` (ersetzt `fetch` nur im Adapter-Prozess): jeder
+  Programmtyp des Katalogs aus seinen Fixtures, Ergebnis `test/objects.inventory.json`; nur über `with-werkstatt-lock.py`.
   Die Zeilen gehen wie bei 0.2.0 in `native.programs` (als ganzes Objekt geschrieben — `changeAdapterConfig` machte aus der
   Liste ein Objekt mit Zahlenschlüsseln), der Start zieht sie in den Speicher; Passwörter im Abzug maskiert, die
   Aufstiegs-Suite gibt dem gesäten Speicher-Objekt des Vorgängers die Fixture-Geheimnisse zurück (`restoreMaskedSecrets`,

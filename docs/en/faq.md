@@ -10,6 +10,15 @@ counts as not reachable as well — the program behind it is down. Some programs
 - **SABnzbd** answers only host names on its `host_whitelist` — enter the IP address, or add the name there.
 - **Transmission** answers only addresses on its `rpc-whitelist` — add the ioBroker host, or switch the whitelist off.
 - **JDownloader (local API)** answers only the same computer unless `DeprecatedApiLocalhostOnly` is off.
+- **rqbit** answers only on 127.0.0.1 unless it is started with `--http-api-listen-addr 0.0.0.0:3030` (its Docker image
+  is).
+- **Tribler** answers only on 127.0.0.1, and on a new port at every start unless the port is fixed — fix the port and,
+  when ioBroker runs on another machine, set `api.http_host` to 0.0.0.0.
+- **rTorrent** has no web access of its own — enter the address of the web server in front of it.
+- **µTorrent** and **NZBVortex** answer only the addresses on their list of allowed IPs while that list is on — add the
+  ioBroker host.
+- **Freebox** grants access only from its own network, and its certificate holds only for `mafreebox.freebox.fr` — keep
+  that name as host.
 
 ## "Login rejected" — and the program is not asked any more
 
@@ -19,6 +28,15 @@ would lock the ioBroker host out. The warning says what to check on the card —
 all, it says so: Transmission, for example, needs _The program asks for a login_ switched on in its dialog. Correct
 the access data on the program's card — the change applies at once, the program is asked again, and the log shows its
 answer.
+
+## Pairing with the Freebox
+
+The Freebox has no password to type. When you save its card, the adapter asks the Freebox for access and the dialog
+waits: confirm the request on the Freebox's display with its arrow keys. If you refuse it or let it run out, nothing is
+saved. The access works only while the app _ioBroker dl-manager_ holds the right to the downloads — if it lacks it, grant
+it in Freebox OS (Paramètres de la Freebox › Gestion des accès › Applications) and switch the card off and on. If you
+removed the app on the Freebox, tick _Pair with the Freebox again_ in the card's dialog and confirm on the display once
+more.
 
 ## Should I use the JDownloader local API or My.JDownloader?
 
@@ -36,7 +54,9 @@ local JDownloader also report changes on their own as they happen (not over My.J
 
 ## Does `remove` delete my files?
 
-No. `remove` takes the download off the program's list; the files stay on disk. The adapter never deletes files.
+No. `remove` takes the download off the program's list; the files stay on disk. The adapter never asks a program to
+delete files. Only Download Station discards the partial data of a task that is not finished yet — on its own, whatever
+the adapter asks; a finished task's files it never touches.
 
 ## A finished download stays in the object tree
 
@@ -58,12 +78,13 @@ Trigger on `summary.last.finished` (or on the program's own `last.finished`) wit
 changed**: two downloads with the same name finish with the same value, and a "changed" trigger would miss the
 second one. `summary.last.finishedTime` holds the time. `summary.last.failed` works the same way for failed downloads.
 
-## `paused` on Transmission, aria2 or an older qBittorrent
+## `paused` on a program without a pause of its own
 
-These programs have no pause for the whole program. The adapter stops the downloads that are running, remembers exactly
-those and starts exactly those again when you set `paused` back to false — together with the downloads you added through
-ioBroker during the pause. A download you paused yourself stays paused. If you start one of the stopped downloads in the
-program itself, the adapter's pause ends.
+JDownloader, Deluge, SABnzbd, NZBGet, pyLoad and qBittorrent from 5.3 on pause the whole program themselves. Every other
+program has no such pause; there the adapter stops the downloads that are running, remembers exactly those and starts
+exactly those again when you set `paused` back to false — together with the downloads you added through ioBroker during
+the pause. A download you paused yourself stays paused. If you start one of the stopped downloads in the program itself,
+the adapter's pause ends.
 
 ## Why is there no `speed` on SABnzbd or NZBGet downloads?
 

@@ -1,12 +1,10 @@
 # Datapoints
 
 Access: **r** read only, **w** write only (a command), **rw** shows the current value and changes it when you write it.
-Speeds are in MB/s, sizes in GB, times are timestamps in milliseconds. A datapoint is only created where the program
-delivers the value — a `–` in the tables below means the program has no such value, and the datapoint does not exist
-for it.
-
-Program columns: **JD** JDownloader 2 (local API and My.JDownloader), **qBt** qBittorrent, **TR** Transmission, **DE**
-Deluge, **SAB** SABnzbd, **NZB** NZBGet, **a2** aria2, **pyL** pyLoad.
+Speeds are in MB/s, sizes in GB, times are timestamps in milliseconds — for every program, whatever unit it uses
+itself. A datapoint is only created where the program delivers the value: below the program and the download level, a
+table shows which program has which datapoint — a `–` means the program has no such value, and the datapoint does not
+exist for it. JDownloader 2 stands for the local API and My.JDownloader alike.
 
 ## `info` — the adapter
 
@@ -37,54 +35,102 @@ be reached, its downloads and the totals keep the values it gave last; only `onl
 
 ## `<program>-<piece>` — one program
 
-| Datapoint           | Type          | Access | JD  | qBt | TR  | DE  | SAB | NZB | a2  | pyL | Meaning                                                                                                                                            |
-| ------------------- | ------------- | ------ | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `online`            | boolean       | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | The program answered the last query.                                                                                                               |
-| `error`             | string        | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | `Unknown` before the first answer and while its card cannot run (the card says why), empty while all is well, otherwise the program's own message. |
-| `version`           | string        | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Program version.                                                                                                                                   |
-| `downloading`       | boolean       | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | True while a download of this program is loading or being post-processed.                                                                          |
-| `paused`            | boolean       | rw     |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | True pauses the program, false resumes it.                                                                                                         |
-| `downloadSpeed`     | number (MB/s) | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Download speed.                                                                                                                                    |
-| `uploadSpeed`       | number (MB/s) | r      |  –  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  –  | Upload speed.                                                                                                                                      |
-| `speedLimit`        | number (MB/s) | rw     |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Maximum download speed of the program; 0 means unlimited.                                                                                          |
-| `uploadLimit`       | number (MB/s) | rw     |  –  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  –  | Maximum upload speed of the program; 0 means unlimited.                                                                                            |
-| `altSpeed`          | boolean       | rw     |  –  |  ✓  |  ✓  |  –  |  –  |  –  |  –  |  –  | Switches the program's alternative speed limits on or off.                                                                                         |
-| `freeSpace`         | number (GB)   | r      |  –  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  ✓  | Free space in the program's download folder.                                                                                                       |
-| `active`            | number        | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Active downloads.                                                                                                                                  |
-| `queued`            | number        | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Queued downloads.                                                                                                                                  |
-| `total`             | number        | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Downloads in the program's list.                                                                                                                   |
-| `add`               | string        | w      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Write a link, magnet link or NZB link to add it to this program.                                                                                   |
-| `last.finished`     | string        | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Name of the download that finished last; written on every finish, also when the name repeats.                                                      |
-| `last.finishedTime` | number        | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | When that download finished.                                                                                                                       |
-| `last.failed`       | string        | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Name of the download that failed last.                                                                                                             |
-| `last.failedTime`   | number        | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | When that download failed.                                                                                                                         |
+| Datapoint           | Type          | Access | Meaning                                                                                                                                            |
+| ------------------- | ------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `online`            | boolean       | r      | The program answered the last query.                                                                                                               |
+| `error`             | string        | r      | `Unknown` before the first answer and while its card cannot run (the card says why), empty while all is well, otherwise the program's own message. |
+| `version`           | string        | r      | Program version.                                                                                                                                   |
+| `downloading`       | boolean       | r      | True while a download of this program is loading or being post-processed.                                                                          |
+| `paused`            | boolean       | rw     | True pauses the program, false resumes it.                                                                                                         |
+| `downloadSpeed`     | number (MB/s) | r      | Download speed.                                                                                                                                    |
+| `uploadSpeed`       | number (MB/s) | r      | Upload speed.                                                                                                                                      |
+| `speedLimit`        | number (MB/s) | rw     | Maximum download speed of the program; 0 means unlimited.                                                                                          |
+| `uploadLimit`       | number (MB/s) | rw     | Maximum upload speed of the program; 0 means unlimited.                                                                                            |
+| `altSpeed`          | boolean       | rw     | Switches the program's alternative speed limits on or off.                                                                                         |
+| `freeSpace`         | number (GB)   | r      | Free space in the program's download folder.                                                                                                       |
+| `active`            | number        | r      | Active downloads.                                                                                                                                  |
+| `queued`            | number        | r      | Queued downloads.                                                                                                                                  |
+| `total`             | number        | r      | Downloads in the program's list.                                                                                                                   |
+| `add`               | string        | w      | Write a link, magnet link or NZB link to add it to this program.                                                                                   |
+| `last.finished`     | string        | r      | Name of the download that finished last; written on every finish, also when the name repeats.                                                      |
+| `last.finishedTime` | number        | r      | When that download finished.                                                                                                                       |
+| `last.failed`       | string        | r      | Name of the download that failed last.                                                                                                             |
+| `last.failedTime`   | number        | r      | When that download failed.                                                                                                                         |
 
-Transmission, aria2 and qBittorrent before 5.3 have no pause for the whole program. There the adapter stops the
-downloads that are running, remembers exactly those and starts exactly those again on resume — a download you paused
-yourself stays paused. The memory survives an adapter restart.
+Every program has every datapoint of this table except these four:
+
+| Program          | `uploadSpeed` | `uploadLimit` | `altSpeed` | `freeSpace` |
+| ---------------- | :-----------: | :-----------: | :--------: | :---------: |
+| JDownloader 2    |       –       |       –       |     –      |      –      |
+| qBittorrent      |       ✓       |       ✓       |     ✓      |      ✓      |
+| Transmission     |       ✓       |       ✓       |     ✓      |      ✓      |
+| Deluge           |       ✓       |       ✓       |     –      |      ✓      |
+| SABnzbd          |       –       |       –       |     –      |      ✓      |
+| NZBGet           |       –       |       –       |     –      |      ✓      |
+| aria2            |       ✓       |       ✓       |     –      |      –      |
+| pyLoad           |       –       |       –       |     –      |      ✓      |
+| rqbit            |       ✓       |       ✓       |     –      |      –      |
+| rTorrent         |       ✓       |       ✓       |     –      |      –      |
+| Tribler          |       ✓       |       ✓       |     –      |      –      |
+| Flood            |       ✓       |       ✓       |     –      |      –      |
+| Vuze             |       ✓       |       ✓       |     –      |      ✓      |
+| µTorrent         |       ✓       |       ✓       |     –      |      –      |
+| Hadouken         |       ✓       |       ✓       |     –      |      –      |
+| Download Station |       ✓       |       ✓       |     –      |      –      |
+| NZBVortex        |       –       |       –       |     –      |      –      |
+| Freebox          |       ✓       |       ✓       |     –      |      –      |
+
+JDownloader, Deluge, SABnzbd, NZBGet, pyLoad and qBittorrent from 5.3 on pause the whole program themselves. Every other
+program has no pause for the whole program: there the adapter stops the downloads that are running, remembers exactly
+those and starts exactly those again on resume — a download you paused yourself stays paused. The memory survives an
+adapter restart.
 
 ## `<program>-<piece>.downloads.<download>` — one download
 
-A download is what you added: a JDownloader or pyLoad package, a torrent, an NZB job, an aria2 download. The channel
+A download is what you added: a JDownloader or pyLoad package, a torrent, an NZB job, an aria2 download, a task of
+Download Station or the Freebox. The channel
 carries the download's name, and every datapoint's name starts with it (`ubuntu.iso: Progress`), so lists that show
 only the name still tell two downloads apart.
 
-| Datapoint     | Type          | Access | JD  | qBt | TR  | DE  | SAB | NZB | a2  | pyL | Meaning                                                                                              |
-| ------------- | ------------- | ------ | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | ---------------------------------------------------------------------------------------------------- |
-| `status`      | string        | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | One of the status values below.                                                                      |
-| `progress`    | number (%)    | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Progress.                                                                                            |
-| `size`        | number (GB)   | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Size; empty while the program does not know it yet (a magnet without metadata).                      |
-| `downloaded`  | number (GB)   | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Downloaded.                                                                                          |
-| `speed`       | number (MB/s) | r      |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  ✓  | Speed.                                                                                               |
-| `uploadSpeed` | number (MB/s) | r      |  –  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  –  | Upload speed.                                                                                        |
-| `ratio`       | number        | r      |  –  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  –  | Uploaded amount divided by downloaded amount; `-1` = infinite (∞).                                   |
-| `eta`         | number (s)    | r      |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  |  ✓  |  ✓  | Seconds until the download is complete; empty while a torrent seeds or when the program cannot tell. |
-| `added`       | number        | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  |  –  | When the download was added.                                                                         |
-| `finished`    | number        | r      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  | When the download finished.                                                                          |
-| `category`    | string        | r      |  –  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  –  |  –  | The category or label you gave the download in the program.                                          |
-| `error`       | string        | r      |  ✓  |  –  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Error message of the program; empty while all is well.                                               |
-| `paused`      | boolean       | rw     |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  –  | True pauses this download, false resumes it.                                                         |
-| `remove`      | boolean       | w      |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  |  ✓  | Removes the download from the program's list; the files stay on disk.                                |
+| Datapoint     | Type          | Access | Meaning                                                                                                                                                 |
+| ------------- | ------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `status`      | string        | r      | One of the status values below.                                                                                                                         |
+| `progress`    | number (%)    | r      | Progress.                                                                                                                                               |
+| `size`        | number (GB)   | r      | Size; empty while the program does not know it yet (a magnet without metadata).                                                                         |
+| `downloaded`  | number (GB)   | r      | Downloaded.                                                                                                                                             |
+| `speed`       | number (MB/s) | r      | Speed.                                                                                                                                                  |
+| `uploadSpeed` | number (MB/s) | r      | Upload speed.                                                                                                                                           |
+| `ratio`       | number        | r      | Uploaded amount divided by downloaded amount; `-1` = infinite (∞).                                                                                      |
+| `eta`         | number (s)    | r      | Seconds until the download is complete; empty while a torrent seeds or when the program cannot tell.                                                    |
+| `added`       | number        | r      | When the download was added.                                                                                                                            |
+| `finished`    | number        | r      | When the download finished.                                                                                                                             |
+| `category`    | string        | r      | The category or label you gave the download in the program.                                                                                             |
+| `error`       | string        | r      | Error message of the program; empty while all is well.                                                                                                  |
+| `paused`      | boolean       | rw     | True pauses this download, false resumes it.                                                                                                            |
+| `remove`      | boolean       | w      | Removes the download from the program's list; the files stay on disk — Download Station alone discards the partial data of a task that is not finished. |
+
+Every program has `status`, `progress`, `size`, `downloaded` and `remove`. The others:
+
+| Program          | `speed` | `uploadSpeed`, `ratio` | `eta` | `added` | `finished` | `category` | `error` | `paused` |
+| ---------------- | :-----: | :--------------------: | :---: | :-----: | :--------: | :--------: | :-----: | :------: |
+| JDownloader 2    |    ✓    |           –            |   ✓   |    ✓    |     ✓      |     –      |    ✓    |    ✓     |
+| qBittorrent      |    ✓    |           ✓            |   ✓   |    ✓    |     ✓      |     ✓      |    –    |    ✓     |
+| Transmission     |    ✓    |           ✓            |   ✓   |    ✓    |     ✓      |     ✓      |    ✓    |    ✓     |
+| Deluge           |    ✓    |           ✓            |   ✓   |    ✓    |     ✓      |     ✓      |    ✓    |    ✓     |
+| SABnzbd          |    –    |           –            |   –   |    ✓    |     ✓      |     ✓      |    ✓    |    ✓     |
+| NZBGet           |    –    |           –            |   –   |    –    |     ✓      |     ✓      |    ✓    |    ✓     |
+| aria2            |    ✓    |           ✓            |   ✓   |    –    |     –      |     –      |    ✓    |    ✓     |
+| pyLoad           |    ✓    |           –            |   ✓   |    –    |     –      |     –      |    ✓    |    –     |
+| rqbit            |    ✓    |           ✓            |   ✓   |    –    |     –      |     –      |    ✓    |    ✓     |
+| rTorrent         |    ✓    |           ✓            |   ✓   |    ✓    |     ✓      |     ✓      |    ✓    |    ✓     |
+| Tribler          |    ✓    |           ✓            |   ✓   |    ✓    |     ✓      |     –      |    ✓    |    ✓     |
+| Flood            |    ✓    |           ✓            |   ✓   |    ✓    |     ✓      |     ✓      |    ✓    |    ✓     |
+| Vuze             |    ✓    |           ✓            |   ✓   |    ✓    |     ✓      |     –      |    ✓    |    ✓     |
+| µTorrent         |    ✓    |           ✓            |   ✓   |    ✓    |     ✓      |     ✓      |    ✓    |    ✓     |
+| Hadouken         |    ✓    |           ✓            |   ✓   |    ✓    |     ✓      |     ✓      |    ✓    |    ✓     |
+| Download Station |    ✓    |           ✓            |   ✓   |    ✓    |     ✓      |     –      |    ✓    |    ✓     |
+| NZBVortex        |    ✓    |           –            |   ✓   |    –    |     –      |     ✓      |    ✓    |    ✓     |
+| Freebox          |    ✓    |           ✓            |   ✓   |    ✓    |     –      |     –      |    ✓    |    ✓     |
 
 SABnzbd and NZBGet report speed and time left only for the whole program, not per download.
 

@@ -1,7 +1,7 @@
 {
   "name": "iobroker.dl-manager",
   "version": "0.4.0",
-  "description": "ioBroker adapter for download managers: JDownloader, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, aria2 and pyLoad",
+  "description": "ioBroker adapter for download managers: JDownloader, qBittorrent, Transmission, Deluge, rTorrent, rqbit, Flood, Tribler, Vuze, µTorrent, Hadouken, SABnzbd, NZBGet, NZBVortex, aria2, pyLoad, Synology Download Station and Freebox",
   "author": {
     "name": "krobi",
     "email": "krobi@power-dreams.com"
@@ -24,7 +24,18 @@
     "sabnzbd",
     "nzbget",
     "aria2",
-    "pyload"
+    "pyload",
+    "rtorrent",
+    "rqbit",
+    "flood",
+    "tribler",
+    "vuze",
+    "utorrent",
+    "hadouken",
+    "download station",
+    "synology",
+    "nzbvortex",
+    "freebox"
   ],
   "repository": {
     "type": "git",

@@ -14,6 +14,15 @@ Programme weisen Anfragen ab, die sie nicht kennen:
   abschalten.
 - **JDownloader (lokale Schnittstelle)** antwortet nur dem eigenen Rechner, solange `DeprecatedApiLocalhostOnly` an
   ist.
+- **rqbit** antwortet nur auf 127.0.0.1, außer es startet mit `--http-api-listen-addr 0.0.0.0:3030` (sein
+  Docker-Image tut es).
+- **Tribler** antwortet nur auf 127.0.0.1 und bei jedem Start auf einem neuen Port, solange der Port nicht fest ist —
+  den Port festlegen und, wenn ioBroker auf einem anderen Rechner läuft, `api.http_host` auf 0.0.0.0 setzen.
+- **rTorrent** hat keinen eigenen Web-Zugang — die Adresse des Webservers davor eintragen.
+- **µTorrent** und **NZBVortex** antworten nur Adressen aus ihrer Liste erlaubter IPs, solange die Liste an ist — den
+  ioBroker-Rechner eintragen.
+- **Freebox** gewährt Zugang nur aus ihrem eigenen Netz, und ihr Zertifikat gilt nur für `mafreebox.freebox.fr` — diesen
+  Namen als Host lassen.
 
 ## „Login rejected" — und das Programm wird nicht mehr gefragt
 
@@ -23,6 +32,15 @@ Sekunden neu zu fragen würde den ioBroker-Rechner aussperren. Die Warnung sagt,
 wenn die Karte gar keine Anmeldung trägt, sagt sie das: Transmission etwa braucht im Dialog das Häkchen _Das Programm
 verlangt eine Anmeldung_. Korrigiere die Zugangsdaten auf der Karte des Programms — die Änderung gilt sofort, das
 Programm wird wieder gefragt, und das Log zeigt seine Antwort.
+
+## Kopplung mit der Freebox
+
+Die Freebox hat kein Passwort zum Eintippen. Speicherst du ihre Karte, bittet der Adapter die Freebox um Zugang, und der
+Dialog wartet: Bestätige die Anfrage am Display der Freebox mit ihren Pfeiltasten. Lehnst du sie ab oder läuft sie ab,
+wird nichts gespeichert. Der Zugang wirkt nur, solange die App _ioBroker dl-manager_ das Recht auf die Downloads hat —
+fehlt es, gewähre es in Freebox OS (Paramètres de la Freebox › Gestion des accès › Applications) und schalte die Karte
+aus und wieder ein. Hast du die App auf der Freebox entfernt, hake im Dialog der Karte _Neu mit der Freebox koppeln_ an
+und bestätige noch einmal am Display.
 
 ## Lokale JDownloader-Schnittstelle oder My.JDownloader?
 
@@ -41,8 +59,9 @@ danach neu gefragt. aria2 und ein lokaler JDownloader melden Änderungen zusätz
 
 ## Löscht `remove` meine Dateien?
 
-Nein. `remove` nimmt den Download aus der Liste des Programms; die Dateien bleiben erhalten. Der Adapter löscht nie
-Dateien.
+Nein. `remove` nimmt den Download aus der Liste des Programms; die Dateien bleiben erhalten. Der Adapter bittet nie ein
+Programm, Dateien zu löschen. Nur Download Station verwirft die Teildaten einer Aufgabe, die noch nicht fertig ist — von
+sich aus, gleich was der Adapter verlangt; die Dateien einer fertigen Aufgabe rührt sie nie an.
 
 ## Ein fertiger Download bleibt im Objektbaum
 
@@ -65,12 +84,13 @@ Löse auf `summary.last.finished` (oder auf `last.finished` des Programms) mit *
 verpasst den zweiten. `summary.last.finishedTime` enthält die Uhrzeit. `summary.last.failed` funktioniert genauso für
 fehlgeschlagene Downloads.
 
-## `paused` bei Transmission, aria2 oder einem älteren qBittorrent
+## `paused` bei einem Programm ohne eigene Pause
 
-Diese Programme haben keine Pause für das ganze Programm. Der Adapter hält die laufenden Downloads an, merkt sich genau
-diese und startet genau diese wieder, wenn du `paused` auf falsch setzt — zusammen mit den Downloads, die du während der
-Pause über ioBroker hinzugefügt hast. Ein Download, den du selbst angehalten hast, bleibt angehalten. Startest du einen
-der angehaltenen Downloads im Programm selbst, endet die Pause des Adapters.
+JDownloader, Deluge, SABnzbd, NZBGet, pyLoad und qBittorrent ab 5.3 pausieren das ganze Programm selbst. Alle anderen
+Programme haben keine solche Pause; dort hält der Adapter die laufenden Downloads an, merkt sich genau diese und startet
+genau diese wieder, wenn du `paused` auf falsch setzt — zusammen mit den Downloads, die du während der Pause über
+ioBroker hinzugefügt hast. Ein Download, den du selbst angehalten hast, bleibt angehalten. Startest du einen der
+angehaltenen Downloads im Programm selbst, endet die Pause des Adapters.
 
 ## Warum gibt es bei SABnzbd- und NZBGet-Downloads kein `speed`?
 

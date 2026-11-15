@@ -9,7 +9,11 @@
 > [!IMPORTANT]
 > This adapter cannot be installed from github
 
-Monitors and controls your download programs from ioBroker — [JDownloader 2](https://jdownloader.org/), [qBittorrent](https://www.qbittorrent.org/), [Transmission](https://transmissionbt.com/), [Deluge](https://deluge-torrent.org/), [SABnzbd](https://sabnzbd.org/), [NZBGet](https://nzbget.com/), [aria2](https://aria2.github.io/) and [pyLoad](https://pyload.net/) — in one instance.
+Monitors and controls your download programs from ioBroker, all in one instance:
+
+- **Torrent:** [qBittorrent](https://www.qbittorrent.org/), [Transmission](https://transmissionbt.com/), [Deluge](https://deluge-torrent.org/), [rTorrent](https://github.com/rakshasa/rtorrent), [rqbit](https://github.com/ikatson/rqbit), [Flood](https://flood.js.org/), [Tribler](https://tribler.org/), [Vuze](https://www.vuze.com/), [µTorrent](https://www.utorrent.com/), [Hadouken](https://github.com/hadouken/hadouken)
+- **Usenet:** [SABnzbd](https://sabnzbd.org/), [NZBGet](https://nzbget.com/), [NZBVortex](https://www.nzbvortex.com/)
+- **More:** [JDownloader 2](https://jdownloader.org/), [pyLoad](https://pyload.net/), [aria2](https://aria2.github.io/), [Synology Download Station](https://www.synology.com/dsm/packages/DownloadStation), the downloads of a [Freebox](https://www.free.fr/freebox/)
 
 [🇺🇸 Documentation](./docs/en/README.md) · [🇩🇪 Dokumentation](./docs/de/README.md)
 
@@ -40,19 +44,31 @@ For details and how to disable it, see the [Sentry plugin documentation](https:/
 - **ioBroker Admin >= 8.3.5**
 - At least one of the supported download programs, reachable from the ioBroker host
 
-| Program       | Tested with                             | Access                                                                 |
-| ------------- | --------------------------------------- | ---------------------------------------------------------------------- |
-| JDownloader 2 | build 48637 (local API), My.JDownloader | local API without password, or your My.JDownloader e-mail and password |
-| qBittorrent   | 4.6.7, 5.1.4, 5.2.3                     | user and password, or API key (5.2 and later)                          |
-| Transmission  | 4.0.6, 4.1.3                            | user and password (if set in Transmission)                             |
-| Deluge        | 2.1.1, 2.2.0                            | web UI password                                                        |
-| SABnzbd       | 4.5.5, 5.1.3                            | API key                                                                |
-| NZBGet        | 24.8, 26.3                              | control user and password                                              |
-| aria2         | 1.37.0                                  | RPC secret                                                             |
-| pyLoad-ng     | 0.5.0b3.dev101                          | API key, or user and password                                          |
+| Program          | Tested with                                                                                        | Access                                                                 |
+| ---------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| JDownloader 2    | build 48637 (local API), My.JDownloader                                                            | local API without password, or your My.JDownloader e-mail and password |
+| qBittorrent      | 4.6.7, 5.1.4, 5.2.3                                                                                | user and password, or API key (5.2 and later)                          |
+| Transmission     | 4.0.6, 4.1.3                                                                                       | user and password (if set in Transmission)                             |
+| Deluge           | 2.1.1, 2.2.0                                                                                       | web UI password                                                        |
+| SABnzbd          | 4.5.5, 5.1.3                                                                                       | API key                                                                |
+| NZBGet           | 24.8, 26.3                                                                                         | control user and password                                              |
+| aria2            | 1.37.0                                                                                             | RPC secret                                                             |
+| pyLoad-ng        | 0.5.0b3.dev101                                                                                     | API key, or user and password                                          |
+| rqbit            | 8.1.1, 9.1.0                                                                                       | user and password, if rqbit asks for one                               |
+| rTorrent         | 0.9.8, 0.16.25                                                                                     | the login of the web server in front of it, if it asks for one         |
+| Tribler          | 8.0.7, 8.4.2                                                                                       | API key                                                                |
+| Flood            | 4.11.0 in front of Transmission; 4.16.4 in front of rTorrent, qBittorrent, Transmission and Deluge | Flood's own user and password, if it asks for one                      |
+| Vuze             | 5.7.6.0 with Web Remote 0.6.5                                                                      | user and password of Web Remote                                        |
+| µTorrent         | µTorrent Server 3.3 (build 30470)                                                                  | user and password of the Web UI                                        |
+| Hadouken         | 5.2.0                                                                                              | user and password                                                      |
+| Download Station | answers published by others: DSM 7.2.2 with Download Station 4.1, DSM 6.2 with 3.8                 | DSM user and password                                                  |
+| NZBVortex        | answers published by others: its API documentation 1.7 and Sonarr logs                             | API key                                                                |
+| Freebox          | answers published by others: Radarr logs and Free's API documentation                              | confirmed once on the Freebox's display                                |
 
-Every version in this table was started in a container and put into each status it can reach; the adapter's tests run
-against those recorded answers.
+Each version named on its own in this table was started in a container and put into each status it can reach; the
+adapter's tests run against those recorded answers. Download Station runs only on Synology hardware, NZBVortex only on
+macOS, and the Freebox is a router — for these three the tests run against answers that others recorded from a running
+program or that its documentation shows; `test/fixtures/<program>/SOURCES.md` names each source.
 
 ---
 
@@ -84,6 +100,9 @@ or in the same Docker network. Through My.JDownloader you log in with your accou
 
 **SABnzbd** refuses host names it does not know — enter an IP address or add the name to `host_whitelist` in SABnzbd.
 **Transmission** answers only addresses in its `rpc-whitelist` — add the ioBroker host or switch the whitelist off.
+**rqbit**, **Tribler**, **µTorrent** and **NZBVortex** need a setting in the program first, **rTorrent** a web server in
+front of it — each program's dialog says what to do. **Freebox:** saving its card asks the Freebox for access; confirm it
+on the Freebox's display.
 
 ---
 
@@ -103,7 +122,7 @@ dl-manager.0
                              added, finished, category, error, paused, remove (+ program extras)
 ```
 
-Only the datapoints a program really supports are created — pyLoad has no pause per download, SABnzbd and NZBGet no speed per download, only the torrent programs have upload and ratio.
+Only the datapoints a program really supports are created — pyLoad has no pause per download, SABnzbd and NZBGet no speed per download, only programs that share torrents have upload and ratio.
 
 ---
 
@@ -130,6 +149,16 @@ The test button on a program's card asks the program once and shows its answer.
 
 ### **WORK IN PROGRESS**
 
+- New: rqbit can be added as a program
+- New: rTorrent can be added as a program, through the web server in front of it
+- New: Tribler can be added as a program
+- New: Flood can be added as a program
+- New: Vuze can be added as a program, through its Web Remote plugin
+- New: µTorrent can be added as a program
+- New: Hadouken can be added as a program
+- New: Synology Download Station can be added as a program
+- New: NZBVortex can be added as a program
+- New: the downloads of a Freebox can be added as a program, paired once on the Freebox's display
 - New: a setting lets a new link resume a paused program
 - New: scripts can test a program's connection
 - Fixed: the e-mail address of a My.JDownloader account no longer appears in the device object or an object export
