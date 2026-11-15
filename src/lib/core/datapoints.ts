@@ -62,6 +62,15 @@ type Spec<S> = Omit<DatapointDef<S>, "read" | "write"> & Partial<Pick<DatapointD
 const pr = (d: Spec<ProgramSnapshot>): DatapointDef<ProgramSnapshot> => ({ read: true, write: false, ...d });
 const ir = (d: Spec<DownloadItem>): DatapointDef<DownloadItem> => ({ read: true, write: false, ...d });
 
+/**
+ * @param bps a limit of the snapshot — undefined when the part of the answer that carries it failed alone (Flood's
+ *   settings, pyLoad's limit)
+ * @returns MB/s; undefined for a limit the poll could not read, so the last value stays (fleet suite D6: a 500 empties
+ *   nothing)
+ */
+const limitMBps = (bps: number | null | undefined): number | null | undefined =>
+  bps === undefined ? undefined : toMBps(bps);
+
 /** Datapoints directly below a program's device. */
 export const PROGRAM_DATAPOINTS: readonly DatapointDef<ProgramSnapshot>[] = [
   pr({
@@ -122,7 +131,7 @@ export const PROGRAM_DATAPOINTS: readonly DatapointDef<ProgramSnapshot>[] = [
   pr({
     id: "speedLimit",
     command: val => ({ kind: "setSpeedLimit", bps: fromMBps(val) }),
-    value: s => toMBps(s.status.speedLimitBps),
+    value: s => limitMBps(s.status.speedLimitBps),
     type: "number",
     role: "level",
     unit: "MB/s",
@@ -134,7 +143,7 @@ export const PROGRAM_DATAPOINTS: readonly DatapointDef<ProgramSnapshot>[] = [
   pr({
     id: "uploadLimit",
     command: val => ({ kind: "setUploadLimit", bps: fromMBps(val) }),
-    value: s => toMBps(s.status.uploadLimitBps),
+    value: s => limitMBps(s.status.uploadLimitBps),
     type: "number",
     role: "level",
     unit: "MB/s",

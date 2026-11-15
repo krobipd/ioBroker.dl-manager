@@ -1,3 +1,5 @@
+import { recordIn } from "../../core/answer";
+import { ProtocolError } from "../../core/errors";
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
 import { statusFrom } from "../../core/status";
 import { asRecord, asText, nonNegative, num, round2, sizeOf } from "../../core/units";
@@ -86,6 +88,35 @@ export function mapRqStatus(raw: string | number, debug: (msg: string) => void):
 export function speedBps(speed: unknown): number | null {
   const mbps = nonNegative(asRecord(speed).mbps);
   return mbps === null ? null : Math.round(mbps * MIB);
+}
+
+/**
+ * @param raw `GET /stats`
+ * @returns the stats — refused whole when a speed lost its shape (fleet C26b): read as none it would empty the speed
+ */
+export function statsIn(raw: unknown): Record<string, unknown> {
+  const stats = recordIn(raw, "rqbit's stats");
+  for (const key of ["download_speed", "upload_speed"]) {
+    if (typeof asRecord(stats[key]).mbps !== "number") {
+      throw new ProtocolError(`rqbit's stats without its ${key} — answer refused`);
+    }
+  }
+  return stats;
+}
+
+/**
+ * @param raw `GET /torrents/limits` (9.x: both keys, each a number or null for unlimited — api.rs `LimitsConfig`)
+ * @returns the limits — refused whole when one is gone or of another type: read as unlimited it would also become the
+ *   base of the next limit the adapter sets
+ */
+export function limitsIn(raw: unknown): Record<string, unknown> {
+  const limits = recordIn(raw, "rqbit's limits");
+  for (const key of ["download_bps", "upload_bps"]) {
+    if (limits[key] !== null && typeof limits[key] !== "number") {
+      throw new ProtocolError(`rqbit's limits without its ${key} — answer refused`);
+    }
+  }
+  return limits;
 }
 
 /**

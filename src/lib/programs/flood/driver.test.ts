@@ -65,6 +65,8 @@ interface FloodState {
   torrents: string;
   /** State folder of `GET /api/client/settings`, default the one of the torrents. */
   settings?: string;
+  /** The answer of `GET /api/client/settings` in place of the recorded one. */
+  settingsAnswer?: FixtureAnswer;
   /** The answer of `POST /api/torrents/add-urls`, default the recorded add stopped by URL. */
   add?: FixtureAnswer;
   /** The answer of `PATCH /api/client/settings`, default the recorded limits. */
@@ -100,7 +102,7 @@ async function floodServer(version: string, state: FloodState): Promise<Contract
       case "GET /api/torrents":
         return state.down ? { status: 503, body: "" } : recorded(version, state.torrents, "torrents");
       case "GET /api/client/settings":
-        return recorded(version, state.settings ?? state.torrents, "settings");
+        return state.settingsAnswer ?? recorded(version, state.settings ?? state.torrents, "settings");
       case "PATCH /api/client/settings":
         return state.patch ?? recorded(version, "commands", "settings-limits");
       case "POST /api/torrents/add-urls":
@@ -194,14 +196,41 @@ describe("Flood driver — version", () => {
 });
 
 describe("Flood driver — limits", () => {
-  it("keeps the torrents when Flood refuses the settings (4.11 in front of rTorrent 0.16)", async () => {
+  it("keeps the torrents when Flood refuses the settings (4.11 in front of rTorrent 0.16), and leaves the limits as they are", async () => {
     const s = await floodServer("4.11.0-rtorrent", { torrents: "empty" });
     try {
       expect(loadFixture("flood", "4.11.0-rtorrent", "empty", "settings").status).toBe(500);
       const snap = await new FloodDriver(cfg(s.baseUrl), { ...timers, log }).poll();
-      expect([snap.complete, snap.status.speedLimitBps, snap.status.uploadLimitBps]).toEqual([true, null, null]);
+      // a refused part is no "unlimited" and no "none": the datapoints keep what they hold (fleet D6 on a 500)
+      expect([snap.complete, snap.status.speedLimitBps, snap.status.uploadLimitBps]).toEqual([
+        true,
+        undefined,
+        undefined,
+      ]);
     } finally {
       await s.close();
+    }
+  });
+
+  it("refuses settings that lost a field it reads — read as none they empty both limits, written back they break the backend (fleet C26b)", async () => {
+    const good = loadFixture("flood", "4.16.4-deluge", "limited", "settings").body as Record<string, unknown>;
+    // the two limits and the two values that tell Deluge behind Flood, each the way the fleet suite drifts it
+    const fields = ["throttleGlobalDownSpeed", "throttleGlobalUpSpeed", "networkMaxOpenFiles", "piecesMemoryMax"];
+    const cases = fields.flatMap(key => [
+      Object.fromEntries(Object.entries(good).filter(([k]) => k !== key)),
+      { ...good, [key]: null },
+      { ...good, [key]: String(good[key]) },
+    ]);
+    for (const body of cases) {
+      const s = await floodServer("4.16.4-deluge", { torrents: "limited", settingsAnswer: { body } });
+      try {
+        const d = new FloodDriver(cfg(s.baseUrl), { ...timers, log });
+        await expect(d.poll()).rejects.toThrow(ProtocolError);
+        await expect(d.command({ kind: "setSpeedLimit", bps: 2_000_000 })).rejects.toThrow(ProtocolError);
+        expect(s.calls.filter(c => c.method === "PATCH")).toEqual([]);
+      } finally {
+        await s.close();
+      }
     }
   });
 

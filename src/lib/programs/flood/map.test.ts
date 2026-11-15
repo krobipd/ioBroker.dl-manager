@@ -209,9 +209,9 @@ describe("Flood snapshot", () => {
     ]);
   });
 
-  it("has no limits when Flood refused the settings", () => {
+  it("leaves the limits as they are when Flood refused the settings", () => {
     const s = toSnapshot("", [], null, false, () => undefined);
-    expect([s.status.speedLimitBps, s.status.uploadLimitBps]).toEqual([null, null]);
+    expect([s.status.speedLimitBps, s.status.uploadLimitBps]).toEqual([undefined, undefined]);
   });
 });
 

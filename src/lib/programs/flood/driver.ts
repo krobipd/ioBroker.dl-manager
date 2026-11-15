@@ -5,7 +5,7 @@ import type { Capability, Command, DriverDeps, ProgramConfig, ProgramDriver, Pro
 import { ProgramVersion } from "../../core/version";
 import { errText } from "../../err-text";
 import { FloodClient } from "./client";
-import { behindDeluge, isLoading, isRunning, limitBps, toSnapshot, type FloodTorrent } from "./map";
+import { behindDeluge, isLoading, isRunning, limitBps, settingsIn, toSnapshot, type FloodTorrent } from "./map";
 
 /** The two limits the commands change (B/s, 0 = unlimited — shared/types/ClientSettings.ts; KiB/s behind Deluge). */
 type LimitKey = "throttleGlobalDownSpeed" | "throttleGlobalUpSpeed";
@@ -171,20 +171,23 @@ export class FloodDriver implements ProgramDriver {
 
   /**
    * The limits are a part of the poll that may fail alone: Flood 4.11 in front of rTorrent 0.16 lists the torrents but
-   * answers every settings read with 500 (recording 4.11.0-rtorrent `empty`) — the torrents stay, the limits are empty.
+   * answers every settings read with 500 (recording 4.11.0-rtorrent `empty`) — the torrents stay, the limits stay as
+   * they are. An answer that lost its shape is no refusal: it fails the whole poll ({@link settingsIn}, fleet C26b).
    *
    * @returns the client settings, null when Flood refused them
    */
   private async readSettings(): Promise<Record<string, unknown> | null> {
+    let raw: unknown;
     try {
-      return recordIn(await this.client.send("GET", "/client/settings"), "Flood's client settings");
+      raw = await this.client.send("GET", "/client/settings");
     } catch (err) {
       if (!(err instanceof ProtocolError)) {
         throw err;
       }
-      this.deps.log.debug(`Flood: no limits — ${errText(err)}`);
+      this.deps.log.debug(`Flood: limits not read — ${errText(err)}`);
       return null;
     }
+    return settingsIn(raw);
   }
 
   /**
@@ -226,7 +229,7 @@ export class FloodDriver implements ProgramDriver {
   private async setLimit(key: LimitKey, bps: number): Promise<void> {
     const value = Math.max(0, Math.round(bps));
     const read = async (): Promise<Record<string, unknown>> =>
-      recordIn(await this.client.send("GET", "/client/settings"), "Flood's client settings");
+      settingsIn(await this.client.send("GET", "/client/settings"));
     const current = await read();
     const kib = behindDeluge(current);
     // Deluge takes KiB/s as a float, -1 = off — as the Deluge driver writes it

@@ -5,7 +5,7 @@ import { asRecord, asText } from "../../core/units";
 import type { Capability, Command, DriverDeps, ProgramConfig, ProgramDriver, ProgramSnapshot } from "../../core/model";
 import { ProgramVersion } from "../../core/version";
 import { RqClient } from "./client";
-import { toSnapshot } from "./map";
+import { limitsIn, statsIn, toSnapshot } from "./map";
 
 /** The states a torrent can be paused from. */
 const RUNNING = new Set(["live", "initializing"]);
@@ -123,11 +123,11 @@ export class RqDriver implements ProgramDriver {
       recordIn(await this.client.get("/torrents?with_stats=true"), "rqbit's torrent list").torrents,
       "rqbit's torrent list",
     );
-    const stats = recordIn(await this.client.get("/stats"), "rqbit's stats");
+    const stats = statsIn(await this.client.get("/stats"));
     // 8.x sets limits but cannot tell them: the datapoints stay empty, the last limits the adapter set stay its base
     const limits = await this.client.getIfServed("/torrents/limits");
     if (limits !== undefined) {
-      this.limits = recordIn(limits, "rqbit's limits");
+      this.limits = limitsIn(limits);
     }
     const hashes = torrents.map(t => idIn(t, "info_hash", "rqbit's torrent list", "text"));
     // what the global pause stops: live and initializing torrents — rqbit refuses to pause one in error state

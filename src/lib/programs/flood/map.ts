@@ -1,3 +1,5 @@
+import { recordIn } from "../../core/answer";
+import { ProtocolError } from "../../core/errors";
 import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
 import { statusFrom } from "../../core/status";
 import { asText, epochMs, eta, fromKiB, nonNegative, num, round2, sizeOf } from "../../core/units";
@@ -187,6 +189,25 @@ export function behindDeluge(settings: Record<string, unknown>): boolean {
   return DELUGE_FIXED.every(k => settings[k] === -1);
 }
 
+/** What the driver reads of the settings: the two limits and the two values that tell Deluge behind Flood. */
+const SETTINGS_READ = ["throttleGlobalDownSpeed", "throttleGlobalUpSpeed", ...DELUGE_FIXED] as const;
+
+/**
+ * @param raw `GET /api/client/settings` — every gateway sends the four as numbers (recordings of all four backends)
+ * @returns the settings — refused whole when one of the four is gone or of another type (fleet C26b): read as none they
+ *   would empty both limits, a drifted Deluge value would read KiB/s as B/s, and written back by a limit change they
+ *   would break the backend
+ */
+export function settingsIn(raw: unknown): Record<string, unknown> {
+  const settings = recordIn(raw, "Flood's client settings");
+  for (const key of SETTINGS_READ) {
+    if (typeof settings[key] !== "number") {
+      throw new ProtocolError(`Flood's client settings without its ${key} — answer refused`);
+    }
+  }
+  return settings;
+}
+
 /**
  * @param value `throttleGlobalDownSpeed` / `throttleGlobalUpSpeed` of `GET /api/client/settings`
  * @param kib Deluge stands behind Flood ({@link behindDeluge}): the value is KiB/s, -1 = unlimited
@@ -218,7 +239,8 @@ function errorOf(t: FloodTorrent): string {
  *
  * @param version Flood's version, "" where it tells none (before 4.12)
  * @param torrents `GET /api/torrents` → `torrents`, by hash
- * @param settings `GET /api/client/settings`, null when it failed (Flood 4.11 in front of rTorrent 0.16)
+ * @param settings `GET /api/client/settings`, null when Flood refused it (4.11 in front of rTorrent 0.16) — the limits
+ *   then stay as they are
  * @param paused the adapter holds the program paused
  * @param debug debug log
  * @returns the snapshot
@@ -265,8 +287,8 @@ export function toSnapshot(
       // the list carries every torrent's rates; Flood's own summary comes only over its event stream
       downloadBps: sum(i => i.speedBps),
       uploadBps: sum(i => i.uploadBps),
-      speedLimitBps: settings ? limitBps(settings.throttleGlobalDownSpeed, kib) : null,
-      uploadLimitBps: settings ? limitBps(settings.throttleGlobalUpSpeed, kib) : null,
+      speedLimitBps: settings ? limitBps(settings.throttleGlobalDownSpeed, kib) : undefined,
+      uploadLimitBps: settings ? limitBps(settings.throttleGlobalUpSpeed, kib) : undefined,
     },
     items,
     complete: true,

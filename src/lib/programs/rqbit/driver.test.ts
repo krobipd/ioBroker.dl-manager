@@ -116,6 +116,8 @@ interface RqState {
   torrents: unknown[];
   /** `GET /torrents/limits`, undefined = the route of 8.x (405). */
   limits?: unknown;
+  /** `GET /stats`, default both speeds 0. */
+  stats?: unknown;
   /** The answer of `POST /torrents`. */
   add?: FixtureAnswer;
 }
@@ -132,7 +134,7 @@ async function rqSynth(state: RqState): Promise<Awaited<ReturnType<typeof startF
       case "GET /torrents":
         return { body: { torrents: state.torrents } };
       case "GET /stats":
-        return { body: { download_speed: { mbps: 0 }, upload_speed: { mbps: 0 } } };
+        return { body: state.stats ?? { download_speed: { mbps: 0 }, upload_speed: { mbps: 0 } } };
       case "GET /torrents/limits":
         return state.limits === undefined ? { status: 405, body: "" } : { body: state.limits };
       case "POST /torrents":
@@ -195,6 +197,61 @@ describe("rqbit driver details", () => {
     }
   });
 
+  it("refuses stats or limits that lost a field — read as none they would empty speeds and limits (fleet C26b)", async () => {
+    const speed = { mbps: 1, human_readable: "1.00 MiB/s" };
+    const stats = { download_speed: speed, upload_speed: speed };
+    const limits = { upload_bps: null, download_bps: 1000 };
+    // each way the fleet suite drifts a speed: gone, null, another type (an object keeps its type, loses its first key)
+    const drifted = (key: string): Record<string, unknown>[] => [
+      Object.fromEntries(Object.entries(stats).filter(([k]) => k !== key)),
+      { ...stats, [key]: null },
+      { ...stats, [key]: { human_readable: null } },
+    ];
+    const cases = [
+      ...[...drifted("download_speed"), ...drifted("upload_speed")].map(st => ({ stats: st, limits })),
+      // null is rqbit's "unlimited" — a limit is refused when it is gone or of another type
+      ...[{ upload_bps: null }, { download_bps: 1000 }, { upload_bps: null, download_bps: "1000" }].map(l => ({
+        stats,
+        limits: l,
+      })),
+    ];
+    for (const c of cases) {
+      const s = await rqSynth({ torrents: [], ...c });
+      try {
+        await expect(new RqDriver(cfg(s.baseUrl), { ...timers, log }).poll()).rejects.toThrow(ProtocolError);
+      } finally {
+        await s.close();
+      }
+    }
+    const s = await rqSynth({ torrents: [], stats, limits });
+    try {
+      expect((await new RqDriver(cfg(s.baseUrl), { ...timers, log }).poll()).status).toMatchObject({
+        downloadBps: 1024 * 1024,
+        uploadBps: 1024 * 1024,
+        speedLimitBps: 1000,
+        uploadLimitBps: 0,
+      });
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("sets a limit on the last limits answer that kept its shape, not on a refused one", async () => {
+    const state: RqState = { torrents: [], limits: { upload_bps: 2000, download_bps: 1000 } };
+    const s = await rqSynth(state);
+    try {
+      const d = new RqDriver(cfg(s.baseUrl), { ...timers, log });
+      await d.poll();
+      state.limits = { download_bps: null };
+      await expect(d.poll()).rejects.toThrow(ProtocolError);
+      await d.command({ kind: "setUploadLimit", bps: 500 });
+      // the base of the next set is the last answer that kept its shape, not the refused one
+      expect(posts(s)).toEqual(['/torrents/limits {"download_bps":1000,"upload_bps":500}']);
+    } finally {
+      await s.close();
+    }
+  });
+
   it("pauses only live and initializing torrents, holds one added meanwhile and resumes exactly these", async () => {
     const state: RqState = {
       torrents: [
@@ -243,6 +300,7 @@ describe("rqbit driver details", () => {
         const answers: Record<string, unknown> = {
           "GET /": { version: "9.1.0" },
           "GET /torrents": { torrents: [t("a".repeat(40), "live")] },
+          "GET /stats": { download_speed: { mbps: 0 }, upload_speed: { mbps: 0 } },
           "GET /torrents/limits": { download_bps: null, upload_bps: null },
         };
         if (`${req.method} ${path}` === "POST /torrents") {

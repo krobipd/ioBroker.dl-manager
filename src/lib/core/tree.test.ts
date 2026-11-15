@@ -194,6 +194,22 @@ describe("ProgramTree — device", () => {
     expect(a.val("qbittorrent-nas.version")).toBe("5.2.3");
   });
 
+  it("keeps the limits a poll could not read, and empties them only on the program's own null (fleet D6, C26b)", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a, ALL, [...CAPS, "speedLimit", "uploadLimit"]);
+    const s = snap([]);
+    const limits = (down: number | null | undefined, up: number | null | undefined): ProgramSnapshot => ({
+      ...s,
+      status: { ...s.status, speedLimitBps: down, uploadLimitBps: up },
+    });
+    await t.sync(limits(2_000_000, 1_000_000));
+    // a part of the answer that failed alone (Flood's settings, pyLoad's limit): the limits stay as they were
+    await t.sync(limits(undefined, undefined));
+    expect([a.val("qbittorrent-nas.speedLimit"), a.val("qbittorrent-nas.uploadLimit")]).toEqual([2, 1]);
+    await t.sync(limits(null, null));
+    expect([a.val("qbittorrent-nas.speedLimit"), a.val("qbittorrent-nas.uploadLimit")]).toEqual([null, null]);
+  });
+
   it("shows a row that cannot run as a bare device, offline with the reason Unknown", async () => {
     const a = new FakeAdapter(NS);
     const t = new ProgramTree(a, "emule-x", "eMule", { type: "emule", capabilities: new Set(), extras: [] }, ALL);
