@@ -5,7 +5,7 @@
 // The status fields are ruTorrent's (js/rtorrent.js: is_open, d.state, is_active, d.hashing, is_hash_checking,
 // d.message) — the driver derives its status from the same ones.
 import { lookup } from "node:dns/promises";
-import { chmodSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DEAD_MAGNET, Http, prepareTorrents, Recorder, TORRENT_FILES, torrentOf, waitFor } from "../lib.mjs";
 
@@ -285,10 +285,19 @@ export async function record(ctx) {
     120_000,
   );
   const peer = `${(await lookup("rqseed", { family: 4 })).address}:4240`;
-  // the image tries an encrypted handshake first (.rtorrent.rc `protocol.encryption.set =
-  // allow_incoming,try_outgoing,enable_retry`), rqbit speaks none — 0.9.8 got its plain retry through in one of three
-  // runs; outgoing handshakes go plain from here on
+  // outgoing handshakes plain: the image tries an encrypted one first (.rtorrent.rc `protocol.encryption.set =
+  // allow_incoming,try_outgoing,enable_retry`) and rqbit speaks none — not the cause of 0.9.8's stuck first download
+  // (red with and without it), kept so the handshake is one thing less in question
   await rpc("protocol.encryption.set", "", "allow_incoming", "enable_retry");
+  // rTorrent's own log of connections and peers, read when the first download does not start (0.9.8: three runs of
+  // four never connected to the seeder)
+  const RT_LOG = "rt-debug.log";
+  await rpc("log.open_file", "", "dbg", `${DOWNLOADS}/${RT_LOG}`).catch(err =>
+    console.log(`rtorrent: log: ${err.message}`),
+  );
+  for (const group of ["connection_debug", "peer_debug", "torrent_debug", "info"]) {
+    await rpc("log.add_output", "", group, "dbg").catch(err => console.log(`rtorrent: log ${group}: ${err.message}`));
+  }
 
   const hash = name => torrentOf(ctx.work, name).hash.toUpperCase();
   /** @returns {Promise<Record<string, Record<string, unknown>>>} every torrent by hash, keyed by field */
@@ -339,7 +348,25 @@ export async function record(ctx) {
       return t && Number(t["d.completed_bytes"]) > 0 && Number(t["d.complete"]) === 0;
     },
     120_000,
-  );
+  ).catch(async err => {
+    console.log(`rtorrent: big row ${JSON.stringify(await find("big").catch(e => e.message))}`);
+    for (const [label, call] of /** @type {[string, () => Promise<unknown>][]} */ ([
+      [
+        "peers",
+        () => rpc("p.multicall", hash("big"), "", "p.address=", "p.port=", "p.is_encrypted=", "p.is_incoming="),
+      ],
+      ["not connected", () => rpc("d.peers_not_connected", hash("big"))],
+      ["listen port", () => rpc("network.listen.port")],
+      ["seeder peers", async () => (await seed.req("GET", "/torrents/0/peer_stats")).text.slice(0, 2000)],
+    ])) {
+      console.log(`rtorrent: ${label} ${JSON.stringify(await call().catch(e => e.message))}`);
+    }
+    const log = join(ctx.work, "downloads", RT_LOG);
+    console.log(
+      `---- rtorrent debug log ----\n${existsSync(log) ? readFileSync(log, "utf8").split("\n").slice(-150).join("\n") : "(none)"}`,
+    );
+    throw err;
+  });
   await load("queued", true);
   await load("stopped", true);
   w("commands", "d-stop", `POST /RPC2 d.stop(${hash("stopped")})`, await send("d.stop", [hash("stopped")]));
