@@ -86,6 +86,9 @@ jobs:
             tag: 4.16.4-transmission
           - program: flood
             tag: 4.16.4-deluge
+          # Vuze 5.7.6.0 (the last release) with its Web Remote plugin, fetched and checked by the module
+          - program: vuze
+            tag: 5.7.6.0-xmwebui-0.6.5
     # a manual start may name one program; the other matrix entries then skip every step
     env:
       SELECTED: ${{ inputs.program == '' || inputs.program == matrix.program }}
