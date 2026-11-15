@@ -10,7 +10,7 @@
 // through a folder both containers mount; Flood runs under the image's ids (1000) to open it. rTorrent reads no web seed,
 // so — as in rtorrent.mjs — rqbit seeds the payloads and rTorrent gets it as a peer over the image's XML-RPC.
 import { lookup } from "node:dns/promises";
-import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DEAD_MAGNET, Http, makeTorrent, payload, Recorder, torrentOf, waitFor } from "../lib.mjs";
 import { prepare as prepareDeluge } from "./deluge.mjs";
@@ -112,6 +112,10 @@ export function prepare(work, tag) {
     chmodSync(run, 0o777);
     volumes.push(`${run}:/var/run/rtorrent`);
     floodVolumes.push(`${run}:/rtrun`);
+    // Flood's rTorrent gateway creates the destination in its own file system before every add (rTorrent
+    // clientGatewayService.ts `fs.promises.mkdir(destination)`) — the two share the download folder, as they do when
+    // Flood starts rTorrent itself
+    floodVolumes.push(`${join(work, "downloads")}:/downloads`);
   }
   if (backend === "deluge") {
     // the daemon answers only local clients unless allow_remote; Flood logs in with an account of the auth file
@@ -237,6 +241,16 @@ export async function record(ctx) {
     1000,
   );
   w("auth", "connection-test", "GET /api/client/connection-test", connected);
+  if (backend === "qbittorrent") {
+    // qBittorrent refreshes torrent states every 1.5 s by default (qbittorrent.mjs) — the check of `check` ends between
+    // two refreshes, and Flood asks qBittorrent anew on every GET /api/torrents (torrents.ts → fetchTorrentList)
+    const qb = new Http("http://qbt:8080");
+    const login = await qb.req("POST", "/api/v2/auth/login", { form: { username: USER, password: PASS } });
+    if (login.status >= 300) {
+      throw new Error(`flood/qbittorrent: login failed: ${login.status} ${login.text}`);
+    }
+    await qb.req("POST", "/api/v2/app/setPreferences", { form: { json: JSON.stringify({ refresh_interval: 50 }) } });
+  }
 
   const fresh = () => new Http(base);
   w(
@@ -304,8 +318,26 @@ export async function record(ctx) {
   const H = name => torrentOf(ctx.work, name).hash.toUpperCase();
   const statusOf = async name => (await list())[H(name)]?.status ?? [];
   const has = async (name, st) => (await statusOf(name)).includes(st);
+  // the payloads lie in /downloads; rTorrent's own default in the crazymax image is another folder (rtorrent.mjs loads
+  // with d.directory.set), the other three backends start with /downloads
+  const dest = backend === "rtorrent" ? { destination: "/downloads" } : {};
   const addFile = (name, start) =>
-    call("POST", "/api/torrents/add-files", { files: [torrentOf(ctx.work, name).torrent.toString("base64")], start });
+    call("POST", "/api/torrents/add-files", {
+      files: [torrentOf(ctx.work, name).torrent.toString("base64")],
+      start,
+      ...dest,
+    });
+  /**
+   * The limits as a whole settings object: Flood's Deluge gateway sends every key of `setClientSettings`, an unsent one
+   * as None, and Deluge stores it (state `partial`) — so every limit goes in on top of what GET answered.
+   *
+   * @param {Record<string, number>} limits throttle keys in B/s
+   * @returns {Promise<{ status: number, text: string }>} the answer
+   */
+  const writeLimits = async limits => {
+    const now = /** @type {Record<string, unknown>} */ ((await call("GET", "/api/client/settings")).json());
+    return call("PATCH", "/api/client/settings", { ...now, ...limits });
+  };
   /**
    * @param {string} label what is awaited
    * @param {() => Promise<unknown>} probe true when there
@@ -327,15 +359,15 @@ export async function record(ctx) {
   w(
     "commands",
     "settings-limits",
-    "PATCH /api/client/settings {throttleGlobalDownSpeed: 102400, throttleGlobalUpSpeed: 51200}",
-    await call("PATCH", "/api/client/settings", { throttleGlobalDownSpeed: 102400, throttleGlobalUpSpeed: 51200 }),
+    "PATCH /api/client/settings {...GET /api/client/settings, throttleGlobalDownSpeed: 102400, throttleGlobalUpSpeed: 51200}",
+    await writeLimits({ throttleGlobalDownSpeed: 102400, throttleGlobalUpSpeed: 51200 }),
   );
   await snapshot("limited");
   w(
     "commands",
     "settings-unlimited",
-    "PATCH /api/client/settings {throttleGlobalDownSpeed: 0, throttleGlobalUpSpeed: 0}",
-    await call("PATCH", "/api/client/settings", { throttleGlobalDownSpeed: 0, throttleGlobalUpSpeed: 0 }),
+    "PATCH /api/client/settings {...GET /api/client/settings, throttleGlobalDownSpeed: 0, throttleGlobalUpSpeed: 0}",
+    await writeLimits({ throttleGlobalDownSpeed: 0, throttleGlobalUpSpeed: 0 }),
   );
   await snapshot("unlimited");
 
@@ -382,7 +414,10 @@ export async function record(ctx) {
   await reach(
     "mixed states",
     async () =>
-      (await has("stopped", "stopped")) && (await has("done", "complete")) && (await has("check", "complete")),
+      (await has("stopped", "stopped")) &&
+      (await has("done", "complete")) &&
+      (await has("gone", "complete")) &&
+      (await has("check", "complete")),
     180_000,
   );
   await new Promise(resolve => setTimeout(resolve, 3000));
@@ -417,11 +452,28 @@ export async function record(ctx) {
     }),
   );
 
-  // failed: an unreadable payload, then a check
-  chmodSync(join(ctx.work, "downloads", "gone.bin"), 0o000);
+  // missing payload, the way each backend's own recorder reaches its failed state: qBittorrent an unreadable file and a
+  // check, Transmission the file gone, a check and a start, Deluge and rTorrent the file gone and a check
+  const gone = join(ctx.work, "downloads", "gone.bin");
+  if (backend === "qbittorrent") {
+    chmodSync(gone, 0o000);
+  } else {
+    rmSync(gone);
+  }
   await call("POST", "/api/torrents/check-hash", { hashes: [H("gone")] });
-  await reach("gone error", () => has("gone", "error"), 60_000, 200);
-  await snapshot("error");
+  if (backend === "transmission") {
+    await call("POST", "/api/torrents/start", { hashes: [H("gone")] });
+  }
+  await reach(
+    "gone failing",
+    async () => {
+      const st = await statusOf("gone");
+      return st.includes("error") || (!st.includes("checking") && !st.includes("complete"));
+    },
+    60_000,
+    200,
+  );
+  await snapshot("missing");
 
   await reach("big complete", () => has("big", "complete"), 240_000, 1000);
   await snapshot("finished");
@@ -431,7 +483,11 @@ export async function record(ctx) {
     "commands",
     "add-urls-stopped",
     "POST /api/torrents/add-urls {urls: [http://seed:8080/late.torrent], start: false}",
-    await call("POST", "/api/torrents/add-urls", { urls: [`http://seed:8080/${LATE.name}.torrent`], start: false }),
+    await call("POST", "/api/torrents/add-urls", {
+      urls: [`http://seed:8080/${LATE.name}.torrent`],
+      start: false,
+      ...dest,
+    }),
   );
   await reach("late listed", async () => Boolean((await list())[H(LATE.name)]), 60_000);
   await snapshot("added-stopped");
@@ -483,5 +539,14 @@ export async function record(ctx) {
     "POST /api/torrents/delete {hashes: [unknown], deleteData: false}",
     await call("POST", "/api/torrents/delete", { hashes: [unknown], deleteData: false }),
   );
+
+  // last, because it may break the backend: only the two limits, as Flood's API allows (Partial<ClientSettings>)
+  w(
+    "commands",
+    "settings-partial",
+    "PATCH /api/client/settings {throttleGlobalDownSpeed: 0, throttleGlobalUpSpeed: 0}",
+    await call("PATCH", "/api/client/settings", { throttleGlobalDownSpeed: 0, throttleGlobalUpSpeed: 0 }),
+  );
+  await snapshot("partial");
   return rec;
 }
