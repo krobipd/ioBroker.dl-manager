@@ -10,7 +10,14 @@ import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFi
 import { execFileSync } from "node:child_process";
 import { dirname, join, relative } from "node:path";
 
-const SECRETS = ["testpass1", "testsecret1", "0123456789abcdef0123456789abcdef", "fedcba9876543210fedcba9876543210"];
+const SECRETS = [
+  "testpass1",
+  "testsecret1",
+  "0123456789abcdef0123456789abcdef",
+  "fedcba9876543210fedcba9876543210",
+  // Tribler's CORE_API_KEY (programs/tribler.mjs) — its settings carry it as `api.key`
+  "recorderkey0123456789",
+];
 const KEEP_IPS = new Set(["0.0.0.0", "127.0.0.1", "255.255.255.255"]);
 
 const src = process.argv[2];

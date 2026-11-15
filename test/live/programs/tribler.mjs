@@ -1,10 +1,10 @@
-// Tribler in the container recorder: the official image (ghcr.io/tribler/tribler — Ubuntu with the release's .deb,
-// user `ubuntu`), headless, started in two steps by tribler-start.sh. Routes from src/tribler/core/libtorrent/restapi/
+// Tribler in the container recorder: the official image (ghcr.io/tribler/tribler — Ubuntu with the release's .deb, run
+// as root), headless, started in two steps by tribler-start.sh. Routes from src/tribler/core/libtorrent/restapi/
 // downloads_endpoint.py, core/restapi/settings_endpoint.py and core/versioning/restapi/versioning_endpoint.py (v8.0.7,
 // v8.4.3). The downloads come from the seed server's web seed (libtorrent reads BEP 19). Every add of the recorder asks
 // for 0 hops: the container has no Internet and no Tribler peer to build an anonymous circuit with — except one add in
 // the driver's shape ({uri} alone), which shows what a default installation's tunnel settings make of it.
-import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import {
   DEAD_MAGNET,
@@ -14,7 +14,6 @@ import {
   payload,
   prepareTorrents,
   Recorder,
-  TORRENT_FILES,
   torrentOf,
   waitFor,
 } from "../lib.mjs";
@@ -51,22 +50,15 @@ export function prepare(work, tag) {
   const ro = makeTorrent({ name: "ro.bin", data, webseed: "http://seed:8080/ro.bin" });
   writeFileSync(join(work, "torrents", "ro.torrent"), ro.torrent);
   writeFileSync(join(work, "torrents", "ro.hash"), ro.infoHash);
-  // Tribler runs as the image's user `ubuntu`: every folder it writes and every payload it opens must be open to it
   for (const dir of ["state", "downloads", "ro"]) {
     mkdirSync(join(work, dir), { recursive: true });
-    chmodSync(join(work, dir), 0o777);
-  }
-  for (const [name, f] of Object.entries(TORRENT_FILES)) {
-    if (f.present) {
-      chmodSync(join(work, "downloads", `${name}.bin`), 0o666);
-    }
   }
   return {
     image: `ghcr.io/tribler/tribler:${tag}`,
     name: "tribler",
-    // libtorrent puts peers on a private network into its local peer class, which the session's rate limits do not
-    // cover (libtorrent manual, peer classes): on a Docker range the seed server is such a peer and Tribler's limit
-    // never bites — on a public-looking range (still `--internal`) it does
+    // libtorrent's default peer class filter puts peers on private ranges into its local class, which the session's
+    // rate limits leave out (libtorrent manual, peer classes) — on a public-looking range (still `--internal`) the seed
+    // server is no such peer
     subnet: "11.22.33.0/24",
     entrypoint: "/bin/bash",
     args: ["/live/tribler-start.sh"],
@@ -153,8 +145,31 @@ export async function record(ctx) {
       body: torrentOf(ctx.work, name).torrent,
     });
   const patch = (h, body) => json("PATCH", `/api/downloads/${h}`, body);
+  /**
+   * The driver's limit write: the whole libtorrent section with both rates changed — 8.0.7 replaces the section with
+   * the body's (settings_endpoint.py `_recursive_merge_settings` ends with `existing[key] = value`), 8.4 merges value by
+   * value. Bytes per second, 0 = unlimited: download_manager.py hands them to libtorrent's rate limits unchanged, and
+   * Tribler's own settings page writes KiB/s × 1024 (ui/src/pages/Settings/Bandwidth.tsx).
+   *
+   * @param {number} down download limit
+   * @param {number} up upload limit
+   * @returns {ReturnType<Http["req"]>} the answer of the write
+   */
+  const setLimits = async (down, up) => {
+    const lt = /** @type {{ settings: { libtorrent: object } }} */ ((await get("/api/settings")).json()).settings
+      .libtorrent;
+    return json("POST", "/api/settings", { libtorrent: { ...lt, max_download_rate: down, max_upload_rate: up } });
+  };
 
   await snapshot("empty");
+  // 100 KiB/s from before the first add (far below the seed server's 1 MiB/s): the download's rate shows the unit, and
+  // the 32 MiB download still runs when the pause below stops it
+  w(
+    "commands",
+    "settings-limits",
+    "POST /api/settings {libtorrent: <the whole section, max_download_rate and max_upload_rate changed>}",
+    await setLimits(102400, 51200),
+  );
   w(
     "commands",
     "put-torrent",
@@ -168,15 +183,6 @@ export async function record(ctx) {
       return d?.status === "DOWNLOADING" && d.progress > 0 && d.progress < 1;
     },
     120_000,
-  );
-  // limits in bytes per second, 0 = unlimited (download_manager.py set_session_limits → libtorrent's rate limits).
-  // 100 KiB/s is far below the seed server's 1 MiB/s, so the download's rate shows whether the unit is bytes — and it
-  // keeps the 32 MiB download running until the pause below stops it
-  w(
-    "commands",
-    "settings-limits",
-    "POST /api/settings {libtorrent: {max_download_rate, max_upload_rate}}",
-    await json("POST", "/api/settings", { libtorrent: { max_download_rate: 102400, max_upload_rate: 51200 } }),
   );
   await new Promise(resolve => setTimeout(resolve, 8000));
   await snapshot("limited");
@@ -254,17 +260,16 @@ export async function record(ctx) {
   );
   await snapshot("error");
 
-  // what the adapter's emulated pause stops and resumes: a download, a seed, a hash check and a magnet
+  // what the adapter's emulated pause stops and resumes: a download, a seed, a hash check and a magnet — the stops go
+  // out right after the recheck: Tribler checks the 1 GiB of zeros within a second, no poll caught it running (run
+  // 43673980980)
   w(
     "commands",
     "patch-recheck",
     `PATCH /api/downloads/${hash("check")} {state: recheck}`,
     await patch(hash("check"), { state: "recheck" }),
   );
-  await waitFor("check rechecking", async () => (await statusOf(hash("check"))) === "HASHCHECKING", 30_000, 20).catch(
-    err => console.log(`tribler: ${err.message} — recorded as it is`),
-  );
-  const halted = [hash("big"), hash("done"), hash("check"), DEAD_MAGNET_HASH];
+  const halted = [hash("check"), hash("big"), hash("done"), DEAD_MAGNET_HASH];
   for (const h of halted) {
     await patch(h, { state: "stop" });
   }
@@ -283,7 +288,7 @@ export async function record(ctx) {
   await snapshot("resumed");
 
   // the limit off again: the big download finishes
-  await json("POST", "/api/settings", { libtorrent: { max_download_rate: 0, max_upload_rate: 0 } });
+  await setLimits(0, 0);
 
   // seeding: the big download finishes and keeps going
   await waitStates("big finished", { big: "SEEDING" }, 300_000);
@@ -310,5 +315,14 @@ export async function record(ctx) {
   );
   w("commands", "put-no-uri", "PUT /api/downloads {}", await json("PUT", "/api/downloads", {}));
   await snapshot("removed");
+
+  // one value alone, last: what 8.0.7 makes of a partial section (it keeps only the body's keys), what 8.4 does
+  w(
+    "commands",
+    "settings-partial",
+    "POST /api/settings {libtorrent: {max_download_rate}} (one value alone)",
+    await json("POST", "/api/settings", { libtorrent: { max_download_rate: 0 } }),
+  );
+  w("partial", "settings", "GET /api/settings", await get("/api/settings"));
   return rec;
 }
