@@ -1,6 +1,8 @@
+import { SettingsError } from "../start-failure";
 import type { ProgramEntry } from "./model";
 import {
   addressOf,
+  checkPollInterval,
   legacyId,
   parseMaxDownloads,
   parsePollInterval,
@@ -259,6 +261,23 @@ describe("parsePollInterval", () => {
     expect(parsePollInterval(undefined)).toBe(10_000);
     expect(parsePollInterval(Number.NaN)).toBe(10_000);
     expect(parsePollInterval(1e9)).toBe(3_600_000);
+  });
+});
+
+describe("checkPollInterval", () => {
+  it("refuses a poll interval that is set but no number — the start ends as a settings error", () => {
+    for (const raw of ["often", "10s", true, {}, [], Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() => checkPollInterval(raw), JSON.stringify(raw)).toThrow(SettingsError);
+    }
+    expect(() => checkPollInterval("often")).toThrow(
+      'The poll interval "often" is no number of seconds — enter 10 to 3600 in the adapter settings',
+    );
+  });
+
+  it("lets a missing, empty or out-of-range number through — it runs at 10 s or the nearest bound", () => {
+    for (const raw of [undefined, null, "", 10, "15", 2, 1e9, 0]) {
+      expect(() => checkPollInterval(raw), JSON.stringify(raw)).not.toThrow();
+    }
   });
 });
 

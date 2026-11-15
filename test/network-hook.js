@@ -59,23 +59,35 @@ const root = process.cwd();
 // emit wrapper stands in the stack of the datagram an unbound socket sends again from `listening`, and the adapter's
 // socket counted as a hook's — never counted). Its frames are passed like node's own.
 const PROBE = path.join(__dirname, "resource-probe.js");
-const byHook = () => {
+// the frames of the stack past node, this hook and the probe, the caller's first — each with its file and its path from
+// the working directory
+/** @type {(depth: number) => { file: string, rel: string }[]} */
+const ownFrames = depth => {
   const limit = Error.stackTraceLimit;
-  Error.stackTraceLimit = 80;
+  Error.stackTraceLimit = depth;
   const stack = new Error().stack || "";
   Error.stackTraceLimit = limit;
-  let hook = false;
+  const frames = [];
   for (const line of stack.split("\n").slice(2)) {
     const m = line.match(/\(?((?:file:\/\/)?\/[^():]+):\d+/);
     if (!m || line.includes("node:") || line.includes(__filename) || line.includes(PROBE)) {
       continue;
     }
     const file = m[1].replace("file://", "");
-    const rel = path.relative(root, file);
-    if (!rel.startsWith("..") && !rel.startsWith("node_modules") && !/(^|\/)test\//.test(rel)) {
+    frames.push({ file, rel: path.relative(root, file) });
+  }
+  return frames;
+};
+// a frame of the adapter's own code: below the working directory, outside node_modules and every test folder
+/** @type {(frame: { rel: string }) => boolean} */
+const adapterFrame = ({ rel }) => !rel.startsWith("..") && !rel.startsWith("node_modules") && !/(^|\/)test\//.test(rel);
+const byHook = () => {
+  let hook = false;
+  for (const frame of ownFrames(80)) {
+    if (adapterFrame(frame)) {
       return false;
     }
-    if (/\/test\//.test(file) && !file.includes("/node_modules/")) {
+    if (/\/test\//.test(frame.file) && !frame.file.includes("/node_modules/")) {
       hook = true;
     }
   }
@@ -438,6 +450,83 @@ const faultStatus = mode => (["500", "500all", "500press"].includes(mode) ? 500 
 /** @type {(mode: string) => Record<string, string>} */
 // round 171 (limits audit #26): 97 s — a fixed one-minute fallback after any 429 waits too short and shows it
 const faultHeaders = mode => (mode === "429" ? { "retry-after": "97" } : {});
+// Section 7 for the messages of a stream (round 177): under `drift` a JSON message a counterpart sends over UDP, a
+// WebSocket or MQTT reaches the adapter drifted like an HTTP answer — the first message of each kind (its way and its
+// top-level keys) per process, the repeat as it came; a message that is no JSON object or array goes on as it came. Only
+// a `message` listener the adapter's own code adds is fed so: a fixture's listener and a library's inner one get the
+// message as it came (a `once` listener too — node's wrapper must stay what it removes). Every kind a listener of the
+// adapter gets is noted once per fault in RESOURCE_PROBE_DIR/<pid>.messages.
+const messagesLog = path.join(dir, `${process.pid}.messages`);
+const messageNoted = new Set();
+// the adapter's own code adds the listener: the first frame past node, this hook and the probe lies in the adapter
+const addedByAdapter = () => {
+  const [first] = ownFrames(30);
+  return first !== undefined && adapterFrame(first);
+};
+// where the payload of a `message` event stands and which way it came: dgram (msg, rinfo), MQTT (topic, payload) on a
+// client with a stream, a WebSocket (data, isBinary) on a socket
+/** @type {(emitter: any, args: unknown[]) => { at: number, way: string } | undefined} */
+const messageWay = (emitter, args) => {
+  const rinfo = /** @type {{ address?: unknown }} */ (args[1]);
+  if (emitter instanceof dgram.Socket) {
+    return rinfo && typeof rinfo.address === "string" ? { at: 0, way: `udp ${rinfo.address}` } : undefined;
+  }
+  if (typeof args[0] === "string" && (Buffer.isBuffer(args[1]) || typeof args[1] === "string") && emitter.stream) {
+    return { at: 1, way: `mqtt ${args[0]}` };
+  }
+  return emitter._socket instanceof net.Socket ? { at: 0, way: "ws" } : undefined;
+};
+/** @type {(emitter: unknown, args: unknown[]) => unknown[]} */
+const driftedMessage = (emitter, args) => {
+  const how = messageWay(emitter, args);
+  const payload = how === undefined ? undefined : args[how.at];
+  const text =
+    typeof payload === "string"
+      ? payload
+      : payload instanceof Uint8Array
+        ? Buffer.from(payload).toString("utf8")
+        : undefined;
+  let parsed;
+  try {
+    parsed = text === undefined ? undefined : JSON.parse(text);
+  } catch {
+    return args; // not JSON — it goes on as it came
+  }
+  if (how === undefined || parsed === null || typeof parsed !== "object") {
+    return args;
+  }
+  const key = `${how.way} ${Array.isArray(parsed) ? "[]" : Object.keys(parsed).sort().join(",")}`;
+  const fault = faultWord() === "drift" && !messageNoted.has(`drift ${key}`) ? "drift" : "";
+  if (!messageNoted.has(`${fault} ${key}`)) {
+    messageNoted.add(`${fault} ${key}`);
+    fs.appendFileSync(messagesLog, `${JSON.stringify({ t: Date.now(), key, fault })}\n`);
+  }
+  if (!fault) {
+    return args;
+  }
+  const out = [...args];
+  const drifted = JSON.stringify(drift(parsed));
+  out[how.at] = typeof payload === "string" ? drifted : Buffer.from(drifted);
+  return out;
+};
+/** @type {(add: Native) => Native} */
+const feedingDrift = add =>
+  /** @this {unknown} */
+  function (event, listener) {
+    if (event !== "message" || typeof listener !== "function" || "listener" in listener || !addedByAdapter()) {
+      return add.call(this, event, listener);
+    }
+    /** @this {unknown} */
+    const fed = function (/** @type {unknown[]} */ ...args) {
+      return listener.apply(this, driftedMessage(this, args));
+    };
+    // node's removeListener and listeners() read `listener` — the adapter removes and sees its own function
+    fed.listener = listener;
+    return add.call(this, event, fed);
+  };
+EventEmitter.prototype.on = feedingDrift(/** @type {Native} */ (EventEmitter.prototype.on));
+EventEmitter.prototype.addListener = EventEmitter.prototype.on;
+EventEmitter.prototype.prependListener = feedingDrift(/** @type {Native} */ (EventEmitter.prototype.prependListener));
 const refused = () => Object.assign(new Error("connect ECONNREFUSED (outage switch)"), { code: "ECONNREFUSED" });
 const reset = () => Object.assign(new Error("read ECONNRESET (outage switch)"), { code: "ECONNRESET" });
 const optionsOf = args => {

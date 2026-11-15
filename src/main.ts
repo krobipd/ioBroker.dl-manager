@@ -3,7 +3,7 @@ import { I18n } from "@iobroker/adapter-core";
 import { basename, dirname, join } from "node:path";
 import { ActionableProblems } from "./lib/actionable-problems";
 import { CallBudget, readHeldPlaces, writeHeldPlaces } from "./lib/core/call-budget";
-import { parseMaxDownloads, parsePollInterval, parseTreeScope } from "./lib/core/config";
+import { checkPollInterval, parseMaxDownloads, parsePollInterval, parseTreeScope } from "./lib/core/config";
 import { settleIds } from "./lib/core/device-id";
 import { readDevices } from "./lib/core/devices";
 import { ProgramManager, type ManagerAdapter } from "./lib/core/manager";
@@ -20,6 +20,7 @@ import { errText } from "./lib/err-text";
 import { tDesc, tName } from "./lib/i18n";
 import { migrateNativeKeys, type NativeKeyMigration } from "./lib/native-key-migration";
 import { listMyJdDevices } from "./lib/programs/jdownloader/cloud";
+import { failStart } from "./lib/start-failure";
 import type { ProgramEntry } from "./lib/core/model";
 import { findProgram } from "./lib/programs/registry";
 import type { HttpTimers } from "./lib/core/http";
@@ -219,8 +220,7 @@ class DownloadManagerAdapter extends utils.Adapter {
       device: true,
     });
     this.log.info(
-      `${oldId} is now ${newId} — ${r.objects} object(s), ${r.enums} room/function entr${r.enums === 1 ? "y" : "ies"}, ` +
-        `${r.aliases} alias(es)`,
+      `${oldId} is now ${newId} — ${r.objects} object(s), ${r.enums} room/function entr${r.enums === 1 ? "y" : "ies"}`,
     );
   }
 
@@ -267,7 +267,7 @@ class DownloadManagerAdapter extends utils.Adapter {
     if (pairs.length) {
       const r = await moveObjects(this.mover, pairs);
       this.log.info(`${pairs.length} "last" value(s) moved into the "${LAST_CHANNEL}" channels`);
-      this.log.debug(`last values: ${r.enums} room/function entries, ${r.aliases} alias(es)`);
+      this.log.debug(`last values: ${r.enums} room/function entries`);
     }
   }
 
@@ -379,7 +379,7 @@ class DownloadManagerAdapter extends utils.Adapter {
     if (!coveredBy(patch, this.known.get("summary.last.finished"))) {
       await this.extendObject("summary.last.finished", patch);
     }
-    patch = { common: { name: tName("lastFinishedTime") } };
+    patch = { common: { name: tName("lastFinishedTime"), desc: tDesc("descLastFinishedTime") } };
     if (!coveredBy(patch, this.known.get("summary.last.finishedTime"))) {
       await this.extendObject("summary.last.finishedTime", patch);
     }
@@ -387,7 +387,7 @@ class DownloadManagerAdapter extends utils.Adapter {
     if (!coveredBy(patch, this.known.get("summary.last.failed"))) {
       await this.extendObject("summary.last.failed", patch);
     }
-    patch = { common: { name: tName("lastFailedTime") } };
+    patch = { common: { name: tName("lastFailedTime"), desc: tDesc("descLastFailedTime") } };
     if (!coveredBy(patch, this.known.get("summary.last.failedTime"))) {
       await this.extendObject("summary.last.failedTime", patch);
     }
@@ -467,6 +467,8 @@ class DownloadManagerAdapter extends utils.Adapter {
   private async onReady(): Promise<void> {
     try {
       await I18n.init(join(this.adapterDir, "admin"), this);
+      // a wrong setting ends the start before anything is read or moved (start-failure standard)
+      checkPollInterval(this.config.pollInterval);
       // the places the last process left, before any call — a stop during the start waits for this start, then hands
       // them over again
       this.budget.takeOver(readHeldPlaces(utils.getAbsoluteInstanceDataDir(this), Date.now()));
@@ -495,7 +497,8 @@ class DownloadManagerAdapter extends utils.Adapter {
       this.log.debug(`start: ${rows.length} program row(s) in the store`);
       await this.manager.start(rows);
     } catch (err: unknown) {
-      this.log.error(`onReady failed: ${errText(err)}`);
+      // src/lib/start-failure.ts (fleet master): one error line, the close, then exit code 11 (settings) or 6
+      await failStart(this, err, { stopping: this.unloading, cleanup: () => this.closeAll() });
     }
   }
 
@@ -566,23 +569,28 @@ class DownloadManagerAdapter extends utils.Adapter {
     return this.starting;
   }
 
+  /**
+   * Stops the programs, writes the last word and keeps the call budget's places — the stop's path, and the close a failed
+   * start hands `failStart` (`terminate` skips `onUnload`). It never waits for the start: a failed start runs it itself.
+   */
+  private async closeAll(): Promise<void> {
+    const manager = this.manager;
+    this.manager = null;
+    try {
+      await (manager ? manager.stop() : this.states.put("info.connection", { val: false, ack: true }));
+    } finally {
+      // after the stop closed every client: no call is still waiting for its place
+      this.keepBudget();
+    }
+  }
+
   private onUnload(callback: () => void): void {
     this.unloading = true;
     try {
-      const manager = this.manager;
-      this.manager = null;
       // no manager yet: the start may still be writing — it starts no program now, the last word comes after it
-      void (
-        manager
-          ? manager.stop()
-          : this.starting.then(() => this.states.put("info.connection", { val: false, ack: true }))
-      )
+      void (this.manager ? this.closeAll() : this.starting.then(() => this.closeAll()))
         .catch((err: unknown) => this.log.debug(`onUnload: final writes rejected: ${errText(err)}`))
-        .finally(() => {
-          // after the stop closed every client: no call is still waiting for its place
-          this.keepBudget();
-          callback();
-        });
+        .finally(callback);
     } catch {
       callback();
     }

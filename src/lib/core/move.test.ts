@@ -115,7 +115,7 @@ describe("moveObjects — a device", () => {
     expect(r.recordings).toBe(1);
   });
 
-  it("carries rooms and functions once, and points aliases at the new ids", async () => {
+  it("carries rooms and functions once, and the fleet master points aliases at the new ids", async () => {
     const a = new FakeAdapter(NS);
     await oldTree(a);
     await a.setForeignObject("enum.rooms.office", {
@@ -142,7 +142,6 @@ describe("moveObjects — a device", () => {
     });
     expect((a.objects.get("alias.0.foreign")?.common as { alias: unknown }).alias).toEqual({ id: "other.0.z" });
     expect(r.enums).toBe(2);
-    expect(r.aliases).toBe(2);
   });
 
   it("deletes the children first and the old device with its journal last", async () => {
@@ -194,7 +193,6 @@ describe("moveObjects — a device", () => {
     expect(await moveObjects(mover(a).m, [[OLD, NEW]], { device: true })).toEqual({
       objects: 0,
       enums: 0,
-      aliases: 0,
       recordings: 0,
     });
     expect(a.objectWrites).toBe(0);

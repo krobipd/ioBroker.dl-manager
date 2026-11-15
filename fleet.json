@@ -33,7 +33,9 @@
       "summary.uploadSpeed": "descSummaryUploadSpeed",
       "summary.pauseAll": "descSummaryPauseAll",
       "summary.last.finished": "descLastFinished",
-      "summary.last.failed": "descLastFailed"
+      "summary.last.finishedTime": "descLastFinishedTime",
+      "summary.last.failed": "descLastFailed",
+      "summary.last.failedTime": "descLastFailedTime"
     }
   },
   "deviceIds": "unit",
@@ -59,7 +61,10 @@
     },
     "rename": true,
     "rejectLogin": true,
-    "dropDevice": true
+    "dropDevice": true,
+    "invalidSettings": {
+      "pollInterval": "often"
+    }
   },
   "serverTest": {
     "_why": "the instance reaches every program, each answers with its version, and a real switch (Transmission's alternative speed) is set on the program and confirmed by its next answer",

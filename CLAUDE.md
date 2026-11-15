@@ -16,14 +16,17 @@ Kanal mit Einzel-Datenpunkten, Summen für Blockly.
 ## Architektur
 
 ```
-src/main.ts                      → Lebenszyklus: I18n (erste Anweisung) → Plätze des Aufrufbudgets aus `call-budget.json` →
+src/main.ts                      → Lebenszyklus: I18n (erste Anweisung) → `checkPollInterval` (ein Intervall, das keine Zahl
+                                   ist, ist der Einstellungsfehler) → Plätze des Aufrufbudgets aus `call-budget.json` →
                                    Speicher-Objekt von 0.3.x in die Datei (einmal) →
                                    Programme aus `native.programs` in den Speicher (einmal) → native-/common-Schlüssel
                                    migrieren → Objekt- und Wertespeicher laden → Manifest-Objekte auffrischen → settleDevices
                                    (Umzug fortsetzen, IDs vergeben, last-Umzug) → Gerätemanager bauen → subscribeStates("*")
                                    → ProgramManager.start; updateRows (frisch lesen, ändern, speichern, apply — ein Schritt in
-                                   `Serial`), learnDeviceId (My.JD-Id), onStateChange, onUnload → stop().finally(Plätze
-                                   sichern, cb);
+                                   `Serial`), learnDeviceId (My.JD-Id), onStateChange, onUnload → closeAll (stop, letztes
+                                   Wort, Plätze sichern).finally(cb); ein gescheiterter Start endet über `failStart` des
+                                   Flotten-Masters `start-failure.ts` (eine error-Zeile, closeAll, Code 11 bei einem
+                                   `SettingsError`, sonst 6 — eine unlesbare `programs.json` ist Code 6);
                                    ein Stopp mitten im Start (`unloading`) startet kein Programm mehr und wartet ohne Manager
                                    auf den Start (`starting`), damit nach dem Rückruf nichts mehr schreibt; `ProgramManager.stop`
                                    hält jeden Runner sofort an (eine laufende Änderung, z. B. der Umzug nach einer gelernten
@@ -39,8 +42,9 @@ src/lib/core/store.ts            → ProgramStore: `programs.json` im Datenordne
                                    Speicher, eine unlesbare Datei (JSON, Programmliste, Geheimnis) hält den Start an; `adopt`
                                    übernimmt das Objekt von 0.3.x
 src/lib/core/device-id.ts        → Geräte-ID `<programm>-<stück>` (deviceIdFor, hostPiece, settleIds), ID_SCHEME = 3, RESERVED_IDS
-src/lib/core/move.ts             → moveObjects: Objekte + native, Werte mit ack/ts/lc/q, custom + aliasId, Aliase, EIN
-                                   moveAllWithEnums, Kinder zuerst gelöscht, Journal `native.movingTo`, Marke idScheme
+src/lib/core/move.ts             → moveObjects: Objekte + native, Werte mit ack/ts/lc/q, custom + aliasId, EIN
+                                   moveAllWithEnums (Räume, Funktionen und Aliase des Nutzers, Flotten-Master `enum-carry.ts`,
+                                   Werkzeug-Runde 177), Kinder zuerst gelöscht, Journal `native.movingTo`, Marke idScheme
 src/lib/core/model.ts            → STATUSES, ACTIVE, ProgramDriver-Vertrag (poll/command/close, subscribe?, test?, minIntervalMs?)
 src/lib/core/datapoints.ts       → Fähigkeit → Datenpunkt (Programm- und Download-Ebene), einzige Datenpunkt-Tabelle
 src/lib/core/config.ts           → Zeilen → ProgramRow {id, scheme, enabled, cfg, problem, entry?}, legacyId (ID bis 0.2.0),
@@ -101,7 +105,7 @@ _Jede Entscheidung steht hier als Regel-Satz; Beleg, Messung und Verlauf stehen 
 6. **Datenpunkte nur, wo das Programm sie liefert** — Fähigkeiten je Treiber entscheiden, keine Platzhalter.
 7. **Welche Downloads einen Kanal bekommen, entscheiden zwei Einstellungen je Instanz** — `treeScope` (`all` / `withoutCompleted` / `unfinished`, `failed` bleibt immer) und `maxDownloads` je Programm (0–1000, 0 = alle, Vorgabe 100; Rang laufend → fehlgeschlagen → pausiert/wartend → Warteschlange → seedend → fertig, je Rang die neuesten zuerst); Summen zählen immer alles, über 200 warnen Einstellungsseite und Log.
 8. **Nach einem Anmeldefehler wird das Programm nicht mehr gefragt** — bis zur nächsten Konfigurationsänderung (IP-Sperren).
-9. **Passwort und API-Schlüssel liegen mit `encrypt()` verschlüsselt im Programm-Speicher (`store.ts`), versiegelt vom Flotten-Master `data-file.ts` (`secrets`, Werkzeug-Runde 174)** — eine Zeile von 0.3.0–0.4.x (`encrypted`) wird einmal mit `decrypt()` geöffnet und dem Master im Klartext gegeben, eine Zeile ohne `encrypted` (bis 0.2.0) hält sie wie eingetippt; ein versiegeltes Geheimnis, das sich nicht entschlüsseln lässt, hält den Start an; nie `encryptedNative`-Punkt-Schlüssel (Prüfbot W1093/W1103).
+9. **Passwort und API-Schlüssel liegen mit `encrypt()` verschlüsselt im Programm-Speicher (`store.ts`), versiegelt vom Flotten-Master `data-file.ts` (`secrets`, Werkzeug-Runde 174)** — eine Zeile von 0.3.0–0.4.x (`encrypted`) wird einmal mit `decrypt()` geöffnet und dem Master im Klartext gegeben, eine Zeile ohne `encrypted` (bis 0.2.0) hält sie wie eingetippt; ein versiegeltes Geheimnis, das sich nicht entschlüsseln lässt, beendet den Start (Code 6); nie `encryptedNative`-Punkt-Schlüssel (Prüfbot W1093/W1103).
 10. **Dateien löscht der Adapter nie** — `remove` nimmt einen Download nur aus der Liste des Programms.
 11. **JDownloader über My.JDownloader ist ein eigener Programmtyp** (`jdownloader-cloud`) mit demselben Treiber und zweitem Transport, höchstens alle 30 s, ohne Push.
 12. **Fehlt dem Programm eine Programm-Pause, wird sie nachgebildet** (Transmission, aria2, qBittorrent < 5.3) — nur Laufende anhalten, genau diese fortsetzen (dazu, was der Adapter während der Pause angehalten hinzufügt), Stand übersteht den Neustart.
@@ -182,6 +186,7 @@ krobi's decisions for this adapter. The register with his verbatim words lives i
   verschlüsselt wie js-controllers `encrypt` — die Form von 0.4.x, die der Start einmal öffnet und an den Master gibt),
   sonst richtete der Start die Programme über den gesäten Geräten neu ein;
   `MOVES` (berechnet aus dem Vorgänger-Inventar) nennt die Umzüge von 0.3.0, deren Aufzeichnung ankommen muss.
-- **Paket-/Standard-Prüfung** `test/package.js`, `test/standards` (`iobroker-adapter-checks`), `test/self-explaining.json`
-  (D08), `test/readable-values.json` (Werte-Prüfung).
+- **Paket-/Standard-Prüfung** `test/package.js`, `test/standards` (`iobroker-adapter-checks`),
+  `test/readable-values.json` (Werte-Prüfung); jeder Datenpunkt trägt eine Beschreibung (D08), eine
+  `test/self-explaining.json` gibt es seit Runde 177 nicht mehr.
 - Zahlen nie pinnen — `npx vitest run` ist die Wahrheit.

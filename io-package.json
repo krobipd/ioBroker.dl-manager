@@ -807,7 +807,20 @@
         "type": "number",
         "role": "date",
         "read": true,
-        "write": false
+        "write": false,
+        "desc": {
+          "en": "When the last finished download finished: the program's own time, or the time the adapter noticed it when the program gives none.",
+          "de": "Wann der zuletzt fertige Download fertig wurde: die Zeit des Programms oder, wenn es keine nennt, die Zeit, zu der der Adapter es bemerkte.",
+          "ru": "Когда завершилась последняя завершённая загрузка: время программы или, если она его не сообщает, время, когда адаптер это заметил.",
+          "pt": "Quando terminou o último download concluído: a hora do programa ou, se este não a indicar, a hora em que o adaptador o detetou.",
+          "nl": "Wanneer de laatst voltooide download klaar was: de tijd van het programma of, als het die niet geeft, de tijd waarop de adapter het merkte.",
+          "fr": "Date de fin du dernier téléchargement terminé : l'heure du programme ou, s'il n'en donne pas, l'heure à laquelle l'adaptateur l'a remarqué.",
+          "it": "Quando è terminato l'ultimo download completato: l'ora del programma o, se non la fornisce, l'ora in cui l'adattatore se n'è accorto.",
+          "es": "Cuándo terminó la última descarga completada: la hora del programa o, si no la indica, la hora en que el adaptador lo detectó.",
+          "pl": "Kiedy zakończyło się ostatnie ukończone pobieranie: czas programu lub, gdy go nie podaje, czas, w którym adapter to zauważył.",
+          "uk": "Коли завершилося останнє завершене завантаження: час програми або, якщо вона його не повідомляє, час, коли адаптер це помітив.",
+          "zh-cn": "最近完成的下载的完成时间：程序给出的时间；程序未给出时，为适配器发现完成的时间。"
+        }
       },
       "native": {}
     },
@@ -869,7 +882,20 @@
         "type": "number",
         "role": "date",
         "read": true,
-        "write": false
+        "write": false,
+        "desc": {
+          "en": "When the adapter noticed that the last failed download failed.",
+          "de": "Wann der Adapter bemerkte, dass der zuletzt fehlgeschlagene Download fehlschlug.",
+          "ru": "Когда адаптер заметил, что последняя неудачная загрузка завершилась ошибкой.",
+          "pt": "Quando o adaptador detetou que o último download falhado falhou.",
+          "nl": "Wanneer de adapter merkte dat de laatst mislukte download mislukte.",
+          "fr": "Moment où l'adaptateur a remarqué l'échec du dernier téléchargement échoué.",
+          "it": "Quando l'adattatore si è accorto che l'ultimo download fallito è fallito.",
+          "es": "Cuándo detectó el adaptador que la última descarga fallida falló.",
+          "pl": "Kiedy adapter zauważył, że ostatnie nieudane pobieranie się nie powiodło.",
+          "uk": "Коли адаптер помітив, що останнє невдале завантаження завершилося помилкою.",
+          "zh-cn": "适配器发现最近失败的下载失败的时间。"
+        }
       },
       "native": {}
     }

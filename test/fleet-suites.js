@@ -22,7 +22,16 @@
 //   "a renamed device keeps its name"   D22 the fixture renames a device between two starts; the name follows
 //   "a rejected login shows no connection" D11 (krobi 2026-10-16 07:38: no connection, then offline) after a rejected
 //                                       login info.connection is true only while data still arrives
-//   "a counterpart that answers wrong or refuses" D6 a 500 and an empty 200 · C26b drifted JSON: the adapter runs on,
+//   "wrong settings end the start"      (round 177, the start-failure standard, krobi 2026-11-11 23:32) a start with the
+//                                       settings the adapter refuses (fleet.json suites.invalidSettings) ends with one
+//                                       error line, a notification of the category userActionRequired and exit code 11
+//   "a stop during the start"           (round 177) a stop the moment the adapter emits ready leaves no error line and
+//                                       no exit code 6 — a stop is no start failure
+//   "a data folder it cannot use"       (round 177, adapters with common.dataFolder) the instance's data folder with mode
+//                                       000: the start ends with one error line and exit code 6, or the adapter runs on
+//                                       without an error line — it never ran on after it failed there
+//   "a counterpart that answers wrong or refuses" D6 a 500 and an empty 200 · C26b drifted JSON (an HTTP answer, and
+//                                       since round 177 a message over UDP, a WebSocket or MQTT): the adapter runs on,
 //                                       deletes no object and empties no value the clean start had (round 148) beyond
 //                                       what the same restart with right answers empties (round 163),
 //                                       each met by a restart that plays the fixtures of the clean start again, so
@@ -94,7 +103,11 @@ const SUM_ALL = /^info\.[a-z][A-Za-z0-9]*AllOnline$/;
 const RENAME_SWITCH = "INVENTORY_RENAME";
 const REJECT_LOGIN_SWITCH = "INVENTORY_REJECT_LOGIN";
 const DROP_DEVICE_SWITCH = "INVENTORY_DROP_DEVICE";
-const KEYS = ["connectionTest", "groupSwitches", "rename", "rejectLogin", "dropDevice"];
+const KEYS = ["connectionTest", "groupSwitches", "rename", "rejectLogin", "dropDevice", "invalidSettings"];
+// Round 177 (the start-failure standard, krobi 2026-11-11 23:32): how long a start that is to fail may take to end —
+// src/lib/start-failure.ts ends it right after the cleanup — and the category a settings error is notified under.
+const START_FAIL_MS = 60000;
+const SETTINGS_CATEGORY = "userActionRequired";
 // D6 (one device gone): how long the suite holds the dropped device — several cycles of every fleet poll (round 157: the
 // wrong answers hold by FAULT_IDLE_MS/FAULT_CAP_MS below, the comment named that suite).
 const FAULT_HOLD_MS = 60000;
@@ -1990,6 +2003,11 @@ module.exports = function fleetSuites(templateSuite, ctx) {
   // network hook, section 7: every HTTP request of the adapter with the fault it met
   const readRequests = (from, until = Infinity) =>
     recordLines(RESOURCE_DIR, ".requests", from).filter(r => r.t >= from && r.t < until);
+  // round 177: every kind of JSON message (UDP, WebSocket, MQTT) a listener of the adapter got, with the fault it met
+  const readMessages = from =>
+    recordLines(RESOURCE_DIR, ".messages", from)
+      .filter(r => r.t >= from)
+      .map(r => ({ ...r, key: `message ${r.key}` }));
   // round 157 (fleet-suite audit F20): the processes that ran before a restart — what the dying one sends while it stops
   // is no answer of the restarted adapter; `from` the suite's first start — an earlier suite's process is no answer either
   const pidsOf = (suffix, from) =>
@@ -2026,6 +2044,41 @@ module.exports = function fleetSuites(templateSuite, ctx) {
     const answer = new Promise(resolve => harness.sendTo(`${ADAPTER}.0`, command, message, resolve));
     return withinDeadline(answer, ANSWER_MS, `no answer to the message ${command}`);
   }
+
+  // round 177 (the start-failure standard): a start that is to fail — prepared like `start` (`prepare` runs right before
+  // it), started without the wait for a tree, held until the process ended or START_FAIL_MS ran out; what the verdicts of
+  // the three start-failure suites read
+  async function failingStart(harness, native, prepare = () => undefined) {
+    clearInstanceData(harness);
+    await resetInstanceNative(harness, native);
+    await seedInstanceObjects(harness);
+    await setSystemLanguage(harness, FIRST_LANGUAGE);
+    prepare();
+    const mark = startMark();
+    await harness.startAdapter(adapterEnv(...NET));
+    await waitWindow("a start that is to fail", START_FAIL_MS, () => harness.didAdapterStop(), 500);
+    return { mark, ...endOf(harness) };
+  }
+  // round 177: what the process of ONE start wrote into RESOURCE_DIR — a file's time says only that it was written
+  // since the mark, and an earlier start's file written in the same millisecond passes it; its name was there before
+  const startMark = () => {
+    let earlier = [];
+    try {
+      earlier = FS.readdirSync(RESOURCE_DIR);
+    } catch {
+      // no record of any process yet
+    }
+    return { since: Date.now(), earlier: new Set(earlier) };
+  };
+  const startLines = (suffix, mark) => probeLines(suffix, mark.since).filter(r => !mark.earlier.has(r.pid + suffix));
+  const endOf = harness => ({
+    stopped: harness.didAdapterStop(),
+    exit: harness.adapterExit,
+    errors: harness
+      .getLogs()
+      .filter(l => own(l) && l.level === "error")
+      .map(l => l.message),
+  });
 
   suite("a quiet run and a clean stop", getHarness => {
     let harness;
@@ -2473,6 +2526,169 @@ module.exports = function fleetSuites(templateSuite, ctx) {
     });
   });
 
+  // round 177 (the start-failure standard, krobi 2026-11-11 23:32 "yes, accept it like that"): wrong settings end the
+  // start with one error line, a notification in the admin and exit code 11 — the controller starts the instance again only
+  // when the user saves its settings or starts it. The settings the adapter refuses stand in fleet.json; the resource probe
+  // notes every notification the adapter registers (<pid>.notifications, scope and category).
+  suite("wrong settings end the start", getHarness => {
+    let wrong;
+    let verdict;
+    before(async function () {
+      this.timeout(START_FAIL_MS + 120000);
+      wrong = declared("invalidSettings");
+      if (wrong === null) {
+        return;
+      }
+      assert.ok(
+        wrong && typeof wrong === "object" && !Array.isArray(wrong) && Object.keys(wrong).length > 0,
+        'fleet.json suites.invalidSettings is the native the adapter refuses ({ "<key>": <value>, … }) or { none }',
+      );
+      const harness = getHarness();
+      const end = await failingStart(harness, { ...(await fixtureNative()), ...wrong });
+      verdict = {
+        ...end,
+        notified: startLines(".notifications", end.mark).filter(
+          n => n.scope === ADAPTER && n.category === SETTINGS_CATEGORY,
+        ).length,
+      };
+    });
+
+    it("ends with one error line, a notification and exit code 11 (start-failure standard)", function () {
+      if (wrong === null) {
+        return;
+      }
+      const settings = JSON.stringify(wrong);
+      assert.ok(
+        verdict.stopped,
+        `still runs ${START_FAIL_MS} ms after a start with the settings ${settings} — wrong settings end the start (failStart of src/lib/start-failure.ts), never an empty shell`,
+      );
+      assert.strictEqual(
+        verdict.exit,
+        11,
+        `ended with exit code ${verdict.exit} on the settings ${settings} — a settings error ends with 11, the controller waits for the user`,
+      );
+      assert.strictEqual(
+        verdict.errors.length,
+        1,
+        `wrote ${verdict.errors.length} error lines on the settings ${settings} — exactly one says what is wrong and what to do: ${JSON.stringify(verdict.errors)}`,
+      );
+      assert.ok(
+        verdict.notified > 0,
+        `registered no notification ${ADAPTER}/${SETTINGS_CATEGORY} on the settings ${settings} — the user sees a settings error in the admin`,
+      );
+    });
+  });
+
+  // round 177: a stop during the start is no start failure — no error line, and no exit code 6, which the controller would
+  // count as a crash. The stop goes out within 100 ms of the moment the resource probe notes `ready` (<pid>.ready, written
+  // right before onReady runs): onReady has begun and, in most adapters, still awaits its first answers.
+  suite("a stop during the start", getHarness => {
+    let verdict;
+    before(async function () {
+      this.timeout(START_FAIL_MS + STOP_MS + 120000);
+      const harness = getHarness();
+      clearInstanceData(harness);
+      await resetInstanceNative(harness, await fixtureNative());
+      await seedInstanceObjects(harness);
+      await setSystemLanguage(harness, FIRST_LANGUAGE);
+      const mark = startMark();
+      await harness.startAdapter(adapterEnv(...NET));
+      await waitWindow(
+        "the start emits ready",
+        START_FAIL_MS,
+        () => startLines(".ready", mark).length > 0 || harness.didAdapterStop(),
+        100,
+      );
+      const ready = startLines(".ready", mark).length > 0 && !harness.didAdapterStop();
+      if (ready) {
+        await withinDeadline(harness.stopAdapter(), STOP_MS, "the stop during the start did not end");
+      }
+      verdict = { ready, ...endOf(harness) };
+    });
+
+    it("leaves no error line and no crash code (start-failure standard)", function () {
+      assert.ok(
+        verdict.ready,
+        `never emitted ready within ${START_FAIL_MS} ms of a start with the fixture settings (exit code ${verdict.exit})`,
+      );
+      assert.deepStrictEqual(
+        verdict.errors,
+        [],
+        "a stop during the start wrote error lines — a stop is no start failure (failStart with `stopping`: one debug line)",
+      );
+      assert.notStrictEqual(
+        verdict.exit,
+        6,
+        "a stop during the start ended with exit code 6 — the controller counts that as a crash",
+      );
+    });
+  });
+
+  // round 177: the instance's data folder (common.dataFolder) is one of the adapter's own resources — one it cannot read
+  // or write ends the start with one error line and exit code 6 (the controller tries again three times). Mode 000 on the
+  // folder stops every read, write and listing below it; an adapter that touches it only later runs on, and then without
+  // an error line. Root reads through mode 000: the suite refuses to judge as root.
+  suite("a data folder it cannot use", getHarness => {
+    const dataFolder = Boolean(manifest.common?.dataFolder);
+    let blocked = "";
+    let verdict;
+    before(async function () {
+      this.timeout(START_FAIL_MS + 120000);
+      if (!dataFolder) {
+        return;
+      }
+      assert.notStrictEqual(
+        process.getuid?.(),
+        0,
+        "the run is root — mode 000 does not stop root, the suite judges nothing",
+      );
+      const harness = getHarness();
+      assert.strictEqual(
+        typeof harness.testDir,
+        "string",
+        "@iobroker/testing changed its testDir — the suite needs a new form",
+      );
+      blocked = path.join(harness.testDir, "iobroker-data", `${ADAPTER}.0`);
+      verdict = await failingStart(harness, await fixtureNative(), () => {
+        fs.mkdirSync(blocked, { recursive: true });
+        fs.chmodSync(blocked, 0o000);
+      });
+    });
+    after(() => {
+      if (blocked) {
+        try {
+          fs.chmodSync(blocked, 0o700);
+        } catch {
+          // gone — nothing to give back
+        }
+      }
+    });
+
+    it("ends with one error line and exit code 6, never runs on after it failed there (start-failure standard)", function () {
+      if (!dataFolder) {
+        return;
+      }
+      if (verdict.stopped) {
+        assert.strictEqual(
+          verdict.exit,
+          6,
+          `ended with exit code ${verdict.exit} while its data folder could not be used — a resource of its own ends the start with 6`,
+        );
+        assert.strictEqual(
+          verdict.errors.length,
+          1,
+          `wrote ${verdict.errors.length} error lines while its data folder could not be used — exactly one names what failed: ${JSON.stringify(verdict.errors)}`,
+        );
+      } else {
+        assert.deepStrictEqual(
+          verdict.errors,
+          [],
+          "runs on after error lines while its data folder could not be used — a data folder it cannot read or write ends the start (failStart, exit code 6)",
+        );
+      }
+    });
+  });
+
   suite("a counterpart that answers wrong or refuses", getHarness => {
     let harness;
     const verdicts = {};
@@ -2509,7 +2725,10 @@ module.exports = function fleetSuites(templateSuite, ctx) {
       const since = Date.now();
       await start(harness, FIRST_LANGUAGE, ...NET);
       counts.start = httpCalls(since);
-      if (counts.start === 0) {
+      // round 177: a stream the adapter reads meets drifted JSON too — an adapter without an HTTP call still gets that play
+      const cleanMessages = new Set(readMessages(since).map(r => r.key));
+      counts.messages = cleanMessages.size;
+      if (counts.start === 0 && counts.messages === 0) {
         return;
       }
       harness.on("objectChange", (id, obj) => {
@@ -2524,7 +2743,7 @@ module.exports = function fleetSuites(templateSuite, ctx) {
           writes.push([id, EMPTY.has(state.val)]);
         }
       });
-      const clean = new Set(readRequests(since).map(r => r.key));
+      const cleanRequests = new Set(readRequests(since).map(r => r.key));
       const cleanStates = await dumpStates(harness);
       try {
         // round 163: the same restart with right answers, held until each value its new process emptied came back
@@ -2539,18 +2758,20 @@ module.exports = function fleetSuites(templateSuite, ctx) {
           () => restartEmpties(cleanStates, writes.slice(cleanFrom)).waiting.length === 0,
         );
         const restart = restartEmpties(cleanStates, writes.slice(cleanFrom)).lead;
-        for (const mode of ["500", "empty", "drift"]) {
+        for (const mode of counts.start > 0 ? ["500", "empty", "drift"] : ["drift"]) {
           const objects = await dumpObjects(harness);
           const states = await dumpStates(harness);
           fs.writeFileSync(FAULT_FLAG, mode);
           const at = Date.now();
           const from = writes.length;
-          const old = pidsOf(".requests", since);
+          const old = new Set([...pidsOf(".requests", since), ...pidsOf(".messages", since)]);
+          // a 500 and an empty 200 are HTTP answers; drift meets the messages of the clean start as well
+          const clean = mode === "drift" ? new Set([...cleanRequests, ...cleanMessages]) : cleanRequests;
           await restartAsTheHost(harness, null, `with ${mode} answers`, ...NET);
           fed = feedAlongside(feedFixtures, harness);
           const met = () =>
             new Set(
-              readRequests(at)
+              [...readRequests(at), ...(mode === "drift" ? readMessages(at) : [])]
                 .filter(r => r.fault === mode && !old.has(r.pid))
                 .map(r => r.key),
             );
@@ -2598,6 +2819,10 @@ module.exports = function fleetSuites(templateSuite, ctx) {
             return;
           }
         }
+        // round 177: a 429 and a series of errors are HTTP answers — an adapter that only reads messages meets none
+        if (counts.start === 0) {
+          return;
+        }
         fs.writeFileSync(FAULT_FLAG, "429");
         const t1 = Date.now();
         const before429 = pidsOf(".calls", since);
@@ -2644,13 +2869,15 @@ module.exports = function fleetSuites(templateSuite, ctx) {
         noNet("nothing to answer wrong");
         return;
       }
-      if (counts.start === 0) {
-        console.log("      the adapter makes no HTTP call — nothing to answer wrong");
+      if (counts.start === 0 && counts.messages === 0) {
+        console.log("      the adapter makes no HTTP call and reads no JSON message — nothing to answer wrong");
         return;
       }
       const wrong = [];
       for (const [mode, v] of Object.entries(verdicts)) {
-        console.log(`      ${mode}: ${v.reached.length} of ${v.clean} requests of a clean start answered wrong`);
+        console.log(
+          `      ${mode}: ${v.reached.length} of ${v.clean} requests and messages of a clean start answered wrong`,
+        );
         // past its first request: a login, a token or a discovery alone says nothing about the answers it acts on
         if (v.reached.length < Math.min(2, v.clean)) {
           wrong.push(
@@ -2664,7 +2891,7 @@ module.exports = function fleetSuites(templateSuite, ctx) {
         wrong.push(...v.deleted.map(id => `${mode}: deleted ${id}`), ...v.emptied.map(id => `${mode}: emptied ${id}`));
       }
       assert.strictEqual(Object.keys(verdicts).length > 0, true, "no wrong answer was played");
-      assert.deepStrictEqual(wrong, [], `while its HTTP counterpart answered wrong:\n${wrong.join("\n")}`);
+      assert.deepStrictEqual(wrong, [], `while its counterpart answered wrong:\n${wrong.join("\n")}`);
     });
 
     it("waits the retry-after of a 429 before it calls that host again (D21)", function () {

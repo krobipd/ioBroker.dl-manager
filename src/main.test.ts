@@ -68,9 +68,24 @@ vi.mock("@iobroker/adapter-core", () => {
     }
     public registerNotification = (_scope: string, _cat: string, msg: string): Promise<void> => {
       this.notifications.push(msg);
+      this.notified.push({ scope: _scope, category: _cat });
       return Promise.resolve();
     };
+    public notified: { scope: string; category: string }[] = [];
     public sendTo = (...args: unknown[]): void => void this.sent.push(args);
+    public name = "dl-manager";
+    public terminated: { reason: string; code: number }[] = [];
+    /**
+     * The process end of adapter-core, noted instead — `failStart` returns its result.
+     *
+     * @param reason why
+     * @param code the exit code
+     * @returns nothing; the real one never returns
+     */
+    public terminate = (reason: string, code: number): never => {
+      this.terminated.push({ reason, code });
+      return undefined as never;
+    };
     public constructor(_opts: unknown) {}
   }
   return {
@@ -105,6 +120,9 @@ interface Harness {
   instanceObject: Record<string, unknown> | null;
   instanceWrites: unknown[];
   dataDir: string;
+  notifications: string[];
+  notified: { scope: string; category: string }[];
+  terminated: { reason: string; code: number }[];
   getObjectListAsync(p: { startkey: string; endkey: string }): Promise<unknown>;
   getForeignObjectsAsync(p: string, t: ioBroker.ObjectType): Promise<Record<string, ioBroker.Object>>;
   getStatesAsync(p: string): Promise<Record<string, ioBroker.State>>;
@@ -338,18 +356,46 @@ describe("DownloadManagerAdapter — start", () => {
     expect(rowsOf(h)).toEqual([{ ...row, password: sealed("p"), apiKey: sealed("k") }]);
   });
 
-  it("stops the start at a sealed secret that cannot be decrypted — and keeps the file", async () => {
+  it("ends the start at a sealed secret that cannot be decrypted with exit code 6 — and keeps the file", async () => {
     const { h, polls } = make();
     const content = JSON.stringify({ rows: [{ id: "qbittorrent-nas", password: { $encrypted: enc("no JSON") } }] });
     writeFileSync(storeFile(h), content);
     await h.handlers.get("ready")?.();
-    expect(
-      h.store.logs
-        .filter(l => l.level === "error")
-        .map(l => l.msg)
-        .join(),
-    ).toContain("programs.json cannot be read — fix or remove it (secret field rows[0].password cannot be decrypted)");
+    const why = "programs.json cannot be read — fix or remove it (secret field rows[0].password cannot be decrypted)";
+    expect(h.store.logs.filter(l => l.level === "error").map(l => l.msg)).toEqual([`Start failed: ${why}`]);
+    expect(h.terminated).toEqual([{ reason: why, code: 6 }]);
+    expect(h.notifications).toEqual([]);
+    expect(h.store.val("info.connection")).toBe(false);
     expect(readFileSync(storeFile(h), "utf8")).toBe(content);
+    expect(polls()).toBe(0);
+  });
+
+  it("ends the start at a poll interval that is no number: one error line, a notification, exit code 11", async () => {
+    const { h, polls } = make();
+    h.config.pollInterval = "often";
+    h.store.objectLog.length = 0;
+    await h.handlers.get("ready")?.();
+    const why = 'The poll interval "often" is no number of seconds — enter 10 to 3600 in the adapter settings';
+    expect(h.store.logs.filter(l => l.level === "error").map(l => l.msg)).toEqual([`Settings: ${why}`]);
+    expect(h.notified).toEqual([{ scope: "dl-manager", category: "userActionRequired" }]);
+    expect(h.notifications).toEqual([why]);
+    expect(h.terminated).toEqual([{ reason: why, code: 11 }]);
+    // nothing read, moved or started before the check
+    expect(h.store.objectLog).toEqual([]);
+    expect(polls()).toBe(0);
+  });
+
+  it("ends a start the stop interrupted with a debug line only — no error line, no exit code of its own", async () => {
+    const { h, polls } = make();
+    h.getForeignObjectsAsync = () => {
+      h.handlers.get("unload")?.(() => undefined);
+      return Promise.reject(new Error("Connection is closed"));
+    };
+    await h.handlers.get("ready")?.();
+    await flush();
+    expect(h.store.logs.filter(l => l.level === "error")).toEqual([]);
+    expect(h.store.logs.some(l => l.msg === "Start ended by the stop: Connection is closed")).toBe(true);
+    expect(h.terminated).toEqual([]);
     expect(polls()).toBe(0);
   });
 

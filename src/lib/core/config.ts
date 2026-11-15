@@ -1,4 +1,5 @@
 import { baseUrl, programInfo } from "../programs/catalog";
+import { SettingsError } from "../start-failure";
 import type { ProgramConfig, ProgramEntry, RequiredField } from "./model";
 import { programId, sanitize } from "./ids";
 import type { TreeScope } from "./tree";
@@ -186,15 +187,40 @@ export function blocksAddress(row: ProgramRow): boolean {
 }
 
 /**
+ * The setting a start refuses (start-failure standard): a poll interval that is set but is no number — only a script or
+ * a hand-edited instance object writes one. A missing or empty one runs at 10 s, a number outside 10 s to 1 h at the
+ * nearest bound (a value stored before 0.3.1 below 10 s among them).
+ *
+ * @param raw `native.pollInterval`
+ * @throws {SettingsError} when it is set but no number
+ */
+export function checkPollInterval(raw: unknown): void {
+  if (raw !== undefined && raw !== null && intervalSeconds(raw) === undefined) {
+    throw new SettingsError(
+      `The poll interval ${JSON.stringify(raw)} is no number of seconds — enter 10 to 3600 in the adapter settings`,
+    );
+  }
+}
+
+/**
+ * @param raw `native.pollInterval`
+ * @returns the seconds it holds — a number or a numeric text, an empty text as 0 —, undefined when it holds none
+ */
+function intervalSeconds(raw: unknown): number | undefined {
+  const n = typeof raw === "string" ? Number(raw) : raw;
+  if (typeof n !== "number" || !Number.isFinite(n)) {
+    return undefined;
+  }
+  return n;
+}
+
+/**
  * @param raw `native.pollInterval` in seconds
  * @returns the poll interval in ms, 10 s to 1 h (a stored value below 10 s runs at 10 s), 10 s when unusable
  */
 export function parsePollInterval(raw: unknown): number {
-  const n = typeof raw === "string" ? Number(raw) : raw;
-  if (typeof n !== "number" || !Number.isFinite(n)) {
-    return 10_000;
-  }
-  return Math.min(3600, Math.max(10, Math.round(n))) * 1000;
+  const n = intervalSeconds(raw);
+  return n === undefined ? 10_000 : Math.min(3600, Math.max(10, Math.round(n))) * 1000;
 }
 
 const TREE_SCOPES: readonly TreeScope[] = ["all", "withoutCompleted", "unfinished"];

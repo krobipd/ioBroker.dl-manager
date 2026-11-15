@@ -9,7 +9,7 @@
 // called its unload callback (<pid>.unload) — js-controller closes the databases after the callback, such a write is
 // lost; js-controller's own last writes go through its internal client and are not counted.
 // Round 174 (the standard for secrets): it notes every log line of the adapter that carries the clear text of a secret
-// (<pid>.secrets) — see `watchLog` below.
+// (<pid>.secrets) — see `watchLog` below. Round 177: the moment of `ready` and every notification — see `watchStart`.
 // Fleet master (.consistency-master/test/resource-probe.js) — never edit the copy in an adapter.
 const fs = require("node:fs");
 const net = require("node:net");
@@ -147,6 +147,26 @@ if (dir) {
       };
     }
   };
+  // Round 177 (the start-failure standard, krobi 2026-11-11 23:32): the moment the adapter emits `ready` (<pid>.ready, the
+  // suite "a stop during the start" stops it then) and every notification it registers, by scope and category, never its
+  // text (<pid>.notifications, the suite "wrong settings end the start" wants the settings error in the admin). Only the
+  // adapter counts, once: an emitter without `registerNotification` (a library's own `ready`) is none.
+  const NOTIFY_WATCHED = Symbol("resourceProbeNotifyWatched");
+  const watchStart = adapter => {
+    const original = adapter.registerNotification;
+    if (typeof original !== "function" || adapter[NOTIFY_WATCHED]) {
+      return;
+    }
+    adapter[NOTIFY_WATCHED] = true;
+    fs.appendFileSync(path.join(dir, `${process.pid}.ready`), `${JSON.stringify({ t: Date.now() })}\n`);
+    adapter.registerNotification = function watchedNotification(scope, category, ...rest) {
+      fs.appendFileSync(
+        path.join(dir, `${process.pid}.notifications`),
+        `${JSON.stringify({ t: Date.now(), scope: String(scope), category: String(category) })}\n`,
+      );
+      return original.call(this, scope, category, ...rest);
+    };
+  };
   const probeEmit = EventEmitter.prototype.emit;
   EventEmitter.prototype.emit = function handOverEmit(event, ...args) {
     if (event === "stateChange" && typeof args[0] === "string" && args[1] && args[1].ack === false) {
@@ -158,6 +178,7 @@ if (dir) {
       args[0] = watchUnload(this, args[0]);
     } else if (event === "ready") {
       watchLog(this);
+      watchStart(this);
     }
     return probeEmit.call(this, event, ...args);
   };
@@ -243,8 +264,11 @@ if (dir) {
       path.join(dir, `${process.pid}.lands`),
       `${JSON.stringify({ t: Date.now(), kind, host, port })}\n`,
     );
-  // a unicast datagram leaves this machine as well (a LAN protocol on UDP alone, govee's); a multicast or broadcast
-  // search does on purpose and is not judged
+  // a unicast datagram leaves this machine as well (a LAN protocol on UDP alone, govee's). A multicast or broadcast
+  // search has no counterpart a fixture could stand in for; its form is the fleet's network standard — krobi 2026-10-03
+  // 00:27/00:28: the chosen card is the only one that listens and sends — and D17 in `fleet-suites.js` holds it: no
+  // datagram to 255.255.255.255 (a broadcast is reckoned from the chosen address and its netmask), only the chosen
+  // address named to others
   const broadcasts = new Set(["255.255.255.255"]);
   for (const list of Object.values(require("node:os").networkInterfaces())) {
     for (const a of list ?? []) {

@@ -154,7 +154,10 @@ The test button on a program's card asks the program once and shows its answer.
 - Changed: every datapoint of a download starts with the download's name
 - Changed: a busy or unreachable program is asked less often
 - Changed: password and API key in programs.json are stored in the platform's encrypted form; one that cannot be decrypted (programs.json from another installation) stops the start instead of being emptied
+- Changed: a start that cannot get going ends the adapter instead of running without function — after a wrong setting it waits until you save the settings, otherwise js-controller tries again
+- Changed: a poll interval that is no number ends the start with a notification in the admin instead of running at 10 s
 - Improved: the adapter keeps every program's and My.JDownloader's request limit, also across a restart
+- Improved: every datapoint explains in its description what it shows and when it stays empty
 - Changed: requires js-controller 7.2.5 and admin 8.3.5
 
 ### 0.4.0 (2026-10-02)

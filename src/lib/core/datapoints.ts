@@ -73,7 +73,14 @@ export const PROGRAM_DATAPOINTS: readonly DatapointDef<ProgramSnapshot>[] = [
     descKey: "descOnline",
   }),
   pr({ id: "error", value: () => "", type: "string", role: "text", nameKey: "error", descKey: "descError" }),
-  pr({ id: "version", value: s => s.status.version || undefined, type: "string", role: "text", nameKey: "version" }),
+  pr({
+    id: "version",
+    value: s => s.status.version || undefined,
+    type: "string",
+    role: "text",
+    nameKey: "version",
+    descKey: "descVersion",
+  }),
   pr({
     id: "downloading",
     value: s => s.items.some(i => ACTIVE.has(i.status)),
@@ -100,6 +107,7 @@ export const PROGRAM_DATAPOINTS: readonly DatapointDef<ProgramSnapshot>[] = [
     role: "value",
     unit: "MB/s",
     nameKey: "downloadSpeed",
+    descKey: "descDownloadSpeed",
   }),
   pr({
     id: "uploadSpeed",
@@ -109,6 +117,7 @@ export const PROGRAM_DATAPOINTS: readonly DatapointDef<ProgramSnapshot>[] = [
     unit: "MB/s",
     capability: "upload",
     nameKey: "uploadSpeed",
+    descKey: "descUploadSpeed",
   }),
   pr({
     id: "speedLimit",
@@ -161,6 +170,7 @@ export const PROGRAM_DATAPOINTS: readonly DatapointDef<ProgramSnapshot>[] = [
     type: "number",
     role: "value",
     nameKey: "active",
+    descKey: "descActive",
   }),
   pr({
     id: "queued",
@@ -168,8 +178,16 @@ export const PROGRAM_DATAPOINTS: readonly DatapointDef<ProgramSnapshot>[] = [
     type: "number",
     role: "value",
     nameKey: "queued",
+    descKey: "descQueued",
   }),
-  pr({ id: "total", value: s => s.items.length, type: "number", role: "value", nameKey: "total" }),
+  pr({
+    id: "total",
+    value: s => s.items.length,
+    type: "number",
+    role: "value",
+    nameKey: "total",
+    descKey: "descTotal",
+  }),
   pr({
     id: "add",
     command: val => {
@@ -185,14 +203,20 @@ export const PROGRAM_DATAPOINTS: readonly DatapointDef<ProgramSnapshot>[] = [
     descKey: "descAdd",
   }),
   pr({ id: "last.finished", type: "string", role: "text", nameKey: "lastFinished", descKey: "descLastFinished" }),
-  pr({ id: "last.finishedTime", type: "number", role: "date", nameKey: "lastFinishedTime" }),
+  pr({
+    id: "last.finishedTime",
+    type: "number",
+    role: "date",
+    nameKey: "lastFinishedTime",
+    descKey: "descLastFinishedTime",
+  }),
   pr({ id: "last.failed", type: "string", role: "text", nameKey: "lastFailed", descKey: "descLastFailed" }),
-  pr({ id: "last.failedTime", type: "number", role: "date", nameKey: "lastFailedTime" }),
+  pr({ id: "last.failedTime", type: "number", role: "date", nameKey: "lastFailedTime", descKey: "descLastFailedTime" }),
 ];
 
 /** Datapoints in each download's channel. */
 export const ITEM_DATAPOINTS: readonly DatapointDef<DownloadItem>[] = [
-  ir({ id: "status", value: i => i.status, type: "string", role: "text", nameKey: "status" }),
+  ir({ id: "status", value: i => i.status, type: "string", role: "text", nameKey: "status", descKey: "descStatus" }),
   ir({
     id: "progress",
     value: i => percent(i.doneBytes, i.sizeBytes),
@@ -200,8 +224,17 @@ export const ITEM_DATAPOINTS: readonly DatapointDef<DownloadItem>[] = [
     role: "value",
     unit: "%",
     nameKey: "progress",
+    descKey: "descProgress",
   }),
-  ir({ id: "size", value: i => toGB(i.sizeBytes), type: "number", role: "value", unit: "GB", nameKey: "size" }),
+  ir({
+    id: "size",
+    value: i => toGB(i.sizeBytes),
+    type: "number",
+    role: "value",
+    unit: "GB",
+    nameKey: "size",
+    descKey: "descSize",
+  }),
   ir({
     id: "downloaded",
     value: i => toGB(i.doneBytes),
@@ -209,6 +242,7 @@ export const ITEM_DATAPOINTS: readonly DatapointDef<DownloadItem>[] = [
     role: "value",
     unit: "GB",
     nameKey: "downloaded",
+    descKey: "descDownloaded",
   }),
   ir({
     id: "speed",
@@ -218,6 +252,7 @@ export const ITEM_DATAPOINTS: readonly DatapointDef<DownloadItem>[] = [
     unit: "MB/s",
     capability: "itemSpeed",
     nameKey: "speed",
+    descKey: "descItemSpeed",
   }),
   ir({
     id: "uploadSpeed",
@@ -227,6 +262,7 @@ export const ITEM_DATAPOINTS: readonly DatapointDef<DownloadItem>[] = [
     unit: "MB/s",
     capability: "upload",
     nameKey: "uploadSpeed",
+    descKey: "descItemUploadSpeed",
   }),
   ir({
     id: "ratio",
@@ -257,6 +293,7 @@ export const ITEM_DATAPOINTS: readonly DatapointDef<DownloadItem>[] = [
     role: "date",
     capability: "itemAdded",
     nameKey: "added",
+    descKey: "descAdded",
   }),
   ir({
     id: "finished",
@@ -265,6 +302,7 @@ export const ITEM_DATAPOINTS: readonly DatapointDef<DownloadItem>[] = [
     role: "date",
     capability: "itemFinished",
     nameKey: "finished",
+    descKey: "descItemFinished",
   }),
   ir({
     id: "category",
@@ -273,6 +311,7 @@ export const ITEM_DATAPOINTS: readonly DatapointDef<DownloadItem>[] = [
     role: "text",
     capability: "category",
     nameKey: "category",
+    descKey: "descCategory",
   }),
   ir({
     id: "error",

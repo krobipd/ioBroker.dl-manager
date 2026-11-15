@@ -6,8 +6,8 @@ import type { AdapterLog } from "./model";
 /**
  * Moves objects to new ids and keeps what belongs to them: every object below with its `native` (an emulated pause's
  * memory among them), each value with `ack`/`ts`/`lc`/`q`, a recording on the SAME datapoint (its history stays
- * reachable under the old id through `aliasId`), aliases that point at a moved datapoint, and the room and function
- * assignments (fleet master `enum-carry.ts`). Deleting goes children first and the root last: a device move keeps its
+ * reachable under the old id through `aliasId`), and — through the fleet master `enum-carry.ts` — the room and function
+ * assignments and the user's aliases that point at a moved datapoint. Deleting goes children first and the root last: a device move keeps its
  * journal (`native.movingTo`) on the old root, and a recursive delete would remove the root first. Ported from the
  * device move of homeconnect and yamaha.
  */
@@ -42,8 +42,6 @@ export interface MoveResult {
   objects: number;
   /** Room and function entries carried. */
   enums: number;
-  /** Aliases pointed at the new ids. */
-  aliases: number;
   /** Recordings that keep their history (`aliasId`). */
   recordings: number;
 }
@@ -76,32 +74,6 @@ export function keepHistoryUnder(
     }
   }
   return { custom: out, kept };
-}
-
-/**
- * @param alias an alias object's `common.alias`
- * @param moved old full id → new full id
- * @returns the alias with moved targets, undefined when it points at none of them
- */
-function retarget(alias: unknown, moved: ReadonlyMap<string, string>): unknown {
-  if (!alias || typeof alias !== "object") {
-    return undefined;
-  }
-  const id: unknown = (alias as { id?: unknown }).id;
-  if (typeof id === "string") {
-    const next = moved.get(id);
-    return next ? { ...alias, id: next } : undefined;
-  }
-  if (id && typeof id === "object") {
-    const { read, write } = id as { read?: unknown; write?: unknown };
-    const r = typeof read === "string" ? moved.get(read) : undefined;
-    const w = typeof write === "string" ? moved.get(write) : undefined;
-    if (!r && !w) {
-      return undefined;
-    }
-    return { ...alias, id: { ...id, ...(r ? { read: r } : {}), ...(w ? { write: w } : {}) } };
-  }
-  return undefined;
 }
 
 /**
@@ -145,7 +117,7 @@ export async function moveObjects(
       }
     }
   }
-  const result: MoveResult = { objects: 0, enums: 0, aliases: 0, recordings: 0 };
+  const result: MoveResult = { objects: 0, enums: 0, recordings: 0 };
   if (!moved.size) {
     return result;
   }
@@ -216,15 +188,6 @@ export async function moveObjects(
       continue;
     }
     await a.setForeignState(newId, { val: st.val, ack: st.ack, ts: st.ts, lc: st.lc, q: st.q });
-  }
-
-  const aliases = await a.getForeignObjects("alias.*", "state");
-  for (const [id, obj] of Object.entries(aliases)) {
-    const next = retarget((obj.common as { alias?: unknown }).alias, moved);
-    if (next) {
-      await a.setForeignObject(id, { ...obj, common: { ...obj.common, alias: next } } as ioBroker.SettableObject);
-      result.aliases++;
-    }
   }
 
   for (const [from, to] of pairs) {
