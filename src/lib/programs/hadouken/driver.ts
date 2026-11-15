@@ -10,9 +10,11 @@ import { isRunning, PAUSED, STARTED, toSnapshot, torrentOf, type HkTorrent } fro
  * it within a second (run 43714685079, `pause-managed`: started again, finished 40 s later). A pause therefore takes the
  * torrent out of the queue first (`auto_managed` off, as Hadouken's own seed goal does, js/core.js), and a resume hands
  * it back to the queue unless it ran outside the queue before (forced, webui_perform.js `forcestart`). Hadouken has no
- * pause for everything: the adapter makes it from that pause over the torrents that run or wait in the queue. Every list
- * action stops at the first hash Hadouken does not know and leaves the rest undone (webui_perform.js,
- * webui_setProperties.js), so the pause for everything and its end act on a fresh list.
+ * pause for everything: the adapter makes it from that pause over the torrents that run or wait in the queue, without
+ * reading each one's queue flag — one call per torrent against 100 a minute (`api-limits.json`) would hold the pause for
+ * minutes —, so its end hands every one to the queue. Every list action stops at the first hash Hadouken does not know
+ * and leaves the rest undone (webui_perform.js, webui_setProperties.js), so the pause for everything and its end act on
+ * a fresh list.
  */
 export class HkDriver implements ProgramDriver {
   public readonly type = "hadouken";
@@ -74,7 +76,7 @@ export class HkDriver implements ProgramDriver {
   public async command(cmd: Command): Promise<void> {
     switch (cmd.kind) {
       case "pause":
-        await this.halt([cmd.key]);
+        await this.halt([cmd.key], true);
         return;
       case "resume":
         await this.wake([cmd.key]);
@@ -97,7 +99,7 @@ export class HkDriver implements ProgramDriver {
         await this.pause.pause(
           (await this.list()).filter(isRunning).map(t => t.hash),
           async keys => {
-            await this.halt(keys);
+            await this.halt(keys, false);
             return keys;
           },
         );
@@ -147,15 +149,16 @@ export class HkDriver implements ProgramDriver {
   }
 
   /**
-   * Out of the queue, then paused — remembering the started ones that ran outside the queue (a queued one waits in it).
+   * Out of the queue, then paused.
    *
    * @param keys info hashes
+   * @param remember read which of the started ones ran outside the queue (a queued one waits in it)
    */
-  private async halt(keys: readonly string[]): Promise<void> {
+  private async halt(keys: readonly string[], remember: boolean): Promise<void> {
     if (!keys.length) {
       return;
     }
-    for (const key of keys.filter(k => ((this.statuses.get(k) ?? 0) & STARTED) !== 0)) {
+    for (const key of remember ? keys.filter(k => ((this.statuses.get(k) ?? 0) & STARTED) !== 0) : []) {
       const props = recordIn(await this.client.call("webui.getProperties", [key]), "Hadouken's properties").props;
       const managed = recordIn(listIn(props, "Hadouken's properties")[0], "Hadouken's properties").auto_managed;
       if (managed === false) {

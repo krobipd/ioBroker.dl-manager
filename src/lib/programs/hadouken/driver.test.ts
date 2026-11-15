@@ -313,7 +313,7 @@ describe("Hadouken's driver", () => {
     }
   });
 
-  it("pauses what is started or queued over a fresh list and resumes exactly those that are still listed", async () => {
+  it("pauses what is started or queued over a fresh list and hands exactly those back to the queue", async () => {
     const state: HkState = { state: "running" };
     const s = await hadoukenServer(state);
     const store = memoryPauseStore();
@@ -326,25 +326,43 @@ describe("Hadouken's driver", () => {
       await d.poll();
       let from = s.calls.length;
       await d.command({ kind: "pauseAll" });
-      const paused = s.calls.slice(from).map(rpcOf);
-      expect(paused[0].method).toBe("webui.list");
-      expect(paused.slice(-2)).toEqual([
+      // no queue flag read per torrent: one call each would hold the pause for minutes
+      expect(s.calls.slice(from).map(rpcOf)).toEqual([
+        { method: "webui.list", params: [] },
         { method: "webui.setProperties", params: [expected, { auto_managed: false }] },
         { method: "webui.perform", params: ["pause", expected] },
       ]);
       expect(expected).not.toContain(hashOf("running")["stopped.bin"]);
       expect((await store.load()).paused).toBe(true);
-      // queued.bin is gone by then — a hash Hadouken does not know would stop the whole action at it
-      state.state = "removed";
+      state.state = "all-paused";
       from = s.calls.length;
       await d.command({ kind: "resumeAll" });
-      const listed = new Set(Object.values(hashOf("removed")));
-      const back = expected.filter(k => listed.has(k));
-      expect(back).not.toContain(hashOf("running")["queued.bin"]);
-      const resumed = s.calls.slice(from).map(rpcOf);
-      expect(resumed[0].method).toBe("webui.list");
-      expect(resumed[1]).toEqual({ method: "webui.perform", params: ["start", back] });
+      expect(s.calls.slice(from).map(rpcOf)).toEqual([
+        { method: "webui.list", params: [] },
+        { method: "webui.perform", params: ["start", expected] },
+        { method: "webui.setProperties", params: [expected, { auto_managed: true }] },
+      ]);
       expect((await store.load()).paused).toBe(false);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("resumes only the paused torrents that are still listed — Hadouken stops a list action at an unknown hash", async () => {
+    const state: HkState = { state: "running" };
+    const s = await hadoukenServer(state);
+    try {
+      const d = new HkDriver(cfg(s.baseUrl), { ...timers, log, pauseStore: memoryPauseStore() });
+      await d.poll();
+      await d.command({ kind: "pauseAll" });
+      // queued.bin is gone by then
+      state.state = "removed";
+      const from = s.calls.length;
+      await d.command({ kind: "resumeAll" });
+      const start = s.calls.slice(from).map(rpcOf)[1];
+      expect(start.method).toBe("webui.perform");
+      expect(start.params[1]).not.toContain(hashOf("running")["queued.bin"]);
+      expect(start.params[1]).toContain(hashOf("running")["big.bin"]);
     } finally {
       await s.close();
     }
