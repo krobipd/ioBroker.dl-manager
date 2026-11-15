@@ -57,7 +57,7 @@ export function loginHint(cfg: ProgramConfig): LoginHint {
       return hasKey
         ? {
             action:
-              'pair its card again ("Pair with the Freebox again"), or grant the app the right to the downloads in Freebox OS and save its card',
+              'pair its card again ("Pair with the Freebox again"), or grant the app the right to the downloads in Freebox OS and switch its card off and on',
           }
         : { cause: "its card holds no app token", action: "pair its card with the Freebox" };
     default:

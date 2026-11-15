@@ -55,6 +55,9 @@ describe("loginHint", () => {
       action: "pair its card with the Freebox",
     });
     expect(loginHint(cfg("freebox", { apiKey: "t" })).action).toMatch(/pair its card again.*Freebox OS/);
+    // a right granted in Freebox OS changes nothing on the card: saving it unchanged starts nothing anew (manager
+    // `signature`), switching it off and on does
+    expect(loginHint(cfg("freebox", { apiKey: "t" })).action).toMatch(/Freebox OS and switch its card off and on$/);
   });
 
   it("says for qBittorrent or pyLoad without user and key that none is set", () => {
