@@ -8,7 +8,7 @@
 // disappears. The run fails when anything that looks like a secret or a foreign address is left.
 import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { dirname, join, relative } from "node:path";
+import { dirname, join, relative, sep } from "node:path";
 
 const SECRETS = [
   "testpass1",
@@ -41,10 +41,11 @@ function walk(dir) {
 const ipMap = new Map();
 /**
  * @param {string} ip an IPv4 address from a recording
+ * @param {Set<string>} keep dotted numbers of the recording's own version, no address
  * @returns {string} the address that goes into the repository
  */
-function docIp(ip) {
-  if (KEEP_IPS.has(ip)) {
+function docIp(ip, keep) {
+  if (KEEP_IPS.has(ip) || keep.has(ip)) {
     return ip;
   }
   if (!ipMap.has(ip)) {
@@ -68,8 +69,12 @@ for (const artifact of readdirSync(src)) {
       // whole tokens only: the dead magnet's info hash contains the SABnzbd test key as a substring
       text = text.replace(new RegExp(`(?<![0-9A-Za-z])${s}(?![0-9A-Za-z])`, "g"), "<secret>");
     }
+    // a version with four parts looks like an address — Vuze 5.7.6.0 became 192.0.2.10; the version folder
+    // (`<program>/<version>/<state>/`) names the numbers that stay
+    const version = relative(root, file).split(sep)[1] ?? "";
+    const keep = new Set(version.match(/\d{1,3}(?:\.\d{1,3}){3}/g) ?? []);
     text = text.replace(/\b(\d{1,3}(?:\.\d{1,3}){3})\b/g, (m, ip) =>
-      ip.split(".").every(n => Number(n) <= 255) ? docIp(ip) : m,
+      ip.split(".").every(n => Number(n) <= 255) ? docIp(ip, keep) : m,
     );
     text = text.replace(/\bfv-az[\w-]+/g, "runner");
     // pyLoad API keys the recorder created (pl_<id><43 characters>)
