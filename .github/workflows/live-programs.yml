@@ -65,6 +65,10 @@ jobs:
             tag: 8.1.1
           - program: rqbit
             tag: 9.1.0
+          - program: rtorrent
+            tag: 4.3.1-0.9.8_3-0.13.8_2
+          - program: rtorrent
+            tag: 5.3.18-0.16.25
     # a manual start may name one program; the other matrix entries then skip every step
     env:
       SELECTED: ${{ inputs.program == '' || inputs.program == matrix.program }}
