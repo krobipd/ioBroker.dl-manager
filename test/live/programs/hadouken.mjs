@@ -4,8 +4,9 @@
 // `webui.perform`). The image has no start command of its own (`CMD sh`); the binary takes the path of its JSON
 // configuration (src/main.cpp `--config`, template dist/linux/hadouken.json.template).
 import { mkdirSync, writeFileSync } from "node:fs";
+import { request } from "node:http";
 import { join } from "node:path";
-import { DEAD_MAGNET, DEAD_MAGNET_HASH, Http, prepareTorrents, Recorder, torrentOf, waitFor } from "../lib.mjs";
+import { DEAD_MAGNET, DEAD_MAGNET_HASH, prepareTorrents, Recorder, torrentOf, waitFor } from "../lib.mjs";
 
 const USER = "admin";
 const PASS = "testpass1";
@@ -66,6 +67,45 @@ export function prepare(work, tag) {
 /** Row fields (js/rpc/webui_list.js), by position — the layout of µTorrent's list. */
 const ROW = { hash: 0, status: 1, name: 2, size: 3, progress: 4, downSpeed: 9, eta: 10, error: 21 };
 
+/**
+ * One POST the way Hadouken reads it. Its connection handler (src/http/connection_handler.cpp) reads a body only behind a
+ * header named exactly "Content-Length" and otherwise logs "Could not find 'Content-Length' header." and answers nothing;
+ * fetch always sends the header in lower case (run 43704920331: every call timed out), node:http sends it as written.
+ *
+ * @param {string} path request path
+ * @param {string} body request body
+ * @param {Record<string,string>} headers request headers, sent with their case
+ * @param {number} [timeoutMs] how long, default 30 s
+ * @returns {Promise<{ status: number, headers: Record<string,string>, text: string, json: () => unknown }>} answer
+ */
+function post(path, body, headers, timeoutMs = 30_000) {
+  return new Promise((resolve, reject) => {
+    const req = request(
+      { host: "hadouken", port: 7070, method: "POST", path, headers, agent: false, timeout: timeoutMs },
+      res => {
+        /** @type {Buffer[]} */
+        const chunks = [];
+        res.on("data", chunk => chunks.push(chunk));
+        res.on("error", reject);
+        res.on("end", () => {
+          const text = Buffer.concat(chunks).toString("utf8");
+          resolve({
+            status: res.statusCode ?? 0,
+            headers: Object.fromEntries(
+              Object.entries(res.headers).map(([k, v]) => [k, Array.isArray(v) ? v.join(", ") : String(v)]),
+            ),
+            text,
+            json: () => JSON.parse(text),
+          });
+        });
+      },
+    );
+    req.on("timeout", () => req.destroy(new Error(`no answer within ${timeoutMs} ms`)));
+    req.on("error", reject);
+    req.end(body);
+  });
+}
+
 /** A second magnet nobody seeds — added paused while the first one is in the list already. */
 const PAUSED_MAGNET_HASH = "fedcba9876543210fedcba9876543210fedcba98";
 const PAUSED_MAGNET = `magnet:?xt=urn:btih:${PAUSED_MAGNET_HASH}&dn=added-paused`;
@@ -77,7 +117,6 @@ const PAUSED_MAGNET = `magnet:?xt=urn:btih:${PAUSED_MAGNET_HASH}&dn=added-paused
  * @returns {Promise<Recorder>} the recorder
  */
 export async function record(ctx) {
-  const http = new Http("http://hadouken:7070");
   const basic = pass => ({ Authorization: `Basic ${Buffer.from(`${USER}:${pass}`).toString("base64")}` });
   let id = 0;
   /**
@@ -86,14 +125,19 @@ export async function record(ctx) {
    * @param {string} method RPC method
    * @param {unknown[]} [params] positional parameters
    * @param {Record<string,string>} [headers] request headers (basic auth with the password by default)
-   * @returns {Promise<Awaited<ReturnType<Http["req"]>> & { sent: string }>} the answer and the request as recorded
+   * @returns {Promise<Awaited<ReturnType<typeof post>> & { sent: string }>} the answer and the request as recorded
    */
   const rpc = async (method, params = [], headers = basic(PASS)) => {
     id++;
-    const res = await http.req("POST", "/api", { json: { jsonrpc: "2.0", id, method, params }, headers });
+    const body = JSON.stringify({ jsonrpc: "2.0", id, method, params });
+    const res = await post("/api", body, {
+      "Content-Type": "application/json",
+      "Content-Length": String(Buffer.byteLength(body)),
+      ...headers,
+    });
     return { ...res, sent: `POST /api ${method} ${JSON.stringify(params)}` };
   };
-  await waitFor("Hadouken API", async () => (await http.req("POST", "/api", { json: {} })).status > 0, 120_000);
+  await waitFor("Hadouken API", async () => (await rpc("core.getSystemInfo", [], {})).status > 0, 120_000);
   await waitFor("Hadouken scripts", async () => (await rpc("core.getSystemInfo")).status === 200, 60_000);
 
   const info = await rpc("core.getSystemInfo");
@@ -106,6 +150,23 @@ export async function record(ctx) {
   w("auth", "none", await rpc("core.getSystemInfo", [], {}));
   w("auth", "wrong", await rpc("core.getSystemInfo", [], basic("wrong")));
   w("auth", "lowercase-header", await rpc("core.getSystemInfo", [], { authorization: basic(PASS).Authorization }));
+  // the body length in lower case, as fetch sends it: Hadouken does not answer — the log keeps what the socket saw
+  const lowerBody = JSON.stringify({ jsonrpc: "2.0", id: 0, method: "core.getSystemInfo", params: [] });
+  const lower = await post(
+    "/api",
+    lowerBody,
+    {
+      "Content-Type": "application/json",
+      "content-length": String(Buffer.byteLength(lowerBody)),
+      ...basic(PASS),
+    },
+    10_000,
+  ).then(
+    res => `answered ${res.status} ${res.text.slice(0, 80)}`,
+    err =>
+      `no answer: ${err instanceof Error ? `${err.message} ${String(/** @type {{ code?: unknown }} */ (err).code ?? "")}` : String(err)}`,
+  );
+  console.log(`lower-case content-length: ${lower}`);
   w("probe", "get-system-info", info);
   w("probe", "introspect", await rpc("core.introspect"));
   w("probe", "unknown-method", await rpc("webui.nonsense"));
@@ -217,14 +278,15 @@ export async function record(ctx) {
   w("probe", "perform-stop", await rpc("webui.perform", ["stop", [hash("big")]]));
   w("probe", "perform-unknown-hash", await rpc("webui.perform", ["pause", ["f".repeat(40)]]));
 
-  // pause on an auto-managed torrent: libtorrent's queue may resume it — seen right after and five seconds later
+  // pause on an auto-managed torrent: libtorrent's queue may resume it — seen right after and once its queue ran (libtorrent
+  // 1.0.5 session_settings `auto_manage_interval` 30 s)
   const big = hash("big");
   console.log("big before pause:", JSON.stringify(await managed([big])));
   w("commands", "pause", await rpc("webui.perform", ["pause", [big]]));
   await new Promise(r => setTimeout(r, 1000));
   await statusOf(big);
   await snapshot("pause-managed");
-  await new Promise(r => setTimeout(r, 5000));
+  await new Promise(r => setTimeout(r, 40_000));
   await statusOf(big);
   await snapshot("pause-managed-later");
   // auto-managed off, then pause: status bit 32 (webui_list.js: paused = paused and not auto-managed)
