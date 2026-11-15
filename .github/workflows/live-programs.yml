@@ -92,6 +92,9 @@ jobs:
           # µTorrent Server for Linux (utserver alpha 3.3) in ekho/utorrent, pinned by digest in the module
           - program: utorrent
             tag: "2021-04-22"
+          # Hadouken 5.2.0 (libtorrent 1.0.5) built from its tag in mediadepot/hadouken, pinned by digest in the module
+          - program: hadouken
+            tag: 5.2.0
     # a manual start may name one program; the other matrix entries then skip every step
     env:
       SELECTED: ${{ inputs.program == '' || inputs.program == matrix.program }}
