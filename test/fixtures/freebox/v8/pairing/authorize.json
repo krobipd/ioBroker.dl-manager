@@ -1,0 +1,17 @@
+{
+  "_source": {
+    "program": "freebox",
+    "version": "v8",
+    "request": "POST /api/v4/login/authorize/",
+    "recordedAt": "documentation example",
+    "origin": "Freebox OS API 4.0 documentation (dev.freebox.fr/sdk/os, mirror AriusII/Freenaute-Freebox-Api@84f15ddb), login.txt L64–L95"
+  },
+  "status": 200,
+  "body": {
+    "success": true,
+    "result": {
+      "app_token": "dyNYgfK0Ya6FWGqq83sBHa7TwzWo+pg4fDFUJHShcjVYzTfaRrZzm93p7OTAfH/0",
+      "track_id": 42
+    }
+  }
+}

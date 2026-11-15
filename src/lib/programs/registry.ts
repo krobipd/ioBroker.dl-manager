@@ -4,6 +4,7 @@ import { AriaDriver } from "./aria2/driver";
 import { DlDriver } from "./deluge/driver";
 import { DsDriver } from "./downloadstation/driver";
 import { FloodDriver } from "./flood/driver";
+import { FbxDriver } from "./freebox/driver";
 import { JdDriver } from "./jdownloader/driver";
 import { NzbDriver } from "./nzbget/driver";
 import { NvDriver } from "./nzbvortex/driver";
@@ -37,6 +38,7 @@ const DRIVERS: Readonly<Record<ProgramType, (cfg: ProgramConfig, deps: DriverDep
   hadouken: (cfg, deps) => new HkDriver(cfg, deps),
   downloadstation: (cfg, deps) => new DsDriver(cfg, deps),
   nzbvortex: (cfg, deps) => new NvDriver(cfg, deps),
+  freebox: (cfg, deps) => new FbxDriver(cfg, deps),
 };
 
 /** THE program list — one entry per catalog type. */

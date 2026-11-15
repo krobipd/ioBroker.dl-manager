@@ -29,6 +29,21 @@
           "source": "own cap: My.JDownloader documents no threshold, only HTTP 429 (Home Assistant asks every 60 s). Kept by the call budget (core/call-budget.ts) for every account at once; the adapter asks at most every 30 s (jdownloader/driver.ts), 3 calls a query; a login with device list and version adds 3 — three starts in one minute with two queries and a new login stay near 28"
         }
       ]
+    },
+    {
+      "name": "Freebox",
+      "match": {
+        "host": "mafreebox.freebox.fr",
+        "kind": "http"
+      },
+      "limits": [
+        {
+          "max": 100,
+          "seconds": 60,
+          "per": "host",
+          "source": "own cap: the Freebox OS API documents no limit for calls, only the error ratelimited after too many failed logins from one address (documentation, login); the same cap as the programs in the user's network. mafreebox.freebox.fr is a public name the Freebox answers inside its own network, and the only name its certificate holds for. Kept by the call budget (core/call-budget.ts); own pace: one query at most every 10 s with 3 calls (the download list, the config, the API version after a failure), a new session 2 more, the pairing one question every 2 s"
+        }
+      ]
     }
   ]
 }

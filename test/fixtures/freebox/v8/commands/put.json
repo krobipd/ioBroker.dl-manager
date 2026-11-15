@@ -1,0 +1,36 @@
+{
+  "_source": {
+    "program": "freebox",
+    "version": "v8",
+    "request": "PUT /api/v1/downloads/365",
+    "recordedAt": "2026-08-25, a running Freebox (model not named)",
+    "origin": "Radarr/Radarr issue #11651, attachment radarr.trace.txt (Radarr 6.3.0.10514's trace of a running Freebox, 2026-08-25, API path /api/v1/), line 1808 (the answer only — Radarr does not log what it sent); release names and info hashes replaced"
+  },
+  "status": 200,
+  "body": {
+    "success": true,
+    "result": {
+      "rx_bytes": 0,
+      "tx_bytes": 0,
+      "download_dir": "L0Rvd25sb2Fkcy9Uw6lsw6ljaGFyZ2VtZW50cy9yYWRhcnIv",
+      "archive_password": "",
+      "eta": 0,
+      "status": "downloading",
+      "io_priority": "normal",
+      "type": "bt",
+      "piece_length": 524288,
+      "queue_pos": 24,
+      "id": 365,
+      "info_hash": "0000000000000000000000000000000000000024",
+      "created_ts": 1787668802,
+      "stop_ratio": 200,
+      "tx_rate": 0,
+      "name": "REDACTED-release-24",
+      "tx_pct": 0,
+      "rx_pct": 0,
+      "rx_rate": 0,
+      "error": "none",
+      "size": 3300000000
+    }
+  }
+}

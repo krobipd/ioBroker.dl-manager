@@ -372,6 +372,40 @@ function nzbvortex(url) {
   return r ? json(body("nzbvortex", NV, r[0], r[1])) : json({ result: "unknown_command" }, 404);
 }
 
+// ---- Freebox OS API (a challenge, a session from the app token's HMAC, every call with X-Fbx-App-Auth) ----
+// No recording: answers of running Freeboxes in Radarr's logs, test data of free-go and the documentation's examples
+// (test/fixtures/freebox/SOURCES.md). The session password is checked like the Freebox does, keyed with the row's app
+// token. A call without the session answers 403 auth_required with the next challenge.
+const FBX = "v8";
+const FBX_TOKEN = "fixture";
+const FBX_SESSION = "REDACTED_SESSION_TOKEN_A";
+const FBX_CHALLENGE = "REDACTED_CHALLENGE_A";
+const FBX_READS = {
+  "GET downloads/": ["queue", "list"],
+  "GET downloads/config/": ["config", "get"],
+  "PUT downloads/config/": ["config", "get"],
+  "POST downloads/add": ["commands", "add"],
+};
+function freebox(url, init, headers) {
+  if (url.pathname === "/api_version") return json(body("freebox", FBX, "app", "api-version"));
+  const resource = url.pathname.replace(/^\/api\/v8\//, "");
+  const method = init.method ?? "GET";
+  if (method === "GET" && resource === "login/") return json(body("freebox", FBX, "auth", "challenge"));
+  if (method === "POST" && resource === "login/session/") {
+    const sent = JSON.parse(String(init.body ?? "{}"));
+    const expected = crypto.createHmac("sha1", FBX_TOKEN).update(FBX_CHALLENGE).digest("hex");
+    return REJECTED || sent.password !== expected
+      ? json(body("freebox", FBX, "auth", "invalid-token"), 403)
+      : json(body("freebox", FBX, "auth", "session"));
+  }
+  if (headers.get("x-fbx-app-auth") !== FBX_SESSION) return json(body("freebox", FBX, "auth", "auth-required"), 403);
+  if (/^downloads\/\d+$/.test(resource)) {
+    return json(body("freebox", FBX, "commands", method === "DELETE" ? "delete" : "put"));
+  }
+  const r = FBX_READS[`${method} ${resource}`];
+  return r ? json(body("freebox", FBX, r[0], r[1])) : json({ success: false, error_code: "invalid_request" }, 404);
+}
+
 // ---- Hadouken 5.2.0 (JSON-RPC behind basic auth) ----
 // The adapter sends through node:http (Hadouken reads a body only behind the header named exactly "Content-Length"), so
 // the answers come from a real server on loopback: the network hook's hang and outage act on the socket, a request
@@ -448,6 +482,7 @@ const ROUTES = {
   "utorrent.local": utorrent,
   "downloadstation.local": downloadstation,
   "nzbvortex.local": nzbvortex,
+  "mafreebox.freebox.fr": freebox,
 };
 
 globalThis.fetch = async (input, init = {}) => {

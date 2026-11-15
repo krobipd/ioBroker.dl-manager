@@ -1,0 +1,20 @@
+{
+  "_source": {
+    "program": "freebox",
+    "version": "v8",
+    "request": "POST /login/session/",
+    "recordedAt": "test data of free-go's mock server",
+    "origin": "NikolaLohinski/free-go@9848288a, client/authentication_test.go L555–L564 (HTTP 403 to a session asked with a token the box no longer knows); uid and password salt replaced"
+  },
+  "status": 403,
+  "body": {
+    "uid": "REDACTED_UID_FREEGO",
+    "success": false,
+    "msg": "Erreur d'authentification de l'application",
+    "result": {
+      "challenge": "9Va31tSgQWM853j0kSCtBUyzYNhPN7IY",
+      "password_salt": "REDACTED_PASSWORD_SALT_FREEGO"
+    },
+    "error_code": "invalid_token"
+  }
+}

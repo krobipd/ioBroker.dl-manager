@@ -19,6 +19,7 @@ import { DlDeviceManagement, type DmHost } from "./lib/device-management";
 import { errText } from "./lib/err-text";
 import { tDesc, tName } from "./lib/i18n";
 import { migrateNativeKeys, type NativeKeyMigration } from "./lib/native-key-migration";
+import { pairFreebox } from "./lib/programs/freebox/client";
 import { listMyJdDevices } from "./lib/programs/jdownloader/cloud";
 import { failStart } from "./lib/start-failure";
 import type { ProgramEntry } from "./lib/core/model";
@@ -115,6 +116,13 @@ class DownloadManagerAdapter extends utils.Adapter {
       readState: relId => Promise.resolve(this.states.get(relId)),
       test: row => testProgram(row, this.find, { ...this.timers, log: this.log }),
       listJdDevices: (email, password) => listMyJdDevices(email, password, this.timers),
+      // the Freebox shows app and device on its display and in its list of apps
+      pairFreebox: endpoint =>
+        pairFreebox(endpoint, this.timers, {
+          name: "ioBroker dl-manager",
+          version: this.version ?? "",
+          device: this.host || "ioBroker",
+        }),
       icon: deviceIcon,
       iobHost: () => this.host ?? "",
     };

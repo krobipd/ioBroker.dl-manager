@@ -44,6 +44,8 @@ describe("catalog", () => {
     expect(needsOf(catalogEntry("jdownloader-cloud"))).toEqual(["username", "password", "device"]);
     expect(needsOf(catalogEntry("deluge"))).toEqual(["host", "password"]);
     expect(needsOf(catalogEntry("sabnzbd"))).toEqual(["host", "apiKey"]);
+    // the Freebox's app token comes from the pairing — a card without one cannot run
+    expect(needsOf(catalogEntry("freebox"))).toEqual(["host", "apiKey"]);
     for (const t of ["qbittorrent", "transmission", "nzbget", "aria2", "pyload"] as const) {
       expect(needsOf(catalogEntry(t))).toEqual(["host"]);
     }

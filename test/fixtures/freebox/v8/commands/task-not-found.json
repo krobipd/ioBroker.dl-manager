@@ -1,0 +1,15 @@
+{
+  "_source": {
+    "program": "freebox",
+    "version": "v8",
+    "request": "PUT /downloads/{id}",
+    "recordedAt": "test data of free-go's mock server",
+    "origin": "NikolaLohinski/free-go@9848288a, client/downloads_test.go L259–L263 (the mock answers HTTP 200; no source shows the real code)"
+  },
+  "status": 200,
+  "body": {
+    "msg": "Erreur lors de la récupération des infos de téléchargement : Pas de tâche avec cet id",
+    "success": false,
+    "error_code": "task_not_found"
+  }
+}

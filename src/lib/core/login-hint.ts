@@ -53,6 +53,13 @@ export function loginHint(cfg: ProgramConfig): LoginHint {
       return hasUser
         ? { action: "check user and password on its card" }
         : { cause: NONE_SET, action: "enter user and password or an API key on its card" };
+    case "pairing":
+      return hasKey
+        ? {
+            action:
+              'pair its card again ("Pair with the Freebox again"), or grant the app the right to the downloads in Freebox OS and save its card',
+          }
+        : { cause: "its card holds no app token", action: "pair its card with the Freebox" };
     default:
       return { action: "check the address and the login on its card" };
   }

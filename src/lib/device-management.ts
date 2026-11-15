@@ -34,7 +34,8 @@ import {
 } from "./dm-forms";
 import { errText } from "./err-text";
 import { tName } from "./i18n";
-import type { ProgramType } from "./programs/catalog";
+import { catalogEntry, type Endpoint, type ProgramType } from "./programs/catalog";
+import type { PairOutcome } from "./programs/freebox/client";
 import { findProgram } from "./programs/registry";
 
 /** What the device manager needs from the adapter besides the plain ioBroker surface. */
@@ -54,6 +55,11 @@ export interface DmHost {
   test(row: SettingsRow): Promise<TestResult>;
   /** Logs into My.JDownloader and lists the account's JDownloader instances. */
   listJdDevices(email: string, password: string): Promise<JdChoice[]>;
+  /**
+   * Asks a Freebox for an app token and waits until the user granted or refused it on the Freebox's display — the adapter
+   * always has it; a host without it cannot pair (the sealed guards build hosts of their own).
+   */
+  pairFreebox?(endpoint: Endpoint): Promise<PairOutcome>;
   /** The pictogram of a program type, as a data URI. */
   icon(type: string): string | undefined;
   /** The name of the ioBroker host this instance runs on — part of a local program's device id. */
@@ -388,6 +394,26 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
         return false;
       }
     }
+    // a new card, one without a token, or the switch: the token comes from the Freebox, granted on its display
+    if (catalogEntry(type).login === "pairing" && (form.pair || !form.apiKey.trim())) {
+      // a program another row asks is refused before the user confirms on the device — it would keep the app's entry
+      // for nothing; the check when storing below stays
+      const [probe] = parsePrograms([formToRow(type, form, "", previous, device)], findProgram);
+      const others = parsePrograms(
+        (await this.host.readRows()).filter(r => cardId === undefined || this.idOf(r) !== cardId),
+        findProgram,
+      );
+      const twin = probe.enabled ? twinOf(probe.cfg, others) : undefined;
+      if (twin) {
+        await this.duplicate(ctx, twin);
+        return false;
+      }
+      const token = await this.pair(ctx, form);
+      if (token === undefined) {
+        return false;
+      }
+      form.apiKey = token;
+    }
     // the dialog waited for the user: what it stores goes onto the rows as they are now, never onto the ones it opened
     // with — a card another tab changed or deleted meanwhile stores nothing
     const outcome: { changed: boolean; twin?: ProgramRow } = { changed: false };
@@ -429,12 +455,18 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
       return true;
     }
     if (outcome.twin) {
-      await ctx.showMessage(
-        tName("dmDuplicate", outcome.twin.cfg.name || outcome.twin.id, addressOf(outcome.twin.cfg)),
-      );
+      await this.duplicate(ctx, outcome.twin);
       return false;
     }
     return true;
+  }
+
+  /**
+   * @param ctx the action context
+   * @param twin the row that asks the same program already
+   */
+  private async duplicate(ctx: ActionContext, twin: ProgramRow): Promise<void> {
+    await ctx.showMessage(tName("dmDuplicate", twin.cfg.name || twin.id, addressOf(twin.cfg)));
   }
 
   /**
@@ -482,6 +514,41 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
       applyDisabledRule: "!data.device",
     });
     return free.find(d => d.id === answer?.device);
+  }
+
+  /**
+   * The Freebox step: ask for an app token, show what the user does on the Freebox while it waits for him.
+   *
+   * @param ctx the action context
+   * @param form the dialog data (the address)
+   * @returns the app token, undefined when none was granted — the dialog stores nothing then and says why
+   */
+  private async pair(ctx: ActionContext, form: ProgramForm): Promise<string | undefined> {
+    const endpoint: Endpoint = {
+      host: form.host.trim(),
+      port: Number(form.port.trim()) || 0,
+      https: form.https,
+      path: form.path.trim(),
+    };
+    const progress = await ctx.openProgress(tName("dmPairing", endpoint.host), { indeterminate: true });
+    let outcome: PairOutcome;
+    try {
+      if (!this.host.pairFreebox) {
+        throw new Error("this host cannot pair");
+      }
+      outcome = await this.host.pairFreebox(endpoint);
+    } catch (err: unknown) {
+      await progress.close();
+      await ctx.showMessage(tName("dmPairFailed", errText(err)));
+      return undefined;
+    }
+    await progress.close();
+    if ("token" in outcome) {
+      return outcome.token;
+    }
+    const why = { denied: "dmPairDenied", timeout: "dmPairTimeout", unknown: "dmPairUnknown" } as const;
+    await ctx.showMessage(tName(why[outcome.refused]));
+    return undefined;
   }
 
   /**

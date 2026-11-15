@@ -1,5 +1,6 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
+import { rootCertificates } from "node:tls";
 import { UnreachableError } from "./errors";
 import { HttpClient } from "./http";
 
@@ -26,7 +27,7 @@ const timers = {
     globalThis.clearTimeout(t as unknown as ReturnType<typeof setTimeout>),
 };
 
-describe("HttpClient with selfSignedTls (NZBVortex)", () => {
+describe("HttpClient over node:https (selfSignedTls, trustedCa)", () => {
   let server: Server;
   let port: number;
   beforeEach(async () => {
@@ -51,6 +52,22 @@ describe("HttpClient with selfSignedTls (NZBVortex)", () => {
     );
     expect(seen).toHaveLength(1);
     expect(seen[0]).toMatchObject({ method: "GET", rejectUnauthorized: false });
+  });
+
+  it("trusts the given roots beside node's own and checks the certificate (trustedCa, the Freebox)", async () => {
+    const root = "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n";
+    const c = new HttpClient(timers, { trustedCa: [root], timeoutMs: 2000 });
+    await expect(c.request({ method: "GET", url: `https://127.0.0.1:${port}/api/v8/downloads/` })).rejects.toThrow(
+      UnreachableError,
+    );
+    expect(seen).toHaveLength(1);
+    expect(seen[0].rejectUnauthorized).toBeUndefined();
+    const ca = seen[0].ca as string[];
+    expect(ca.at(-1)).toBe(root);
+    expect(ca.slice(0, -1)).toEqual([...rootCertificates]);
+    const plain = await c.request({ method: "GET", url: `http://127.0.0.1:${port}/api/v8/downloads/` });
+    expect(plain.status).toBe(200);
+    expect(seen).toHaveLength(1);
   });
 
   it("keeps fetch for plain HTTP, and checks every certificate without the option", async () => {

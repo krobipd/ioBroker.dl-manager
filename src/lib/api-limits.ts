@@ -28,6 +28,8 @@ export interface ApiCounterpart {
 export const LOCAL_PROGRAMS = "Download program in the user's network";
 /** The counterpart of the My.JDownloader cloud — every account's calls share its window. */
 export const MY_JDOWNLOADER = "My.JDownloader";
+/** The counterpart of a Freebox — each box's host has its own window. */
+export const FREEBOX = "Freebox";
 
 /** Every counterpart the adapter calls, defined in ONE place: `api-limits.json`. */
 export const API_COUNTERPARTS: readonly ApiCounterpart[] = limits.counterparts as ApiCounterpart[];

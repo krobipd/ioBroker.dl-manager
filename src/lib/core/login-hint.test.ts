@@ -49,6 +49,14 @@ describe("loginHint", () => {
     }
   });
 
+  it("points a Freebox at the pairing, and at the right to the downloads once it holds a token", () => {
+    expect(loginHint(cfg("freebox"))).toEqual({
+      cause: "its card holds no app token",
+      action: "pair its card with the Freebox",
+    });
+    expect(loginHint(cfg("freebox", { apiKey: "t" })).action).toMatch(/pair its card again.*Freebox OS/);
+  });
+
   it("says for qBittorrent or pyLoad without user and key that none is set", () => {
     for (const type of ["qbittorrent", "pyload"]) {
       expect(loginHint(cfg(type))).toEqual({

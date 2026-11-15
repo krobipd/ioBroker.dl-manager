@@ -121,6 +121,10 @@ describe("rows and dialog data", () => {
       mode: "cloud",
     });
     expect(formFromData({ mode: "x", needLogin: true }, opened)).toMatchObject({ mode: "local", needLogin: true });
+    expect([formFromData({ pair: true }, opened).pair, formFromData({ pair: "on" }, opened).pair]).toEqual([
+      true,
+      false,
+    ]);
   });
 });
 
@@ -167,6 +171,8 @@ describe("formToRow", () => {
     expect(creds("deluge", all)).toEqual(["", "p", ""]);
     expect(creds("sabnzbd", all)).toEqual(["", "", "k"]);
     expect(creds("aria2", all)).toEqual(["", "", "k"]);
+    // the Freebox's app token, which the pairing put into the form
+    expect(creds("freebox", all)).toEqual(["", "", "k"]);
     expect(creds("nzbget", all)).toEqual(["u", "p", ""]);
     expect(creds("transmission", all)).toEqual(["", "", ""]);
     expect(creds("transmission", { ...all, needLogin: true })).toEqual(["u", "p", ""]);
@@ -295,6 +301,8 @@ describe("programForm — only the fields of the program", () => {
     expect(fields("qbittorrent")).toEqual([...common, "apiKey", "login", "password", "username"].sort());
     expect(fields("pyload")).toEqual([...common, "apiKey", "login", "password", "username"].sort());
     expect(fields("jdownloader")).toEqual([...common, "hintCloud", "mode", "password", "username"].sort());
+    // the Freebox's token comes from the pairing: no field for it, only the switch to pair anew
+    expect(fields("freebox")).toEqual([...common, "pair"].sort());
   });
 
   it("shows the default port and path as placeholders", () => {

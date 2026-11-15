@@ -516,6 +516,111 @@ describe("adding a JDownloader over My.JDownloader", () => {
   });
 });
 
+describe("pairing a Freebox", () => {
+  const boxForm = { name: "Freebox", host: "mafreebox.freebox.fr", port: "", https: true, enabled: true };
+  const boxRow = {
+    id: "freebox-mafreebox",
+    enabled: true,
+    type: "freebox",
+    name: "Freebox",
+    host: "mafreebox.freebox.fr",
+    https: true,
+    apiKey: "old-token",
+  };
+  /**
+   * @param rows the stored rows
+   * @param outcome what the pairing gives, or the error it ends with
+   * @returns the manager, the host and the pairing's mock
+   */
+  const withPairing = (
+    rows: Record<string, unknown>[],
+    outcome: Awaited<ReturnType<NonNullable<DmHost["pairFreebox"]>>> | Error,
+  ): ReturnType<typeof make> & { pairing: Mock } => {
+    const made = make(rows);
+    const pairing = vi.fn(() => (outcome instanceof Error ? Promise.reject(outcome) : Promise.resolve(outcome)));
+    made.host.pairFreebox = pairing;
+    return { ...made, pairing };
+  };
+
+  it("stores the app token the user granted on the Freebox's display — the dialog asks for none", async () => {
+    const { dm, host, pairing } = withPairing([], { token: "new-token" });
+    const ctx = context({ type: "freebox" }, boxForm);
+    expect(await add(dm)(ctx)).toEqual({ refresh: true });
+    expect(pairing).toHaveBeenCalledWith({ host: "mafreebox.freebox.fr", port: 0, https: true, path: "" });
+    expect(ctx.openProgress).toHaveBeenCalledWith(
+      { key: "dmPairing", args: ["mafreebox.freebox.fr"] },
+      { indeterminate: true },
+    );
+    expect(ctx.progressClosed()).toBe(1);
+    expect(host.written[0][0]).toMatchObject({ id: "freebox-mafreebox", type: "freebox", apiKey: "new-token" });
+    const items = (ctx.showForm.mock.calls[1][0] as { items: Record<string, unknown> }).items;
+    expect(items.apiKey).toBeUndefined();
+  });
+
+  it("stores nothing and says why when the Freebox gave no token", async () => {
+    for (const [refused, key] of [
+      ["denied", "dmPairDenied"],
+      ["timeout", "dmPairTimeout"],
+      ["unknown", "dmPairUnknown"],
+    ] as const) {
+      const { dm, host } = withPairing([], { refused });
+      const ctx = context({ type: "freebox" }, boxForm);
+      expect(await add(dm)(ctx)).toEqual({ refresh: false });
+      expect(ctx.showMessage).toHaveBeenCalledWith(key);
+      expect(ctx.progressClosed()).toBe(1);
+      expect(host.written).toEqual([]);
+    }
+  });
+
+  it("stores nothing and names the reason when the pairing fails, or the host cannot pair", async () => {
+    const failing = withPairing([], new Error("ECONNREFUSED"));
+    const ctx = context({ type: "freebox" }, boxForm);
+    expect(await add(failing.dm)(ctx)).toEqual({ refresh: false });
+    expect(ctx.showMessage).toHaveBeenCalledWith({ key: "dmPairFailed", args: ["ECONNREFUSED"] });
+    expect(ctx.progressClosed()).toBe(1);
+    expect(failing.host.written).toEqual([]);
+    const { dm, host } = make();
+    const none = context({ type: "freebox" }, boxForm);
+    expect(await add(dm)(none)).toEqual({ refresh: false });
+    expect(none.showMessage).toHaveBeenCalledWith({ key: "dmPairFailed", args: ["this host cannot pair"] });
+    expect(host.written).toEqual([]);
+  });
+
+  it("refuses a Freebox another card asks before the user confirms anything on it", async () => {
+    const { dm, host, pairing } = withPairing([boxRow], { token: "new-token" });
+    const ctx = context({ type: "freebox" }, unchecked({ ...boxForm, name: "Second" }));
+    expect(await add(dm)(ctx)).toEqual({ refresh: false });
+    expect(pairing).not.toHaveBeenCalled();
+    expect(ctx.openProgress).not.toHaveBeenCalled();
+    expect(ctx.showMessage).toHaveBeenCalledWith({
+      key: "dmDuplicate",
+      args: ["Freebox", "https://mafreebox.freebox.fr:443/api/v8"],
+    });
+    expect(host.written).toEqual([]);
+    // a switched-off second card holds no address
+    const off = withPairing([boxRow], { token: "new-token" });
+    await add(off.dm)(context({ type: "freebox" }, unchecked({ ...boxForm, name: "Second", enabled: false })));
+    expect(off.pairing).toHaveBeenCalledTimes(1);
+    expect(off.host.written).toHaveLength(1);
+  });
+
+  it("keeps the token of a card on edit, and pairs anew only when the user asks for it", async () => {
+    const kept = withPairing([boxRow], { token: "new-token" });
+    const [card] = await cards(kept.dm);
+    await action(card, "edit").handler("freebox-mafreebox", context({ ...boxForm, name: "Box" }));
+    expect(kept.pairing).not.toHaveBeenCalled();
+    expect(kept.host.written[0][0]).toMatchObject({ name: "Box", apiKey: "old-token" });
+    const again = withPairing([boxRow], { token: "new-token" });
+    const [same] = await cards(again.dm);
+    const ctx = context({ ...boxForm, pair: true });
+    await action(same, "edit").handler("freebox-mafreebox", ctx);
+    expect(again.host.written[0][0]).toMatchObject({ id: "freebox-mafreebox", apiKey: "new-token" });
+    // the switch shows only on a card that holds a token
+    const items = (ctx.showForm.mock.calls[0][0] as { items: Record<string, { hidden?: string }> }).items;
+    expect(items.pair.hidden).toBe("!data.apiKey");
+  });
+});
+
 describe("editing a program", () => {
   it("opens the stored values and keeps the ID", async () => {
     const { dm, host } = make([qbRow]);

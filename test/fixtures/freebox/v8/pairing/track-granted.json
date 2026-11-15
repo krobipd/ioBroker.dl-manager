@@ -1,0 +1,17 @@
+{
+  "_source": {
+    "program": "freebox",
+    "version": "v8",
+    "request": "GET /api/v4/login/authorize/42",
+    "recordedAt": "documentation example",
+    "origin": "Freebox OS API 4.0 documentation (dev.freebox.fr/sdk/os, mirror AriusII/Freenaute-Freebox-Api@84f15ddb), login.txt L119–L160"
+  },
+  "status": 200,
+  "body": {
+    "success": true,
+    "result": {
+      "status": "granted",
+      "challenge": "Bj6xMqoe+DCHD44KqBljJ579seOXNWr2"
+    }
+  }
+}

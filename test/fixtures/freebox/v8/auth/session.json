@@ -1,0 +1,35 @@
+{
+  "_source": {
+    "program": "freebox",
+    "version": "v8",
+    "request": "POST /api/v1/login/session",
+    "recordedAt": "2026-08-25, a running Freebox (model not named)",
+    "origin": "Radarr/Radarr issue #11651, attachment radarr.trace.txt (Radarr 6.3.0.10514's trace of a running Freebox, 2026-08-25, API path /api/v1/), line 3084; session token, challenge and password salt replaced"
+  },
+  "status": 200,
+  "body": {
+    "result": {
+      "session_token": "REDACTED_SESSION_TOKEN_A",
+      "challenge": "REDACTED_CHALLENGE_A",
+      "password_salt": "REDACTED_PASSWORD_SALT_A",
+      "permissions": {
+        "parental": false,
+        "player": false,
+        "explorer": true,
+        "tv": false,
+        "wdo": false,
+        "camera": false,
+        "profile": false,
+        "downloader": true,
+        "settings": false,
+        "calls": false,
+        "home": false,
+        "pvr": false,
+        "vm": false,
+        "contacts": false
+      },
+      "password_set": true
+    },
+    "success": true
+  }
+}

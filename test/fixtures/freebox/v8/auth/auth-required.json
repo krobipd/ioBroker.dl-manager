@@ -1,0 +1,20 @@
+{
+  "_source": {
+    "program": "freebox",
+    "version": "v8",
+    "request": "GET /api/v1/downloads/",
+    "recordedAt": "2026-08-25, a running Freebox (model not named)",
+    "origin": "Radarr/Radarr issue #11651, attachment radarr.trace.txt (Radarr 6.3.0.10514's trace of a running Freebox, 2026-08-25, API path /api/v1/), line 2969–2971 (HTTP 403 to a lapsed session); uid, challenge and password salt replaced"
+  },
+  "status": 403,
+  "body": {
+    "uid": "REDACTED_UID_A",
+    "success": false,
+    "msg": "Vous devez vous connecter pour accéder à cette fonction",
+    "result": {
+      "password_salt": "REDACTED_PASSWORD_SALT_A",
+      "challenge": "REDACTED_CHALLENGE_A"
+    },
+    "error_code": "auth_required"
+  }
+}

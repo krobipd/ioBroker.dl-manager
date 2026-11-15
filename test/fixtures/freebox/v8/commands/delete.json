@@ -1,0 +1,13 @@
+{
+  "_source": {
+    "program": "freebox",
+    "version": "v8",
+    "request": "DELETE /api/v4/downloads/16",
+    "recordedAt": "documentation example",
+    "origin": "Freebox OS API 4.0 documentation (dev.freebox.fr/sdk/os, mirror AriusII/Freenaute-Freebox-Api@84f15ddb), download.txt L371–L401"
+  },
+  "status": 200,
+  "body": {
+    "success": true
+  }
+}

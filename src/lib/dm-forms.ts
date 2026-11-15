@@ -49,6 +49,8 @@ export interface ProgramForm {
   path: string;
   /** The program is asked. */
   enabled: boolean;
+  /** Freebox: ask the Freebox for a new app token on save, although the card holds one. */
+  pair: boolean;
 }
 
 /** The program types a dialog is for — My.JDownloader is a mode of the JDownloader dialog. */
@@ -80,6 +82,7 @@ const HINT: Readonly<Record<ProgramType, I18nKey>> = {
   hadouken: "hint_hadouken",
   downloadstation: "hint_downloadstation",
   nzbvortex: "hint_nzbvortex",
+  freebox: "hint_freebox",
 };
 
 /**
@@ -122,6 +125,7 @@ export function rowToForm(row: SettingsRow): ProgramForm {
     https,
     path,
     enabled: row.enabled !== false,
+    pair: false,
   };
 }
 
@@ -147,6 +151,7 @@ export function emptyForm(type: ProgramType): ProgramForm {
     https: tls,
     path: "",
     enabled: true,
+    pair: false,
   };
 }
 
@@ -178,6 +183,7 @@ export function formFromData(data: Record<string, unknown>, opened: ProgramForm)
     https: flag("https"),
     path: text("path"),
     enabled: flag("enabled"),
+    pair: flag("pair"),
   };
 }
 
@@ -244,6 +250,7 @@ export function formToRow(
       return { ...row, password: form.password };
     case "apiKey":
     case "secret":
+    case "pairing":
       return { ...row, apiKey: form.apiKey.trim() };
     case "user":
     case "requiredUser":
@@ -541,6 +548,9 @@ function loginItems(info: ProgramInfo): Record<string, unknown> {
     case "userOrKey":
     case "keyOrUser":
       return choice();
+    case "pairing":
+      // the app token comes from the pairing only — a card that holds one may ask for a new one
+      return { pair: { type: "checkbox", label: tName("dmPairAgain"), hidden: "!data.apiKey", newLine: true, sm: 12 } };
     default:
       return {};
   }

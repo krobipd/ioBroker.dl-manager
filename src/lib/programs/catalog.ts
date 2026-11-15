@@ -5,7 +5,7 @@
 import type { RequiredField } from "../core/model";
 
 /** Program family — one pictogram per family (`admin/icons/<family>.svg`). */
-export type Family = "jdownloader" | "torrent" | "usenet" | "aria2" | "pyload" | "downloadstation";
+export type Family = "jdownloader" | "torrent" | "usenet" | "aria2" | "pyload" | "downloadstation" | "freebox";
 
 /**
  * How a program is logged into, which decides the fields of its settings dialog:
@@ -19,6 +19,8 @@ export type Family = "jdownloader" | "torrent" | "usenet" | "aria2" | "pyload" |
  *   count toward DSM's block of the address)
  * - `optionalUser` — user and password behind a switch (Transmission, Vuze)
  * - `userOrKey` / `keyOrUser` — user and password OR an API key, the first one preselected (qBittorrent / pyLoad)
+ * - `pairing` — no field: the dialog asks the program for an app token, which the user grants on the device itself, and
+ *   stores it in the API key (Freebox)
  */
 export type Login =
   | "none"
@@ -30,7 +32,8 @@ export type Login =
   | "requiredUser"
   | "optionalUser"
   | "userOrKey"
-  | "keyOrUser";
+  | "keyOrUser"
+  | "pairing";
 
 /** Every program type the catalog carries. */
 export type ProgramType =
@@ -51,7 +54,8 @@ export type ProgramType =
   | "utorrent"
   | "hadouken"
   | "downloadstation"
-  | "nzbvortex";
+  | "nzbvortex"
+  | "freebox";
 
 /** One program type. */
 export interface ProgramInfo {
@@ -111,6 +115,9 @@ export const CATALOG: readonly ProgramInfo[] = [
   // HTTPS on port 4321 with a self-signed certificate out of the box (Sonarr NzbVortexSettings.cs and NzbVortexProxy.cs;
   // Network API documentation p. 6), the API below /api/
   { type: "nzbvortex", label: "NZBVortex", family: "usenet", port: 4321, path: "", login: "apiKey", tls: true },
+  // Freebox OS: HTTPS at mafreebox.freebox.fr with a certificate of Free's own CA, the API below /api/v8/ (documentation,
+  // index; v8 carries every download call of API 16.0, the objects are those of v1) — plain HTTP answers on port 80
+  { type: "freebox", label: "Freebox", family: "freebox", port: 443, path: "/api/v8", login: "pairing", tls: true },
 ];
 
 /**
@@ -147,6 +154,8 @@ export function needsOf(info: Pick<ProgramInfo, "login">): RequiredField[] {
       return ["host", "apiKey"];
     case "requiredUser":
       return ["host", "username"];
+    case "pairing":
+      return ["host", "apiKey"];
     default:
       return ["host"];
   }
