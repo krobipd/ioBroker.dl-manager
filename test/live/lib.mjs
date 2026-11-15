@@ -88,7 +88,7 @@ export class Http {
   /**
    * @param {string} method HTTP method
    * @param {string} path path with query
-   * @param {{ form?: Record<string,string>, json?: unknown, body?: RequestInit["body"], headers?: Record<string,string> }} [o] body
+   * @param {{ form?: Record<string,string>, json?: unknown, body?: RequestInit["body"], headers?: Record<string,string>, timeoutMs?: number }} [o] body; `timeoutMs` default 30 s
    * @returns {Promise<{ status: number, headers: Record<string,string>, text: string, json: () => unknown }>} answer
    */
   async req(method, path, o = {}) {
@@ -105,7 +105,13 @@ export class Http {
       headers.cookie = [...this.cookies].map(([k, v]) => `${k}=${v}`).join("; ");
     }
     const send = () =>
-      fetch(this.base + path, { method, headers, body, redirect: "manual", signal: AbortSignal.timeout(30_000) });
+      fetch(this.base + path, {
+        method,
+        headers,
+        body,
+        redirect: "manual",
+        signal: AbortSignal.timeout(o.timeoutMs ?? 30_000),
+      });
     let res;
     try {
       res = await send();

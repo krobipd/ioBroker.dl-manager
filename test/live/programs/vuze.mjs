@@ -184,11 +184,25 @@ export async function record(ctx) {
   const probe = new Http(base);
   await waitFor("Vuze Web Remote", async () => (await probe.req("POST", RPC, { json: {} })).status > 0, 300_000, 2000);
 
-  const wrong = await probe.req("POST", RPC, { headers: basic("wrong"), json: { method: "session-get" } });
-  const none = await probe.req("POST", RPC, { json: { method: "session-get" } });
-  const first = await probe.req("POST", RPC, { headers: basic(PASS), json: { method: "session-get" } });
-  console.log(`wrong ${wrong.status}, no login ${none.status}, first ${first.status}`, first.headers);
+  /**
+   * @param {string} label what is asked
+   * @param {Record<string,string>} headers request headers
+   * @returns {ReturnType<Http["req"]>} the answer, its time in the log
+   */
+  const timed = async (label, headers) => {
+    const t = Date.now();
+    const res = await probe.req("POST", RPC, { headers, json: { method: "session-get" }, timeoutMs: 180_000 });
+    console.log(`${label}: ${res.status} after ${Date.now() - t} ms`);
+    return res;
+  };
+  // the first session-get asks Vuze's version server and waits for it (XMWebUIPlugin.java 2820, again after 864 s) —
+  // in the closed network until every transport failed; measured here before anything else
+  const first = await timed("no session id", basic(PASS));
   let sessionId = first.headers["x-transmission-session-id"] ?? "";
+  await timed("first session-get", { ...basic(PASS), "x-transmission-session-id": sessionId });
+  await timed("second session-get", { ...basic(PASS), "x-transmission-session-id": sessionId });
+  const wrong = await timed("wrong password", { ...basic("wrong"), "x-transmission-session-id": sessionId });
+  const none = await timed("no login", { "x-transmission-session-id": sessionId });
   const http = new Http(base);
   let seq = 0;
 
