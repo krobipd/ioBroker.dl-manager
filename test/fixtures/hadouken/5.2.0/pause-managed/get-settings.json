@@ -1,0 +1,73 @@
+{
+  "_source": {
+    "program": "hadouken",
+    "version": "5.2.0",
+    "request": "POST /api webui.getSettings []",
+    "recordedAt": "2026-11-15T12:37:06.295Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "id": 50,
+    "jsonrpc": "2.0",
+    "result": {
+      "settings": [
+        ["bind_port", 0, 6881, "Y"],
+        ["conns_globally", 0, 200, "Y"],
+        ["dht", 1, "false", "Y"],
+        ["download_directories", 3, [], "Y"],
+        ["enable_bw_management", 1, "true", "Y"],
+        ["max_dl_rate", 0, 0, "Y"],
+        ["max_ul_rate", 0, 0, "Y"],
+        ["net.calc_overhead", 1, "true", "Y"],
+        ["net.ratelimit_utp", 1, "true", "Y"],
+        ["save_path", 2, "/data", "Y"],
+        [
+          "lsd",
+          1,
+          "false",
+          {
+            "access": "Y"
+          }
+        ],
+        [
+          "natpmp",
+          1,
+          "false",
+          {
+            "access": "Y"
+          }
+        ],
+        [
+          "upnp",
+          1,
+          "false",
+          {
+            "access": "Y"
+          }
+        ],
+        [
+          "webui.cookie",
+          2,
+          "{}",
+          {
+            "access": "Y"
+          }
+        ],
+        ["bt.allow_same_ip", 1, "false", "Y"],
+        ["bt.anonymous_mode", 1, "false", "Y"],
+        [
+          "net.enable_utp",
+          1,
+          "true",
+          {
+            "access": "Y"
+          }
+        ],
+        ["net.max_halfopen", 0, "-1", "Y"]
+      ]
+    }
+  }
+}

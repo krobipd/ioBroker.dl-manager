@@ -1,12 +1,14 @@
 "use strict";
 // Loaded into the ADAPTER process by test/inventory.js (NODE_OPTIONS=--require): replaces fetch so every configured
 // program is answered from the recordings in test/fixtures/ — nothing leaves the machine, an address without a
-// route is refused. The adapter knows nothing about it (reference_objekt_inventar_cloud_adapter).
+// route is refused. Hadouken, which the adapter reaches through node:http, is answered by a loopback server of this hook
+// instead. The adapter knows nothing about it (reference_objekt_inventar_cloud_adapter).
 // Switches of the fleet suites (fleet.json `suites`): INVENTORY_RENAME renames a qBittorrent torrent, INVENTORY_REJECT_LOGIN
 // lets every program with a login refuse it the way that program does (the local JDownloader API has none),
 // INVENTORY_DROP_DEVICE lets aria2 answer nothing while the others go on; the file `reserved` in RESOURCE_PROBE_DIR names a
 // torrent `info` (suite "a name that is the adapter's own").
 const fs = require("node:fs");
+const http = require("node:http");
 const path = require("node:path");
 const crypto = require("node:crypto");
 
@@ -318,6 +320,64 @@ function flood(url, init) {
   if (url.pathname === "/api/torrents/add-urls")
     return json(body("flood", "4.16.4-qbittorrent", "commands", "add-urls-magnet"), 202);
   return text("");
+}
+
+// ---- Hadouken 5.2.0 (JSON-RPC behind basic auth) ----
+// The adapter sends through node:http (Hadouken reads a body only behind the header named exactly "Content-Length"), so
+// the answers come from a real server on loopback: the network hook's hang and outage act on the socket, a request
+// without a socket would escape both. It listens while this file loads, before the adapter runs — a listener opened
+// later would count as the adapter's own. `error` is the state with the most statuses at once: downloading, seeding,
+// paused, failed.
+const HK = "5.2.0";
+const HK_READS = {
+  "core.getSystemInfo": ["probe", "get-system-info"],
+  "webui.list": ["error", "list"],
+  "webui.getSettings": ["error", "get-settings"],
+  "webui.getProperties": ["probe", "get-properties-managed"],
+};
+const hkServer = http.createServer((req, res) => {
+  // what Hadouken does with a request it cannot read (connection_handler.cpp; recorder: ECONNRESET, no answer)
+  if (!req.rawHeaders.includes("Content-Length")) {
+    req.socket.destroy();
+    return;
+  }
+  const chunks = [];
+  req.on("data", chunk => chunks.push(chunk));
+  req.on("end", () => {
+    if (REJECTED || !req.rawHeaders.includes("Authorization")) {
+      res.writeHead(401, { "WWW-Authenticate": `Basic realm="Hadouken v${HK}"` });
+      res.end();
+      return;
+    }
+    const { method, id } = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    // every command answers without a result (recordings commands/*)
+    const [state, name] = HK_READS[method] ?? ["commands", "start"];
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ...body("hadouken", HK, state, name), id }));
+  });
+});
+hkServer.listen(0, "127.0.0.1");
+hkServer.unref();
+for (const name of ["request", "get"]) {
+  const original = http[name];
+  http[name] = function hadoukenRoute(...args) {
+    const url = typeof args[0] === "string" || args[0] instanceof URL ? new URL(String(args[0])) : null;
+    if (url?.hostname !== "hadouken.local") {
+      return original.apply(this, args);
+    }
+    const at = hkServer.address();
+    if (!at || typeof at !== "object") {
+      throw new Error("fixture hook: the Hadouken fixture does not listen yet");
+    }
+    // rerouted in the same step: the network hook counted the call and decided a hang for hadouken.local already
+    const opts = args[1] !== null && typeof args[1] === "object" ? args[1] : {};
+    const rest = args.slice(opts === args[1] ? 2 : 1);
+    return original.call(
+      this,
+      { ...opts, protocol: "http:", hostname: "127.0.0.1", port: at.port, path: `${url.pathname}${url.search}` },
+      ...rest,
+    );
+  };
 }
 
 const ROUTES = {

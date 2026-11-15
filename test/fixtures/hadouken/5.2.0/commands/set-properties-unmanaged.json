@@ -1,0 +1,16 @@
+{
+  "_source": {
+    "program": "hadouken",
+    "version": "5.2.0",
+    "request": "POST /api webui.setProperties [[\"885bd0670addf14ec2c3014998ab3ef2f810fabf\"],{\"auto_managed\":false}]",
+    "recordedAt": "2026-11-15T12:37:46.321Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "id": 54,
+    "jsonrpc": "2.0"
+  }
+}

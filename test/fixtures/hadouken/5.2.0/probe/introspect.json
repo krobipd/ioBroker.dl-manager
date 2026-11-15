@@ -1,0 +1,32 @@
+{
+  "_source": {
+    "program": "hadouken",
+    "version": "5.2.0",
+    "request": "POST /api core.introspect []",
+    "recordedAt": "2026-11-15T12:37:00.186Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "id": 7,
+    "jsonrpc": "2.0",
+    "result": [
+      "core.introspect",
+      "core.multiCall",
+      "webui.getSettings",
+      "webui.listDirectories",
+      "webui.list",
+      "webui.getPeers",
+      "webui.setFilePriority",
+      "core.getSystemInfo",
+      "webui.setProperties",
+      "webui.setSettings",
+      "webui.getFiles",
+      "webui.perform",
+      "webui.getProperties",
+      "webui.addTorrent"
+    ]
+  }
+}

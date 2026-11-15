@@ -1,0 +1,16 @@
+{
+  "_source": {
+    "program": "hadouken",
+    "version": "5.2.0",
+    "request": "POST /api webui.addTorrent [\"url\",\"magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567&dn=nobody-seeds-this\",{}]",
+    "recordedAt": "2026-11-15T12:37:01.226Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "id": 22,
+    "jsonrpc": "2.0"
+  }
+}

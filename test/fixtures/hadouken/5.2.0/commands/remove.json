@@ -1,0 +1,16 @@
+{
+  "_source": {
+    "program": "hadouken",
+    "version": "5.2.0",
+    "request": "POST /api webui.perform [\"remove\",[\"38b12b1a4fffb255161b45e772882bebe94d3b30\"]]",
+    "recordedAt": "2026-11-15T12:37:59.457Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "id": 117,
+    "jsonrpc": "2.0"
+  }
+}

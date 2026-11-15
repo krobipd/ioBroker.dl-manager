@@ -13,6 +13,7 @@ import { SabDriver } from "./sabnzbd/driver";
 import { TrDriver } from "./transmission/driver";
 import { TblDriver } from "./tribler/driver";
 import { UtDriver } from "./utorrent/driver";
+import { HkDriver } from "./hadouken/driver";
 
 /** The driver of each program type — the catalog says what else there is to know about it. */
 const DRIVERS: Readonly<Record<ProgramType, (cfg: ProgramConfig, deps: DriverDeps) => ProgramDriver>> = {
@@ -31,6 +32,7 @@ const DRIVERS: Readonly<Record<ProgramType, (cfg: ProgramConfig, deps: DriverDep
   flood: (cfg, deps) => new FloodDriver(cfg, deps),
   vuze: (cfg, deps) => new TrDriver(cfg, deps),
   utorrent: (cfg, deps) => new UtDriver(cfg, deps),
+  hadouken: (cfg, deps) => new HkDriver(cfg, deps),
 };
 
 /** THE program list — one entry per catalog type. */

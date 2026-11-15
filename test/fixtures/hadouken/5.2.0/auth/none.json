@@ -1,0 +1,13 @@
+{
+  "_source": {
+    "program": "hadouken",
+    "version": "5.2.0",
+    "request": "POST /api core.getSystemInfo []",
+    "recordedAt": "2026-11-15T12:37:00.178Z"
+  },
+  "status": 401,
+  "headers": {
+    "www-authenticate": "Basic realm=\"Hadouken v5.2.0\""
+  },
+  "body": ""
+}

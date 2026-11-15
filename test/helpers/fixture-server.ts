@@ -13,6 +13,8 @@ export interface RecordedCall {
   body: string;
   /** Request headers. */
   headers: IncomingMessage["headers"];
+  /** Request headers as the client wrote them, name and value in turn — `headers` has every name in lower case. */
+  rawHeaders: string[];
 }
 
 /** What a route answers. */
@@ -48,7 +50,14 @@ export async function startFixtureServer(route: (call: RecordedCall) => FixtureA
     req.on("data", (c: Buffer) => (body += c.toString()));
     req.on("end", () => {
       const [path, query = ""] = (req.url ?? "/").split("?", 2);
-      const call: RecordedCall = { method: req.method ?? "GET", path, query, body, headers: req.headers };
+      const call: RecordedCall = {
+        method: req.method ?? "GET",
+        path,
+        query,
+        body,
+        headers: req.headers,
+        rawHeaders: req.rawHeaders,
+      };
       calls.push(call);
       const a = route(call);
       res.statusCode = a.status ?? 200;

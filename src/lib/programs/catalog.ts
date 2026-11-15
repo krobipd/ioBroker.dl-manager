@@ -14,7 +14,7 @@ export type Family = "jdownloader" | "torrent" | "usenet" | "aria2" | "pyload";
  * - `password` — a password only (Deluge's web interface), required
  * - `apiKey` — an API key, required (SABnzbd, Tribler)
  * - `secret` — an optional RPC secret in the API key field (aria2)
- * - `user` — user and password, both optional (NZBGet, rqbit, rTorrent, Flood, µTorrent)
+ * - `user` — user and password, both optional (NZBGet, rqbit, rTorrent, Flood, µTorrent, Hadouken)
  * - `optionalUser` — user and password behind a switch (Transmission, Vuze)
  * - `userOrKey` / `keyOrUser` — user and password OR an API key, the first one preselected (qBittorrent / pyLoad)
  */
@@ -37,7 +37,8 @@ export type ProgramType =
   | "tribler"
   | "flood"
   | "vuze"
-  | "utorrent";
+  | "utorrent"
+  | "hadouken";
 
 /** One program type. */
 export interface ProgramInfo {
@@ -81,6 +82,8 @@ export const CATALOG: readonly ProgramInfo[] = [
   { type: "vuze", label: "Vuze", family: "torrent", port: 9091, path: "/transmission/rpc", login: "optionalUser" },
   // the Web UI API under /gui/ (Sonarr UTorrentProxy.cs: resource "/gui/", port 8080 as µTorrent Server's ut_webui_port)
   { type: "utorrent", label: "µTorrent", family: "torrent", port: 8080, path: "/gui", login: "user" },
+  // JSON-RPC under <root>api (Sonarr HadoukenProxy.cs; Hadouken 5.2.0 hadouken.json.template: port 7070, root "/")
+  { type: "hadouken", label: "Hadouken", family: "torrent", port: 7070, path: "/api", login: "user" },
 ];
 
 /**

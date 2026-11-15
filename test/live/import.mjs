@@ -54,6 +54,30 @@ function docIp(ip, keep) {
   return ipMap.get(ip);
 }
 
+/**
+ * Dotted numbers a recording names as a version: a string under a key with "version" in its name or in an enclosing
+ * key's name — Hadouken's `versions.libtorrent` "1.0.5.0" is no address.
+ *
+ * @param {unknown} value a parsed recording or a part of it
+ * @param {boolean} under an enclosing key names a version
+ * @param {Set<string>} out the numbers found
+ * @returns {Set<string>} the numbers found
+ */
+function versionsIn(value, under = false, out = new Set()) {
+  if (typeof value === "string" && under) {
+    for (const m of value.match(/\d{1,3}(?:\.\d{1,3}){3}/g) ?? []) {
+      out.add(m);
+    }
+  } else if (Array.isArray(value)) {
+    value.forEach(v => versionsIn(v, under, out));
+  } else if (value !== null && typeof value === "object") {
+    for (const [k, v] of Object.entries(value)) {
+      versionsIn(v, under || /version/i.test(k), out);
+    }
+  }
+  return out;
+}
+
 const staging = join(dest, ".import");
 rmSync(staging, { recursive: true, force: true });
 let files = 0;
@@ -70,9 +94,9 @@ for (const artifact of readdirSync(src)) {
       text = text.replace(new RegExp(`(?<![0-9A-Za-z])${s}(?![0-9A-Za-z])`, "g"), "<secret>");
     }
     // a version with four parts looks like an address — Vuze 5.7.6.0 became 192.0.2.10; the version folder
-    // (`<program>/<version>/<state>/`) names the numbers that stay
+    // (`<program>/<version>/<state>/`) and the recording's own version values name the numbers that stay
     const version = relative(root, file).split(sep)[1] ?? "";
-    const keep = new Set(version.match(/\d{1,3}(?:\.\d{1,3}){3}/g) ?? []);
+    const keep = versionsIn(JSON.parse(text), false, new Set(version.match(/\d{1,3}(?:\.\d{1,3}){3}/g) ?? []));
     text = text.replace(/\b(\d{1,3}(?:\.\d{1,3}){3})\b/g, (m, ip) =>
       ip.split(".").every(n => Number(n) <= 255) ? docIp(ip, keep) : m,
     );

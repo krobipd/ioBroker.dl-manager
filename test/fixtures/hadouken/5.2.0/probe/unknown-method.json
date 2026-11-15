@@ -1,0 +1,21 @@
+{
+  "_source": {
+    "program": "hadouken",
+    "version": "5.2.0",
+    "request": "POST /api webui.nonsense []",
+    "recordedAt": "2026-11-15T12:37:00.188Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "id": 8,
+    "jsonrpc": "2.0",
+    "error": {
+      "code": -32601,
+      "message": "Method not found",
+      "data": "webui.nonsense"
+    }
+  }
+}

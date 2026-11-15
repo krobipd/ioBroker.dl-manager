@@ -1,0 +1,16 @@
+{
+  "_source": {
+    "program": "hadouken",
+    "version": "5.2.0",
+    "request": "POST /api webui.setSettings [{\"max_dl_rate\":0,\"max_ul_rate\":0}]",
+    "recordedAt": "2026-11-15T12:37:51.388Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "id": 86,
+    "jsonrpc": "2.0"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "_source": {
+    "program": "hadouken",
+    "version": "5.2.0",
+    "request": "POST /api webui.getProperties [\"885bd0670addf14ec2c3014998ab3ef2f810fabf\"]",
+    "recordedAt": "2026-11-15T12:37:49.340Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "id": 62,
+    "jsonrpc": "2.0",
+    "result": {
+      "props": [
+        {
+          "hash": "885bd0670addf14ec2c3014998ab3ef2f810fabf",
+          "auto_managed": false,
+          "save_path": "/data",
+          "trackers": "",
+          "ulrate": 0,
+          "dlrate": 0,
+          "superseed": 0,
+          "dht": 1,
+          "pex": 1,
+          "seed_override": false,
+          "seed_ratio": 2000,
+          "seed_time": 0,
+          "ulslots": -1,
+          "seed_num": 0,
+          "autoexec": 0,
+          "autoexec_hide_ui": 0,
+          "perf": {
+            "w": 0,
+            "W": 0,
+            "h": 0,
+            "c": 2,
+            "j": 1223123
+          }
+        }
+      ]
+    }
+  }
+}

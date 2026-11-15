@@ -133,6 +133,7 @@
   "hint_aria2": "aria2 debe ejecutarse con --enable-rpc. El secreto RPC es el valor de --rpc-secret.",
   "hint_deluge": "El complemento Web UI debe estar en marcha. Deluge pide la contraseña de su interfaz web, no un usuario.",
   "hint_flood": "Introduce la dirección del propio Flood (puerto 3000, salvo que se haya iniciado con otro --port) y el usuario con el que inicias sesión en Flood — no el inicio de sesión del programa de torrents que hay detrás. Un Flood iniciado con --auth none no necesita ninguno de los dos.",
+  "hint_hadouken": "Hadouken responde en el puerto 7070 bajo /api (http.port y http.root en su hadouken.json). El usuario y la contraseña son los de http.auth.basic allí; admin y admin si no hay ninguno.",
   "hint_jdownloader": "En JDownloader, activa «DeprecatedApi» en los ajustes avanzados. Esa interfaz no tiene contraseña — úsala solo en el mismo ordenador o en la misma red Docker.",
   "hint_jdownloaderCloud": "Inicia sesión con tu cuenta de My.JDownloader. Después eliges qué JDownloader de la cuenta consulta esta entrada. My.JDownloader se consulta como mucho cada 30 s.",
   "hint_nzbget": "El usuario y la contraseña son ControlUsername y ControlPassword en Settings → Security.",

@@ -1,0 +1,16 @@
+{
+  "_source": {
+    "program": "hadouken",
+    "version": "5.2.0",
+    "request": "POST /api webui.perform [\"forcestart\",[\"0123456789abcdef0123456789abcdef01234567\"]]",
+    "recordedAt": "2026-11-15T12:37:02.268Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "id": 40,
+    "jsonrpc": "2.0"
+  }
+}

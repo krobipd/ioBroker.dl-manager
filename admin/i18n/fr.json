@@ -133,6 +133,7 @@
   "hint_aria2": "aria2 doit tourner avec --enable-rpc. Le secret RPC est la valeur de --rpc-secret.",
   "hint_deluge": "Le plugin Web UI doit être actif. Deluge demande le mot de passe de son interface web, pas un utilisateur.",
   "hint_flood": "Indiquez l'adresse de Flood lui-même (port 3000, sauf s'il a été lancé avec un autre --port) et l'utilisateur avec lequel vous vous connectez à Flood — pas l'identification du programme torrent derrière lui. Un Flood lancé avec --auth none n'a besoin ni de l'un ni de l'autre.",
+  "hint_hadouken": "Hadouken répond sur le port 7070 sous /api (http.port et http.root dans son hadouken.json). L'utilisateur et le mot de passe sont ceux de http.auth.basic dans ce fichier — admin et admin s'ils ne sont pas définis.",
   "hint_jdownloader": "Dans JDownloader, activez « DeprecatedApi » dans les paramètres avancés. Cette interface n'a pas de mot de passe — ne l'utilisez que sur le même ordinateur ou dans le même réseau Docker.",
   "hint_jdownloaderCloud": "Connectez-vous avec votre compte My.JDownloader. Ensuite, vous choisissez quel JDownloader du compte cette entrée interroge. My.JDownloader est interrogé au plus toutes les 30 s.",
   "hint_nzbget": "L'utilisateur et le mot de passe sont ControlUsername et ControlPassword sous Settings → Security.",
