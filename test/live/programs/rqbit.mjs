@@ -3,20 +3,22 @@
 // limits its upload so a download stays running, and the recorded rqbit gets it as `initial_peers`. Routes from
 // crates/librqbit/src/http_api/handlers/mod.rs (v9.1.0), the add parameters from http_api_types.rs.
 import { lookup } from "node:dns/promises";
-import { rmSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { DEAD_MAGNET, Http, prepareTorrents, Recorder, torrentOf, waitFor } from "../lib.mjs";
 
 const USER = "admin";
 const PASS = "testpass1";
 const DOWNLOADS = "/home/rqbit/downloads";
+/** An empty folder mounted read-only: a torrent added into it cannot create its file. */
+const READ_ONLY = "/ro";
 /** The seeder's upload limit: 1 MiB/s keeps the 32 MiB download running for half a minute. */
 const SEED_BPS = 1024 * 1024;
 
 /**
  * One torrent of `GET /torrents?with_stats=true` as far as the recorder reads it.
  *
- * @typedef {{ info_hash: string, stats?: { state: string, finished: boolean, progress_bytes: number, error?: string | null } }} RqTorrent
+ * @typedef {{ info_hash: string, stats?: { state: string, finished: boolean, progress_bytes: number, error?: string | null, live?: { snapshot?: { peer_stats?: { live?: number } } } | null } }} RqTorrent
  */
 
 /**
@@ -28,12 +30,13 @@ const SEED_BPS = 1024 * 1024;
  */
 export function prepare(work, tag) {
   prepareTorrents(work);
+  mkdirSync(join(work, "ro"), { recursive: true });
   const image = `ikatson/rqbit:${tag}`;
   return {
     image,
     name: "rq",
     env: { RQBIT_HTTP_BASIC_AUTH_USERPASS: `${USER}:${PASS}` },
-    volumes: [`${join(work, "downloads")}:${DOWNLOADS}`],
+    volumes: [`${join(work, "downloads")}:${DOWNLOADS}`, `${join(work, "ro")}:${READ_ONLY}:ro`],
     sidecars: [{ name: "rqseed", image, volumes: [`${join(work, "seed")}:/seed`], args: ["server", "start", "/seed"] }],
   };
 }
@@ -125,7 +128,7 @@ export async function record(ctx) {
     `POST /torrents/${hash("stopped")}/pause`,
     await post(`/torrents/${hash("stopped")}/pause`),
   );
-  for (const name of ["done", "gone", "check"]) {
+  for (const name of ["done", "check"]) {
     await add(name, false);
   }
   // checking: the 1 GiB payload is still hashed while the next answer is read
@@ -162,19 +165,38 @@ export async function record(ctx) {
   await snapshot("metadata");
   w("commands", "torrents-post-magnet", "POST /torrents?overwrite=true (magnet nobody seeds)", await magnet);
 
-  // missing payload: delete it, pause and start — rqbit hashes it again
-  rmSync(join(ctx.work, "downloads", "gone.bin"));
-  await post(`/torrents/${hash("gone")}/pause`);
-  w("commands", "torrent-start", `POST /torrents/${hash("gone")}/start`, await post(`/torrents/${hash("gone")}/start`));
-  await waitFor(
-    "gone checked again",
-    async () => {
-      const t = await find(hash("gone"));
-      return t?.stats?.state !== "initializing" && (t?.stats?.error || !t?.stats?.finished);
-    },
-    60_000,
+  // waiting: the seeder forgets "stopped", then it starts again — live, bytes left, no peer, nothing coming in. Not
+  // every run reaches it (a peer may still be connected); what the list shows is recorded either way.
+  await seed.req("POST", `/torrents/${hash("stopped")}/forget`, { headers: auth(PASS) });
+  w(
+    "commands",
+    "torrent-start",
+    `POST /torrents/${hash("stopped")}/start`,
+    await post(`/torrents/${hash("stopped")}/start`),
   );
-  await snapshot("missing");
+  await waitFor(
+    "stopped without peers",
+    async () => {
+      const s = (await find(hash("stopped")))?.stats;
+      return s?.state === "live" && !s.finished && s.live?.snapshot?.peer_stats?.live === 0;
+    },
+    30_000,
+  ).catch(err => console.log(`rqbit: ${err.message} — recorded as it is`));
+  await snapshot("stalled");
+
+  // failed: a torrent whose file cannot be created (read-only folder) — the POST answer and what the list shows
+  w(
+    "commands",
+    "torrents-post-readonly",
+    "POST /torrents?overwrite=true&output_folder=/ro (.torrent bytes, read-only folder)",
+    await post(`/torrents?overwrite=true&output_folder=${encodeURIComponent(READ_ONLY)}`, {
+      body: torrentOf(ctx.work, "gone").torrent,
+    }),
+  );
+  await waitFor("gone in error", async () => (await find(hash("gone")))?.stats?.state === "error", 30_000).catch(err =>
+    console.log(`rqbit: ${err.message} — recorded as it is`),
+  );
+  await snapshot("failed");
 
   // completed: a finished torrent paused
   await post(`/torrents/${hash("done")}/pause`);
