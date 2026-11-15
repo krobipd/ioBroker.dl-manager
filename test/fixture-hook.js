@@ -148,6 +148,21 @@ function vuze(url, init, headers) {
   return json(VZ_READS.has(method) ? body("vuze", VUZE, "running", method) : { arguments: {}, result: "success" });
 }
 
+// ---- µTorrent Server 3.3 build 30470 (Web UI API: token.html with basic auth, then the token and its GUID cookie) ----
+const UT = "3.3.0.30470";
+function utorrent(url) {
+  if (REJECTED) return text("", 401, { "www-authenticate": 'Basic realm="uTorrent"' });
+  if (url.pathname === "/gui/token.html") {
+    const page = String(body("utorrent", UT, "auth", "token")).replace("<token>", "fixture");
+    return text(page, 200, { "content-type": "text/html", "set-cookie": "GUID=fixture" });
+  }
+  if (url.searchParams.get("list") === "1") return json(body("utorrent", UT, "running", "list"));
+  const action = url.searchParams.get("action");
+  if (action === "getsettings") return json(body("utorrent", UT, "running", "getsettings"));
+  if (action === "getversion") return json(body("utorrent", UT, "probe", "getversion"));
+  return json(body("utorrent", UT, "commands", "stop"));
+}
+
 // ---- Deluge 2.2.0 ----
 const DL_READS = {
   "web.get_hosts": ["auth", "get-hosts"],
@@ -250,7 +265,9 @@ function rqbit(url, init) {
 // ---- rTorrent 0.16.25 (XML-RPC behind the web server's basic auth, every call by its method name) ----
 function rtorrent(url, init) {
   const xml = (state, name, status = 200) =>
-    text(body("rtorrent", "0.16.25", state, name), status, { "content-type": status === 200 ? "text/xml" : "text/html" });
+    text(body("rtorrent", "0.16.25", state, name), status, {
+      "content-type": status === 200 ? "text/xml" : "text/html",
+    });
   if (REJECTED) return xml("auth", "wrong", 401);
   const call = String(init.body ?? "");
   const method = /<methodName>([^<]*)<\/methodName>/.exec(call)?.[1];
@@ -291,12 +308,15 @@ function flood(url, init) {
   if (url.pathname === "/api/auth/authenticate") {
     return REJECTED
       ? json(body("flood", "4.16.4-qbittorrent", "auth", "authenticate-wrong"), 401)
-      : json(body("flood", "4.16.4-qbittorrent", "auth", "authenticate-ok"), 200, { "set-cookie": "jwt=fixture; HttpOnly" });
+      : json(body("flood", "4.16.4-qbittorrent", "auth", "authenticate-ok"), 200, {
+          "set-cookie": "jwt=fixture; HttpOnly",
+        });
   }
   const r = FL_READS[`${method} ${url.pathname}`];
   if (r) return json(body("flood", "4.16.4-qbittorrent", r[0], r[1]));
   // an add names no hash for a magnet (recorded 202 []); stop, start, delete and the settings write answer nothing
-  if (url.pathname === "/api/torrents/add-urls") return json(body("flood", "4.16.4-qbittorrent", "commands", "add-urls-magnet"), 202);
+  if (url.pathname === "/api/torrents/add-urls")
+    return json(body("flood", "4.16.4-qbittorrent", "commands", "add-urls-magnet"), 202);
   return text("");
 }
 
@@ -315,6 +335,7 @@ const ROUTES = {
   "tribler.local": tribler,
   "flood.local": flood,
   "vuze.local": vuze,
+  "utorrent.local": utorrent,
 };
 
 globalThis.fetch = async (input, init = {}) => {

@@ -143,6 +143,7 @@
   "hint_sabnzbd": "Der API-Schlüssel steht unter Konfiguration → Allgemein. SABnzbd lehnt unbekannte Hostnamen ab — eine IP-Adresse eintragen oder den Namen in host_whitelist aufnehmen.",
   "hint_transmission": "Transmission antwortet nur Adressen aus seiner rpc-whitelist — die Adresse des ioBroker-Servers dort eintragen.",
   "hint_tribler": "Die API von Tribler lauscht auf 127.0.0.1 und, solange ihr Port nicht festgelegt ist, bei jedem Start auf einem neuen Port: den Port festlegen (CORE_API_PORT oder api.http_port in ~/.Tribler/8.0/configuration.json) und, wenn ioBroker auf einem anderen Rechner läuft, in derselben Datei api.http_host auf 0.0.0.0 setzen. Port und API-Schlüssel stehen in der Adresse der Weboberfläche von Tribler (…:port/ui/#/downloads/all?key=…).",
+  "hint_utorrent": "Den Web-Zugriff mit Benutzer und Passwort einschalten (Einstellungen → Erweitert → Web-Zugriff). Er antwortet auf dem Verbindungsport von µTorrent, wenn dort kein alternativer Listening-Port gesetzt ist; µTorrent Server lauscht auf 8080. Ist der Zugriff nur von bestimmten IP-Adressen erlaubt, die Adresse des ioBroker-Servers ergänzen.",
   "hint_vuze": "Vuze antwortet über sein Plugin Web Remote (Port 9091). Ohne eigenes Passwort im Plugin und mit eingeschaltetem Pairing (beides wie installiert) ist der Benutzer vuze und das Passwort der Zugangscode des Pairings; sonst Benutzer und Passwort aus dem Plugin.",
   "itemError": "Fehler",
   "itemPaused": "Angehalten",

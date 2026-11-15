@@ -14,7 +14,7 @@ export type Family = "jdownloader" | "torrent" | "usenet" | "aria2" | "pyload";
  * - `password` — a password only (Deluge's web interface), required
  * - `apiKey` — an API key, required (SABnzbd, Tribler)
  * - `secret` — an optional RPC secret in the API key field (aria2)
- * - `user` — user and password, both optional (NZBGet, rqbit, rTorrent, Flood)
+ * - `user` — user and password, both optional (NZBGet, rqbit, rTorrent, Flood, µTorrent)
  * - `optionalUser` — user and password behind a switch (Transmission, Vuze)
  * - `userOrKey` / `keyOrUser` — user and password OR an API key, the first one preselected (qBittorrent / pyLoad)
  */
@@ -36,7 +36,8 @@ export type ProgramType =
   | "rtorrent"
   | "tribler"
   | "flood"
-  | "vuze";
+  | "vuze"
+  | "utorrent";
 
 /** One program type. */
 export interface ProgramInfo {
@@ -78,6 +79,8 @@ export const CATALOG: readonly ProgramInfo[] = [
   { type: "flood", label: "Flood", family: "torrent", port: 3000, path: "", login: "user" },
   // the Web Remote plugin (xmwebui) speaks Transmission's RPC under Transmission's path (Sonarr `Vuze : TransmissionBase`)
   { type: "vuze", label: "Vuze", family: "torrent", port: 9091, path: "/transmission/rpc", login: "optionalUser" },
+  // the Web UI API under /gui/ (Sonarr UTorrentProxy.cs: resource "/gui/", port 8080 as µTorrent Server's ut_webui_port)
+  { type: "utorrent", label: "µTorrent", family: "torrent", port: 8080, path: "/gui", login: "user" },
 ];
 
 /**

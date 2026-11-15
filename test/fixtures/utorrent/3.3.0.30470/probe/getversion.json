@@ -1,0 +1,37 @@
+{
+  "_source": {
+    "program": "utorrent",
+    "version": "3.3.0.30470",
+    "request": "GET /gui/?token=<token>&action=getversion",
+    "recordedAt": "2026-11-15T06:23:47.884Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "text/plain"
+  },
+  "body": {
+    "build": 30470,
+    "name": "uTorrent",
+    "version": {
+      "device_id": "ub641304-no",
+      "engine_version": 30470,
+      "features": {
+        "device_pairing": {
+          "jsonp": 1,
+          "supported_types": [0, 1, 2]
+        },
+        "remote": 1,
+        "settings_set": 1
+      },
+      "major_version": 3,
+      "minor_version": 3,
+      "name": "uTorrent",
+      "peer_id": "UT330B",
+      "product_code": "server",
+      "tiny_version": 0,
+      "ui_version": 30470,
+      "user_agent": "uTorrent/330B(30470)(server)",
+      "version_date": "2014-01-14 09:10:15 -0800"
+    }
+  }
+}

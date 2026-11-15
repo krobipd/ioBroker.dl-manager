@@ -1,0 +1,15 @@
+{
+  "_source": {
+    "program": "utorrent",
+    "version": "3.3.0.30470",
+    "request": "GET /gui/?token=<token>&action=setsetting&s=max_dl_rate&v=0&s=max_ul_rate&v=0",
+    "recordedAt": "2026-11-15T06:23:58.959Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "text/plain"
+  },
+  "body": {
+    "build": 30470
+  }
+}

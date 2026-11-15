@@ -399,6 +399,7 @@ const PROGRAM_ROWS = [
   ["tribler", "Tribler", { host: "tribler.local", port: 20100, apiKey: "fixture" }],
   ["flood", "Flood", { host: "flood.local", port: 3000, username: "admin", password: "fixture" }],
   ["vuze", "Vuze", { host: "vuze.local", port: 9091, username: "admin", password: "fixture" }],
+  ["utorrent", "µTorrent", { host: "utorrent.local", port: 8080, username: "admin", password: "fixture" }],
 ];
 /**
  * Device id of each row: the program and the machine it runs on, My.JDownloader the last four characters of the id

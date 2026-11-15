@@ -1,0 +1,1777 @@
+{
+  "_source": {
+    "program": "utorrent",
+    "version": "3.3.0.30470",
+    "request": "GET /gui/?token=<token>&action=getsettings",
+    "recordedAt": "2026-11-15T06:23:58.956Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "text/plain"
+  },
+  "body": {
+    "build": 30470,
+    "settings": [
+      [
+        "torrents_start_stopped",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "settings_saved_systime",
+        0,
+        "0",
+        {
+          "access": "R"
+        }
+      ],
+      [
+        "bind_port",
+        0,
+        "6881",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "tracker_ip",
+        2,
+        "",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "dir_active_download_flag",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "dir_torrent_files_flag",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "dir_completed_download_flag",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "dir_completed_torrents_flag",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "dir_active_download",
+        2,
+        "/data",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "dir_torrent_files",
+        2,
+        "/utorrent/torrents",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "dir_completed_download",
+        2,
+        "/data",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "dir_completed_torrents",
+        2,
+        "",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "dir_add_label",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "max_dl_rate",
+        0,
+        "-1",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "max_ul_rate",
+        0,
+        "-1",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "max_ul_rate_seed",
+        0,
+        "-1",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "max_ul_rate_seed_flag",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "private_ip",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "only_proxied_conns",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "no_local_dns",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "gui.persistent_labels",
+        2,
+        "",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "ul_slots_per_torrent",
+        0,
+        "4",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "conns_per_torrent",
+        0,
+        "50",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "conns_globally",
+        0,
+        "200",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "max_active_torrent",
+        0,
+        "10",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "max_active_downloads",
+        0,
+        "1",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "seed_prio_limitul",
+        0,
+        "4",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "seed_prio_limitul_flag",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "seeds_prioritized",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "seed_ratio",
+        0,
+        "0",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "seed_time",
+        0,
+        "0",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "seed_num",
+        0,
+        "0",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "resolve_peerips",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "check_update",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "check_update_beta",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "anoninfo",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "upnp",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "use_udp_trackers",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "upnp.external_tcp_port",
+        0,
+        "0",
+        {
+          "access": "R"
+        }
+      ],
+      [
+        "upnp.external_udp_port",
+        0,
+        "0",
+        {
+          "access": "R"
+        }
+      ],
+      [
+        "upnp.external_ip",
+        2,
+        "",
+        {
+          "access": "R"
+        }
+      ],
+      [
+        "natpmp",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "lsd",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "finish_cmd",
+        2,
+        "",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "state_cmd",
+        2,
+        "",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "dw",
+        0,
+        "0",
+        {
+          "access": "R"
+        }
+      ],
+      [
+        "fd",
+        0,
+        "7",
+        {
+          "access": "R"
+        }
+      ],
+      [
+        "k",
+        2,
+        "",
+        {
+          "access": "R"
+        }
+      ],
+      [
+        "v",
+        0,
+        "106985222",
+        {
+          "access": "R"
+        }
+      ],
+      [
+        "asip",
+        2,
+        "",
+        {
+          "access": "R"
+        }
+      ],
+      [
+        "asdlurl",
+        2,
+        "",
+        {
+          "access": "R"
+        }
+      ],
+      [
+        "asdns",
+        0,
+        "0",
+        {
+          "access": "R"
+        }
+      ],
+      [
+        "ascon",
+        0,
+        "0",
+        {
+          "access": "R"
+        }
+      ],
+      [
+        "asdl",
+        0,
+        "0",
+        {
+          "access": "R"
+        }
+      ],
+      [
+        "sched_enable",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "sched_ul_rate",
+        0,
+        "0",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "sched_interaction",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "sched_dl_rate",
+        0,
+        "0",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "sched_table",
+        2,
+        "",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "sched_dis_dht",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "enable_scrape",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "rand_port_on_start",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "prealloc_space",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "language",
+        0,
+        "-1",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "logger_mask",
+        0,
+        "0",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "dht",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "dht_per_torrent",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "pex",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "rate_limit_local_peers",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "multi_day_transfer_limit_en",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "multi_day_transfer_mode_ul",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "multi_day_transfer_mode_dl",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "multi_day_transfer_mode_uldl",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "multi_day_transfer_limit_unit",
+        0,
+        "1",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "multi_day_transfer_limit_value",
+        0,
+        "200",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "multi_day_transfer_limit_span",
+        0,
+        "11",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "net.bind_ip",
+        2,
+        "0.0.0.0",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "net.outgoing_ip",
+        2,
+        "",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "net.outgoing_port",
+        0,
+        "0",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "net.outgoing_max_port",
+        0,
+        "0",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "net.low_cpu",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "net.calc_overhead",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "net.max_halfopen",
+        0,
+        "250",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "net.limit_excludeslocal",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "net.upnp_tcp_only",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "net.disable_incoming_ipv6",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "net.ratelimit_utp",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "net.friendly_name",
+        2,
+        "",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "isp.bep22",
+        1,
+        "true",
+        {
+          "access": "R"
+        }
+      ],
+      [
+        "isp.primary_dns",
+        2,
+        "192.0.2.10",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "isp.secondary_dns",
+        2,
+        "192.0.2.11",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "isp.fqdn",
+        2,
+        "",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "isp.peer_policy_enable",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "isp.peer_policy_url",
+        2,
+        "",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "isp.peer_policy_override",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "dir_autoload_flag",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "dir_autoload_delete",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "dir_autoload",
+        2,
+        "/utorrent/autoload",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "ipfilter.enable",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "search_list",
+        2,
+        "BitTorrent|http://www.bittorrent.com/search?client=%v&search=\r\nMininova|http://www.mininova.org/search/?cat=0&search=",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "search_list_sel",
+        0,
+        "0",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "is_search_filtering",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "dht.collect_feed",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "dht.rate",
+        0,
+        "-1",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "append_incomplete",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "encryption_mode",
+        0,
+        "0",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "encryption_allow_legacy",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "rss.update_interval",
+        0,
+        "15",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "rss.smart_repack_filter",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "rss.feed_as_default_label",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "gui.update_rate",
+        0,
+        "1000",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "bt.save_resume_rate",
+        0,
+        "120",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "gui.delete_to_trash",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "gui.default_del_action",
+        0,
+        "0",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "gui.graphic_progress",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "gui.piecebar_progress",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "gui.show_status_icon_in_dl_list",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "gui.tall_category_list",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "stats.video1.time_watched",
+        0,
+        "0",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "stats.video2.time_watched",
+        0,
+        "0",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "stats.video3.time_watched",
+        0,
+        "0",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "stats.video1.finished",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "stats.video2.finished",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "stats.video3.finished",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "stats.welcome_page_useful",
+        0,
+        "0",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "store_torr_infohash",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "queue.dont_count_slow_dl",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "queue.dont_count_slow_ul",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "queue.slow_dl_threshold",
+        0,
+        "1000",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "queue.slow_ul_threshold",
+        0,
+        "1000",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "queue.use_seed_peer_ratio",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "queue.prio_no_seeds",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "bt.tcp_rate_control",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "gui.graph_tcp_rate_control",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "gui.graph_overhead",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "gui.graph_legend",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "bt.ratelimit_tcp_only",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "bt.prioritize_partial_pieces",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "bt.transp_disposition",
+        0,
+        "31",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "net.utp_target_delay",
+        0,
+        "100",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "net.utp_packet_size_interval",
+        0,
+        "10",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "net.utp_receive_target_delay",
+        0,
+        "100",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "net.utp_initial_packet_size",
+        0,
+        "4",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "net.utp_dynamic_packet_size",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "net.discoverable",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "bt.enable_pulse",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "bt.pulse_interval",
+        0,
+        "1200",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "bt.pulse_weight",
+        0,
+        "200",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "bt.compact_allocation",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "bt.progressive_piece_picker",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "bt.progressive_piece_span_mb",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "bt.allow_same_ip",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "bt.no_connect_to_services",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "bt.no_connect_to_services_list",
+        2,
+        "25,80,110,443,6666,6667",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "bt.ban_threshold",
+        0,
+        "3",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "bt.use_ban_ratio",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "bt.ban_ratio",
+        0,
+        "128",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "bt.use_rangeblock",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "bt.graceful_shutdown",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "bt.shutdown_tracker_timeout",
+        0,
+        "15",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "bt.shutdown_upnp_timeout",
+        0,
+        "5",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "peer.lazy_bitfield",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "peer.disconnect_inactive",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "peer.disconnect_inactive_interval",
+        0,
+        "300",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "diskio.flush_files",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "diskio.sparse_files",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "diskio.no_zero",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "diskio.use_partfile",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "diskio.smart_hash",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "diskio.smart_sparse_hash",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "diskio.coalesce_writes",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "diskio.coalesce_write_size",
+        0,
+        "2097152",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "diskio.resume_min",
+        0,
+        "100",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "diskio.max_write_queue",
+        0,
+        "32",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "diskio.cache_reduce_minutes",
+        0,
+        "9",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "diskio.cache_stripe",
+        0,
+        "128",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "diskio.quick_hash",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "diskio.mark_of_the_web",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "diskio.minimize_kernel_caching",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "diskio.all_writes_sync",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "cache.override",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "cache.override_size",
+        0,
+        "0",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "cache.reduce",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "cache.write",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "cache.writeout",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "cache.writeimm",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "cache.read",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "cache.read_turnoff",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "cache.read_prune",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "cache.read_thrash",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "webui.enable_guest",
+        0,
+        "0",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "webui.token_auth",
+        1,
+        "true",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "webui.token_auth_filter",
+        0,
+        "0",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "webui.username",
+        2,
+        "admin",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "webui.password",
+        2,
+        "",
+        {
+          "access": "W"
+        }
+      ],
+      [
+        "webui.uconnect_enable",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "webui.uconnect_username",
+        2,
+        "",
+        {
+          "access": "R"
+        }
+      ],
+      [
+        "webui.uconnect_username_anonymous",
+        2,
+        "",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "webui.uconnect_question_opted_out",
+        1,
+        "false",
+        {
+          "access": "R"
+        }
+      ],
+      [
+        "webui.uconnect_computername",
+        2,
+        "",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "webui.ssdp_uuid",
+        2,
+        "",
+        {
+          "access": "R"
+        }
+      ],
+      [
+        "webui.guest",
+        2,
+        "guest",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "webui.restrict",
+        2,
+        "",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "webui.port",
+        0,
+        "8080",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "webui.cookie",
+        2,
+        "{}",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "webui.uconnect_toolbar_ever",
+        1,
+        "false",
+        {
+          "access": "R"
+        }
+      ],
+      [
+        "webui.uconnect_enable_ever",
+        1,
+        "false",
+        {
+          "access": "R"
+        }
+      ],
+      [
+        "webui.uconnect_connected_ever",
+        1,
+        "false",
+        {
+          "access": "R"
+        }
+      ],
+      [
+        "webui.uconnect_actions_count",
+        0,
+        "0",
+        {
+          "access": "R"
+        }
+      ],
+      [
+        "webui.uconnect_actions_list_count",
+        0,
+        "0",
+        {
+          "access": "R"
+        }
+      ],
+      [
+        "webui.uconnect_cred_status",
+        0,
+        "0",
+        {
+          "access": "R"
+        }
+      ],
+      [
+        "webui.update_message",
+        2,
+        "",
+        {
+          "access": "R"
+        }
+      ],
+      [
+        "proxy.proxy",
+        2,
+        "",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "proxy.type",
+        0,
+        "0",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "proxy.port",
+        0,
+        "8080",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "proxy.auth",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "proxy.p2p",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "proxy.resolve",
+        1,
+        "false",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "proxy.username",
+        2,
+        "",
+        {
+          "access": "Y"
+        }
+      ],
+      [
+        "proxy.password",
+        2,
+        "",
+        {
+          "access": "Y"
+        }
+      ]
+    ]
+  }
+}

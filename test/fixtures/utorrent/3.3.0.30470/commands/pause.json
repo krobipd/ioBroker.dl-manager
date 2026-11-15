@@ -1,0 +1,15 @@
+{
+  "_source": {
+    "program": "utorrent",
+    "version": "3.3.0.30470",
+    "request": "GET /gui/?token=<token>&action=pause&hash=885BD0670ADDF14EC2C3014998AB3EF2F810FABF",
+    "recordedAt": "2026-11-15T06:23:57.936Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "text/plain"
+  },
+  "body": {
+    "build": 30470
+  }
+}

@@ -76,6 +76,7 @@ const HINT: Readonly<Record<ProgramType, I18nKey>> = {
   tribler: "hint_tribler",
   flood: "hint_flood",
   vuze: "hint_vuze",
+  utorrent: "hint_utorrent",
 };
 
 /**

@@ -1,0 +1,15 @@
+{
+  "_source": {
+    "program": "utorrent",
+    "version": "3.3.0.30470",
+    "request": "POST /gui/?token=<token>&action=add-file&path=",
+    "recordedAt": "2026-11-15T06:23:47.895Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "text/plain"
+  },
+  "body": {
+    "build": 30470
+  }
+}
