@@ -27,6 +27,7 @@ describe("µTorrent's rows", () => {
   it("reads the status bits in the order of µTorrent's own Web UI (webui.js getStatusInfo)", () => {
     // paused before started, started before checking, checking before error, error before queued
     expect(rawStatus(torrentOf(row(1 | 32 | 128)))).toBe("Status_Paused");
+    expect(rawStatus(torrentOf(row(1 | 32 | 128, { 4: 1000 })))).toBe("Status_Paused:done");
     expect(rawStatus(torrentOf(row(1 | 2 | 128)))).toBe("Status_Down");
     expect(rawStatus(torrentOf(row(1 | 128, { 4: 1000 })))).toBe("Status_Up");
     expect(rawStatus(torrentOf(row(2 | 16 | 128)))).toBe("Status_Checking");

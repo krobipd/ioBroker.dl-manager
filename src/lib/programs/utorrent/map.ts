@@ -56,9 +56,14 @@ export function torrentOf(row: unknown): UtTorrent {
   return { hash: row[AT.hash], status, row };
 }
 
-/** Raw key (the CSS class µTorrent's own Web UI gives the status, webui.js `getStatusInfo`) and the status it maps to. */
+/**
+ * Raw key (the CSS class µTorrent's own Web UI gives the status, webui.js `getStatusInfo`) and the status it maps to. A
+ * finished torrent paused is completed, like qBittorrent's pausedUP — the Web UI gives it the class Status_Paused too,
+ * the key adds `:done`.
+ */
 export const statusTable = [
   ["Status_Paused", "paused"],
+  ["Status_Paused:done", "completed"],
   ["Status_Up", "seeding"],
   ["Status_Down", "downloading"],
   ["Status_Checking", "checking"],
@@ -81,7 +86,7 @@ const STATUS = new Map<string, Status>(statusTable);
 export function rawStatus(t: UtTorrent): string {
   const done = num(t.row[AT.progress]) === 1000;
   if (t.status & PAUSED) {
-    return "Status_Paused";
+    return done ? "Status_Paused:done" : "Status_Paused";
   }
   if (t.status & STARTED) {
     return done ? "Status_Up" : "Status_Down";

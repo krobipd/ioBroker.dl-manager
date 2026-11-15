@@ -182,8 +182,15 @@ describe("µTorrent's driver", () => {
     });
     expect((await at("completed")).get("done.bin")?.status).toBe("completed");
     const paused = await at("all-paused");
-    // a paused one that waited in the queue (232) stays paused
-    expect([...paused.values()].filter(i => i.status === "paused").length).toBeGreaterThanOrEqual(5);
+    // paused while loading (233) or waiting (169) is paused; paused when finished (232, 233 at 1000 ‰) is completed,
+    // like qBittorrent's pausedUP
+    expect(paused.get("queued.bin")?.status).toBe("paused");
+    expect(paused.get("nobody-seeds-this")?.status).toBe("paused");
+    expect(["big.bin", "check.bin", "done.bin"].map(n => paused.get(n)?.status)).toEqual([
+      "completed",
+      "completed",
+      "completed",
+    ]);
   });
 
   it("reads the limits as KiB/s × 1024, 0 and µTorrent Server's -1 as unlimited", async () => {
