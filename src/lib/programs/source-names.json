@@ -9,10 +9,10 @@
   "NzbVortex": "nzbvortex",
   "QBittorrent": "qbittorrent",
   "RQBit": "rqbit",
-  "RTorrent": "rtorrent",
+  "rTorrent": "rtorrent",
   "Sabnzbd": "sabnzbd",
   "Transmission": "transmission",
   "Tribler": "tribler",
-  "UTorrent": "utorrent",
+  "uTorrent": "utorrent",
   "Vuze": "vuze"
 }
