@@ -12,5 +12,8 @@
       "url": "https://api.github.com/repos/Radarr/Radarr/contents/src/NzbDrone.Core/Download/Clients?ref=develop"
     }
   ],
-  "excluded": {}
+  "excluded": {
+    "Blackhole": "Sonarr and Radarr only write a .torrent, magnet or .nzb file into a folder and scan a watch folder themselves, so no program with an address stands behind it — Sonarr/Sonarr@c018578e4b79 src/NzbDrone.Core/Download/Clients/Blackhole/TorrentBlackhole.cs:74",
+    "Pneumatic": "Pneumatic is a Kodi add-on that hands every NZB to SABnzbd, so the download runs in SABnzbd, which the catalogue carries as a program of its own — TsUPeR/xbmc-pneumatic@a5d81b84b236 addon.xml:8"
+  }
 }
