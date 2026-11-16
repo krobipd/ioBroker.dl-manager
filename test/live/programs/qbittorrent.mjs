@@ -124,8 +124,11 @@ export async function record(ctx) {
   const hash = name => torrentOf(ctx.work, name).hash;
   const stateOf = async name => (await torrents()).find(t => t.hash === hash(name))?.state;
 
-  // qBittorrent refreshes torrent states every 1.5 s by default — a recheck of 1 GiB ends between two refreshes
-  await qb.req("POST", "/api/v2/app/setPreferences", { form: { json: JSON.stringify({ refresh_interval: 50 }) } });
+  // qBittorrent refreshes torrent states every 1.5 s by default — a recheck of 1 GiB ends between two refreshes; its
+  // limits pass over peers on the LAN by default (the seed server and the peer are) — `transfer` needs them to hold
+  await qb.req("POST", "/api/v2/app/setPreferences", {
+    form: { json: JSON.stringify({ refresh_interval: 50, limit_lan_peers: true }) },
+  });
   await snapshot("empty");
 
   const add = async (name, extra = {}) => {
@@ -163,38 +166,56 @@ export async function record(ctx) {
   });
   await snapshot("running");
 
-  // transfer: the running state while the peer leeches `check` and `big` still loads — every speed and limit the
-  // fixture hook plays has a value that tells its unit (≥ TRANSFER_MIN)
-  const seenTransfer = new Set();
+  // transfer: the running state while the peer leeches `check` and `big` still loads — the fixture hook plays this
+  // maindata alone, so the recorded answer itself carries every speed at a value that tells its unit (≥ TRANSFER_MIN),
+  // a time left and both limits; the snapshot repeats until it does (a web seed loads in bursts)
+  /** @typedef {{ state?: string, dlspeed?: number, upspeed?: number, eta?: number }} QbTorrent a torrent of maindata */
+  /** @typedef {{ dl_info_speed?: number, up_info_speed?: number, dl_rate_limit?: number, up_rate_limit?: number }} QbServer the server state */
+  /** @type {(m: { torrents?: Record<string, QbTorrent>, server_state?: QbServer }) => string} */
+  const transferOf = m => {
+    const big = m.torrents?.[hash("big")];
+    const check = m.torrents?.[hash("check")];
+    const ss = m.server_state ?? {};
+    return `${big?.state}/${big?.dlspeed}/${big?.eta} ${check?.state}/${check?.upspeed} ${ss.dl_info_speed}/${ss.up_info_speed} ${ss.dl_rate_limit}/${ss.up_rate_limit}`;
+  };
+  /** @type {(m: { torrents?: Record<string, QbTorrent>, server_state?: QbServer }) => boolean} */
+  const transferring = m => {
+    const big = m.torrents?.[hash("big")];
+    const check = m.torrents?.[hash("check")];
+    const ss = m.server_state ?? {};
+    return (
+      big?.state === "downloading" &&
+      (big.dlspeed ?? 0) >= TRANSFER_MIN &&
+      (big.eta ?? 0) > 0 &&
+      check?.state === "uploading" &&
+      (check.upspeed ?? 0) >= TRANSFER_MIN &&
+      (ss.dl_info_speed ?? 0) >= TRANSFER_MIN &&
+      (ss.up_info_speed ?? 0) >= TRANSFER_MIN &&
+      (ss.dl_rate_limit ?? 0) > 0 &&
+      (ss.up_rate_limit ?? 0) > 0
+    );
+  };
+  const seenTransfer = [];
   await waitFor(
-    "transfer under way",
+    "transfer recorded",
     async () => {
-      /** @typedef {{ state?: string, dlspeed?: number, upspeed?: number }} QbTorrent a torrent of maindata */
-      /** @typedef {{ dl_info_speed?: number, up_info_speed?: number, dl_rate_limit?: number, up_rate_limit?: number }} QbServer the server state */
-      const m = /** @type {{ torrents?: Record<string, QbTorrent>, server_state?: QbServer }} */ (
-        (await qb.req("GET", "/api/v2/sync/maindata?rid=0")).json()
-      );
-      const big = m.torrents?.[hash("big")];
-      const check = m.torrents?.[hash("check")];
-      const ss = m.server_state ?? {};
-      seenTransfer.add(`${big?.state}/${big?.dlspeed} ${check?.state}/${check?.upspeed}`);
-      return (
-        big?.state === "downloading" &&
-        (big.dlspeed ?? 0) >= TRANSFER_MIN &&
-        check?.state === "uploading" &&
-        (check.upspeed ?? 0) >= TRANSFER_MIN &&
-        (ss.dl_info_speed ?? 0) >= TRANSFER_MIN &&
-        (ss.up_info_speed ?? 0) >= TRANSFER_MIN &&
-        (ss.dl_rate_limit ?? 0) > 0 &&
-        (ss.up_rate_limit ?? 0) > 0
-      );
+      /** @type {{ torrents?: Record<string, QbTorrent>, server_state?: QbServer }} */
+      let main = {};
+      for (const [name, path] of READS) {
+        const res = await qb.req("GET", path);
+        rec.write("transfer", name, `GET ${path}`, res);
+        if (name === "maindata") {
+          main = /** @type {typeof main} */ (res.json());
+        }
+      }
+      seenTransfer.push(transferOf(main));
+      return transferring(main);
     },
     180_000,
     1000,
   ).catch(err => {
-    throw new Error(`${err.message} — seen: ${[...seenTransfer].slice(-5).join(", ")}`);
+    throw new Error(`${err.message} — seen: ${seenTransfer.slice(-5).join(", ")}`);
   });
-  await snapshot("transfer");
   await qb.req("POST", "/api/v2/transfer/setDownloadLimit", { form: { limit: "0" } });
   await qb.req("POST", "/api/v2/transfer/setUploadLimit", { form: { limit: "0" } });
 

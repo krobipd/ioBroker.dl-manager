@@ -124,7 +124,7 @@ if (mode === "--inside") {
   } catch {
     failed = true;
   }
-  for (const side of c.sidecars ?? []) {
+  for (const side of [{ name: "seed" }, ...(c.sidecars ?? [])]) {
     console.log(`---- ${side.name} log ----`);
     try {
       console.log(sh("docker", ["logs", "--tail", "50", side.name], { quiet: true }));

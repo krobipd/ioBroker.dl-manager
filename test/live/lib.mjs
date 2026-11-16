@@ -287,10 +287,10 @@ export const TORRENT_FILES = {
 export const TRANSFER_MIN = 100_000;
 
 /**
- * Its download limit in B/s, set before `big` is added: `big` (32 MiB) then loads for over four minutes — past the
- * mixed states of `running` into `transfer` — and the limit itself tells its unit (0.13 MB/s).
+ * Its download limit in B/s, set before `big` is added: `big` (32 MiB) then loads for close to three minutes — past
+ * the mixed states of `running` into `transfer` — at a rate a two-decimal MB/s still shows (0.2 MB/s).
  */
-export const TRANSFER_LIMIT_DOWN = 128_000;
+export const TRANSFER_LIMIT_DOWN = 200_000;
 
 /** Its upload limit in B/s: high enough to hold back nothing of the peer's 600 KiB/s (20.97 MB/s). */
 export const TRANSFER_LIMIT_UP = 20_971_520;
@@ -315,9 +315,10 @@ export function peer(work) {
       "sh",
       "-c",
       [
-        "apk add --no-cache aria2 >/dev/null && mkdir -p /leech &&",
+        "apk add --no-cache aria2 >/dev/null && mkdir -p /leech && echo 'peer: aria2 installed' &&",
         // the recorder joins the container to the internal network after its start: wait until the tracker resolves
-        "until nslookup seed >/dev/null 2>&1; do sleep 1; done &&",
+        // (through musl like aria2c — busybox nslookup tries the runner's search domains and never ends with 0)
+        "until getent hosts seed; do sleep 1; done && echo 'peer: tracker resolves' &&",
         "exec aria2c --dir=/leech --seed-time=0 --max-overall-download-limit=600K --bt-tracker-interval=5",
         "--enable-dht=false --bt-enable-lpd=false --enable-peer-exchange=false --file-allocation=none",
         "--listen-port=6881 --summary-interval=10 /torrents/check.torrent",
