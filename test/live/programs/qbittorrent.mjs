@@ -3,7 +3,19 @@
 import { pbkdf2Sync } from "node:crypto";
 import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { DEAD_MAGNET, DEAD_MAGNET_HASH, Http, prepareTorrents, Recorder, torrentOf, waitFor } from "../lib.mjs";
+import {
+  DEAD_MAGNET,
+  DEAD_MAGNET_HASH,
+  Http,
+  peer,
+  prepareTorrents,
+  Recorder,
+  TRANSFER_LIMIT_DOWN,
+  TRANSFER_LIMIT_UP,
+  TRANSFER_MIN,
+  torrentOf,
+  waitFor,
+} from "../lib.mjs";
 
 const USER = "admin";
 const PASS = "testpass1";
@@ -14,7 +26,7 @@ const PORT = 8080;
  *
  * @param {string} work work directory on the runner
  * @param {string} tag image tag
- * @returns {{ image: string, name: string, env: Record<string,string>, volumes: string[] }} container
+ * @returns {object} container
  */
 export function prepare(work, tag) {
   // a fixed 16-byte salt for the recorded WebUI password; the text is only a source of 16 bytes
@@ -55,6 +67,7 @@ export function prepare(work, tag) {
     name: "qbt",
     env: { QBT_LEGAL_NOTICE: "confirm", QBT_WEBUI_PORT: String(PORT) },
     volumes: [`${join(work, "qbt")}:/config`, `${join(work, "downloads")}:/downloads`],
+    sidecars: [peer(work)],
   };
 }
 
@@ -123,6 +136,9 @@ export async function record(ctx) {
     }
     return qb.req("POST", "/api/v2/torrents/add", { body: form });
   };
+  // the limits of `transfer`, set before `big` starts (TRANSFER_LIMIT_DOWN)
+  await qb.req("POST", "/api/v2/transfer/setDownloadLimit", { form: { limit: String(TRANSFER_LIMIT_DOWN) } });
+  await qb.req("POST", "/api/v2/transfer/setUploadLimit", { form: { limit: String(TRANSFER_LIMIT_UP) } });
   rec.write("commands", "add-file", "POST /api/v2/torrents/add (multipart torrents)", await add("big"));
   await waitFor("big downloading", async () => (await stateOf("big")) === "downloading", 120_000);
   await add("queued");
@@ -146,6 +162,41 @@ export async function record(ctx) {
     );
   });
   await snapshot("running");
+
+  // transfer: the running state while the peer leeches `check` and `big` still loads — every speed and limit the
+  // fixture hook plays has a value that tells its unit (≥ TRANSFER_MIN)
+  const seenTransfer = new Set();
+  await waitFor(
+    "transfer under way",
+    async () => {
+      /** @typedef {{ state?: string, dlspeed?: number, upspeed?: number }} QbTorrent a torrent of maindata */
+      /** @typedef {{ dl_info_speed?: number, up_info_speed?: number, dl_rate_limit?: number, up_rate_limit?: number }} QbServer the server state */
+      const m = /** @type {{ torrents?: Record<string, QbTorrent>, server_state?: QbServer }} */ (
+        (await qb.req("GET", "/api/v2/sync/maindata?rid=0")).json()
+      );
+      const big = m.torrents?.[hash("big")];
+      const check = m.torrents?.[hash("check")];
+      const ss = m.server_state ?? {};
+      seenTransfer.add(`${big?.state}/${big?.dlspeed} ${check?.state}/${check?.upspeed}`);
+      return (
+        big?.state === "downloading" &&
+        (big.dlspeed ?? 0) >= TRANSFER_MIN &&
+        check?.state === "uploading" &&
+        (check.upspeed ?? 0) >= TRANSFER_MIN &&
+        (ss.dl_info_speed ?? 0) >= TRANSFER_MIN &&
+        (ss.up_info_speed ?? 0) >= TRANSFER_MIN &&
+        (ss.dl_rate_limit ?? 0) > 0 &&
+        (ss.up_rate_limit ?? 0) > 0
+      );
+    },
+    180_000,
+    1000,
+  ).catch(err => {
+    throw new Error(`${err.message} — seen: ${[...seenTransfer].slice(-5).join(", ")}`);
+  });
+  await snapshot("transfer");
+  await qb.req("POST", "/api/v2/transfer/setDownloadLimit", { form: { limit: "0" } });
+  await qb.req("POST", "/api/v2/transfer/setUploadLimit", { form: { limit: "0" } });
 
   // loading metadata: the queue (1 active download) holds the magnet back — force-start it
   rec.write(

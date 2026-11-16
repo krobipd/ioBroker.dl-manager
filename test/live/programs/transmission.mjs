@@ -2,7 +2,19 @@
 // style the version speaks (4.1+: JSON-RPC 2.0 + snake_case, ≤ 4.0: legacy + kebab/camel). api-torrent.md § 2.
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { DEAD_MAGNET, DEAD_MAGNET_HASH, Http, prepareTorrents, Recorder, torrentOf, waitFor } from "../lib.mjs";
+import {
+  DEAD_MAGNET,
+  DEAD_MAGNET_HASH,
+  Http,
+  peer,
+  prepareTorrents,
+  Recorder,
+  TRANSFER_LIMIT_DOWN,
+  TRANSFER_LIMIT_UP,
+  TRANSFER_MIN,
+  torrentOf,
+  waitFor,
+} from "../lib.mjs";
 
 const USER = "admin";
 const PASS = "testpass1";
@@ -13,7 +25,7 @@ const RPC = "/transmission/rpc";
  *
  * @param {string} work work directory
  * @param {string} tag image tag
- * @returns {{ image: string, name: string, env: Record<string,string>, volumes: string[] }} container
+ * @returns {object} container definition
  */
 export function prepare(work, tag) {
   prepareTorrents(work);
@@ -42,6 +54,7 @@ export function prepare(work, tag) {
     name: "tr",
     env: { PUID: "1000", PGID: "1000", TZ: "Etc/UTC", USER, PASS, WHITELIST: "", HOST_WHITELIST: "" },
     volumes: [`${join(work, "tr")}:/config`, `${join(work, "downloads")}:/downloads`],
+    sidecars: [peer(work)],
   };
 }
 
@@ -178,6 +191,15 @@ export async function record(ctx) {
     });
 
   await snapshot("empty");
+  // the limits of `transfer`, set before `big` starts (TRANSFER_LIMIT_DOWN; Transmission counts in its speed units)
+  const units = resultOf(await rpc("session_get")).units ?? {};
+  const kilo = Number(units.speed_bytes ?? units["speed-bytes"] ?? 1000);
+  await rpc("session_set", {
+    speed_limit_down: Math.round(TRANSFER_LIMIT_DOWN / kilo),
+    speed_limit_down_enabled: true,
+    speed_limit_up: Math.round(TRANSFER_LIMIT_UP / kilo),
+    speed_limit_up_enabled: true,
+  });
   w("commands", "torrent-add-metainfo", await add("big"));
   await waitFor("big downloading", async () => (await find(hash("big")))?.status === 4, 120_000);
   await add("queued");
@@ -196,6 +218,36 @@ export async function record(ctx) {
     180_000,
   );
   await snapshot("running");
+
+  // transfer: the running state while the peer leeches `check` and `big` still loads — every speed the fixture hook
+  // plays tells its unit (≥ TRANSFER_MIN), `big` has a time left
+  const rateKey = modern ? ["rate_download", "rate_upload"] : ["rateDownload", "rateUpload"];
+  const statsKey = modern ? ["download_speed", "upload_speed"] : ["downloadSpeed", "uploadSpeed"];
+  const seenTransfer = new Set();
+  await waitFor(
+    "transfer under way",
+    async () => {
+      const big = await find(hash("big"));
+      const check = await find(hash("check"));
+      const st = resultOf(await rpc("session_stats"));
+      seenTransfer.add(`${big?.status}/${big?.[rateKey[0]]}/${big?.eta} ${check?.status}/${check?.[rateKey[1]]}`);
+      return (
+        big?.status === 4 &&
+        big[rateKey[0]] >= TRANSFER_MIN &&
+        big.eta > 0 &&
+        check?.status === 6 &&
+        check[rateKey[1]] >= TRANSFER_MIN &&
+        st[statsKey[0]] >= TRANSFER_MIN &&
+        st[statsKey[1]] >= TRANSFER_MIN
+      );
+    },
+    180_000,
+    1000,
+  ).catch(err => {
+    throw new Error(`${err.message} — seen: ${[...seenTransfer].slice(-5).join(", ")}`);
+  });
+  await snapshot("transfer");
+  await rpc("session_set", { speed_limit_down_enabled: false, speed_limit_up_enabled: false });
 
   // loading metadata: start the magnet past the queue
   w("commands", "torrent-start-now", await rpc("torrent_start_now", { ids: [DEAD_MAGNET_HASH] }));

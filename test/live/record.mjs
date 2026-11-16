@@ -52,19 +52,22 @@ if (mode === "--inside") {
   ]);
   for (const side of c.sidecars ?? []) {
     pull(side.image);
+    // `internet`: a sidecar that installs a package on its start begins in the default network and joins `dm` after
     sh("docker", [
       "run",
       "-d",
       "--name",
       side.name,
-      "--network",
-      "dm",
+      ...(side.internet ? [] : ["--network", "dm"]),
       ...(side.entrypoint ? ["--entrypoint", side.entrypoint] : []),
       ...Object.entries(side.env ?? {}).flatMap(([k, v]) => ["-e", `${k}=${v}`]),
       ...(side.volumes ?? []).flatMap(v => ["-v", v]),
       side.image,
       ...(side.args ?? []),
     ]);
+    if (side.internet) {
+      sh("docker", ["network", "connect", "dm", side.name]);
+    }
   }
   const envArgs = Object.entries(c.env ?? {}).flatMap(([k, v]) => ["-e", `${k}=${v}`]);
   const volArgs = (c.volumes ?? []).flatMap(v => ["-v", v]);

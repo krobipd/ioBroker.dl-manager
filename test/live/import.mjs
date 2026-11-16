@@ -1,7 +1,8 @@
 // Takes the recordings of a live-programs run into test/fixtures/.
 //
 //   gh run download <run-id> -D <dir>            (every artifact fixtures-<program>-<tag>)
-//   node test/live/import.mjs <dir>
+//   node test/live/import.mjs <dir>                every version of the run replaces its folder
+//   node test/live/import.mjs <dir> --state <s>    only state <s> of each version replaces its folder, the rest stays
 //
 // Every file is scrubbed before it lands in the repository: the test secrets of the recorder become `<secret>`,
 // IPv4 addresses of the container network become documentation addresses (RFC 5737), the runner's host name
@@ -21,8 +22,9 @@ const SECRETS = [
 const KEEP_IPS = new Set(["0.0.0.0", "127.0.0.1", "255.255.255.255"]);
 
 const src = process.argv[2];
-if (!src) {
-  console.error("usage: import.mjs <downloaded artifacts dir>");
+const onlyState = process.argv[3] === "--state" ? process.argv[4] : undefined;
+if (!src || (process.argv[3] !== undefined && !onlyState)) {
+  console.error("usage: import.mjs <downloaded artifacts dir> [--state <state>]");
   process.exit(2);
 }
 const dest = "test/fixtures";
@@ -87,7 +89,9 @@ for (const artifact of readdirSync(src)) {
   if (!statSync(root).isDirectory()) {
     continue;
   }
-  for (const file of walk(root).filter(f => f.endsWith(".json"))) {
+  for (const file of walk(root).filter(
+    f => f.endsWith(".json") && (!onlyState || relative(root, f).split(sep)[2] === onlyState),
+  )) {
     let text = readFileSync(file, "utf8");
     for (const s of SECRETS) {
       // whole tokens only: the dead magnet's info hash contains the SABnzbd test key as a substring
@@ -119,10 +123,12 @@ if (problems.length) {
   rmSync(staging, { recursive: true, force: true });
   process.exit(1);
 }
-for (const program of readdirSync(staging)) {
+for (const program of files ? readdirSync(staging) : []) {
   for (const version of readdirSync(join(staging, program))) {
-    rmSync(join(dest, program, version), { recursive: true, force: true });
-    cpSync(join(staging, program, version), join(dest, program, version), { recursive: true });
+    // one state of a later run beside the recordings of the earlier one: only its own folder is replaced
+    const part = onlyState ? join(program, version, onlyState) : join(program, version);
+    rmSync(join(dest, part), { recursive: true, force: true });
+    cpSync(join(staging, part), join(dest, part), { recursive: true });
   }
 }
 rmSync(staging, { recursive: true, force: true });

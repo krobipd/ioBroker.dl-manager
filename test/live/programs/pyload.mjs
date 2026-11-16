@@ -139,6 +139,11 @@ export async function record(_ctx) {
   );
   await post("set_config_value", { category: "download", option: "max_speed", value: 2000 });
   await snapshot("limited");
+  // the limit the driver reads beside the snapshot (every few polls, pyload/driver.ts): switch and value
+  for (const option of ["limit_speed", "max_speed"]) {
+    const fn = `get_config_value?category=download&option=${option}`;
+    w("limited", `get-config-value-${option.replace(/_/g, "-")}`, `GET /api/${fn}`, await get(fn));
+  }
   await post("set_config_value", { category: "download", option: "limit_speed", value: false });
 
   await waitFor("big finished", async () => (await pkg(big))?.links?.every(l => l.status === 0), 180_000, 3000);

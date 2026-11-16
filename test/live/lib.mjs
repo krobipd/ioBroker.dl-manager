@@ -247,12 +247,12 @@ function bencode(v) {
 }
 
 /**
- * A single-file v1 torrent without tracker; optional web seed (BEP 19).
+ * A single-file v1 torrent; optional tracker and web seed (BEP 19) — both outside `info`, the info hash stays.
  *
- * @param {{ name: string, data: Buffer, webseed?: string, pieceLength?: number }} o torrent content
+ * @param {{ name: string, data: Buffer, webseed?: string, announce?: string, pieceLength?: number }} o torrent content
  * @returns {{ torrent: Buffer, infoHash: string }} the .torrent file and its v1 info hash
  */
-export function makeTorrent({ name, data, webseed, pieceLength = 256 * 1024 }) {
+export function makeTorrent({ name, data, webseed, announce, pieceLength = 256 * 1024 }) {
   const pieces = [];
   for (let i = 0; i < data.length; i += pieceLength) {
     pieces.push(
@@ -262,7 +262,7 @@ export function makeTorrent({ name, data, webseed, pieceLength = 256 * 1024 }) {
     );
   }
   const info = { length: data.length, name, "piece length": pieceLength, pieces: Buffer.concat(pieces) };
-  const meta = { info, ...(webseed ? { "url-list": webseed } : {}) };
+  const meta = { info, ...(webseed ? { "url-list": webseed } : {}), ...(announce ? { announce } : {}) };
   return { torrent: bencode(meta), infoHash: createHash("sha1").update(bencode(info)).digest("hex") };
 }
 
@@ -275,9 +275,56 @@ export const TORRENT_FILES = {
   stopped: { size: 4 * MiB, present: false, webseed: true },
   done: { size: 2 * MiB, present: true, webseed: false },
   gone: { size: 2 * MiB, present: true, webseed: false },
-  // 1 GiB of zeros: big enough that a recheck is still running when the next poll asks (256 MiB was too fast)
-  check: { size: 1024 * MiB, present: true, webseed: false, zeros: true },
+  // 1 GiB of zeros: big enough that a recheck is still running when the next poll asks (256 MiB was too fast); the
+  // recording's peer (PEER) leeches it through the seed server's tracker — the program's upload for minutes
+  check: { size: 1024 * MiB, present: true, webseed: false, zeros: true, tracker: true },
 };
+
+/**
+ * The `transfer` state (the state the fixture hook plays, with traffic): every speed it reads is at least this many
+ * bytes per second — 0.1 MB/s, below that two decimals cannot tell the unit apart (the unit-value rule).
+ */
+export const TRANSFER_MIN = 100_000;
+
+/**
+ * Its download limit in B/s, set before `big` is added: `big` (32 MiB) then loads for over four minutes — past the
+ * mixed states of `running` into `transfer` — and the limit itself tells its unit (0.13 MB/s).
+ */
+export const TRANSFER_LIMIT_DOWN = 128_000;
+
+/** Its upload limit in B/s: high enough to hold back nothing of the peer's 600 KiB/s (20.97 MB/s). */
+export const TRANSFER_LIMIT_UP = 20_971_520;
+
+/** The tracker of the seed server (throttle-server.mjs). */
+export const TRACKER = "http://seed:8080/announce";
+
+/**
+ * The recording's peer, a sidecar: aria2c in Alpine (installed in the default network, then the container joins the
+ * internal one) leeches `check` from the program at 600 KiB/s — the program uploads > 0.1 MB/s for half an hour.
+ *
+ * @param {string} work work directory (prepareTorrents wrote `torrents/check.torrent`)
+ * @returns {object} sidecar definition
+ */
+export function peer(work) {
+  return {
+    name: "peer",
+    image: "alpine:3.22",
+    internet: true,
+    volumes: [`${join(work, "torrents")}:/torrents:ro`],
+    args: [
+      "sh",
+      "-c",
+      [
+        "apk add --no-cache aria2 >/dev/null && mkdir -p /leech &&",
+        // the recorder joins the container to the internal network after its start: wait until the tracker resolves
+        "until nslookup seed >/dev/null 2>&1; do sleep 1; done &&",
+        "exec aria2c --dir=/leech --seed-time=0 --max-overall-download-limit=600K --bt-tracker-interval=5",
+        "--enable-dht=false --bt-enable-lpd=false --enable-peer-exchange=false --file-allocation=none",
+        "--listen-port=6881 --summary-interval=10 /torrents/check.torrent",
+      ].join(" "),
+    ],
+  };
+}
 
 /** Info hash of DEAD_MAGNET. */
 export const DEAD_MAGNET_HASH = "0123456789abcdef0123456789abcdef01234567";
@@ -289,15 +336,19 @@ export const DEAD_MAGNET = `magnet:?xt=urn:btih:${DEAD_MAGNET_HASH}&dn=nobody-se
  * Runner side: payloads (web seed folder, download folder) and a .torrent + info hash per file.
  *
  * @param {string} work work directory
+ * @param {string[]} [only] these torrents only (a program that loads anything else over HTTP: aria2)
  */
-export function prepareTorrents(work) {
+export function prepareTorrents(work, only) {
   mkdirSync(join(work, "downloads"), { recursive: true, mode: 0o777 });
   mkdirSync(join(work, "seed"), { recursive: true });
   mkdirSync(join(work, "torrents"), { recursive: true });
   let seed = 10;
   for (const [name, f] of Object.entries(TORRENT_FILES)) {
-    const data = f.zeros ? Buffer.alloc(f.size) : payload(f.size, seed);
     seed++;
+    if (only && !only.includes(name)) {
+      continue;
+    }
+    const data = f.zeros ? Buffer.alloc(f.size) : payload(f.size, seed - 1);
     const file = `${name}.bin`;
     if (f.webseed) {
       writeFileSync(join(work, "seed", file), data);
@@ -309,6 +360,7 @@ export function prepareTorrents(work) {
       name: file,
       data,
       webseed: f.webseed ? `http://seed:8080/${file}` : undefined,
+      announce: "tracker" in f && f.tracker ? TRACKER : undefined,
       pieceLength: f.size > 64 * MiB ? 4 * MiB : 256 * 1024,
     });
     writeFileSync(join(work, "torrents", `${name}.torrent`), t.torrent);
@@ -337,6 +389,8 @@ export const NZB_FILES = {
   stopped: { size: 8 * MiB, missing: false },
   small: { size: 2 * MiB, missing: false },
   broken: { size: 2 * MiB, missing: true },
+  // finished before `transfer`: a history entry whose size tells its unit (0.13 GB — 2 MiB rounds to 0.00 GB)
+  large: { size: 128 * MiB, missing: false },
 };
 
 /** Segment size NServ serves. */

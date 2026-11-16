@@ -2,7 +2,7 @@
 // job), a 404 URL for the failed fetch, the rate limit to keep a download running. api-usenet-aria2-pyload.md § 2.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { Http, nzbOf, prepareUsenet, pull, Recorder, sh, waitFor } from "../lib.mjs";
+import { Http, nzbOf, prepareUsenet, pull, Recorder, sh, TRANSFER_MIN, waitFor } from "../lib.mjs";
 
 const USER = "admin";
 const PASS = "testpass1";
@@ -163,6 +163,10 @@ export async function record(ctx) {
   );
   await snapshot("finished-and-failed");
 
+  // a large job finished at full speed: its history entry is the download whose size tells the unit (`transfer`)
+  const largeId = idOf(await add("large"));
+  await waitFor("large completed", async () => (await history()).some(h => h.NZBID === largeId), 180_000);
+
   // running: rate limit keeps the big job downloading; the next waits; one added paused
   w("commands", "rate", await rpc("rate", [1024]));
   const bigId = idOf(await add("big"));
@@ -174,6 +178,17 @@ export async function record(ctx) {
     60_000,
   );
   await snapshot("running");
+
+  // transfer: the running state with bytes flowing — the rate tells its unit (≥ TRANSFER_MIN)
+  await waitFor(
+    "big transferring",
+    async () => {
+      const st = /** @type {{ DownloadRate?: number }} */ (await result("status", []));
+      return (st.DownloadRate ?? 0) >= TRANSFER_MIN;
+    },
+    60_000,
+  );
+  await snapshot("transfer");
 
   // single pause/resume
   w("commands", "editqueue-pause", await rpc("editqueue", ["GroupPause", "", [queuedId]]));

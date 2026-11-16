@@ -2,7 +2,7 @@
 // URL for the failed fetch, the speed limit to keep a download running. api-usenet-aria2-pyload.md § 1.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { Http, nzbOf, prepareUsenet, Recorder, waitFor } from "../lib.mjs";
+import { Http, nzbOf, prepareUsenet, Recorder, TRANSFER_MIN, waitFor } from "../lib.mjs";
 
 const API_KEY = "0123456789abcdef0123456789abcdef";
 const NZB_KEY = "fedcba9876543210fedcba9876543210";
@@ -142,6 +142,14 @@ export async function record(ctx) {
   );
   await snapshot("finished-and-failed");
 
+  // a large job finished at full speed: its history entry is the download whose size tells the unit (`transfer`)
+  const largeId = idOf(await add("large"));
+  await waitFor(
+    "large completed",
+    async () => (await history()).some(x => x.nzo_id === largeId && x.status === "Completed"),
+    180_000,
+  );
+
   // running: the speed limit keeps the big job downloading; one more job and one added paused (priority -2)
   w(
     "commands",
@@ -160,6 +168,17 @@ export async function record(ctx) {
     60_000,
   );
   await snapshot("running");
+
+  // transfer: the running state with bytes flowing — the speed tells its unit (≥ TRANSFER_MIN; kbpersec is KiB/s)
+  await waitFor(
+    "big transferring",
+    async () => {
+      const q = /** @type {{ queue: { kbpersec?: string } }} */ ((await keyed("mode=queue")).json()).queue;
+      return Number(q.kbpersec ?? 0) * 1024 >= TRANSFER_MIN;
+    },
+    60_000,
+  );
+  await snapshot("transfer");
 
   // single pause/resume
   w(
