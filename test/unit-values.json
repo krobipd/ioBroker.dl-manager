@@ -11,6 +11,49 @@
     "unit": "B",
     "file": "test/fixtures/aria2/1.37.0/transfer/tell-active.json"
   },
+  "aria2-aria2.downloads.*.eta": {
+    "id": "aria2-aria2.downloads.f80be849.eta",
+    "computed": {
+      "quotient": [
+        {
+          "difference": [
+            {
+              "recorded": 33554432,
+              "unit": "B",
+              "file": "test/fixtures/aria2/1.37.0/transfer/tell-active.json"
+            },
+            {
+              "recorded": 999424,
+              "unit": "B",
+              "file": "test/fixtures/aria2/1.37.0/transfer/tell-active.json"
+            }
+          ]
+        },
+        {
+          "recorded": 1004566,
+          "unit": "B/s",
+          "file": "test/fixtures/aria2/1.37.0/transfer/tell-active.json"
+        }
+      ]
+    }
+  },
+  "aria2-aria2.downloads.*.progress": {
+    "id": "aria2-aria2.downloads.8992c934.progress",
+    "computed": {
+      "quotient": [
+        {
+          "recorded": 1073741824,
+          "unit": "B",
+          "file": "test/fixtures/aria2/1.37.0/transfer/tell-active.json"
+        },
+        {
+          "recorded": 1073741824,
+          "unit": "B",
+          "file": "test/fixtures/aria2/1.37.0/transfer/tell-active.json"
+        }
+      ]
+    }
+  },
   "aria2-aria2.downloads.*.size": {
     "id": "aria2-aria2.downloads.8992c934.size",
     "recorded": 1073741824,
@@ -65,6 +108,23 @@
     "unit": "s",
     "file": "test/fixtures/deluge/2.2.0/transfer/update-ui.json"
   },
+  "deluge-deluge.downloads.*.progress": {
+    "id": "deluge-deluge.downloads.9d00ddf1.progress",
+    "computed": {
+      "quotient": [
+        {
+          "recorded": 2097152,
+          "unit": "B",
+          "file": "test/fixtures/deluge/2.2.0/transfer/update-ui.json"
+        },
+        {
+          "recorded": 2097152,
+          "unit": "B",
+          "file": "test/fixtures/deluge/2.2.0/transfer/update-ui.json"
+        }
+      ]
+    }
+  },
   "deluge-deluge.downloads.*.size": {
     "id": "deluge-deluge.downloads.3232883d.size",
     "recorded": 1073741824,
@@ -107,11 +167,71 @@
     "unit": "B/s",
     "file": "test/fixtures/deluge/2.2.0/transfer/update-ui.json"
   },
+  "downloadstation-downloadstation.downloadSpeed": {
+    "id": "downloadstation-downloadstation.downloadSpeed",
+    "computed": {
+      "sum": [
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/downloadstation/4.1-5012/running/list.json"
+        },
+        {
+          "recorded": 121021,
+          "unit": "B/s",
+          "file": "test/fixtures/downloadstation/synodl/transfer/list.json"
+        }
+      ]
+    }
+  },
   "downloadstation-downloadstation.downloads.*.downloaded": {
     "id": "downloadstation-downloadstation.downloads.4.downloaded",
     "recorded": 4112431185,
     "unit": "B",
     "file": "test/fixtures/downloadstation/synodl/transfer/list.json"
+  },
+  "downloadstation-downloadstation.downloads.*.eta": {
+    "id": "downloadstation-downloadstation.downloads.0.eta",
+    "computed": {
+      "quotient": [
+        {
+          "difference": [
+            {
+              "recorded": 258998272,
+              "unit": "B",
+              "file": "test/fixtures/downloadstation/synodl/transfer/list.json"
+            },
+            {
+              "recorded": 158998272,
+              "unit": "B",
+              "file": "test/fixtures/downloadstation/synodl/transfer/list.json"
+            }
+          ]
+        },
+        {
+          "recorded": 121021,
+          "unit": "B/s",
+          "file": "test/fixtures/downloadstation/synodl/transfer/list.json"
+        }
+      ]
+    }
+  },
+  "downloadstation-downloadstation.downloads.*.progress": {
+    "id": "downloadstation-downloadstation.downloads.0.progress",
+    "computed": {
+      "quotient": [
+        {
+          "recorded": 158998272,
+          "unit": "B",
+          "file": "test/fixtures/downloadstation/synodl/transfer/list.json"
+        },
+        {
+          "recorded": 258998272,
+          "unit": "B",
+          "file": "test/fixtures/downloadstation/synodl/transfer/list.json"
+        }
+      ]
+    }
   },
   "downloadstation-downloadstation.downloads.*.size": {
     "id": "downloadstation-downloadstation.downloads.4.size",
@@ -137,6 +257,55 @@
     "unit": "KB/s",
     "file": "test/fixtures/downloadstation/4.1-5012/running/config.json"
   },
+  "downloadstation-downloadstation.uploadSpeed": {
+    "id": "downloadstation-downloadstation.uploadSpeed",
+    "computed": {
+      "sum": [
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/downloadstation/4.1-5012/running/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/downloadstation/synodl/transfer/list.json"
+        },
+        {
+          "recorded": 83923,
+          "unit": "B/s",
+          "file": "test/fixtures/downloadstation/synodl/transfer/list.json"
+        },
+        {
+          "recorded": 923,
+          "unit": "B/s",
+          "file": "test/fixtures/downloadstation/synodl/transfer/list.json"
+        }
+      ]
+    }
+  },
+  "flood-flood.downloadSpeed": {
+    "id": "flood-flood.downloadSpeed",
+    "computed": {
+      "sum": [
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/flood/4.16.4-qbittorrent/transfer/torrents.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/flood/4.16.4-qbittorrent/transfer/torrents.json"
+        },
+        {
+          "recorded": 163360,
+          "unit": "B/s",
+          "file": "test/fixtures/flood/4.16.4-qbittorrent/transfer/torrents.json"
+        }
+      ]
+    }
+  },
   "flood-flood.downloads.*.downloaded": {
     "id": "flood-flood.downloads.3232883d.downloaded",
     "recorded": 1073741824,
@@ -148,6 +317,23 @@
     "recorded": 177,
     "unit": "s",
     "file": "test/fixtures/flood/4.16.4-qbittorrent/transfer/torrents.json"
+  },
+  "flood-flood.downloads.*.progress": {
+    "id": "flood-flood.downloads.f810fabf.progress",
+    "computed": {
+      "quotient": [
+        {
+          "recorded": 5390336,
+          "unit": "B",
+          "file": "test/fixtures/flood/4.16.4-qbittorrent/transfer/torrents.json"
+        },
+        {
+          "recorded": 33554432,
+          "unit": "B",
+          "file": "test/fixtures/flood/4.16.4-qbittorrent/transfer/torrents.json"
+        }
+      ]
+    }
   },
   "flood-flood.downloads.*.size": {
     "id": "flood-flood.downloads.3232883d.size",
@@ -178,6 +364,165 @@
     "recorded": 51200,
     "unit": "B/s",
     "file": "test/fixtures/flood/4.16.4-qbittorrent/limited/settings.json"
+  },
+  "flood-flood.uploadSpeed": {
+    "id": "flood-flood.uploadSpeed",
+    "computed": {
+      "sum": [
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/flood/4.16.4-qbittorrent/transfer/torrents.json"
+        },
+        {
+          "recorded": 175478,
+          "unit": "B/s",
+          "file": "test/fixtures/flood/4.16.4-qbittorrent/transfer/torrents.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/flood/4.16.4-qbittorrent/transfer/torrents.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/flood/4.16.4-qbittorrent/transfer/torrents.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/flood/4.16.4-qbittorrent/transfer/torrents.json"
+        }
+      ]
+    }
+  },
+  "freebox-mafreebox.downloadSpeed": {
+    "id": "freebox-mafreebox.downloadSpeed",
+    "computed": {
+      "sum": [
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 104230000,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        }
+      ]
+    }
   },
   "freebox-mafreebox.downloads.*.eta": {
     "id": "freebox-mafreebox.downloads.365.eta",
@@ -215,10 +560,160 @@
     "unit": "B/s",
     "file": "test/fixtures/freebox/v8/config/get-limited.json"
   },
+  "freebox-mafreebox.uploadSpeed": {
+    "id": "freebox-mafreebox.uploadSpeed",
+    "computed": {
+      "sum": [
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 132600,
+          "unit": "B/s",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        }
+      ]
+    }
+  },
+  "hadouken-hadouken.downloadSpeed": {
+    "id": "hadouken-hadouken.downloadSpeed",
+    "computed": {
+      "sum": [
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/hadouken/5.2.0/transfer/list.json"
+        },
+        {
+          "recorded": 237124,
+          "unit": "B/s",
+          "file": "test/fixtures/hadouken/5.2.0/transfer/list.json"
+        }
+      ]
+    }
+  },
   "hadouken-hadouken.downloads.*.eta": {
     "id": "hadouken-hadouken.downloads.f810fabf.eta",
     "recorded": 130,
     "unit": "s",
+    "file": "test/fixtures/hadouken/5.2.0/transfer/list.json"
+  },
+  "hadouken-hadouken.downloads.*.progress": {
+    "id": "hadouken-hadouken.downloads.e94d3b30.progress",
+    "recorded": 1000,
+    "unit": "\u2030",
     "file": "test/fixtures/hadouken/5.2.0/transfer/list.json"
   },
   "hadouken-hadouken.downloads.*.size": {
@@ -251,6 +746,43 @@
     "unit": "B/s",
     "file": "test/fixtures/hadouken/5.2.0/limited/get-settings.json"
   },
+  "hadouken-hadouken.uploadSpeed": {
+    "id": "hadouken-hadouken.uploadSpeed",
+    "computed": {
+      "sum": [
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/hadouken/5.2.0/transfer/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/hadouken/5.2.0/transfer/list.json"
+        },
+        {
+          "recorded": 6408,
+          "unit": "B/s",
+          "file": "test/fixtures/hadouken/5.2.0/transfer/list.json"
+        },
+        {
+          "recorded": 169473,
+          "unit": "B/s",
+          "file": "test/fixtures/hadouken/5.2.0/transfer/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/hadouken/5.2.0/transfer/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/hadouken/5.2.0/transfer/list.json"
+        }
+      ]
+    }
+  },
   "jdownloader-dev1.downloadSpeed": {
     "id": "jdownloader-dev1.downloadSpeed",
     "recorded": 1021506,
@@ -268,6 +800,23 @@
     "recorded": 1,
     "unit": "s",
     "file": "test/fixtures/jdownloader/48637/running/query-packages.json"
+  },
+  "jdownloader-dev1.downloads.*.progress": {
+    "id": "jdownloader-dev1.downloads.33547449.progress",
+    "computed": {
+      "quotient": [
+        {
+          "recorded": 31981568,
+          "unit": "B",
+          "file": "test/fixtures/jdownloader/48637/running/query-packages.json"
+        },
+        {
+          "recorded": 33554432,
+          "unit": "B",
+          "file": "test/fixtures/jdownloader/48637/running/query-packages.json"
+        }
+      ]
+    }
   },
   "jdownloader-dev1.downloads.*.size": {
     "id": "jdownloader-dev1.downloads.33547449.size",
@@ -305,6 +854,23 @@
     "unit": "s",
     "file": "test/fixtures/jdownloader/48637/running/query-packages.json"
   },
+  "jdownloader-jdownloader.downloads.*.progress": {
+    "id": "jdownloader-jdownloader.downloads.33547449.progress",
+    "computed": {
+      "quotient": [
+        {
+          "recorded": 31981568,
+          "unit": "B",
+          "file": "test/fixtures/jdownloader/48637/running/query-packages.json"
+        },
+        {
+          "recorded": 33554432,
+          "unit": "B",
+          "file": "test/fixtures/jdownloader/48637/running/query-packages.json"
+        }
+      ]
+    }
+  },
   "jdownloader-jdownloader.downloads.*.size": {
     "id": "jdownloader-jdownloader.downloads.33547449.size",
     "recorded": 33554432,
@@ -335,6 +901,23 @@
     "unit": "B",
     "file": "test/fixtures/nzbget/26.3/transfer/history.json"
   },
+  "nzbget-nzbget.downloads.*.progress": {
+    "id": "nzbget-nzbget.downloads.4.progress",
+    "computed": {
+      "quotient": [
+        {
+          "recorded": 139561878,
+          "unit": "B",
+          "file": "test/fixtures/nzbget/26.3/transfer/history.json"
+        },
+        {
+          "recorded": 134217728,
+          "unit": "B",
+          "file": "test/fixtures/nzbget/26.3/transfer/history.json"
+        }
+      ]
+    }
+  },
   "nzbget-nzbget.downloads.*.size": {
     "id": "nzbget-nzbget.downloads.4.size",
     "recorded": 134217728,
@@ -353,11 +936,60 @@
     "unit": "B/s",
     "file": "test/fixtures/nzbget/26.3/transfer/status.json"
   },
+  "nzbvortex-nzbvortex.downloadSpeed": {
+    "id": "nzbvortex-nzbvortex.downloadSpeed",
+    "recorded": 2500000,
+    "unit": "B/s",
+    "file": "test/fixtures/nzbvortex/doc-1.7/queue/list.json"
+  },
   "nzbvortex-nzbvortex.downloads.*.downloaded": {
     "id": "nzbvortex-nzbvortex.downloads.14.downloaded",
     "recorded": 3000000000,
     "unit": "B",
     "file": "test/fixtures/nzbvortex/doc-1.7/queue/list.json"
+  },
+  "nzbvortex-nzbvortex.downloads.*.eta": {
+    "id": "nzbvortex-nzbvortex.downloads.11.eta",
+    "computed": {
+      "quotient": [
+        {
+          "difference": [
+            {
+              "recorded": 1000000000,
+              "unit": "B",
+              "file": "test/fixtures/nzbvortex/doc-1.7/queue/list.json"
+            },
+            {
+              "recorded": 400000000,
+              "unit": "B",
+              "file": "test/fixtures/nzbvortex/doc-1.7/queue/list.json"
+            }
+          ]
+        },
+        {
+          "recorded": 2500000,
+          "unit": "B/s",
+          "file": "test/fixtures/nzbvortex/doc-1.7/queue/list.json"
+        }
+      ]
+    }
+  },
+  "nzbvortex-nzbvortex.downloads.*.progress": {
+    "id": "nzbvortex-nzbvortex.downloads.16.progress",
+    "computed": {
+      "quotient": [
+        {
+          "recorded": 500000000,
+          "unit": "B",
+          "file": "test/fixtures/nzbvortex/doc-1.7/queue/list.json"
+        },
+        {
+          "recorded": 1000000000,
+          "unit": "B",
+          "file": "test/fixtures/nzbvortex/doc-1.7/queue/list.json"
+        }
+      ]
+    }
   },
   "nzbvortex-nzbvortex.downloads.*.size": {
     "id": "nzbvortex-nzbvortex.downloads.14.size",
@@ -382,6 +1014,67 @@
     "recorded": 1371952,
     "unit": "B/s",
     "file": "test/fixtures/pyload/0.5.0/running/status-server.json"
+  },
+  "pyload-pyload.downloads.*.downloaded": {
+    "id": "pyload-pyload.downloads.3.downloaded",
+    "computed": {
+      "difference": [
+        {
+          "recorded": 33554432,
+          "unit": "B",
+          "file": "test/fixtures/pyload/0.5.0/running/get-queue-data.json"
+        },
+        {
+          "recorded": 29294592,
+          "unit": "B",
+          "file": "test/fixtures/pyload/0.5.0/running/status-downloads.json"
+        }
+      ]
+    }
+  },
+  "pyload-pyload.downloads.*.eta": {
+    "id": "pyload-pyload.downloads.3.eta",
+    "recorded": 21,
+    "unit": "s",
+    "file": "test/fixtures/pyload/0.5.0/running/status-downloads.json"
+  },
+  "pyload-pyload.downloads.*.progress": {
+    "id": "pyload-pyload.downloads.4.progress",
+    "computed": {
+      "quotient": [
+        {
+          "difference": [
+            {
+              "recorded": 4194304,
+              "unit": "B",
+              "file": "test/fixtures/pyload/0.5.0/running/get-queue-data.json"
+            },
+            {
+              "recorded": 3080192,
+              "unit": "B",
+              "file": "test/fixtures/pyload/0.5.0/running/status-downloads.json"
+            }
+          ]
+        },
+        {
+          "recorded": 4194304,
+          "unit": "B",
+          "file": "test/fixtures/pyload/0.5.0/running/get-queue-data.json"
+        }
+      ]
+    }
+  },
+  "pyload-pyload.downloads.*.size": {
+    "id": "pyload-pyload.downloads.3.size",
+    "recorded": 33554432,
+    "unit": "B",
+    "file": "test/fixtures/pyload/0.5.0/running/get-queue-data.json"
+  },
+  "pyload-pyload.downloads.*.speed": {
+    "id": "pyload-pyload.downloads.3.speed",
+    "recorded": 1371952,
+    "unit": "B/s",
+    "file": "test/fixtures/pyload/0.5.0/running/status-downloads.json"
   },
   "pyload-pyload.freeSpace": {
     "id": "pyload-pyload.freeSpace",
@@ -412,6 +1105,23 @@
     "recorded": 243,
     "unit": "s",
     "file": "test/fixtures/qbittorrent/5.2.3/transfer/maindata.json"
+  },
+  "qbittorrent-qbittorrent.downloads.*.progress": {
+    "id": "qbittorrent-qbittorrent.downloads.f810fabf.progress",
+    "computed": {
+      "quotient": [
+        {
+          "recorded": 5914624,
+          "unit": "B",
+          "file": "test/fixtures/qbittorrent/5.2.3/transfer/maindata.json"
+        },
+        {
+          "recorded": 33554432,
+          "unit": "B",
+          "file": "test/fixtures/qbittorrent/5.2.3/transfer/maindata.json"
+        }
+      ]
+    }
   },
   "qbittorrent-qbittorrent.downloads.*.size": {
     "id": "qbittorrent-qbittorrent.downloads.3232883d.size",
@@ -473,6 +1183,23 @@
     "unit": "s",
     "file": "test/fixtures/rqbit/9.1.0/transfer/torrents.json"
   },
+  "rqbit-rqbit.downloads.*.progress": {
+    "id": "rqbit-rqbit.downloads.e94d3b30.progress",
+    "computed": {
+      "quotient": [
+        {
+          "recorded": 786432,
+          "unit": "B",
+          "file": "test/fixtures/rqbit/9.1.0/transfer/torrents.json"
+        },
+        {
+          "recorded": 4194304,
+          "unit": "B",
+          "file": "test/fixtures/rqbit/9.1.0/transfer/torrents.json"
+        }
+      ]
+    }
+  },
   "rqbit-rqbit.downloads.*.size": {
     "id": "rqbit-rqbit.downloads.3232883d.size",
     "recorded": 1073741824,
@@ -520,6 +1247,49 @@
     "recorded": 1073741824,
     "unit": "B",
     "file": "test/fixtures/rtorrent/0.16.25/transfer/poll.json"
+  },
+  "rtorrent-rtorrent.downloads.*.eta": {
+    "id": "rtorrent-rtorrent.downloads.f810fabf.eta",
+    "computed": {
+      "quotient": [
+        {
+          "difference": [
+            {
+              "recorded": 33554432,
+              "unit": "B",
+              "file": "test/fixtures/rtorrent/0.16.25/transfer/poll.json"
+            },
+            {
+              "recorded": 15466496,
+              "unit": "B",
+              "file": "test/fixtures/rtorrent/0.16.25/transfer/poll.json"
+            }
+          ]
+        },
+        {
+          "recorded": 258389,
+          "unit": "B/s",
+          "file": "test/fixtures/rtorrent/0.16.25/transfer/poll.json"
+        }
+      ]
+    }
+  },
+  "rtorrent-rtorrent.downloads.*.progress": {
+    "id": "rtorrent-rtorrent.downloads.f810fabf.progress",
+    "computed": {
+      "quotient": [
+        {
+          "recorded": 15466496,
+          "unit": "B",
+          "file": "test/fixtures/rtorrent/0.16.25/transfer/poll.json"
+        },
+        {
+          "recorded": 33554432,
+          "unit": "B",
+          "file": "test/fixtures/rtorrent/0.16.25/transfer/poll.json"
+        }
+      ]
+    }
   },
   "rtorrent-rtorrent.downloads.*.size": {
     "id": "rtorrent-rtorrent.downloads.3232883d.size",
@@ -569,6 +1339,23 @@
     "unit": "B",
     "file": "test/fixtures/sabnzbd/5.1.3/transfer/history.json"
   },
+  "sabnzbd-sabnzbd.downloads.*.progress": {
+    "id": "sabnzbd-sabnzbd.downloads.eb09eaec.progress",
+    "computed": {
+      "quotient": [
+        {
+          "recorded": 2097152,
+          "unit": "B",
+          "file": "test/fixtures/sabnzbd/5.1.3/transfer/history.json"
+        },
+        {
+          "recorded": 2097152,
+          "unit": "B",
+          "file": "test/fixtures/sabnzbd/5.1.3/transfer/history.json"
+        }
+      ]
+    }
+  },
   "sabnzbd-sabnzbd.downloads.*.size": {
     "id": "sabnzbd-sabnzbd.downloads.36e358a9.size",
     "recorded": 134217728,
@@ -587,17 +1374,663 @@
     "unit": "B/s",
     "file": "test/fixtures/sabnzbd/5.1.3/transfer/queue.json"
   },
+  "summary.downloadSpeed": {
+    "id": "summary.downloadSpeed",
+    "computed": {
+      "sum": [
+        {
+          "recorded": 200085,
+          "unit": "B/s",
+          "file": "test/fixtures/aria2/1.37.0/transfer/global-stat.json"
+        },
+        {
+          "recorded": 922392,
+          "unit": "B/s",
+          "file": "test/fixtures/deluge/2.2.0/transfer/update-ui.json"
+        },
+        {
+          "sum": [
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/downloadstation/4.1-5012/running/list.json"
+            },
+            {
+              "recorded": 121021,
+              "unit": "B/s",
+              "file": "test/fixtures/downloadstation/synodl/transfer/list.json"
+            }
+          ]
+        },
+        {
+          "sum": [
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/flood/4.16.4-qbittorrent/transfer/torrents.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/flood/4.16.4-qbittorrent/transfer/torrents.json"
+            },
+            {
+              "recorded": 163360,
+              "unit": "B/s",
+              "file": "test/fixtures/flood/4.16.4-qbittorrent/transfer/torrents.json"
+            }
+          ]
+        },
+        {
+          "sum": [
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 104230000,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            }
+          ]
+        },
+        {
+          "sum": [
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/hadouken/5.2.0/transfer/list.json"
+            },
+            {
+              "recorded": 237124,
+              "unit": "B/s",
+              "file": "test/fixtures/hadouken/5.2.0/transfer/list.json"
+            }
+          ]
+        },
+        {
+          "recorded": 1021506,
+          "unit": "B/s",
+          "file": "test/fixtures/jdownloader/48637/limited/toolbar-get-status.json"
+        },
+        {
+          "recorded": 1021506,
+          "unit": "B/s",
+          "file": "test/fixtures/jdownloader/48637/limited/toolbar-get-status.json"
+        },
+        {
+          "recorded": 1056066,
+          "unit": "B/s",
+          "file": "test/fixtures/nzbget/26.3/transfer/status.json"
+        },
+        {
+          "recorded": 2500000,
+          "unit": "B/s",
+          "file": "test/fixtures/nzbvortex/doc-1.7/queue/list.json"
+        },
+        {
+          "recorded": 1371952,
+          "unit": "B/s",
+          "file": "test/fixtures/pyload/0.5.0/running/status-server.json"
+        },
+        {
+          "recorded": 1334641,
+          "unit": "B/s",
+          "file": "test/fixtures/qbittorrent/5.2.3/transfer/maindata.json"
+        },
+        {
+          "recorded": 0.19062232971191406,
+          "unit": "MiB/s",
+          "file": "test/fixtures/rqbit/9.1.0/transfer/stats.json"
+        },
+        {
+          "recorded": 328771,
+          "unit": "B/s",
+          "file": "test/fixtures/rtorrent/0.16.25/transfer/poll.json"
+        },
+        {
+          "recorded": 1300.33,
+          "unit": "KiB/s",
+          "file": "test/fixtures/sabnzbd/5.1.3/transfer/queue.json"
+        },
+        {
+          "recorded": 196608,
+          "unit": "B/s",
+          "file": "test/fixtures/transmission/4.1.3/transfer/session-stats.json"
+        },
+        {
+          "sum": [
+            {
+              "recorded": 21180,
+              "unit": "B/s",
+              "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+            },
+            {
+              "recorded": 21173,
+              "unit": "B/s",
+              "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+            }
+          ]
+        },
+        {
+          "recorded": 428,
+          "unit": "B/s",
+          "file": "test/fixtures/utorrent/3.3.0.30470/running/list.json"
+        },
+        {
+          "recorded": 219731,
+          "unit": "B/s",
+          "file": "test/fixtures/vuze/5.7.6.0-xmwebui-0.6.5/transfer/session-stats.json"
+        }
+      ]
+    }
+  },
+  "summary.uploadSpeed": {
+    "id": "summary.uploadSpeed",
+    "computed": {
+      "sum": [
+        {
+          "recorded": 128881,
+          "unit": "B/s",
+          "file": "test/fixtures/aria2/1.37.0/transfer/global-stat.json"
+        },
+        {
+          "recorded": 1081813,
+          "unit": "B/s",
+          "file": "test/fixtures/deluge/2.2.0/transfer/update-ui.json"
+        },
+        {
+          "sum": [
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/downloadstation/4.1-5012/running/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/downloadstation/synodl/transfer/list.json"
+            },
+            {
+              "recorded": 83923,
+              "unit": "B/s",
+              "file": "test/fixtures/downloadstation/synodl/transfer/list.json"
+            },
+            {
+              "recorded": 923,
+              "unit": "B/s",
+              "file": "test/fixtures/downloadstation/synodl/transfer/list.json"
+            }
+          ]
+        },
+        {
+          "sum": [
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/flood/4.16.4-qbittorrent/transfer/torrents.json"
+            },
+            {
+              "recorded": 175478,
+              "unit": "B/s",
+              "file": "test/fixtures/flood/4.16.4-qbittorrent/transfer/torrents.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/flood/4.16.4-qbittorrent/transfer/torrents.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/flood/4.16.4-qbittorrent/transfer/torrents.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/flood/4.16.4-qbittorrent/transfer/torrents.json"
+            }
+          ]
+        },
+        {
+          "sum": [
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            },
+            {
+              "recorded": 132600,
+              "unit": "B/s",
+              "file": "test/fixtures/freebox/v8/queue/list.json"
+            }
+          ]
+        },
+        {
+          "sum": [
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/hadouken/5.2.0/transfer/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/hadouken/5.2.0/transfer/list.json"
+            },
+            {
+              "recorded": 6408,
+              "unit": "B/s",
+              "file": "test/fixtures/hadouken/5.2.0/transfer/list.json"
+            },
+            {
+              "recorded": 169473,
+              "unit": "B/s",
+              "file": "test/fixtures/hadouken/5.2.0/transfer/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/hadouken/5.2.0/transfer/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/hadouken/5.2.0/transfer/list.json"
+            }
+          ]
+        },
+        {
+          "recorded": 320994,
+          "unit": "B/s",
+          "file": "test/fixtures/qbittorrent/5.2.3/transfer/maindata.json"
+        },
+        {
+          "recorded": 0.8874902725219727,
+          "unit": "MiB/s",
+          "file": "test/fixtures/rqbit/9.1.0/transfer/stats.json"
+        },
+        {
+          "recorded": 197150,
+          "unit": "B/s",
+          "file": "test/fixtures/rtorrent/0.16.25/transfer/poll.json"
+        },
+        {
+          "recorded": 705071,
+          "unit": "B/s",
+          "file": "test/fixtures/transmission/4.1.3/transfer/session-stats.json"
+        },
+        {
+          "sum": [
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+            },
+            {
+              "recorded": 44889,
+              "unit": "B/s",
+              "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+            }
+          ]
+        },
+        {
+          "sum": [
+            {
+              "recorded": 32,
+              "unit": "B/s",
+              "file": "test/fixtures/utorrent/3.3.0.30470/running/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/utorrent/3.3.0.30470/running/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/utorrent/3.3.0.30470/running/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B/s",
+              "file": "test/fixtures/utorrent/3.3.0.30470/running/list.json"
+            }
+          ]
+        },
+        {
+          "recorded": 467347,
+          "unit": "B/s",
+          "file": "test/fixtures/vuze/5.7.6.0-xmwebui-0.6.5/transfer/session-stats.json"
+        }
+      ]
+    }
+  },
   "transmission-transmission.downloadSpeed": {
     "id": "transmission-transmission.downloadSpeed",
     "recorded": 196608,
     "unit": "B/s",
     "file": "test/fixtures/transmission/4.1.3/transfer/session-stats.json"
   },
+  "transmission-transmission.downloads.*.downloaded": {
+    "id": "transmission-transmission.downloads.3232883d.downloaded",
+    "computed": {
+      "difference": [
+        {
+          "recorded": 1073741824,
+          "unit": "B",
+          "file": "test/fixtures/transmission/4.1.3/transfer/torrent-get.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B",
+          "file": "test/fixtures/transmission/4.1.3/transfer/torrent-get.json"
+        }
+      ]
+    }
+  },
   "transmission-transmission.downloads.*.eta": {
     "id": "transmission-transmission.downloads.f810fabf.eta",
     "recorded": 210,
     "unit": "s",
     "file": "test/fixtures/transmission/4.1.3/transfer/torrent-get.json"
+  },
+  "transmission-transmission.downloads.*.progress": {
+    "id": "transmission-transmission.downloads.9d00ddf1.progress",
+    "computed": {
+      "quotient": [
+        {
+          "difference": [
+            {
+              "recorded": 2097152,
+              "unit": "B",
+              "file": "test/fixtures/transmission/4.1.3/transfer/torrent-get.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B",
+              "file": "test/fixtures/transmission/4.1.3/transfer/torrent-get.json"
+            }
+          ]
+        },
+        {
+          "recorded": 2097152,
+          "unit": "B",
+          "file": "test/fixtures/transmission/4.1.3/transfer/torrent-get.json"
+        }
+      ]
+    }
   },
   "transmission-transmission.downloads.*.size": {
     "id": "transmission-transmission.downloads.3232883d.size",
@@ -641,10 +2074,53 @@
     "unit": "B/s",
     "file": "test/fixtures/transmission/4.1.3/transfer/session-stats.json"
   },
+  "tribler-tribler.downloadSpeed": {
+    "id": "tribler-tribler.downloadSpeed",
+    "computed": {
+      "sum": [
+        {
+          "recorded": 21180,
+          "unit": "B/s",
+          "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+        },
+        {
+          "recorded": 21173,
+          "unit": "B/s",
+          "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+        }
+      ]
+    }
+  },
   "tribler-tribler.downloads.*.eta": {
     "id": "tribler-tribler.downloads.f810fabf.eta",
     "recorded": 1383.2170366285216,
     "unit": "s",
+    "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+  },
+  "tribler-tribler.downloads.*.progress": {
+    "id": "tribler-tribler.downloads.e94d3b30.progress",
+    "recorded": 0.34375,
+    "unit": "ratio",
     "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
   },
   "tribler-tribler.downloads.*.size": {
@@ -677,11 +2153,107 @@
     "unit": "B/s",
     "file": "test/fixtures/tribler/8.4.2/error/settings.json"
   },
+  "tribler-tribler.uploadSpeed": {
+    "id": "tribler-tribler.uploadSpeed",
+    "computed": {
+      "sum": [
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+        },
+        {
+          "recorded": 44889,
+          "unit": "B/s",
+          "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+        }
+      ]
+    }
+  },
+  "utorrent-utorrent.downloadSpeed": {
+    "id": "utorrent-utorrent.downloadSpeed",
+    "recorded": 428,
+    "unit": "B/s",
+    "file": "test/fixtures/utorrent/3.3.0.30470/running/list.json"
+  },
+  "utorrent-utorrent.downloads.*.downloaded": {
+    "id": "utorrent-utorrent.downloads.3232883d.downloaded",
+    "computed": {
+      "difference": [
+        {
+          "recorded": 1073741824,
+          "unit": "B",
+          "file": "test/fixtures/utorrent/3.3.0.30470/running/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B",
+          "file": "test/fixtures/utorrent/3.3.0.30470/running/list.json"
+        }
+      ]
+    }
+  },
   "utorrent-utorrent.downloads.*.eta": {
     "id": "utorrent-utorrent.downloads.f810fabf.eta",
     "recorded": 2097150,
     "unit": "s",
     "file": "test/fixtures/utorrent/3.3.0.30470/running/list.json"
+  },
+  "utorrent-utorrent.downloads.*.progress": {
+    "id": "utorrent-utorrent.downloads.9d00ddf1.progress",
+    "computed": {
+      "quotient": [
+        {
+          "difference": [
+            {
+              "recorded": 2097152,
+              "unit": "B",
+              "file": "test/fixtures/utorrent/3.3.0.30470/running/list.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B",
+              "file": "test/fixtures/utorrent/3.3.0.30470/running/list.json"
+            }
+          ]
+        },
+        {
+          "recorded": 2097152,
+          "unit": "B",
+          "file": "test/fixtures/utorrent/3.3.0.30470/running/list.json"
+        }
+      ]
+    }
   },
   "utorrent-utorrent.downloads.*.size": {
     "id": "utorrent-utorrent.downloads.3232883d.size",
@@ -713,17 +2285,87 @@
     "unit": "KiB/s",
     "file": "test/fixtures/utorrent/3.3.0.30470/limited/getsettings.json"
   },
+  "utorrent-utorrent.uploadSpeed": {
+    "id": "utorrent-utorrent.uploadSpeed",
+    "computed": {
+      "sum": [
+        {
+          "recorded": 32,
+          "unit": "B/s",
+          "file": "test/fixtures/utorrent/3.3.0.30470/running/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/utorrent/3.3.0.30470/running/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/utorrent/3.3.0.30470/running/list.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B/s",
+          "file": "test/fixtures/utorrent/3.3.0.30470/running/list.json"
+        }
+      ]
+    }
+  },
   "vuze-vuze.downloadSpeed": {
     "id": "vuze-vuze.downloadSpeed",
     "recorded": 219731,
     "unit": "B/s",
     "file": "test/fixtures/vuze/5.7.6.0-xmwebui-0.6.5/transfer/session-stats.json"
   },
+  "vuze-vuze.downloads.*.downloaded": {
+    "id": "vuze-vuze.downloads.3232883d.downloaded",
+    "computed": {
+      "difference": [
+        {
+          "recorded": 1073741824,
+          "unit": "B",
+          "file": "test/fixtures/vuze/5.7.6.0-xmwebui-0.6.5/transfer/torrent-get.json"
+        },
+        {
+          "recorded": 0,
+          "unit": "B",
+          "file": "test/fixtures/vuze/5.7.6.0-xmwebui-0.6.5/transfer/torrent-get.json"
+        }
+      ]
+    }
+  },
   "vuze-vuze.downloads.*.eta": {
     "id": "vuze-vuze.downloads.f810fabf.eta",
     "recorded": 176,
     "unit": "s",
     "file": "test/fixtures/vuze/5.7.6.0-xmwebui-0.6.5/transfer/torrent-get.json"
+  },
+  "vuze-vuze.downloads.*.progress": {
+    "id": "vuze-vuze.downloads.9d00ddf1.progress",
+    "computed": {
+      "quotient": [
+        {
+          "difference": [
+            {
+              "recorded": 2097152,
+              "unit": "B",
+              "file": "test/fixtures/vuze/5.7.6.0-xmwebui-0.6.5/transfer/torrent-get.json"
+            },
+            {
+              "recorded": 0,
+              "unit": "B",
+              "file": "test/fixtures/vuze/5.7.6.0-xmwebui-0.6.5/transfer/torrent-get.json"
+            }
+          ]
+        },
+        {
+          "recorded": 2097152,
+          "unit": "B",
+          "file": "test/fixtures/vuze/5.7.6.0-xmwebui-0.6.5/transfer/torrent-get.json"
+        }
+      ]
+    }
   },
   "vuze-vuze.downloads.*.size": {
     "id": "vuze-vuze.downloads.3232883d.size",

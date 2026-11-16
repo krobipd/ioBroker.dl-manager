@@ -148,17 +148,19 @@ const API_LIMITS = path.join(ADAPTER_DIR, "src", "lib", "api-limits.json");
 // Round 101 (krobi 2026-10-07 15:54, GV-13 as the fleet rule: never `ack: true` unless the device confirmed): how long
 // after the last command the suite waits — no counterpart answers in that time, so no command may be confirmed.
 const COMMAND_WINDOW_MS = 30000;
-// Round 87 (krobi 2026-10-03 00:27, 11:38): the address the user picks in the instance settings (since round 180 a
-// jsonConfig `selectSendTo` with `command: "networkAddresses"`, before `type: "ip"`) is the only one the adapter listens,
-// sends and connects on — the cloud included; one the host does not carry falls back
+// Round 87 (krobi 2026-10-03 00:27, 11:38): the address the user picks in the instance settings (jsonConfig `type: "ip"`)
+// is the only one the adapter listens, sends and connects on — the cloud included; one the host does not carry falls back
 // to every address with exactly one warning. ADDRESS_KEY is the native key of that field, undefined where the adapter
-// offers no choice; CHOSEN_ADDRESS the first non-internal IPv4 of this machine (loopback is internal — several adapters
-// treat it as missing); MISSING_ADDRESS one no machine carries (TEST-NET-1, RFC 5737).
+// offers no choice; CHOSEN_ADDRESS is 127.0.0.1 — every machine carries it and no adapter takes it by itself, and a chosen
+// address the host carries is the only one, loopback included (round 182; until then the first non-internal IPv4, which
+// an adapter without a choice takes too); LAN_ADDRESS the first non-internal IPv4 of this machine — in a suite without a
+// chosen address where a fixture reaches the adapter like a device of the network, in the suite "chosen network address"
+// where a client of another network asks from; MISSING_ADDRESS one no machine carries (TEST-NET-1, RFC 5737).
 const ADDRESS_KEY = (() => {
   const file = path.join(ADAPTER_DIR, "admin", "jsonConfig.json");
   const find = node => {
     for (const [key, value] of Object.entries(node?.items ?? {})) {
-      if (value?.type === "ip" || (value?.type === "selectSendTo" && value.command === "networkAddresses")) {
+      if (value?.type === "ip") {
         return key;
       }
       const inner = find(value);
@@ -170,7 +172,8 @@ const ADDRESS_KEY = (() => {
   };
   return fs.existsSync(file) ? find(JSON.parse(fs.readFileSync(file, "utf8"))) : undefined;
 })();
-const CHOSEN_ADDRESS = Object.values(require("node:os").networkInterfaces())
+const CHOSEN_ADDRESS = "127.0.0.1";
+const LAN_ADDRESS = Object.values(require("node:os").networkInterfaces())
   .flatMap(list => list ?? [])
   .find(i => i.family === "IPv4" && !i.internal)?.address;
 const MISSING_ADDRESS = "192.0.2.1";
@@ -1781,8 +1784,9 @@ function offTheAddress(use, address) {
 
 /**
  * Round 87 (krobi 2026-10-02 23:52, F-05 of fakeroku as the fleet rule): a client from another network gets no answer —
- * every server and UDP port the adapter opened on `address` is asked once from 127.0.0.1. A TCP reply counts unless it is
- * an HTTP status of 400 or above; any UDP reply counts.
+ * every server and UDP port the adapter opened on `address` is asked once from LAN_ADDRESS (round 182: the chosen
+ * address is 127.0.0.1, the machine's address in another network asks). A TCP reply counts unless it is an HTTP status of
+ * 400 or above; any UDP reply counts.
  *
  * @param {object[]} use the records (networkUse)
  * @param {string} address the chosen address
@@ -1795,7 +1799,7 @@ async function askFromAnotherNetwork(use, address) {
       asked.add(`tcp ${r.port}`);
       const reply = await new Promise(resolve => {
         let data = "";
-        const socket = require("node:net").connect({ host: address, port: r.port, localAddress: "127.0.0.1" });
+        const socket = require("node:net").connect({ host: address, port: r.port, localAddress: LAN_ADDRESS });
         const wait = setTimeout(() => socket.destroy(), 1500);
         socket.on("connect", () => socket.write("GET / HTTP/1.0\r\n\r\n"));
         socket.on("data", d => (data += d));
@@ -1807,7 +1811,7 @@ async function askFromAnotherNetwork(use, address) {
       });
       const status = /^HTTP\/\d(?:\.\d)? (\d{3})/.exec(reply);
       if (reply && !(status && Number(status[1]) >= 400)) {
-        answered.push(`TCP ${address}:${r.port} answered a client from 127.0.0.1`);
+        answered.push(`TCP ${address}:${r.port} answered a client from ${LAN_ADDRESS}`);
       }
     }
     if (r.kind === "bind" && r.port && !asked.has(`udp ${r.port}`)) {
@@ -1823,7 +1827,7 @@ async function askFromAnotherNetwork(use, address) {
           socket.close();
           resolve(true);
         });
-        socket.bind(0, "127.0.0.1", () =>
+        socket.bind(0, LAN_ADDRESS, () =>
           socket.send(
             'M-SEARCH * HTTP/1.1\r\nHOST: 239.255.255.250:1900\r\nMAN: "ssdp:discover"\r\nMX: 1\r\nST: ssdp:all\r\n\r\n',
             r.port,
@@ -1832,7 +1836,7 @@ async function askFromAnotherNetwork(use, address) {
         );
       });
       if (reply) {
-        answered.push(`UDP ${address}:${r.port} answered a sender from 127.0.0.1`);
+        answered.push(`UDP ${address}:${r.port} answered a sender from ${LAN_ADDRESS}`);
       }
     }
   }
@@ -2520,7 +2524,10 @@ tests.integration(ADAPTER_DIR, {
         let strangers;
         before(async function () {
           this.timeout(180000);
-          assert.ok(CHOSEN_ADDRESS, "this machine carries no non-internal IPv4 address to choose");
+          assert.ok(
+            LAN_ADDRESS,
+            "this machine carries no non-internal IPv4 address a client of another network asks from",
+          );
           harness = getHarness();
           clearInstanceData(harness);
           const seen = networkFiles();
