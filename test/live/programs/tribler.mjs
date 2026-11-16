@@ -14,6 +14,7 @@ import {
   Http,
   makeTorrent,
   payload,
+  peer,
   prepareTorrents,
   Recorder,
   torrentOf,
@@ -34,7 +35,7 @@ const DEFAULT_MAGNET = `magnet:?xt=urn:btih:${DEFAULT_MAGNET_HASH}&dn=default-ho
 /**
  * One download of `GET /api/downloads` as far as the recorder reads it.
  *
- * @typedef {{ infohash: string, status: string, progress: number, speed_down: number, size: number }} TrDownload
+ * @typedef {{ infohash: string, status: string, progress: number, speed_down: number, speed_up?: number, size: number, safe_seeding?: boolean }} TrDownload
  */
 
 /**
@@ -71,6 +72,7 @@ export function prepare(work, tag) {
       `${join(work, "ro")}:${READ_ONLY}:ro`,
       `${resolve("test/live/programs")}:/live:ro`,
     ],
+    sidecars: [peer(work)],
   };
 }
 
@@ -110,9 +112,12 @@ export async function record(ctx) {
   const list = async () => /** @type {{ downloads: TrDownload[] }} */ ((await get("/api/downloads")).json()).downloads;
   const find = async h => (await list()).find(d => d.infohash === h);
   const statusOf = async h => (await find(h))?.status;
+  /** @type {(state: string) => Promise<TrDownload[]>} records one state, returns the downloads it recorded */
   const snapshot = async state => {
-    w(state, "downloads", "GET /api/downloads", await get("/api/downloads"));
+    const downloads = await get("/api/downloads");
+    w(state, "downloads", "GET /api/downloads", downloads);
     w(state, "settings", "GET /api/settings", await get("/api/settings"));
+    return /** @type {{ downloads?: TrDownload[] }} */ (downloads.json()).downloads ?? [];
   };
   /**
    * Waits until every named download of the recorder has its status; a timeout names what was seen last.
@@ -261,6 +266,35 @@ export async function record(ctx) {
     console.log(`tribler: ${err.message} — recorded as it is`),
   );
   await snapshot("error");
+
+  // transfer: the error state while the peer leeches `check` (through the seed server's tracker) and `big` still loads
+  // — every status of `error` and a speed in both directions. The upload stays under the 50 KiB/s limit; the adapter
+  // keeps three significant digits, so any speed above 0 tells its unit. A download that seeds safely goes over a
+  // tunnel hop, which this network does not have: 8.0.7 seeds every download that way (see the head of this file).
+  if ((await find(hash("check")))?.safe_seeding) {
+    console.log("tribler: check seeds safely (over a hop) — the peer cannot reach it, no transfer state");
+  } else {
+    let samples = 0;
+    await waitFor(
+      "transfer recorded",
+      async () => {
+        const all = await snapshot("transfer");
+        const big = all.find(d => d.infohash === hash("big"));
+        const check = all.find(d => d.infohash === hash("check"));
+        console.log(
+          `tribler transfer sample ${++samples}: big ${big?.status}/${big?.speed_down} check ${check?.status}/${check?.speed_up}`,
+        );
+        return (
+          big?.status === "DOWNLOADING" &&
+          (big.speed_down ?? 0) > 0 &&
+          check?.status === "SEEDING" &&
+          (check.speed_up ?? 0) > 0
+        );
+      },
+      180_000,
+      1000,
+    );
+  }
 
   // what the adapter's emulated pause stops and resumes: a download, a seed, a hash check and a magnet — the stops go
   // out right after the recheck: Tribler checks the 1 GiB of zeros within a second, no poll caught it running (run

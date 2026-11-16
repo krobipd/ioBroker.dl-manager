@@ -5,7 +5,18 @@
 import { lookup } from "node:dns/promises";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { DEAD_MAGNET, Http, prepareTorrents, Recorder, torrentOf, waitFor } from "../lib.mjs";
+import {
+  DEAD_MAGNET,
+  Http,
+  peer as leecher,
+  prepareTorrents,
+  Recorder,
+  TRANSFER_LIMIT_DOWN,
+  TRANSFER_LIMIT_UP,
+  TRANSFER_MIN,
+  torrentOf,
+  waitFor,
+} from "../lib.mjs";
 
 const USER = "admin";
 const PASS = "testpass1";
@@ -14,6 +25,8 @@ const DOWNLOADS = "/home/rqbit/downloads";
 const READ_ONLY = "/ro";
 /** The seeder's upload limit: 1 MiB/s keeps the 32 MiB download running for half a minute. */
 const SEED_BPS = 1024 * 1024;
+/** rqbit's `mbps` is MiB per second (its `human_readable` says "MiB/s"). */
+const MIB = 1024 * 1024;
 
 /**
  * One torrent of `GET /torrents?with_stats=true` as far as the recorder reads it.
@@ -37,7 +50,10 @@ export function prepare(work, tag) {
     name: "rq",
     env: { RQBIT_HTTP_BASIC_AUTH_USERPASS: `${USER}:${PASS}` },
     volumes: [`${join(work, "downloads")}:${DOWNLOADS}`, `${join(work, "ro")}:${READ_ONLY}:ro`],
-    sidecars: [{ name: "rqseed", image, volumes: [`${join(work, "seed")}:/seed`], args: ["server", "start", "/seed"] }],
+    sidecars: [
+      { name: "rqseed", image, volumes: [`${join(work, "seed")}:/seed`], args: ["server", "start", "/seed"] },
+      leecher(work),
+    ],
   };
 }
 
@@ -78,7 +94,8 @@ export async function record(ctx) {
       throw new Error(`seeder refused ${name}: ${res.status} ${res.text.slice(0, 200)}`);
     }
   }
-  await seed.req("POST", "/torrents/limits", { json: { upload_bps: SEED_BPS, download_bps: null } });
+  // until `transfer` is recorded the seeder sends at the transfer limit — rqbit 8.1.1 has no readable limits of its own
+  await seed.req("POST", "/torrents/limits", { json: { upload_bps: TRANSFER_LIMIT_DOWN, download_bps: null } });
   /**
    * @param {Http} http one of the two rqbit instances
    * @returns {Promise<RqTorrent[]>} its torrents with their stats
@@ -94,10 +111,19 @@ export async function record(ctx) {
   const list = () => torrentsOf(rq);
   const find = async h => (await list()).find(t => t.info_hash === h);
   const hash = name => torrentOf(ctx.work, name).hash;
+  /** @typedef {{ mbps?: number }} RqSpeed a speed of rqbit */
+  /** @typedef {{ info_hash: string, stats?: { state?: string, finished?: boolean, live?: { download_speed?: RqSpeed, upload_speed?: RqSpeed, time_remaining?: { duration?: { secs?: number } } | null } | null } }} RqLive a torrent with its live stats */
+  /** @type {(state: string) => Promise<{ torrents: RqLive[], stats: { download_speed?: RqSpeed, upload_speed?: RqSpeed } }>} records one state, returns what it recorded */
   const snapshot = async state => {
-    w(state, "torrents", "GET /torrents?with_stats=true", await get("/torrents?with_stats=true"));
-    w(state, "stats", "GET /stats", await get("/stats"));
+    const torrents = await get("/torrents?with_stats=true");
+    w(state, "torrents", "GET /torrents?with_stats=true", torrents);
+    const stats = await get("/stats");
+    w(state, "stats", "GET /stats", stats);
     w(state, "limits", "GET /torrents/limits", await get("/torrents/limits"));
+    return {
+      torrents: /** @type {{ torrents?: RqLive[] }} */ (torrents.json()).torrents ?? [],
+      stats: /** @type {{ download_speed?: RqSpeed, upload_speed?: RqSpeed }} */ (stats.json()),
+    };
   };
   const add = (name, peers) =>
     post(
@@ -106,6 +132,8 @@ export async function record(ctx) {
     );
 
   await snapshot("empty");
+  // the limits of `transfer` (B/s), set before `big` starts — it still loads when the peer leeches `check`
+  await post("/torrents/limits", { json: { download_bps: TRANSFER_LIMIT_DOWN, upload_bps: TRANSFER_LIMIT_UP } });
   w(
     "commands",
     "torrents-post-file",
@@ -155,6 +183,40 @@ export async function record(ctx) {
     180_000,
   );
   await snapshot("running");
+
+  // transfer: the running state while the peer leeches `check` (through the seed server's tracker) and `big` still
+  // loads — every speed the fixture hook plays tells its unit (≥ TRANSFER_MIN), `big` has a time left; the state is
+  // recorded until the recorded answers carry that
+  let samples = 0;
+  await waitFor(
+    "transfer recorded",
+    async () => {
+      const shot = await snapshot("transfer");
+      const big = shot.torrents.find(t => t.info_hash === hash("big"))?.stats;
+      const check = shot.torrents.find(t => t.info_hash === hash("check"))?.stats;
+      const bigDown = (big?.live?.download_speed?.mbps ?? 0) * MIB;
+      const checkUp = (check?.live?.upload_speed?.mbps ?? 0) * MIB;
+      const left = big?.live?.time_remaining?.duration?.secs ?? 0;
+      const down = (shot.stats.download_speed?.mbps ?? 0) * MIB;
+      const up = (shot.stats.upload_speed?.mbps ?? 0) * MIB;
+      console.log(
+        `rqbit transfer sample ${++samples}: big ${big?.state}/${Math.round(bigDown)}/${left} check ${check?.state}/${Math.round(checkUp)} session ${Math.round(down)}/${Math.round(up)}`,
+      );
+      return (
+        big?.state === "live" &&
+        !big.finished &&
+        bigDown >= TRANSFER_MIN &&
+        left > 0 &&
+        checkUp >= TRANSFER_MIN &&
+        down >= TRANSFER_MIN &&
+        up >= TRANSFER_MIN
+      );
+    },
+    180_000,
+    1000,
+  );
+  await post("/torrents/limits", { json: { download_bps: null, upload_bps: null } });
+  await seed.req("POST", "/torrents/limits", { json: { upload_bps: SEED_BPS, download_bps: null } });
 
   // a magnet nobody seeds: rqbit resolves the metadata inside the POST (up to 600 s) — what the list shows meanwhile;
   // the recorder's own deadline ends the POST, so its "answer" is no recording

@@ -18,6 +18,11 @@ import {
 } from "../lib.mjs";
 
 const SECRET = "testsecret1";
+/**
+ * The most a speed of `transfer` can really be: the seed server sends 1 MiB/s, the peer loads at most 600 KiB/s. aria2
+ * shows a download's speed of its first second far above it (run 43856921553: 638785000 B/s, upload 32768000 B/s).
+ */
+const PLAUSIBLE = 1024 * 1024;
 
 /**
  * Runner side.
@@ -155,12 +160,13 @@ export async function record(ctx) {
       console.log(
         `aria2 transfer sample ${++samples}: big ${b?.status}/${b?.downloadSpeed} check ${c?.status}/${c?.uploadSpeed} queued ${shot.waiting.some(e => e.gid === queued) ? "waiting" : "-"} global ${shot.stat.downloadSpeed}/${shot.stat.uploadSpeed}`,
       );
+      const real = v => Number(v ?? 0) >= TRANSFER_MIN && Number(v) <= PLAUSIBLE;
       return (
-        Number(b?.downloadSpeed ?? 0) >= TRANSFER_MIN &&
-        Number(c?.uploadSpeed ?? 0) >= TRANSFER_MIN &&
+        real(b?.downloadSpeed) &&
+        real(c?.uploadSpeed) &&
         shot.waiting.some(e => e.gid === queued) &&
-        Number(shot.stat.downloadSpeed ?? 0) >= TRANSFER_MIN &&
-        Number(shot.stat.uploadSpeed ?? 0) >= TRANSFER_MIN
+        real(shot.stat.downloadSpeed) &&
+        real(shot.stat.uploadSpeed)
       );
     },
     180_000,
@@ -168,7 +174,13 @@ export async function record(ctx) {
   );
   // back to the state before: `check` gone without a trace, one place, no limit
   await rpc("aria2.forceRemove", [check]);
-  await waitFor("check removed", async () => (await status(check)) === "removed");
+  // like `doomed` below: tellStatus says "removed" or no longer knows the GID
+  await waitFor("check removed", async () => {
+    const answer = /** @type {{ result?: { status?: string }, error?: unknown }} */ (
+      (await rpc("aria2.tellStatus", [check, ["status"]])).json()
+    );
+    return answer.result?.status === "removed" || Boolean(answer.error);
+  });
   await rpc("aria2.removeDownloadResult", [check]);
   await rpc("aria2.changeGlobalOption", [
     { "max-concurrent-downloads": "1", "max-overall-download-limit": "0", "max-overall-upload-limit": "0" },
