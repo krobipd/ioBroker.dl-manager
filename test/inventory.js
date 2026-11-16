@@ -148,8 +148,9 @@ const API_LIMITS = path.join(ADAPTER_DIR, "src", "lib", "api-limits.json");
 // Round 101 (krobi 2026-10-07 15:54, GV-13 as the fleet rule: never `ack: true` unless the device confirmed): how long
 // after the last command the suite waits — no counterpart answers in that time, so no command may be confirmed.
 const COMMAND_WINDOW_MS = 30000;
-// Round 87 (krobi 2026-10-03 00:27, 11:38): the address the user picks in the instance settings (jsonConfig `type: "ip"`)
-// is the only one the adapter listens, sends and connects on — the cloud included; one the host does not carry falls back
+// Round 87 (krobi 2026-10-03 00:27, 11:38): the address the user picks in the instance settings (since round 180 a
+// jsonConfig `selectSendTo` with `command: "networkAddresses"`, before `type: "ip"`) is the only one the adapter listens,
+// sends and connects on — the cloud included; one the host does not carry falls back
 // to every address with exactly one warning. ADDRESS_KEY is the native key of that field, undefined where the adapter
 // offers no choice; CHOSEN_ADDRESS the first non-internal IPv4 of this machine (loopback is internal — several adapters
 // treat it as missing); MISSING_ADDRESS one no machine carries (TEST-NET-1, RFC 5737).
@@ -157,7 +158,7 @@ const ADDRESS_KEY = (() => {
   const file = path.join(ADAPTER_DIR, "admin", "jsonConfig.json");
   const find = node => {
     for (const [key, value] of Object.entries(node?.items ?? {})) {
-      if (value?.type === "ip") {
+      if (value?.type === "ip" || (value?.type === "selectSendTo" && value.command === "networkAddresses")) {
         return key;
       }
       const inner = find(value);
