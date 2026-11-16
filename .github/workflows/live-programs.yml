@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       program:
-        description: "Record only this program (empty: every program)"
+        description: "Record only these programs, comma-separated without spaces (empty: every program)"
         required: false
         default: ""
   push:
@@ -95,9 +95,10 @@ jobs:
           # Hadouken 5.2.0 (libtorrent 1.0.5) built from its tag in mediadepot/hadouken, pinned by digest in the module
           - program: hadouken
             tag: 5.2.0
-    # a manual start may name one program; the other matrix entries then skip every step
+    # a manual start may name programs (the runs of one ref cancel each other — one start for several programs); the
+    # other matrix entries then skip every step
     env:
-      SELECTED: ${{ inputs.program == '' || inputs.program == matrix.program }}
+      SELECTED: ${{ inputs.program == '' || contains(format(',{0},', inputs.program), format(',{0},', matrix.program)) }}
     steps:
       - uses: actions/checkout@v7
         if: env.SELECTED == 'true'
