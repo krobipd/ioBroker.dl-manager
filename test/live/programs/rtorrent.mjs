@@ -203,6 +203,14 @@ export function prepare(work, tag) {
     }
   }
   mkdirSync(join(work, "passwd"), { recursive: true });
+  // the peer's own log of its messages (interested, choke, request), read when `check` does not upload
+  mkdirSync(join(work, "peerlog"), { recursive: true, mode: 0o777 });
+  const leech = /** @type {{ volumes: string[], args: string[] }} */ (leecher(work));
+  leech.volumes.push(`${join(work, "peerlog")}:/peerlog`);
+  leech.args[2] = leech.args[2].replace(
+    " /torrents/check.torrent",
+    " --log=/peerlog/aria2.log --log-level=debug /torrents/check.torrent",
+  );
   // nginx reads RFC 2307 `{PLAIN}` entries (ngx_http_auth_basic_module) — a test password needs no hash
   writeFileSync(join(work, "passwd", "rpc.htpasswd"), `${USER}:{PLAIN}${PASS}\n`);
   return {
@@ -211,7 +219,7 @@ export function prepare(work, tag) {
     volumes: [`${join(work, "downloads")}:${DOWNLOADS}`, `${join(work, "passwd")}:/passwd`],
     sidecars: [
       { name: "rqseed", image: SEEDER, volumes: [`${join(work, "seed")}:/seed`], args: ["server", "start", "/seed"] },
-      leecher(work),
+      leech,
     ],
   };
 }
@@ -307,7 +315,14 @@ export async function record(ctx) {
   await rpc("log.open_file", "", "dbg", `${DOWNLOADS}/${RT_LOG}`).catch(err =>
     console.log(`rtorrent: log: ${err.message}`),
   );
-  for (const group of ["connection_debug", "peer_debug", "torrent_debug", "info"]) {
+  for (const group of [
+    "connection_debug",
+    "peer_debug",
+    "torrent_debug",
+    "info",
+    "peer_choke_queue",
+    "peer_list_events",
+  ]) {
     await rpc("log.add_output", "", group, "dbg").catch(err => console.log(`rtorrent: log ${group}: ${err.message}`));
   }
 
@@ -606,14 +621,27 @@ export async function record(ctx) {
       ["max uploads", () => rpc("throttle.max_uploads", "")],
       ["max uploads global", () => rpc("throttle.max_uploads.global", "")],
       ["choke groups", () => rpc("choke_group.list", "")],
-      ["seed group up max", () => rpc("choke_group.up.max", "", "default_seed")],
-      ["seed group heuristics", () => rpc("choke_group.up.heuristics", "", "default_seed")],
+      ["group up max", () => rpc("choke_group.up.max", "", "default")],
+      ["group up heuristics", () => rpc("choke_group.up.heuristics", "", "default")],
     ])) {
       console.log(`rtorrent: ${label} ${JSON.stringify(await call().catch(e => e.message))}`);
     }
     const log = join(ctx.work, "downloads", RT_LOG);
+    const lines = existsSync(log) ? readFileSync(log, "utf8").split("\n") : [];
     console.log(
-      `---- rtorrent debug log ----\n${existsSync(log) ? readFileSync(log, "utf8").split("\n").slice(-200).join("\n") : "(none)"}`,
+      `---- rtorrent debug log (choke queue) ----\n${lines
+        .filter(l => /cycle|choke|unchok|queued/i.test(l))
+        .slice(-80)
+        .join("\n")}`,
+    );
+    console.log(`---- rtorrent debug log ----\n${lines.slice(-120).join("\n")}`);
+    const peerLog = join(ctx.work, "peerlog", "aria2.log");
+    const wire = existsSync(peerLog) ? readFileSync(peerLog, "utf8").split("\n") : ["(none)"];
+    console.log(
+      `---- peer log (messages) ----\n${wire
+        .filter(l => /INTERESTED|CHOKE|REQUEST|BITFIELD|HAVE|handshake|EXTENDED|PIECE|Drop|close|error/i.test(l))
+        .slice(-120)
+        .join("\n")}`,
     );
     throw err;
   });
