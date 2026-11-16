@@ -11,7 +11,8 @@
 // 7. It plays a counterpart that answers wrong — section 7 below (`fault`, round 124).
 // 8. It notes every address of this machine the adapter names to others — in a datagram, or in what a server of the
 //    adapter writes to a connection (SSDP location, an mDNS record, a description) — as an `advertise` line in <pid>.net
-//    (round 124, D17, krobi 2026-10-03 00:27: the advertised address is the chosen one).
+//    (round 124, D17, krobi 2026-10-03 00:27: the advertised address is the chosen one), with the interface it left
+//    through and what the fleet master of that process may announce (round 180: per interface only its own addresses).
 // The ioBroker databases (ports from the controller's own iobroker.json) are never cut nor recorded: they are the
 // platform, not the counterpart.
 // Fleet master (.consistency-master/test/network-hook.js) — never edit the copy in an adapter.
@@ -903,11 +904,11 @@ function cutServerEmit(event, ...args) {
       return false;
     }
     track(args[0], { host: args[0].remoteAddress, port: args[0].remotePort });
-    // section 8: what a server of the adapter writes to this connection
+    // section 8: what a server of the adapter writes to this connection, through the interface it was reached on
     const served = args[0];
     const write = served.write;
     served.write = function advertWrite(chunk, ...rest) {
-      noteAdvert("tcp", chunk);
+      noteAdvert("tcp", chunk, outward.get(String(canonical(served.localAddress))), false);
       return write.call(this, chunk, ...rest);
     };
   }
@@ -1120,33 +1121,152 @@ const setMulticastInterface = dgram.Socket.prototype.setMulticastInterface;
 /** @this {dgram.Socket} */
 function recordEgress(iface) {
   record({ kind: "egress", id: idOf(this), iface });
+  egressOf.set(this, iface);
   return setMulticastInterface.call(this, iface);
 }
 dgram.Socket.prototype.setMulticastInterface = recordEgress;
-// Section 8: the IPv4 literals of a payload that are an address of this machine, each recorded once per way.
-const ownAddresses = new Set(
-  Object.values(require("node:os").networkInterfaces())
-    .flatMap(list => list ?? [])
-    .filter(i => i.family === "IPv4")
-    .map(i => i.address),
-);
+// Section 8: the addresses of this machine a payload names — IPv4 literals, bracketed IPv6 literals and, in an mDNS
+// datagram, the A and AAAA records — each recorded once per way, address and the interface the payload left through.
+// Round 180 (R180-10, finding 74d84aa54d89; RFC 6762 §6.2, UPnP Device Architecture 2.0 §1.2.2): an announcement names
+// the addresses of the interface it goes out on; until then only IPv4 literals were read and no interface was noted.
+/** @type {WeakMap<object, string>} socket → the multicast interface it was given */
+const egressOf = new WeakMap();
+// one form per address: an IPv4 (also from its IPv4-mapped IPv6 form), an IPv6 compressed and lower case, no zone
+const canonical = at => {
+  if (typeof at !== "string") {
+    return undefined;
+  }
+  const bare = at.replace(/%.*$/, "");
+  const v4 = bare.replace(/^::ffff:/i, "");
+  if (net.isIPv4(v4)) {
+    return v4;
+  }
+  return net.isIPv6(bare) ? new URL(`http://[${bare}]/`).hostname.slice(1, -1) : undefined;
+};
+/** @type {Set<string>} every address of this machine, loopback included */
+const own = new Set();
+/** @type {Map<string, string>} an address of an interface that is no loopback → that interface */
+const outward = new Map();
+for (const [name, list] of Object.entries(require("node:os").networkInterfaces())) {
+  for (const i of list ?? []) {
+    own.add(String(canonical(i.address)));
+    if (!i.internal) {
+      outward.set(String(canonical(i.address)), name);
+    }
+  }
+}
+// the interface a datagram leaves through: the one its multicast interface names (an IPv6 zone or an own address),
+// else the one of the address the socket is bound to; a wildcard socket without one names none
+const leftThrough = socket => {
+  const egress = egressOf.get(socket);
+  if (typeof egress === "string") {
+    const zone = /%(.+)$/.exec(egress)?.[1];
+    return zone === undefined ? outward.get(String(canonical(egress))) : [...outward.values()].find(n => n === zone);
+  }
+  try {
+    return outward.get(String(canonical(socket.address().address)));
+  } catch {
+    return undefined;
+  }
+};
+// the A (type 1) and AAAA (type 28) records of a DNS message — the mDNS answer, authority and additional sections; a
+// name is skipped label by label (a pointer ends it), at most DNS_RECORDS_MAX records and DNS_HOPS_MAX labels each
+const DNS_RECORDS_MAX = 64;
+const DNS_HOPS_MAX = 128;
+const skipName = (buf, at) => {
+  let pos = at;
+  for (let hop = 0; hop < DNS_HOPS_MAX && pos < buf.length; hop++) {
+    const len = buf[pos];
+    if (len === 0) {
+      return pos + 1;
+    }
+    if (len >= 0xc0) {
+      return pos + 2;
+    }
+    pos += len + 1;
+  }
+  return buf.length + 1;
+};
+const dnsAddresses = buf => {
+  const out = [];
+  if (buf.length < 12) {
+    return out;
+  }
+  let pos = 12;
+  for (let q = 0; q < Math.min(buf.readUInt16BE(4), DNS_RECORDS_MAX); q++) {
+    pos = skipName(buf, pos) + 4;
+  }
+  const records = Math.min(buf.readUInt16BE(6) + buf.readUInt16BE(8) + buf.readUInt16BE(10), DNS_RECORDS_MAX);
+  for (let r = 0; r < records; r++) {
+    pos = skipName(buf, pos);
+    if (pos + 10 > buf.length || pos + 10 + buf.readUInt16BE(pos + 8) > buf.length) {
+      break;
+    }
+    const type = buf.readUInt16BE(pos);
+    const len = buf.readUInt16BE(pos + 8);
+    const data = buf.subarray(pos + 10, pos + 10 + len);
+    if (type === 1 && len === 4) {
+      out.push([...data].join("."));
+    } else if (type === 28 && len === 16) {
+      out.push(canonical(Array.from({ length: 8 }, (_, k) => data.readUInt16BE(2 * k).toString(16)).join(":")));
+    }
+    pos += 10 + len;
+  }
+  return out;
+};
+// Round 180 (R180-10): what an announcement may name is the fleet master's answer (src/lib/network-address.ts,
+// `announceableNets` over `localNets`) in the process that announces — the module as the adapter loaded it, found in
+// node's module cache inside the adapter's own tree; a process that names addresses of this machine without having
+// loaded it gets null, which D17 judges. Asked here, in the adapter's process: a suite that loaded the adapter's build
+// itself would load a module of the adapter into the test process for every adapter, the ones without the master included.
+// The adapter's own tree is its folder (`root`, where the harness starts it — itself inside the test installation's
+// node_modules), never a node_modules inside it: a dependency's copy and a module beside the adapter are no fleet master.
+const inOwnTree = file => {
+  const rel = path.relative(root, file).split(path.sep);
+  return rel[0] !== ".." && !rel.includes("node_modules");
+};
+const masterAnswer = () => {
+  for (const mod of Object.values(require.cache)) {
+    const exp = mod?.exports;
+    if (
+      mod &&
+      inOwnTree(mod.filename) &&
+      typeof exp?.announceableNets === "function" &&
+      typeof exp.localNets === "function"
+    ) {
+      try {
+        return exp.announceableNets(exp.localNets()).map(n => [canonical(n.address), n.iface]);
+      } catch {
+        return null;
+      }
+    }
+  }
+  return null;
+};
 const advertised = new Set();
-const noteAdvert = (via, chunk) => {
-  let text;
+const noteAdvert = (via, chunk, from, dns) => {
+  let raw;
   if (typeof chunk === "string") {
-    text = chunk;
+    raw = Buffer.from(chunk, "latin1");
   } else if (Buffer.isBuffer(chunk) || chunk instanceof Uint8Array) {
-    text = Buffer.from(chunk).subarray(0, 65536).toString("latin1");
+    raw = Buffer.from(chunk);
   } else if (Array.isArray(chunk)) {
-    text = chunk.map(c => (typeof c === "string" ? c : Buffer.from(c).toString("latin1"))).join("");
+    raw = Buffer.concat(chunk.map(c => (typeof c === "string" ? Buffer.from(c, "latin1") : Buffer.from(c))));
   } else {
     return;
   }
-  for (const m of text.matchAll(/(?<![\d.])(\d{1,3}(?:\.\d{1,3}){3})(?![\d.])/g)) {
-    const key = `${via} ${m[1]}`;
-    if (ownAddresses.has(m[1]) && !advertised.has(key)) {
+  raw = raw.subarray(0, 65536);
+  const text = raw.toString("latin1");
+  const named = [
+    ...[...text.matchAll(/(?<![\d.])(\d{1,3}(?:\.\d{1,3}){3})(?![\d.])/g)].map(m => m[1]),
+    ...[...text.matchAll(/\[([0-9A-Fa-f:.]{2,45})(?:%[^\]]{0,32})?\]/g)].map(m => canonical(m[1])),
+    ...(dns ? dnsAddresses(raw) : []),
+  ];
+  for (const address of named) {
+    const key = `${via} ${address} ${from}`;
+    if (own.has(String(address)) && !advertised.has(key)) {
       advertised.add(key);
-      record({ kind: "advertise", via, address: m[1] });
+      record({ kind: "advertise", via, address, from, announceable: masterAnswer() });
     }
   }
 };
@@ -1181,7 +1301,8 @@ function cutSend(...args) {
       this.once("close", () => sentFrom.set(from, Date.now()));
     }
   }
-  noteAdvert("udp", args[0]);
+  // an mDNS datagram (to port 5353, the group's port) carries its addresses as records
+  noteAdvert("udp", args[0], leftThrough(this), target.port === 5353);
   if (at !== -1 && !sentTo.has(key)) {
     sentTo.add(key);
     record({ kind: "send", id: idOf(this), host: target.host, port: target.port });
