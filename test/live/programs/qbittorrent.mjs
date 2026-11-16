@@ -124,11 +124,10 @@ export async function record(ctx) {
   const hash = name => torrentOf(ctx.work, name).hash;
   const stateOf = async name => (await torrents()).find(t => t.hash === hash(name))?.state;
 
-  // qBittorrent refreshes torrent states every 1.5 s by default — a recheck of 1 GiB ends between two refreshes; its
-  // limits pass over peers on the LAN by default (the seed server and the peer are) — `transfer` needs them to hold
-  await qb.req("POST", "/api/v2/app/setPreferences", {
-    form: { json: JSON.stringify({ refresh_interval: 50, limit_lan_peers: true }) },
-  });
+  // qBittorrent refreshes torrent states every 1.5 s by default — a recheck of 1 GiB ends between two refreshes
+  const refresh = ms =>
+    qb.req("POST", "/api/v2/app/setPreferences", { form: { json: JSON.stringify({ refresh_interval: ms }) } });
+  await refresh(50);
   await snapshot("empty");
 
   const add = async (name, extra = {}) => {
@@ -168,15 +167,18 @@ export async function record(ctx) {
 
   // transfer: the running state while the peer leeches `check` and `big` still loads — the fixture hook plays this
   // maindata alone, so the recorded answer itself carries every speed at a value that tells its unit (≥ TRANSFER_MIN),
-  // a time left and both limits; the snapshot repeats until it does (a web seed loads in bursts)
+  // a time left and both limits; the snapshot repeats until it does (a web seed loads in bursts). The session's rates
+  // are the byte counters' difference between two refreshes (sessionimpl.cpp handleSessionStatsAlert): at 50 ms most
+  // refreshes see no counter change and read 0 — the default 1.5 s for this state.
+  await refresh(1500);
   /** @typedef {{ state?: string, dlspeed?: number, upspeed?: number, eta?: number }} QbTorrent a torrent of maindata */
-  /** @typedef {{ dl_info_speed?: number, up_info_speed?: number, dl_rate_limit?: number, up_rate_limit?: number }} QbServer the server state */
+  /** @typedef {{ dl_info_speed?: number, up_info_speed?: number, up_info_data?: number, dl_rate_limit?: number, up_rate_limit?: number }} QbServer the server state */
   /** @type {(m: { torrents?: Record<string, QbTorrent>, server_state?: QbServer }) => string} */
   const transferOf = m => {
     const big = m.torrents?.[hash("big")];
     const check = m.torrents?.[hash("check")];
     const ss = m.server_state ?? {};
-    return `${big?.state}/${big?.dlspeed}/${big?.eta} ${check?.state}/${check?.upspeed} ${ss.dl_info_speed}/${ss.up_info_speed} ${ss.dl_rate_limit}/${ss.up_rate_limit}`;
+    return `big ${big?.state}/${big?.dlspeed}/${big?.eta} check ${check?.state}/${check?.upspeed} session ${ss.dl_info_speed}/${ss.up_info_speed} (${ss.up_info_data} up) limits ${ss.dl_rate_limit}/${ss.up_rate_limit}`;
   };
   /** @type {(m: { torrents?: Record<string, QbTorrent>, server_state?: QbServer }) => boolean} */
   const transferring = m => {
@@ -195,7 +197,7 @@ export async function record(ctx) {
       (ss.up_rate_limit ?? 0) > 0
     );
   };
-  const seenTransfer = [];
+  let samples = 0;
   await waitFor(
     "transfer recorded",
     async () => {
@@ -208,14 +210,13 @@ export async function record(ctx) {
           main = /** @type {typeof main} */ (res.json());
         }
       }
-      seenTransfer.push(transferOf(main));
+      console.log(`qbittorrent transfer sample ${++samples}: ${transferOf(main)}`);
       return transferring(main);
     },
     180_000,
     1000,
-  ).catch(err => {
-    throw new Error(`${err.message} — seen: ${seenTransfer.slice(-5).join(", ")}`);
-  });
+  );
+  await refresh(50);
   await qb.req("POST", "/api/v2/transfer/setDownloadLimit", { form: { limit: "0" } });
   await qb.req("POST", "/api/v2/transfer/setUploadLimit", { form: { limit: "0" } });
 
