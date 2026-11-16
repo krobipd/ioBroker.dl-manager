@@ -82,10 +82,13 @@ export async function record(ctx) {
   w("auth", "login-wrong", wrong);
   w("auth", "version", versionRes);
 
+  /** @type {(state: string) => Promise<{ DownloadRate?: number }>} records one state, returns the status it recorded */
   const snapshot = async state => {
     w(state, "listgroups", await rpc("listgroups", [0]));
     w(state, "history", await rpc("history", [false]));
-    w(state, "status", await rpc("status"));
+    const status = await rpc("status");
+    w(state, "status", status);
+    return /** @type {{ result?: { DownloadRate?: number } }} */ (status.json()).result ?? {};
   };
   const add = (name, paused = false) =>
     rpc("append", [
@@ -179,16 +182,19 @@ export async function record(ctx) {
   );
   await snapshot("running");
 
-  // transfer: the running state with bytes flowing — the rate tells its unit (≥ TRANSFER_MIN)
+  // transfer: the running state with bytes flowing — the rate tells its unit (≥ TRANSFER_MIN); the state is recorded
+  // until the recorded status itself carries such a rate
+  let samples = 0;
   await waitFor(
-    "big transferring",
+    "transfer recorded",
     async () => {
-      const st = /** @type {{ DownloadRate?: number }} */ (await result("status", []));
+      const st = await snapshot("transfer");
+      console.log(`nzbget transfer sample ${++samples}: DownloadRate ${st.DownloadRate}`);
       return (st.DownloadRate ?? 0) >= TRANSFER_MIN;
     },
     60_000,
+    1000,
   );
-  await snapshot("transfer");
 
   // single pause/resume
   w("commands", "editqueue-pause", await rpc("editqueue", ["GroupPause", "", [queuedId]]));

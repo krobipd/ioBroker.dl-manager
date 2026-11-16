@@ -79,10 +79,16 @@ export async function record(ctx) {
     ["history", "mode=history&limit=50"],
     ["status", "mode=status&skip_dashboard=1"],
   ];
+  /** @type {(state: string) => Promise<Record<string, unknown>>} records one state, returns the answers it recorded */
   const snapshot = async state => {
+    /** @type {Record<string, unknown>} */
+    const out = {};
     for (const [name, q] of READS) {
-      w(state, name, `GET /api?${q}&apikey=<api-key>`, await keyed(q));
+      const res = await keyed(q);
+      w(state, name, `GET /api?${q}&apikey=<api-key>`, res);
+      out[name] = res.json();
     }
+    return out;
   };
   const add = async (name, extra = "") => {
     const form = new FormData();
@@ -169,16 +175,20 @@ export async function record(ctx) {
   );
   await snapshot("running");
 
-  // transfer: the running state with bytes flowing — the speed tells its unit (≥ TRANSFER_MIN; kbpersec is KiB/s)
+  // transfer: the running state with bytes flowing — the speed tells its unit (≥ TRANSFER_MIN; kbpersec is KiB/s); the
+  // state is recorded until the recorded queue itself carries such a speed
+  let samples = 0;
   await waitFor(
-    "big transferring",
+    "transfer recorded",
     async () => {
-      const q = /** @type {{ queue: { kbpersec?: string } }} */ ((await keyed("mode=queue")).json()).queue;
+      const shot = await snapshot("transfer");
+      const q = /** @type {{ queue?: { kbpersec?: string } }} */ (shot.queue).queue ?? {};
+      console.log(`sabnzbd transfer sample ${++samples}: kbpersec ${q.kbpersec}`);
       return Number(q.kbpersec ?? 0) * 1024 >= TRANSFER_MIN;
     },
     60_000,
+    1000,
   );
-  await snapshot("transfer");
 
   // single pause/resume
   w(

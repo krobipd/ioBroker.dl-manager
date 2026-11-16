@@ -174,10 +174,13 @@ export async function record(ctx) {
 
   const torrentGet = () => rpc("torrent_get", { fields: FIELDS_NEW });
   const snapshot = async state => {
-    w(state, "torrent-get", await torrentGet());
+    const torrents = await torrentGet();
+    w(state, "torrent-get", torrents);
     w(state, "session-get", await rpc("session_get"));
-    w(state, "session-stats", await rpc("session_stats"));
+    const stats = await rpc("session_stats");
+    w(state, "session-stats", stats);
     w(state, "free-space", await rpc("free_space", { path: "/downloads" }));
+    return { torrents: resultOf(torrents).torrents ?? [], stats: resultOf(stats) };
   };
   const list = async () => resultOf(await torrentGet()).torrents;
   const hashKey = modern ? "hash_string" : "hashString";
@@ -220,17 +223,21 @@ export async function record(ctx) {
   await snapshot("running");
 
   // transfer: the running state while the peer leeches `check` and `big` still loads — every speed the fixture hook
-  // plays tells its unit (≥ TRANSFER_MIN), `big` has a time left
+  // plays tells its unit (≥ TRANSFER_MIN), `big` has a time left; the state is recorded until the recorded answer
+  // itself satisfies that (the rates move between two reads)
   const rateKey = modern ? ["rate_download", "rate_upload"] : ["rateDownload", "rateUpload"];
   const statsKey = modern ? ["download_speed", "upload_speed"] : ["downloadSpeed", "uploadSpeed"];
-  const seenTransfer = new Set();
+  let samples = 0;
   await waitFor(
-    "transfer under way",
+    "transfer recorded",
     async () => {
-      const big = await find(hash("big"));
-      const check = await find(hash("check"));
-      const st = resultOf(await rpc("session_stats"));
-      seenTransfer.add(`${big?.status}/${big?.[rateKey[0]]}/${big?.eta} ${check?.status}/${check?.[rateKey[1]]}`);
+      const shot = await snapshot("transfer");
+      const big = shot.torrents.find(t => t[hashKey] === hash("big"));
+      const check = shot.torrents.find(t => t[hashKey] === hash("check"));
+      const st = shot.stats ?? {};
+      console.log(
+        `transmission transfer sample ${++samples}: big ${big?.status}/${big?.[rateKey[0]]}/${big?.eta} check ${check?.status}/${check?.[rateKey[1]]} session ${st[statsKey[0]]}/${st[statsKey[1]]}`,
+      );
       return (
         big?.status === 4 &&
         big[rateKey[0]] >= TRANSFER_MIN &&
@@ -243,10 +250,7 @@ export async function record(ctx) {
     },
     180_000,
     1000,
-  ).catch(err => {
-    throw new Error(`${err.message} — seen: ${[...seenTransfer].slice(-5).join(", ")}`);
-  });
-  await snapshot("transfer");
+  );
   await rpc("session_set", { speed_limit_down_enabled: false, speed_limit_up_enabled: false });
 
   // loading metadata: start the magnet past the queue
