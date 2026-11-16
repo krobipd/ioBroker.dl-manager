@@ -1,8 +1,21 @@
 // aria2 in the container recorder: Alpine's aria2 package (no official image; the package is installed in the
 // default network, then the container joins the internal one), JSON-RPC with a secret token, HTTP downloads from the
-// throttled seed server. The tag is the Alpine release. api-usenet-aria2-pyload.md § 3.
+// throttled seed server. The tag is the Alpine release. api-usenet-aria2-pyload.md § 3. For `transfer` aria2 also
+// seeds the torrent `check` to the recording's peer (aria2 uploads only torrents).
 import { join } from "node:path";
-import { DEAD_MAGNET, Http, prepareHttpFiles, Recorder, waitFor } from "../lib.mjs";
+import {
+  DEAD_MAGNET,
+  Http,
+  peer,
+  prepareHttpFiles,
+  prepareTorrents,
+  Recorder,
+  TRANSFER_LIMIT_DOWN,
+  TRANSFER_LIMIT_UP,
+  TRANSFER_MIN,
+  torrentOf,
+  waitFor,
+} from "../lib.mjs";
 
 const SECRET = "testsecret1";
 
@@ -15,11 +28,13 @@ const SECRET = "testsecret1";
  */
 export function prepare(work, tag) {
   prepareHttpFiles(work);
+  prepareTorrents(work, ["check"]);
   return {
     image: `alpine:${tag}`,
     name: "aria2",
     internet: true,
     volumes: [`${join(work, "downloads")}:/downloads`],
+    sidecars: [peer(work)],
     args: [
       "sh",
       "-c",
@@ -36,10 +51,10 @@ export function prepare(work, tag) {
 /**
  * Recorder side.
  *
- * @param {object} _ctx paths (unused)
+ * @param {{ work: string }} ctx paths
  * @returns {Promise<Recorder>} the recorder
  */
-export async function record(_ctx) {
+export async function record(ctx) {
   const http = new Http("http://aria2:6800");
   let seq = 0;
   /**
@@ -71,12 +86,22 @@ export async function record(_ctx) {
   w("auth", "token-wrong", await rpc("aria2.getVersion", [], "wrong"));
   w("auth", "version", versionRes);
 
+  /** @typedef {{ gid?: string, status?: string, downloadSpeed?: string, uploadSpeed?: string }} AriaEntry a download (numbers come as text) */
+  /** @type {(state: string) => Promise<{ active: AriaEntry[], waiting: AriaEntry[], stat: AriaEntry }>} records one state, returns what it recorded */
   const snapshot = async state => {
-    w(state, "tell-active", await rpc("aria2.tellActive"));
-    w(state, "tell-waiting", await rpc("aria2.tellWaiting", [0, 1000]));
+    const active = await rpc("aria2.tellActive");
+    w(state, "tell-active", active);
+    const waiting = await rpc("aria2.tellWaiting", [0, 1000]);
+    w(state, "tell-waiting", waiting);
     w(state, "tell-stopped", await rpc("aria2.tellStopped", [0, 1000]));
-    w(state, "global-stat", await rpc("aria2.getGlobalStat"));
+    const stat = await rpc("aria2.getGlobalStat");
+    w(state, "global-stat", stat);
     w(state, "global-option", await rpc("aria2.getGlobalOption"));
+    return {
+      active: /** @type {{ result?: AriaEntry[] }} */ (active.json()).result ?? [],
+      waiting: /** @type {{ result?: AriaEntry[] }} */ (waiting.json()).result ?? [],
+      stat: /** @type {{ result?: AriaEntry }} */ (stat.json()).result ?? {},
+    };
   };
   const status = async gid =>
     /** @type {{ status?: string } | undefined} */ (await result("aria2.tellStatus", [gid, ["status", "errorCode"]]))
@@ -94,13 +119,60 @@ export async function record(_ctx) {
   await waitFor("missing error", async () => (await status(missing)) === "error", 60_000);
   await snapshot("finished-and-failed");
 
-  // running: one active (1 MiB/s), one waiting (max 1 concurrent), one added paused
+  // running: one active, one waiting (max 1 concurrent), one added paused; the limits of `transfer` (B/s) are set
+  // before `big` starts, so it still loads when the peer leeches `check`
+  await rpc("aria2.changeGlobalOption", [
+    {
+      "max-overall-download-limit": String(TRANSFER_LIMIT_DOWN),
+      "max-overall-upload-limit": String(TRANSFER_LIMIT_UP),
+    },
+  ]);
   const big = gidOf(await add("big"));
   const queued = gidOf(await add("queued"));
   const stoppedRes = await add("stopped", { pause: "true" });
   w("commands", "add-uri-paused", stoppedRes);
   await waitFor("big active", async () => (await status(big)) === "active" && (await status(queued)) === "waiting");
   await snapshot("running");
+
+  // transfer: the running state while the peer leeches `check` from aria2 and `big` still loads — `check` goes to the
+  // front of the queue and gets the second place (`queued` keeps waiting), seeded without a recheck of its 1 GiB; the
+  // state is recorded until the recorded answers carry every speed at TRANSFER_MIN
+  const checkRes = await rpc("aria2.addTorrent", [
+    torrentOf(ctx.work, "check").torrent.toString("base64"),
+    [],
+    { dir: "/downloads", "bt-seed-unverified": "true", "seed-ratio": "0" },
+    0,
+  ]);
+  const check = gidOf(checkRes);
+  await rpc("aria2.changeGlobalOption", [{ "max-concurrent-downloads": "2" }]);
+  let samples = 0;
+  await waitFor(
+    "transfer recorded",
+    async () => {
+      const shot = await snapshot("transfer");
+      const b = shot.active.find(e => e.gid === big);
+      const c = shot.active.find(e => e.gid === check);
+      console.log(
+        `aria2 transfer sample ${++samples}: big ${b?.status}/${b?.downloadSpeed} check ${c?.status}/${c?.uploadSpeed} queued ${shot.waiting.some(e => e.gid === queued) ? "waiting" : "-"} global ${shot.stat.downloadSpeed}/${shot.stat.uploadSpeed}`,
+      );
+      return (
+        Number(b?.downloadSpeed ?? 0) >= TRANSFER_MIN &&
+        Number(c?.uploadSpeed ?? 0) >= TRANSFER_MIN &&
+        shot.waiting.some(e => e.gid === queued) &&
+        Number(shot.stat.downloadSpeed ?? 0) >= TRANSFER_MIN &&
+        Number(shot.stat.uploadSpeed ?? 0) >= TRANSFER_MIN
+      );
+    },
+    180_000,
+    1000,
+  );
+  // back to the state before: `check` gone without a trace, one place, no limit
+  await rpc("aria2.forceRemove", [check]);
+  await waitFor("check removed", async () => (await status(check)) === "removed");
+  await rpc("aria2.removeDownloadResult", [check]);
+  await rpc("aria2.changeGlobalOption", [
+    { "max-concurrent-downloads": "1", "max-overall-download-limit": "0", "max-overall-upload-limit": "0" },
+  ]);
 
   // single pause/unpause
   w("commands", "pause", await rpc("aria2.pause", [queued]));
