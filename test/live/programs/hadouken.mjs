@@ -6,7 +6,16 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { request } from "node:http";
 import { join } from "node:path";
-import { DEAD_MAGNET, DEAD_MAGNET_HASH, prepareTorrents, Recorder, torrentOf, waitFor } from "../lib.mjs";
+import {
+  DEAD_MAGNET,
+  DEAD_MAGNET_HASH,
+  peer,
+  prepareTorrents,
+  Recorder,
+  TRANSFER_MIN,
+  torrentOf,
+  waitFor,
+} from "../lib.mjs";
 
 const USER = "admin";
 const PASS = "testpass1";
@@ -25,7 +34,7 @@ const BIN = "/srv/hadouken/app/linux/build/bin";
  *
  * @param {string} work work directory
  * @param {string} tag matrix tag (a key of IMAGES)
- * @returns {{ image: string, name: string, entrypoint: string, args: string[], volumes: string[] }} container
+ * @returns {object} container definition
  */
 export function prepare(work, tag) {
   const image = IMAGES[tag];
@@ -61,11 +70,12 @@ export function prepare(work, tag) {
     entrypoint: `${BIN}/hadouken`,
     args: ["--config", "/srv/hadouken/config/hadouken.json"],
     volumes: [`${config}:/srv/hadouken/config`, `${join(work, "downloads")}:/data`],
+    sidecars: [peer(work)],
   };
 }
 
 /** Row fields (js/rpc/webui_list.js), by position — the layout of µTorrent's list. */
-const ROW = { hash: 0, status: 1, name: 2, size: 3, progress: 4, downSpeed: 9, eta: 10, error: 21 };
+const ROW = { hash: 0, status: 1, name: 2, size: 3, progress: 4, upSpeed: 8, downSpeed: 9, eta: 10, error: 21 };
 
 /**
  * One POST the way Hadouken reads it. Its connection handler (src/http/connection_handler.cpp) reads a body only behind a
@@ -315,6 +325,40 @@ export async function record(ctx) {
   await rpc("webui.perform", ["start", [stopped]]);
   await reach("stopped failing", async () => (((await statusOf(stopped)) ?? 0) & 16) === 16, 90_000);
   await snapshot("error");
+
+  // transfer: the error state while the peer leeches `check` and `big` loads once more — every status of `error` and a
+  // speed both ways. `big` is done by now: removed with its data (webui_perform.js `removedata`) and added again, it
+  // loads from the web seed from the start; the state is recorded until the recorded answer carries that
+  w("commands", "removedata", await rpc("webui.perform", ["removedata", [big]]));
+  await reach("big gone", async () => (await find(big)) === undefined, 30_000);
+  await addFile("big");
+  let samples = 0;
+  await waitFor(
+    "transfer recorded",
+    async () => {
+      const shot = await rpc("webui.list");
+      w("transfer", "list", shot);
+      w("transfer", "get-settings", await rpc("webui.getSettings"));
+      const rows = /** @type {{ result?: { torrents?: unknown[][] } }} */ (shot.json()).result?.torrents ?? [];
+      const row = h => rows.find(t => String(t[ROW.hash]).toLowerCase() === h);
+      const b = row(big);
+      const c = row(check);
+      const s = row(stopped);
+      console.log(
+        `hadouken transfer sample ${++samples}: big ${String(b?.[ROW.status])}/${String(b?.[ROW.downSpeed])}/${String(b?.[ROW.eta])} check ${String(c?.[ROW.status])}/${String(c?.[ROW.upSpeed])} stopped ${String(s?.[ROW.status])}`,
+      );
+      return (
+        b !== undefined &&
+        (Number(b[ROW.status]) & 1) === 1 &&
+        Number(b[ROW.downSpeed]) >= TRANSFER_MIN &&
+        Number(b[ROW.eta]) > 0 &&
+        Number(c?.[ROW.upSpeed] ?? 0) >= TRANSFER_MIN &&
+        (Number(s?.[ROW.status] ?? 0) & 16) === 16
+      );
+    },
+    180_000,
+    1000,
+  );
 
   // completed: a finished one paused (the seed goal pauses so, core.js: auto-managed off, pause)
   const done = hash("done");

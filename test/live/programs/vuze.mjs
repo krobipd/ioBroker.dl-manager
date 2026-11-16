@@ -8,7 +8,19 @@
 import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { DEAD_MAGNET, DEAD_MAGNET_HASH, Http, prepareTorrents, Recorder, sh, torrentOf, waitFor } from "../lib.mjs";
+import {
+  DEAD_MAGNET,
+  DEAD_MAGNET_HASH,
+  Http,
+  peer,
+  prepareTorrents,
+  Recorder,
+  sh,
+  TRANSFER_LIMIT_DOWN,
+  TRANSFER_MIN,
+  torrentOf,
+  waitFor,
+} from "../lib.mjs";
 
 const USER = "admin";
 const PASS = "testpass1";
@@ -79,7 +91,7 @@ function checkSum(file, sha256) {
  *
  * @param {string} work work directory
  * @param {string} tag matrix tag (a key of RELEASES)
- * @returns {{ image: string, name: string, entrypoint: string, args: string[], volumes: string[] }} container
+ * @returns {object} container definition
  */
 export function prepare(work, tag) {
   const release = RELEASES[tag];
@@ -154,6 +166,7 @@ export function prepare(work, tag) {
     entrypoint: "sh",
     args: ["-c", `(cat /config/console-setup.txt; tail -f /dev/null) | ${java}`],
     volumes: [`${join(install, "vuze")}:/opt/vuze`, `${config}:/config`, `${join(work, "downloads")}:/downloads`],
+    sidecars: [peer(work)],
   };
 }
 
@@ -277,11 +290,19 @@ export async function record(ctx) {
   const w = (state, name, res) => rec.write(state, name, `POST ${RPC} ${res.sent}`, res);
 
   const torrentGet = () => rpc("torrent-get", { fields: FIELDS });
+  /** @typedef {{ hashString?: string, status?: number, rateDownload?: number, rateUpload?: number, eta?: number }} VzTorrent a torrent of torrent-get */
+  /** @type {(state: string) => Promise<{ torrents: VzTorrent[], stats: { downloadSpeed?: number, uploadSpeed?: number } }>} records one state, returns what it recorded */
   const snapshot = async state => {
-    w(state, "torrent-get", await torrentGet());
+    const torrents = await torrentGet();
+    w(state, "torrent-get", torrents);
     w(state, "session-get", await rpc("session-get"));
-    w(state, "session-stats", await rpc("session-stats"));
+    const stats = await rpc("session-stats");
+    w(state, "session-stats", stats);
     w(state, "free-space", await rpc("free-space", { path: "/downloads" }));
+    return {
+      torrents: /** @type {{ torrents?: VzTorrent[] }} */ (argsOf(torrents)).torrents ?? [],
+      stats: /** @type {{ downloadSpeed?: number, uploadSpeed?: number }} */ (argsOf(stats)),
+    };
   };
   const list = async () => /** @type {Record<string, unknown>[]} */ (argsOf(await torrentGet()).torrents ?? []);
 
@@ -327,6 +348,12 @@ export async function record(ctx) {
     });
 
   await snapshot("empty");
+  // the download limit of `transfer` (KB/s, see `limited`), set before `big` starts: it still loads when `transfer` is
+  // recorded after `running`
+  await rpc("session-set", {
+    "speed-limit-down": Math.floor(TRANSFER_LIMIT_DOWN / 1024),
+    "speed-limit-down-enabled": true,
+  });
   w("commands", "torrent-add-metainfo", await add("big"));
   // run 43682528277: big loaded 32 MiB in 37 s (the seed server's 1 MiB/s) — the snapshot comes while it loads
   await reach(
@@ -360,6 +387,33 @@ export async function record(ctx) {
     120_000,
   );
   await snapshot("running");
+
+  // transfer: the running state while the peer leeches `check` (through the seed server's tracker) and `big` still
+  // loads — every speed the fixture hook plays tells its unit (≥ TRANSFER_MIN), `big` has a time left; the state is
+  // recorded until the recorded answers carry that
+  let samples = 0;
+  await waitFor(
+    "transfer recorded",
+    async () => {
+      const shot = await snapshot("transfer");
+      const big = shot.torrents.find(t => t.hashString === hash("big"));
+      const check = shot.torrents.find(t => t.hashString === hash("check"));
+      console.log(
+        `vuze transfer sample ${++samples}: big ${big?.status}/${big?.rateDownload}/${big?.eta} check ${check?.status}/${check?.rateUpload} session ${shot.stats.downloadSpeed}/${shot.stats.uploadSpeed}`,
+      );
+      return (
+        big?.status === 4 &&
+        (big.rateDownload ?? 0) >= TRANSFER_MIN &&
+        (big.eta ?? 0) > 0 &&
+        (check?.rateUpload ?? 0) >= TRANSFER_MIN &&
+        (shot.stats.downloadSpeed ?? 0) >= TRANSFER_MIN &&
+        (shot.stats.uploadSpeed ?? 0) >= TRANSFER_MIN
+      );
+    },
+    180_000,
+    1000,
+  );
+  await rpc("session-set", { "speed-limit-down-enabled": false });
 
   // a magnet without metadata: started past the queue
   w("commands", "torrent-start-now", await rpc("torrent-start-now", { ids: [DEAD_MAGNET_HASH.toUpperCase()] }));

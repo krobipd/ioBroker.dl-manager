@@ -12,7 +12,17 @@
 import { lookup } from "node:dns/promises";
 import { chmodSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { DEAD_MAGNET, Http, makeTorrent, payload, Recorder, torrentOf, waitFor } from "../lib.mjs";
+import {
+  DEAD_MAGNET,
+  Http,
+  makeTorrent,
+  payload,
+  Recorder,
+  TRANSFER_LIMIT_DOWN,
+  TRANSFER_MIN,
+  torrentOf,
+  waitFor,
+} from "../lib.mjs";
 import { prepare as prepareDeluge } from "./deluge.mjs";
 import { prepare as prepareQbt } from "./qbittorrent.mjs";
 import { methodCall, parseResponse, prepare as prepareRt, SEED_BPS } from "./rtorrent.mjs";
@@ -136,6 +146,8 @@ export function prepare(work, tag) {
         max_active_limit: 20,
         max_active_seeding: 20,
         dont_count_slow_torrents: false,
+        // Deluge lets peers on the LAN past its limits by default (preferencesmanager.py) — the seed server is one
+        ignore_limits_on_local_network: false,
       })}`,
     );
   }
@@ -371,6 +383,10 @@ export async function record(ctx) {
   );
   await snapshot("unlimited");
 
+  // the download limit of `transfer`, set before `big` starts: it still loads after the check of `check` and the failed
+  // `gone` (Flood's Deluge gateway hands the number to Deluge's KiB/s unchanged, see `throttled`)
+  const transferLimit = backend === "deluge" ? TRANSFER_LIMIT_DOWN / 1024 : TRANSFER_LIMIT_DOWN;
+  await writeLimits({ throttleGlobalDownSpeed: transferLimit, throttleGlobalUpSpeed: 0 });
   w(
     "commands",
     "add-files",
@@ -433,7 +449,7 @@ export async function record(ctx) {
   );
   await new Promise(resolve => setTimeout(resolve, 6000));
   await snapshot("throttled");
-  await writeLimits({ throttleGlobalDownSpeed: 0, throttleGlobalUpSpeed: 0 });
+  await writeLimits({ throttleGlobalDownSpeed: transferLimit, throttleGlobalUpSpeed: 0 });
 
   w(
     "commands",
@@ -486,6 +502,39 @@ export async function record(ctx) {
     200,
   );
   await snapshot("missing");
+
+  // transfer: the missing state while the peer leeches `check` and `big` still loads — every status of `missing` and a
+  // speed both ways; the state is recorded until the recorded answer carries that. rTorrent's recorder brings no peer
+  // (it gets its payloads from rqbit), so Flood on rTorrent has no such state.
+  if (backend !== "rtorrent") {
+    let samples = 0;
+    await waitFor(
+      "transfer recorded",
+      async () => {
+        const res = await call("GET", "/api/torrents");
+        w("transfer", "torrents", "GET /api/torrents", res);
+        w("transfer", "settings", "GET /api/client/settings", await call("GET", "/api/client/settings"));
+        /** @typedef {{ status?: string[], downRate?: number, upRate?: number, eta?: number }} FlTorrent a torrent of Flood */
+        const all = /** @type {{ torrents?: Record<string, FlTorrent> }} */ (res.json()).torrents ?? {};
+        const b = all[H("big")];
+        const c = all[H("check")];
+        const g = all[H("gone")]?.status ?? [];
+        console.log(
+          `flood transfer sample ${++samples}: big ${JSON.stringify(b?.status)}/${b?.downRate}/${b?.eta} check ${JSON.stringify(c?.status)}/${c?.upRate} gone ${JSON.stringify(g)}`,
+        );
+        return (
+          (b?.status ?? []).includes("downloading") &&
+          (b?.downRate ?? 0) >= TRANSFER_MIN &&
+          (b?.eta ?? 0) > 0 &&
+          (c?.upRate ?? 0) >= TRANSFER_MIN &&
+          (g.includes("error") || (!g.includes("checking") && !g.includes("complete")))
+        );
+      },
+      180_000,
+      1000,
+    );
+  }
+  await writeLimits({ throttleGlobalDownSpeed: 0, throttleGlobalUpSpeed: 0 });
 
   await reach("big complete", () => has("big", "complete"), 240_000, 1000);
   await snapshot("finished");

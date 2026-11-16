@@ -35,7 +35,7 @@ const DEFAULT_MAGNET = `magnet:?xt=urn:btih:${DEFAULT_MAGNET_HASH}&dn=default-ho
 /**
  * One download of `GET /api/downloads` as far as the recorder reads it.
  *
- * @typedef {{ infohash: string, status: string, progress: number, speed_down: number, speed_up?: number, size: number, safe_seeding?: boolean }} TrDownload
+ * @typedef {{ infohash: string, status: string, progress: number, speed_down: number, speed_up?: number, size: number, hops?: number }} TrDownload
  */
 
 /**
@@ -270,9 +270,10 @@ export async function record(ctx) {
   // transfer: the error state while the peer leeches `check` (through the seed server's tracker) and `big` still loads
   // — every status of `error` and a speed in both directions. The upload stays under the 50 KiB/s limit; the adapter
   // keeps three significant digits, so any speed above 0 tells its unit. A download that seeds safely goes over a
-  // tunnel hop, which this network does not have: 8.0.7 seeds every download that way (see the head of this file).
-  if ((await find(hash("check")))?.safe_seeding) {
-    console.log("tribler: check seeds safely (over a hop) — the peer cannot reach it, no transfer state");
+  // tunnel hop, which this network does not have: 8.0.7 seeds every finished download that way — its list says
+  // `hops: 1` while `safe_seeding` reads false (run 43857599965) — and `big` is done there by now.
+  if (((await find(hash("check")))?.hops ?? 0) > 0) {
+    console.log("tribler: check seeds over a hop — the peer cannot reach it, no transfer state");
   } else {
     let samples = 0;
     await waitFor(

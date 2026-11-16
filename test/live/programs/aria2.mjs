@@ -173,14 +173,24 @@ export async function record(ctx) {
     1000,
   );
   // back to the state before: `check` gone without a trace, one place, no limit
-  await rpc("aria2.forceRemove", [check]);
-  // like `doomed` below: tellStatus says "removed" or no longer knows the GID
-  await waitFor("check removed", async () => {
-    const answer = /** @type {{ result?: { status?: string }, error?: unknown }} */ (
-      (await rpc("aria2.tellStatus", [check, ["status"]])).json()
-    );
-    return answer.result?.status === "removed" || Boolean(answer.error);
-  });
+  const removed = await rpc("aria2.forceRemove", [check]);
+  console.log(`aria2 forceRemove check: ${removed.status} ${removed.text.slice(0, 200)}`);
+  // run 43857599965: tellStatus did not say "removed" within 120 s, nor did it stop knowing the GID — what counts is that
+  // `check` is in neither list any more; what tellStatus says on the way goes to the log
+  await waitFor(
+    "check out of the lists",
+    async () => {
+      const shot = await Promise.all([rpc("aria2.tellActive"), rpc("aria2.tellWaiting", [0, 1000])]);
+      /** @type {(r: { json: () => unknown }) => AriaEntry[]} the entries of a list answer */
+      const entries = r => /** @type {{ result?: AriaEntry[] }} */ (r.json()).result ?? [];
+      const listed = shot.some(r => entries(r).some(e => e.gid === check));
+      const st = await rpc("aria2.tellStatus", [check, ["status", "errorCode"]]);
+      console.log(`aria2 check after forceRemove: listed ${listed}, tellStatus ${st.text.slice(0, 160)}`);
+      return !listed;
+    },
+    60_000,
+    2000,
+  );
   await rpc("aria2.removeDownloadResult", [check]);
   await rpc("aria2.changeGlobalOption", [
     { "max-concurrent-downloads": "1", "max-overall-download-limit": "0", "max-overall-upload-limit": "0" },
