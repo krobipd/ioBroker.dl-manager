@@ -253,6 +253,11 @@ export async function record(ctx) {
   );
   await rpc("session_set", { speed_limit_down_enabled: false, speed_limit_up_enabled: false });
 
+  // seeding: the web-seeded download finishes — before the recheck of `check`: while 1 GiB is verified, Transmission
+  // 4.0.6 loaded the web seed at under 134 kB/s and `big` did not finish in 240 s
+  await waitFor("big seeding", async () => (await find(hash("big")))?.status === 6, 240_000, 1000);
+  await snapshot("finished");
+
   // loading metadata: start the magnet past the queue
   w("commands", "torrent-start-now", await rpc("torrent_start_now", { ids: [DEAD_MAGNET_HASH] }));
   await waitFor("magnet downloading metadata", async () => (await find(DEAD_MAGNET_HASH))?.status === 4);
@@ -314,10 +319,6 @@ export async function record(ctx) {
     speed_limit_down_enabled: false,
     speed_limit_up_enabled: false,
   });
-
-  // seeding: the web-seeded download finishes
-  await waitFor("big seeding", async () => (await find(hash("big")))?.status === 6, 240_000, 1000);
-  await snapshot("finished");
 
   // stop everything (no ids = all), remove one without data
   w("commands", "torrent-stop-all", await rpc("torrent_stop"));

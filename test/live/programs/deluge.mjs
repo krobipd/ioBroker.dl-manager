@@ -2,7 +2,19 @@
 // torrents as the other torrent programs, global session pause, Label plugin. api-torrent.md § 3.
 import { mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { DEAD_MAGNET, DEAD_MAGNET_HASH, Http, prepareTorrents, Recorder, torrentOf, waitFor } from "../lib.mjs";
+import {
+  DEAD_MAGNET,
+  DEAD_MAGNET_HASH,
+  Http,
+  peer,
+  prepareTorrents,
+  Recorder,
+  TRANSFER_LIMIT_DOWN,
+  TRANSFER_LIMIT_UP,
+  TRANSFER_MIN,
+  torrentOf,
+  waitFor,
+} from "../lib.mjs";
 
 const PASS = "deluge";
 
@@ -11,7 +23,7 @@ const PASS = "deluge";
  *
  * @param {string} work work directory
  * @param {string} tag image tag
- * @returns {{ image: string, name: string, env: Record<string,string>, volumes: string[] }} container
+ * @returns {object} container definition
  */
 export function prepare(work, tag) {
   prepareTorrents(work);
@@ -21,6 +33,7 @@ export function prepare(work, tag) {
     name: "deluge",
     env: { PUID: "1000", PGID: "1000", TZ: "Etc/UTC" },
     volumes: [`${join(work, "deluge")}:/config`, `${join(work, "downloads")}:/downloads`],
+    sidecars: [peer(work)],
   };
 }
 
@@ -119,14 +132,19 @@ export async function record(ctx) {
   const labelPlugin = await rpc("core.enable_plugin", ["Label"]);
   w("commands", "enable-plugin-label", labelPlugin);
 
+  /** @typedef {{ state?: string, download_payload_rate?: number, upload_payload_rate?: number, eta?: number }} DlTorrent a torrent of update_ui */
+  /** @typedef {{ torrents?: Record<string, DlTorrent>, stats?: Record<string, number> }} DlUi the result of update_ui */
+  /** @type {(state: string) => Promise<DlUi>} records one state, returns the update_ui it recorded */
   const snapshot = async state => {
-    w(state, "update-ui", await rpc("web.update_ui", [KEYS, {}]));
+    const ui = await rpc("web.update_ui", [KEYS, {}]);
+    w(state, "update-ui", ui);
     w(
       state,
       "config-values",
       await rpc("core.get_config_values", [["max_download_speed", "max_upload_speed", "download_location"]]),
     );
     w(state, "is-session-paused", await rpc("core.is_session_paused"));
+    return /** @type {{ result?: DlUi }} */ (ui.json()).result ?? {};
   };
   const torrents = async () =>
     /** @type {{ torrents?: Record<string, { state: string, progress: number }> } | undefined} */ (
@@ -142,6 +160,15 @@ export async function record(ctx) {
     ]);
 
   await snapshot("empty");
+  // the limits of `transfer`, set before `big` starts (KiB/s); Deluge lets peers on the LAN past its limits by default
+  // (preferencesmanager.py, ignore_limits_on_local_network) — the seed server and the peer are on the LAN
+  await rpc("core.set_config", [
+    {
+      ignore_limits_on_local_network: false,
+      max_download_speed: TRANSFER_LIMIT_DOWN / 1024,
+      max_upload_speed: TRANSFER_LIMIT_UP / 1024,
+    },
+  ]);
   w("commands", "add-torrent-file", await add("big"));
   await waitFor("big downloading", async () => (await stateOf(hash("big"))) === "Downloading", 120_000);
   await add("queued");
@@ -174,6 +201,40 @@ export async function record(ctx) {
     console.log(`label plugin not usable: ${err instanceof Error ? err.message : err}`);
   }
   await snapshot("running");
+
+  // transfer: the running state while the peer leeches `check` and `big` still loads — every speed the fixture hook
+  // plays tells its unit (≥ TRANSFER_MIN), `big` has a time left; the state is recorded until the recorded answer
+  // itself satisfies that
+  let samples = 0;
+  await waitFor(
+    "transfer recorded",
+    async () => {
+      const ui = await snapshot("transfer");
+      const big = ui.torrents?.[hash("big")];
+      const check = ui.torrents?.[hash("check")];
+      const st = ui.stats ?? {};
+      console.log(
+        `deluge transfer sample ${++samples}: big ${big?.state}/${big?.download_payload_rate}/${big?.eta} check ${check?.state}/${check?.upload_payload_rate} session ${st.download_rate}/${st.upload_rate}`,
+      );
+      return (
+        big?.state === "Downloading" &&
+        (big.download_payload_rate ?? 0) >= TRANSFER_MIN &&
+        (big.eta ?? 0) > 0 &&
+        check?.state === "Seeding" &&
+        (check.upload_payload_rate ?? 0) >= TRANSFER_MIN &&
+        (st.download_rate ?? 0) >= TRANSFER_MIN &&
+        (st.upload_rate ?? 0) >= TRANSFER_MIN
+      );
+    },
+    180_000,
+    1000,
+  );
+  await rpc("core.set_config", [{ max_download_speed: -1.0, max_upload_speed: -1.0 }]);
+
+  // seeding: the web-seeded download finishes — before the recheck of `check` (a recheck of 1 GiB held the web seed
+  // back in Transmission 4.0.6)
+  await waitFor("big seeding", async () => (await stateOf(hash("big"))) === "Seeding", 240_000, 1000);
+  await snapshot("finished");
 
   // loading metadata: take the magnet out of the queue and start it
   await rpc("core.set_torrent_options", [[DEAD_MAGNET_HASH], { auto_managed: false }]);
@@ -231,10 +292,6 @@ export async function record(ctx) {
   );
   await snapshot("limited");
   await rpc("core.set_config", [{ max_download_speed: -1.0, max_upload_speed: -1.0 }]);
-
-  // seeding
-  await waitFor("big seeding", async () => (await stateOf(hash("big"))) === "Seeding", 240_000, 1000);
-  await snapshot("finished");
 
   w("commands", "remove-torrent", await rpc("core.remove_torrent", [hash("queued"), false]));
   return rec;
