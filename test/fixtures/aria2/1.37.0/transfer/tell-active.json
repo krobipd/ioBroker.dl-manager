@@ -1,0 +1,81 @@
+{
+  "_source": {
+    "program": "aria2",
+    "version": "1.37.0",
+    "request": "POST /jsonrpc {\"jsonrpc\":\"2.0\",\"id\":\"81\",\"method\":\"aria2.tellActive\",\"params\":[\"token:<secret>\"]}",
+    "recordedAt": "2026-11-16T13:07:26.056Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json-rpc"
+  },
+  "body": {
+    "id": "81",
+    "jsonrpc": "2.0",
+    "result": [
+      {
+        "bitfield": "00000000",
+        "completedLength": "999424",
+        "connections": "1",
+        "dir": "/downloads",
+        "downloadSpeed": "1004566",
+        "files": [
+          {
+            "completedLength": "0",
+            "index": "1",
+            "length": "33554432",
+            "path": "/downloads/big.bin",
+            "selected": "true",
+            "uris": [
+              {
+                "status": "used",
+                "uri": "http://seed:8080/big.bin"
+              }
+            ]
+          }
+        ],
+        "gid": "475577bbf80be849",
+        "numPieces": "32",
+        "pieceLength": "1048576",
+        "status": "active",
+        "totalLength": "33554432",
+        "uploadLength": "0",
+        "uploadSpeed": "0"
+      },
+      {
+        "bitfield": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "bittorrent": {
+          "announceList": [["http://seed:8080/announce"]],
+          "info": {
+            "name": "check.bin"
+          },
+          "mode": "single"
+        },
+        "completedLength": "1073741824",
+        "connections": "1",
+        "dir": "/downloads",
+        "downloadSpeed": "0",
+        "files": [
+          {
+            "completedLength": "1073741824",
+            "index": "1",
+            "length": "1073741824",
+            "path": "/downloads/check.bin",
+            "selected": "true",
+            "uris": []
+          }
+        ],
+        "gid": "5cf059638992c934",
+        "infoHash": "ccc4c11770321ec2ee5cc52b5829fce13232883d",
+        "numPieces": "256",
+        "numSeeders": "0",
+        "pieceLength": "4194304",
+        "seeder": "true",
+        "status": "active",
+        "totalLength": "1073741824",
+        "uploadLength": "131072",
+        "uploadSpeed": "129645"
+      }
+    ]
+  }
+}

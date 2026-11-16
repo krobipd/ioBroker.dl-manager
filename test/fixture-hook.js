@@ -33,7 +33,8 @@ const text = (value, status = 200, headers = {}) => new Response(status === 204 
 // ---- JDownloader (local API and, decrypted, the cloud's device calls) ----
 const JD_READS = {
   "/jd/version": ["auth", "jd-version"],
-  "/toolbar/getStatus": ["running", "toolbar-get-status"],
+  // the limits come from `limited`: that recording differs from `running` only in them (unit-value needs a set limit)
+  "/toolbar/getStatus": ["limited", "toolbar-get-status"],
   "/downloadsV2/queryPackages": ["running", "query-packages"],
   "/downloadsV2/queryLinks": ["running", "query-links"],
 };
@@ -109,9 +110,11 @@ function qbittorrent(url) {
   if (p === "/api/v2/sync/maindata") return json(maindata());
   return text("");
 }
-// the first torrent named `info` while `reserved` exists, the second renamed under INVENTORY_RENAME
+// the first torrent named `info` while `reserved` exists, the second renamed under INVENTORY_RENAME; `transfer` is the
+// running state with traffic (the peer leeches `check`, `big` loads under both limits) — every speed and limit has a
+// value that tells its unit (unit-value)
 function maindata() {
-  const data = body("qbittorrent", "5.2.3", "running", "maindata");
+  const data = body("qbittorrent", "5.2.3", "transfer", "maindata");
   const [first, second] = Object.keys(data.torrents ?? {});
   if (reserved() && first) data.torrents[first].name = "info";
   if (RENAMED && second) data.torrents[second].name = `${data.torrents[second].name} (renamed)`;
@@ -119,11 +122,14 @@ function maindata() {
 }
 
 // ---- Transmission 4.1.3 (JSON-RPC, the 409 session round) ----
+// `transfer` is the running state with traffic (the peer leeches `check`, `big` loads under the limit) — every speed
+// has a value that tells its unit (unit-value)
 const TR_READS = {
-  torrent_get: "torrent-get",
-  session_get: "session-get",
-  session_stats: "session-stats",
-  free_space: "free-space",
+  torrent_get: ["transfer", "torrent-get"],
+  // the limits and the alternative speed come from `limited`: that recording differs from `running` only in them
+  session_get: ["limited", "session-get"],
+  session_stats: ["transfer", "session-stats"],
+  free_space: ["transfer", "free-space"],
 };
 function transmission(url, init, headers) {
   if (REJECTED) return text("<h1>401: Unauthorized</h1>", 401);
@@ -135,19 +141,27 @@ function transmission(url, init, headers) {
   }
   const { method } = JSON.parse(String(init.body));
   const read = TR_READS[method];
-  return json(read ? body("transmission", "4.1.3", "running", read) : { jsonrpc: "2.0", result: {}, id: 1 });
+  return json(read ? body("transmission", "4.1.3", read[0], read[1]) : { jsonrpc: "2.0", result: {}, id: 1 });
 }
 
 // ---- Vuze 5.7.6.0 with its Web Remote plugin 0.6.5 (Transmission's legacy RPC, the 409 session round) ----
 const VUZE = "5.7.6.0-xmwebui-0.6.5";
-const VZ_READS = new Set(["torrent-get", "session-get", "session-stats", "free-space"]);
+// `transfer` is the running state with traffic (the peer leeches `check`, `big` loads) — every speed tells its unit
+const VZ_READS = new Map([
+  ["torrent-get", "transfer"],
+  // the limits come from `limited`: that recording differs from `running` only in them (unit-value needs a set limit)
+  ["session-get", "limited"],
+  ["session-stats", "transfer"],
+  ["free-space", "transfer"],
+]);
 function vuze(url, init, headers) {
   if (REJECTED) return text("Access Denied\r\n", 401);
   if (headers.get("x-transmission-session-id") !== "fixture") {
     return text("You_didn_t_set_the_X-Transmission-Session-Id", 409, { "x-transmission-session-id": "fixture" });
   }
   const { method } = JSON.parse(String(init.body));
-  return json(VZ_READS.has(method) ? body("vuze", VUZE, "running", method) : { arguments: {}, result: "success" });
+  const state = VZ_READS.get(method);
+  return json(state ? body("vuze", VUZE, state, method) : { arguments: {}, result: "success" });
 }
 
 // ---- µTorrent Server 3.3 build 30470 (Web UI API: token.html with basic auth, then the token and its GUID cookie) ----
@@ -160,7 +174,8 @@ function utorrent(url) {
   }
   if (url.searchParams.get("list") === "1") return json(body("utorrent", UT, "running", "list"));
   const action = url.searchParams.get("action");
-  if (action === "getsettings") return json(body("utorrent", UT, "running", "getsettings"));
+  // the limits come from `limited`: that recording differs from `running` only in them (unit-value needs a set limit)
+  if (action === "getsettings") return json(body("utorrent", UT, "limited", "getsettings"));
   if (action === "getversion") return json(body("utorrent", UT, "probe", "getversion"));
   return json(body("utorrent", UT, "commands", "stop"));
 }
@@ -169,8 +184,10 @@ function utorrent(url) {
 const DL_READS = {
   "web.get_hosts": ["auth", "get-hosts"],
   "web.get_host_status": ["auth", "get-host-status"],
-  "web.update_ui": ["running", "update-ui"],
-  "core.get_config_values": ["running", "config-values"],
+  // `transfer` is the running state with traffic (the peer leeches `check`, `big` loads) — every speed tells its unit
+  "web.update_ui": ["transfer", "update-ui"],
+  // the limits come from `limited`: that recording differs from `running` only in them (unit-value needs a set limit)
+  "core.get_config_values": ["limited", "config-values"],
   "core.is_session_paused": ["running", "is-session-paused"],
 };
 function deluge(url, init) {
@@ -186,21 +203,23 @@ function deluge(url, init) {
 }
 
 // ---- SABnzbd 5.1.3 ----
+// `transfer` is the running state with bytes flowing (the speed tells its unit, unit-value)
 function sabnzbd(url) {
   if (REJECTED) return text("API Key Incorrect", 403);
   const q = url.searchParams;
-  if (q.get("mode") === "queue" && !q.get("name")) return json(body("sabnzbd", "5.1.3", "running", "queue"));
-  if (q.get("mode") === "history" && !q.get("name")) return json(body("sabnzbd", "5.1.3", "running", "history"));
+  if (q.get("mode") === "queue" && !q.get("name")) return json(body("sabnzbd", "5.1.3", "transfer", "queue"));
+  if (q.get("mode") === "history" && !q.get("name")) return json(body("sabnzbd", "5.1.3", "transfer", "history"));
   if (q.get("mode") === "version") return json(body("sabnzbd", "5.1.3", "auth", "version"));
   return json({ status: true });
 }
 
 // ---- NZBGet 26.3 ----
+// `transfer` is the running state with bytes flowing (the rate tells its unit, unit-value)
 const NZB_READS = {
   version: ["auth", "version"],
-  status: ["running", "status"],
-  listgroups: ["running", "listgroups"],
-  history: ["running", "history"],
+  status: ["transfer", "status"],
+  listgroups: ["transfer", "listgroups"],
+  history: ["transfer", "history"],
 };
 function nzbget(url, init) {
   if (REJECTED) return text("", 401);
@@ -210,12 +229,15 @@ function nzbget(url, init) {
 }
 
 // ---- aria2 1.37.0 (multicall assembled from the single recordings) ----
+// `transfer` is the running state with traffic (the peer leeches `check` from aria2, `big` loads) — every speed tells
+// its unit
 const ARIA_READS = {
-  "aria2.tellActive": "tell-active",
-  "aria2.tellWaiting": "tell-waiting",
-  "aria2.tellStopped": "tell-stopped",
-  "aria2.getGlobalStat": "global-stat",
-  "aria2.getGlobalOption": "global-option",
+  "aria2.tellActive": ["transfer", "tell-active"],
+  "aria2.tellWaiting": ["transfer", "tell-waiting"],
+  "aria2.tellStopped": ["transfer", "tell-stopped"],
+  "aria2.getGlobalStat": ["transfer", "global-stat"],
+  // the limits come from `limited`: that recording differs from `running` only in them (unit-value needs a set limit)
+  "aria2.getGlobalOption": ["limited", "global-option"],
 };
 function aria2(url, init) {
   // the dropped device of the fleet suite — test/inventory.js waits for every other one (DROPPED_DEVICE)
@@ -230,7 +252,7 @@ function aria2(url, init) {
     const result = params[0].map(s =>
       s.methodName === "aria2.getVersion"
         ? [body("aria2", "1.37.0", "auth", "version").result]
-        : [body("aria2", "1.37.0", "running", ARIA_READS[s.methodName]).result],
+        : [body("aria2", "1.37.0", ...ARIA_READS[s.methodName]).result],
     );
     return json({ jsonrpc: "2.0", id, result });
   }
@@ -244,7 +266,11 @@ function pyload(url) {
   if (REJECTED) return json({ error: "Unauthorized" }, 401);
   const fn = url.pathname.replace(/^\/api\//, "");
   if (fn === "get_server_version") return json(body("pyload", "0.5.0", "auth", "version"));
-  if (fn === "get_config_value") return json(url.searchParams.get("option") === "limit_speed" ? false : -1);
+  // the limit comes from `limited` (switched on, 2000 KiB/s — unit-value needs a set limit)
+  if (fn === "get_config_value") {
+    const option = String(url.searchParams.get("option")).replace(/_/g, "-");
+    return json(body("pyload", "0.5.0", "limited", `get-config-value-${option}`));
+  }
   const file = path.join(FIXTURES, "pyload", "0.5.0", "running", `${fn.replace(/_/g, "-")}.json`);
   return json(fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")).body : null);
 }
@@ -252,9 +278,11 @@ function pyload(url) {
 // ---- rqbit 9.1.0 (basic auth on every request) ----
 const RQ_READS = {
   "/": ["auth", "root"],
-  "/torrents": ["running", "torrents"],
-  "/stats": ["running", "stats"],
-  "/torrents/limits": ["running", "limits"],
+  // `transfer` is the running state with traffic (the peer leeches `check`, `big` loads) — every speed tells its unit
+  "/torrents": ["transfer", "torrents"],
+  "/stats": ["transfer", "stats"],
+  // the limits come from `limited`: that recording differs from `running` only in them (unit-value needs a set limit)
+  "/torrents/limits": ["limited", "limits"],
 };
 function rqbit(url, init) {
   if (REJECTED) return json(body("rqbit", "9.1.0", "auth", "root-wrong"), 401);
@@ -274,17 +302,20 @@ function rtorrent(url, init) {
   const call = String(init.body ?? "");
   const method = /<methodName>([^<]*)<\/methodName>/.exec(call)?.[1];
   if (method === "system.client_version") return xml("auth", "version");
-  // the poll; no recorded torrent carries the adapter's mark, so no other multicall is asked
-  if (method === "system.multicall") return call.includes("d.multicall2") ? xml("running", "poll") : text("", 404);
+  // the poll; no recorded torrent carries the adapter's mark, so no other multicall is asked. `transfer` is `limited`
+  // with traffic both ways (the peer leeches `check`): the limits in the same multicall as the torrents, more statuses
+  // than `running` (a magnet, a failed one), every rate tells its unit
+  if (method === "system.multicall") return call.includes("d.multicall2") ? xml("transfer", "poll") : text("", 404);
   // every single command rTorrent answers with 0 (d.stop, d.start, d.erase, load.*, throttle.*.set — recorded alike)
   return xml("commands", "d-stop");
 }
 
 // ---- Tribler 8.4.2 (REST, the API key in X-Api-Key on every request) ----
-// `error` is the state with the most statuses at once: downloading, stopped, seeding, metadata, exit nodes, failed
+// `error` is the state with the most statuses at once: downloading, stopped, seeding, metadata, exit nodes, failed —
+// `transfer` is that state with traffic both ways (the peer leeches `check`), so every speed tells its unit
 const TBL_READS = {
   "GET /api/versioning/versions/current": ["auth", "version"],
-  "GET /api/downloads": ["error", "downloads"],
+  "GET /api/downloads": ["transfer", "downloads"],
   "GET /api/settings": ["error", "settings"],
 };
 function tribler(url, init) {
@@ -299,11 +330,13 @@ function tribler(url, init) {
 }
 
 // ---- Flood 4.16.4 in front of qBittorrent (REST, the session in the cookie jwt) ----
-// `missing` is the state with the most statuses at once: downloading, waiting, seeding, stopped, failed
+// `missing` is the state with the most statuses at once: downloading, waiting, seeding, stopped, failed — `transfer` is
+// that state with traffic both ways (the peer leeches `check`), so every speed tells its unit
 const FL_READS = {
   "GET /api/openapi.json": ["auth", "openapi"],
-  "GET /api/torrents": ["missing", "torrents"],
-  "GET /api/client/settings": ["missing", "settings"],
+  "GET /api/torrents": ["transfer", "torrents"],
+  // the limits come from `limited`: that recording differs from `missing` only in them (unit-value needs a set limit)
+  "GET /api/client/settings": ["limited", "settings"],
 };
 function flood(url, init) {
   const method = init.method ?? "GET";
@@ -323,8 +356,8 @@ function flood(url, init) {
 }
 
 // ---- Download Station 4.1-5012 on DSM 7.2.2 (Synology Web API: query.cgi, a login, form POSTs with the session) ----
-// No recording: live captures of cmeans/mcp-synology and test data of py-synologydsm-api (test/fixtures/downloadstation/
-// SOURCES.md). A command per id answers each id it was given: the recorded code for dbid_1 and dbid_2, 0 for any other.
+// No recording: live captures of cmeans/mcp-synology, test data of py-synologydsm-api and the task list of synodl's test
+// server (test/fixtures/downloadstation/SOURCES.md). A command per id answers each id it was given: the recorded code for dbid_1 and dbid_2, 0 for any other.
 const DS = "4.1-5012";
 const DS_READS = {
   "info.cgi getinfo": ["running", "info"],
@@ -344,7 +377,16 @@ function downloadstation(url, init) {
     return json({ data: ids.map(id => ({ error: errors.get(id) ?? 0, id })), success: true });
   }
   const r = DS_READS[`${url.pathname.split("/").pop()} ${method}`];
+  if (r?.[1] === "list") return json(dsList());
   return json(r ? body("downloadstation", DS, r[0], r[1]) : { error: { code: 103 }, success: false });
+}
+// the captured list carries 0 in every byte count and rate: the tasks of synodl's test server follow it, whose sizes
+// and rates tell their unit (unit-value; SOURCES.md)
+function dsList() {
+  const list = body("downloadstation", DS, "running", "list");
+  const extra = body("downloadstation", "synodl", "transfer", "list").data.tasks;
+  const tasks = [...list.data.tasks, ...extra];
+  return { ...list, data: { ...list.data, tasks, total: tasks.length } };
 }
 
 // ---- NZBVortex (Network API: a nonce, a login with the hash, GETs below /api/ with the session) ----
@@ -356,7 +398,9 @@ const NV_READS = {
   "/api/app/appversion": ["app", "appversion"],
   "/api/nzb": ["queue", "list"],
   "/api/nzb/add": ["commands", "add"],
-  "/api/speedlimit": ["speedlimit", "get"],
+  // the documentation's answer to `speedlimit/enable` (p. 29): the same form as `GET /api/speedlimit` (p. 28), whose
+  // example is switched off — a limit that is on tells its unit (unit-value)
+  "/api/speedlimit": ["speedlimit", "enable"],
   "/api/speedlimit/enable": ["speedlimit", "enable"],
   "/api/speedlimit/disable": ["speedlimit", "disable"],
 };
@@ -380,10 +424,11 @@ const FBX = "v8";
 const FBX_TOKEN = "fixture";
 const FBX_SESSION = "REDACTED_SESSION_TOKEN_A";
 const FBX_CHALLENGE = "REDACTED_CHALLENGE_A";
+// the config is the documentation's answer with set limits (unit-value needs a set limit; the captures carry 0/0)
 const FBX_READS = {
   "GET downloads/": ["queue", "list"],
-  "GET downloads/config/": ["config", "get"],
-  "PUT downloads/config/": ["config", "get"],
+  "GET downloads/config/": ["config", "get-limited"],
+  "PUT downloads/config/": ["config", "get-limited"],
   "POST downloads/add": ["commands", "add"],
 };
 function freebox(url, init, headers) {
@@ -415,8 +460,10 @@ function freebox(url, init, headers) {
 const HK = "5.2.0";
 const HK_READS = {
   "core.getSystemInfo": ["probe", "get-system-info"],
-  "webui.list": ["error", "list"],
-  "webui.getSettings": ["error", "get-settings"],
+  // `transfer` is the error state with traffic both ways (the peer leeches `check`, `big` loads once more)
+  "webui.list": ["transfer", "list"],
+  // the limits come from `limited`: that recording differs from `error` only in them (unit-value needs a set limit)
+  "webui.getSettings": ["limited", "get-settings"],
   "webui.getProperties": ["probe", "get-properties-managed"],
 };
 const hkServer = http.createServer((req, res) => {

@@ -169,6 +169,7 @@ The test button on a program's card asks the program once and shows its answer.
 - Fixed: NZBGet and pyLoad show their new version after an update
 - Fixed: pyLoad shows a decrypting package as queued
 - Fixed: pyLoad's speed limit keeps its value when pyLoad does not tell it, instead of emptying
+- Fixed: a small speed, limit or size shows its value instead of 0 (below 1 with three significant digits)
 - Fixed: a program on an IPv6 address is reachable
 - Fixed: the last finished and last failed download are named correctly
 - Fixed: a finished SABnzbd job keeps its added time

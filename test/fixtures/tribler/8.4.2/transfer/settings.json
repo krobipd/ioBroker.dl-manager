@@ -1,0 +1,218 @@
+{
+  "_source": {
+    "program": "tribler",
+    "version": "8.4.2",
+    "request": "GET /api/settings",
+    "recordedAt": "2026-11-16T13:08:51.864Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "settings": {
+      "api": {
+        "http_enabled": true,
+        "http_port": 20100,
+        "http_host": "0.0.0.0",
+        "https_enabled": false,
+        "https_host": "127.0.0.1",
+        "https_port": 0,
+        "https_certfile": "https_certfile",
+        "http_port_running": 20100,
+        "https_port_running": 0,
+        "key": "<secret>"
+      },
+      "headless": false,
+      "start_minimized": false,
+      "ipv8": {
+        "interfaces": [
+          {
+            "interface": "UDPIPv4",
+            "ip": "0.0.0.0",
+            "port": 8090
+          },
+          {
+            "interface": "UDPIPv6",
+            "ip": "::",
+            "port": 8091
+          }
+        ],
+        "keys": [
+          {
+            "alias": "anonymous id",
+            "generation": "curve25519",
+            "file": "/state/ec_multichain.pem"
+          },
+          {
+            "alias": "secondary",
+            "generation": "curve25519",
+            "file": "/state/secondary_key.pem"
+          }
+        ],
+        "logger": {
+          "level": "INFO"
+        },
+        "working_directory": "/state",
+        "walker_interval": 0.5,
+        "overlays": [
+          {
+            "class": "DiscoveryCommunity",
+            "key": "anonymous id",
+            "walkers": [
+              {
+                "strategy": "RandomWalk",
+                "peers": 20,
+                "init": {
+                  "timeout": 3
+                }
+              },
+              {
+                "strategy": "RandomChurn",
+                "peers": -1,
+                "init": {
+                  "sample_size": 8,
+                  "ping_interval": 10,
+                  "inactive_time": 27.5,
+                  "drop_time": 57.5
+                }
+              },
+              {
+                "strategy": "PeriodicSimilarity",
+                "peers": -1,
+                "init": {}
+              }
+            ],
+            "bootstrappers": [
+              {
+                "class": "DispersyBootstrapper",
+                "init": {
+                  "ip_addresses": [
+                    ["192.0.2.10", 6421],
+                    ["192.0.2.10", 6422],
+                    ["192.0.2.11", 6423],
+                    ["192.0.2.12", 6424],
+                    ["192.0.2.13", 6427],
+                    ["192.0.2.13", 6521],
+                    ["192.0.2.13", 6522],
+                    ["192.0.2.14", 6523],
+                    ["192.0.2.14", 6524],
+                    ["192.0.2.15", 6525],
+                    ["192.0.2.15", 6526],
+                    ["192.0.2.16", 6527],
+                    ["192.0.2.16", 6528]
+                  ],
+                  "dns_addresses": [
+                    ["dispersy1.tribler.org", 6421],
+                    ["dispersy1.st.tudelft.nl", 6421],
+                    ["dispersy2.tribler.org", 6422],
+                    ["dispersy2.st.tudelft.nl", 6422],
+                    ["dispersy3.tribler.org", 6423],
+                    ["dispersy3.st.tudelft.nl", 6423],
+                    ["dispersy4.tribler.org", 6424]
+                  ],
+                  "bootstrap_timeout": 30
+                }
+              }
+            ],
+            "initialize": {},
+            "on_start": []
+          }
+        ]
+      },
+      "statistics": false,
+      "content_discovery_community": {
+        "enabled": true
+      },
+      "database": {
+        "enabled": true
+      },
+      "dht_discovery": {
+        "enabled": true
+      },
+      "libtorrent": {
+        "socks_listen_ports": [0, 0, 0, 0, 0],
+        "listen_interface": "0.0.0.0",
+        "port": 0,
+        "proxy_type": 0,
+        "proxy_server": "",
+        "proxy_auth": "",
+        "max_connections_download": -1,
+        "max_download_rate": 102400,
+        "max_upload_rate": 51200,
+        "use_advanced_rate_limits": false,
+        "advanced_rate_limits": {
+          "0": "[[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null]]",
+          "1": "[[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null]]",
+          "2": "[[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null]]",
+          "-1": "[[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null],[null,null]]"
+        },
+        "utp": true,
+        "dht": true,
+        "dht_readiness_timeout": 30,
+        "upnp": true,
+        "natpmp": true,
+        "lsd": true,
+        "announce_to_all_tiers": false,
+        "announce_to_all_trackers": false,
+        "max_concurrent_http_announces": 50,
+        "check_after_complete": false,
+        "download_defaults": {
+          "anonymity_enabled": true,
+          "number_hops": 1,
+          "safeseeding_enabled": true,
+          "saveas": "/root/Downloads",
+          "seeding_mode": "forever",
+          "seeding_ratio": 2,
+          "seeding_time": 60,
+          "channel_download": false,
+          "add_download_to_channel": false,
+          "trackers_file": "",
+          "torrent_folder": "",
+          "auto_managed": false,
+          "completed_dir": ""
+        },
+        "active_downloads": 3,
+        "active_seeds": 5,
+        "active_checking": 1,
+        "active_dht_limit": 88,
+        "active_tracker_limit": 1600,
+        "active_lsd_limit": 60,
+        "active_limit": 500,
+        "ask_download_settings": false,
+        "clear_orphaned_parts": false
+      },
+      "recommender": {
+        "enabled": true
+      },
+      "rendezvous": {
+        "enabled": true
+      },
+      "rss": {
+        "enabled": true,
+        "urls": []
+      },
+      "torrent_checker": {
+        "enabled": true
+      },
+      "tunnel_community": {
+        "enabled": true,
+        "min_circuits": 3,
+        "max_circuits": 8
+      },
+      "versioning": {
+        "enabled": true,
+        "allow_pre": false
+      },
+      "watch_folder": {
+        "enabled": false,
+        "directory": "",
+        "check_interval": 10
+      },
+      "state_dir": "/state",
+      "memory_db": false,
+      "tray_icon_color": "",
+      "ui": {}
+    }
+  }
+}

@@ -6,26 +6,41 @@ const GB = 1_000_000_000;
  * @returns it rounded to two decimals
  */
 export const round2 = (v: number): number => Math.round(v * 100) / 100;
+
+/**
+ * A value in a datapoint's unit: two decimals, below 1 at least three significant digits — a set limit of 512 B/s
+ * stays 0.000512 MB/s instead of 0, which every limit reads as "no limit" (unit-value: the number arrives in its unit).
+ *
+ * @param v a finite number ≥ 0
+ * @returns it rounded
+ */
+const roundShown = (v: number): number => {
+  if (v === 0) {
+    return 0;
+  }
+  const f = 10 ** Math.max(2, 2 - Math.floor(Math.log10(v)));
+  return Math.round(v * f) / f;
+};
 const isNonNegative = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v) && v >= 0;
 
 /**
- * Bytes per second → MB/s with two decimals (the fleet unit, like beszel).
+ * Bytes per second → MB/s with two decimals, below 1 MB/s three significant digits (the fleet unit, like beszel).
  *
  * @param bps bytes per second as the program reports them
  * @returns MB/s, or null when the value is not a finite number ≥ 0
  */
 export function toMBps(bps: unknown): number | null {
-  return isNonNegative(bps) ? round2(bps / MB) : null;
+  return isNonNegative(bps) ? roundShown(bps / MB) : null;
 }
 
 /**
- * Bytes → GB with two decimals.
+ * Bytes → GB with two decimals, below 1 GB three significant digits.
  *
  * @param bytes a size in bytes
  * @returns GB, or null when the value is not a finite number ≥ 0
  */
 export function toGB(bytes: unknown): number | null {
-  return isNonNegative(bytes) ? round2(bytes / GB) : null;
+  return isNonNegative(bytes) ? roundShown(bytes / GB) : null;
 }
 
 /**

@@ -1,0 +1,21 @@
+{
+  "_source": {
+    "program": "transmission",
+    "version": "4.0.6",
+    "request": "POST /transmission/rpc {\"method\":\"free-space\",\"arguments\":{\"path\":\"/downloads\"},\"tag\":97}",
+    "recordedAt": "2026-11-16T11:16:53.733Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=UTF-8"
+  },
+  "body": {
+    "arguments": {
+      "path": "/downloads",
+      "size-bytes": 92092841984,
+      "total_size": 154993672192
+    },
+    "result": "success",
+    "tag": 97
+  }
+}

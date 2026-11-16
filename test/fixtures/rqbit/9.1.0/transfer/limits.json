@@ -1,0 +1,16 @@
+{
+  "_source": {
+    "program": "rqbit",
+    "version": "9.1.0",
+    "request": "GET /torrents/limits",
+    "recordedAt": "2026-11-16T11:25:53.805Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "upload_bps": 20971520,
+    "download_bps": 200000
+  }
+}

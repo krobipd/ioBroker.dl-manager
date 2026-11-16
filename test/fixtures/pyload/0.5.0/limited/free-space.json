@@ -3,11 +3,11 @@
     "program": "pyload",
     "version": "0.5.0",
     "request": "GET /api/free_space",
-    "recordedAt": "2026-09-28T22:11:04.747Z"
+    "recordedAt": "2026-11-16T11:03:19.274Z"
   },
   "status": 200,
   "headers": {
     "content-type": "application/json"
   },
-  "body": 91632652288
+  "body": 92687376384
 }

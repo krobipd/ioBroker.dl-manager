@@ -1,0 +1,13 @@
+{
+  "_source": {
+    "program": "pyload",
+    "version": "0.5.0",
+    "request": "GET /api/get_config_value?category=download&option=limit_speed",
+    "recordedAt": "2026-11-16T11:03:19.275Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": true
+}

@@ -1,0 +1,222 @@
+{
+  "_source": {
+    "program": "rqbit",
+    "version": "8.1.1",
+    "request": "GET /torrents?with_stats=true",
+    "recordedAt": "2026-11-16T11:26:01.655Z"
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "torrents": [
+      {
+        "id": 0,
+        "info_hash": "885bd0670addf14ec2c3014998ab3ef2f810fabf",
+        "name": "big.bin",
+        "output_folder": "/home/rqbit/downloads",
+        "stats": {
+          "state": "live",
+          "file_progress": [1048576],
+          "error": null,
+          "progress_bytes": 1048576,
+          "uploaded_bytes": 0,
+          "total_bytes": 33554432,
+          "finished": false,
+          "live": {
+            "snapshot": {
+              "downloaded_and_checked_bytes": 1048576,
+              "fetched_bytes": 1146880,
+              "uploaded_bytes": 0,
+              "downloaded_and_checked_pieces": 4,
+              "total_piece_download_ms": 7599,
+              "peer_stats": {
+                "queued": 0,
+                "connecting": 0,
+                "live": 1,
+                "seen": 1,
+                "dead": 0,
+                "not_needed": 0,
+                "steals": 0
+              }
+            },
+            "average_piece_download_time": {
+              "secs": 1,
+              "nanos": 899750000
+            },
+            "download_speed": {
+              "mbps": 0.10927867889404297,
+              "human_readable": "0.11 MiB/s"
+            },
+            "upload_speed": {
+              "mbps": 0,
+              "human_readable": "0.00 MiB/s"
+            },
+            "time_remaining": {
+              "duration": {
+                "secs": 283,
+                "nanos": 678000000
+              },
+              "human_readable": "4m 43s"
+            }
+          }
+        }
+      },
+      {
+        "id": 1,
+        "info_hash": "38b12b1a4fffb255161b45e772882bebe94d3b30",
+        "name": "queued.bin",
+        "output_folder": "/home/rqbit/downloads",
+        "stats": {
+          "state": "live",
+          "file_progress": [524288],
+          "error": null,
+          "progress_bytes": 524288,
+          "uploaded_bytes": 0,
+          "total_bytes": 4194304,
+          "finished": false,
+          "live": {
+            "snapshot": {
+              "downloaded_and_checked_bytes": 524288,
+              "fetched_bytes": 753664,
+              "uploaded_bytes": 0,
+              "downloaded_and_checked_pieces": 2,
+              "total_piece_download_ms": 5867,
+              "peer_stats": {
+                "queued": 0,
+                "connecting": 0,
+                "live": 1,
+                "seen": 1,
+                "dead": 0,
+                "not_needed": 0,
+                "steals": 0
+              }
+            },
+            "average_piece_download_time": {
+              "secs": 2,
+              "nanos": 933500000
+            },
+            "download_speed": {
+              "mbps": 0.07804584503173828,
+              "human_readable": "0.08 MiB/s"
+            },
+            "upload_speed": {
+              "mbps": 0,
+              "human_readable": "0.00 MiB/s"
+            },
+            "time_remaining": {
+              "duration": {
+                "secs": 44,
+                "nanos": 844000000
+              },
+              "human_readable": "44s"
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "info_hash": "ccc4c11770321ec2ee5cc52b5829fce13232883d",
+        "name": "check.bin",
+        "output_folder": "/home/rqbit/downloads",
+        "stats": {
+          "state": "live",
+          "file_progress": [1073741824],
+          "error": null,
+          "progress_bytes": 1073741824,
+          "uploaded_bytes": 1409024,
+          "total_bytes": 1073741824,
+          "finished": true,
+          "live": {
+            "snapshot": {
+              "downloaded_and_checked_bytes": 0,
+              "fetched_bytes": 0,
+              "uploaded_bytes": 1409024,
+              "downloaded_and_checked_pieces": 0,
+              "total_piece_download_ms": 0,
+              "peer_stats": {
+                "queued": 0,
+                "connecting": 0,
+                "live": 1,
+                "seen": 1,
+                "dead": 0,
+                "not_needed": 0,
+                "steals": 0
+              }
+            },
+            "average_piece_download_time": null,
+            "download_speed": {
+              "mbps": 0,
+              "human_readable": "0.00 MiB/s"
+            },
+            "upload_speed": {
+              "mbps": 0.2684288024902344,
+              "human_readable": "0.27 MiB/s"
+            },
+            "time_remaining": null
+          }
+        }
+      },
+      {
+        "id": 2,
+        "info_hash": "53ac3e699aa08e11dad739081321db0b879fe521",
+        "name": "stopped.bin",
+        "output_folder": "/home/rqbit/downloads",
+        "stats": {
+          "state": "paused",
+          "file_progress": [0],
+          "error": null,
+          "progress_bytes": 0,
+          "uploaded_bytes": 0,
+          "total_bytes": 4194304,
+          "finished": false,
+          "live": null
+        }
+      },
+      {
+        "id": 3,
+        "info_hash": "e2a552aaf122722a7eb9c5ab7558b13533df2b16",
+        "name": "done.bin",
+        "output_folder": "/home/rqbit/downloads",
+        "stats": {
+          "state": "live",
+          "file_progress": [2097152],
+          "error": null,
+          "progress_bytes": 2097152,
+          "uploaded_bytes": 0,
+          "total_bytes": 2097152,
+          "finished": true,
+          "live": {
+            "snapshot": {
+              "downloaded_and_checked_bytes": 0,
+              "fetched_bytes": 0,
+              "uploaded_bytes": 0,
+              "downloaded_and_checked_pieces": 0,
+              "total_piece_download_ms": 0,
+              "peer_stats": {
+                "queued": 0,
+                "connecting": 0,
+                "live": 0,
+                "seen": 0,
+                "dead": 0,
+                "not_needed": 0,
+                "steals": 0
+              }
+            },
+            "average_piece_download_time": null,
+            "download_speed": {
+              "mbps": 0,
+              "human_readable": "0.00 MiB/s"
+            },
+            "upload_speed": {
+              "mbps": 0,
+              "human_readable": "0.00 MiB/s"
+            },
+            "time_remaining": null
+          }
+        }
+      }
+    ]
+  }
+}

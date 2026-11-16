@@ -28,8 +28,9 @@ API 16.0 describe them alike).
   free-go's test token (`suite_test.go` L20), and the session password test is its vector (L376/L387); the inventory
   row's token is `fixture`, like every other row's secret.
 - **Examples of the Freebox OS API documentation 4.0** (`dev.freebox.fr/sdk/os`): the pairing (`pairing/authorize.json`,
-  `pairing/track-pending.json`, `pairing/track-granted.json`, `login.txt` L64–L160) and the removal
-  (`commands/delete.json`, `download.txt` L371–L401).
+  `pairing/track-pending.json`, `pairing/track-granted.json`, `login.txt` L64–L160), the removal
+  (`commands/delete.json`, `download.txt` L371–L401) and the config with set limits (`config/get-limited.json`,
+  `download_config.txt` L402–L455, the answer to an update; the comments and the elided `schedule` left out).
 - **Built by the adapter**:
   - `pairing/track-denied.json`: the status `denied` the documentation lists for the pairing, in the form of its examples.
   - `queue/list-states.json`: one task per documented status and type no capture holds (`download.txt` L42–L120) —

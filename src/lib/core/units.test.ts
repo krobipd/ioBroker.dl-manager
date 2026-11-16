@@ -57,6 +57,16 @@ describe("units", () => {
     expect(toGB(-5)).toBeNull();
   });
 
+  it("keeps three significant digits below 1, so a set value never reads as 0 (unit-value, Freebox 512/40 B/s)", () => {
+    expect(toMBps(512)).toBe(0.000512);
+    expect(toMBps(40)).toBe(0.00004);
+    expect(toMBps(121_021)).toBe(0.121);
+    expect(toMBps(99_960)).toBe(0.1);
+    expect(toGB(258_998_272)).toBe(0.259);
+    expect(toGB(1)).toBe(0.000000001);
+    expect(toMBps(1_383_413)).toBe(1.38);
+  });
+
   it("turns 0, negatives and garbage into unlimited when writing a limit", () => {
     expect(fromMBps(0)).toBe(0);
     expect(fromMBps(-3)).toBe(0);

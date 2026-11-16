@@ -1,0 +1,50 @@
+{
+  "_source": {
+    "program": "freebox",
+    "version": "v8",
+    "request": "PUT /api/v4/downloads/config/",
+    "recordedAt": "documentation example",
+    "origin": "Freebox OS API 4.0 documentation (dev.freebox.fr/sdk/os, mirror AriusII/Freenaute-Freebox-Api@84f15ddb), download_config.txt L402–L455: the answer to the update, the whole config as it reads afterwards (normal mode 512/40 B/s); the comments behind the two base64 folders and the elided `schedule` (`[ ... ]`) left out"
+  },
+  "status": 200,
+  "body": {
+    "success": true,
+    "result": {
+      "feed": {
+        "max_items": 0,
+        "fetch_interval": 60
+      },
+      "use_watch_dir": true,
+      "watch_dir": "L0Rpc3F1ZSBkdXIvLnF1ZXVl",
+      "news": {
+        "user": "",
+        "erase_tmp": true,
+        "port": 119,
+        "nthreads": 1,
+        "auto_repair": true,
+        "ssl": false,
+        "auto_extract": true,
+        "lazy_par2": true,
+        "server": "news.free.fr"
+      },
+      "bt": {
+        "max_peers": 50,
+        "stop_ratio": 150,
+        "crypto_support": "allowed"
+      },
+      "max_downloading_tasks": 5,
+      "download_dir": "L0Rpc3F1ZSBkdXIvVMOpbMOpY2hhcmdlbWVudHMv",
+      "throttling": {
+        "normal": {
+          "rx_rate": 512,
+          "tx_rate": 40
+        },
+        "slow": {
+          "rx_rate": 128,
+          "tx_rate": 10
+        },
+        "mode": "normal"
+      }
+    }
+  }
+}

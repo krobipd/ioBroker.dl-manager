@@ -183,7 +183,7 @@ krobi's decisions for this adapter. The register with his verbatim words lives i
   Seed-Servers), `TRANSFER_LIMIT_DOWN` hält `big` so lange am Laden. Was ein Programm dafür braucht, steht im Kopf seines
   Recorders.
 - **Objekt-Inventar** `test/inventory.js` + `test/fixture-hook.js` (ersetzt `fetch` nur im Adapter-Prozess): jeder
-  Programmtyp des Katalogs aus seinen Fixtures, Ergebnis `test/objects.inventory.json`; nur über `with-werkstatt-lock.py`.
+  Programmtyp des Katalogs aus seinen Fixtures, Ergebnis `test/objects.inventory.json`; nur über `werkbank-run.py hand -- npm run test:inventory` (seit Runde 154 verweigert der Hook den direkten `with-werkstatt-lock.py`).
   Die Zeilen gehen wie bei 0.2.0 in `native.programs` (als ganzes Objekt geschrieben — `changeAdapterConfig` machte aus der
   Liste ein Objekt mit Zahlenschlüsseln), der Start zieht sie in den Speicher; Passwörter im Abzug maskiert, die
   Aufstiegs-Suite gibt dem gesäten Speicher-Objekt des Vorgängers die Fixture-Geheimnisse zurück (`restoreMaskedSecrets`,

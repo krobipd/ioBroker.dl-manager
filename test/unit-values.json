@@ -1,0 +1,770 @@
+{
+  "aria2-aria2.downloadSpeed": {
+    "id": "aria2-aria2.downloadSpeed",
+    "recorded": 200085,
+    "unit": "B/s",
+    "file": "test/fixtures/aria2/1.37.0/transfer/global-stat.json"
+  },
+  "aria2-aria2.downloads.*.downloaded": {
+    "id": "aria2-aria2.downloads.8992c934.downloaded",
+    "recorded": 1073741824,
+    "unit": "B",
+    "file": "test/fixtures/aria2/1.37.0/transfer/tell-active.json"
+  },
+  "aria2-aria2.downloads.*.size": {
+    "id": "aria2-aria2.downloads.8992c934.size",
+    "recorded": 1073741824,
+    "unit": "B",
+    "file": "test/fixtures/aria2/1.37.0/transfer/tell-active.json"
+  },
+  "aria2-aria2.downloads.*.speed": {
+    "id": "aria2-aria2.downloads.f80be849.speed",
+    "recorded": 1004566,
+    "unit": "B/s",
+    "file": "test/fixtures/aria2/1.37.0/transfer/tell-active.json"
+  },
+  "aria2-aria2.downloads.*.uploadSpeed": {
+    "id": "aria2-aria2.downloads.8992c934.uploadSpeed",
+    "recorded": 129645,
+    "unit": "B/s",
+    "file": "test/fixtures/aria2/1.37.0/transfer/tell-active.json"
+  },
+  "aria2-aria2.speedLimit": {
+    "id": "aria2-aria2.speedLimit",
+    "recorded": 2097152,
+    "unit": "B/s",
+    "file": "test/fixtures/aria2/1.37.0/limited/global-option.json"
+  },
+  "aria2-aria2.uploadLimit": {
+    "id": "aria2-aria2.uploadLimit",
+    "recorded": 512000,
+    "unit": "B/s",
+    "file": "test/fixtures/aria2/1.37.0/limited/global-option.json"
+  },
+  "aria2-aria2.uploadSpeed": {
+    "id": "aria2-aria2.uploadSpeed",
+    "recorded": 128881,
+    "unit": "B/s",
+    "file": "test/fixtures/aria2/1.37.0/transfer/global-stat.json"
+  },
+  "deluge-deluge.downloadSpeed": {
+    "id": "deluge-deluge.downloadSpeed",
+    "recorded": 922392,
+    "unit": "B/s",
+    "file": "test/fixtures/deluge/2.2.0/transfer/update-ui.json"
+  },
+  "deluge-deluge.downloads.*.downloaded": {
+    "id": "deluge-deluge.downloads.3232883d.downloaded",
+    "recorded": 1073741824,
+    "unit": "B",
+    "file": "test/fixtures/deluge/2.2.0/transfer/update-ui.json"
+  },
+  "deluge-deluge.downloads.*.eta": {
+    "id": "deluge-deluge.downloads.f810fabf.eta",
+    "recorded": 107,
+    "unit": "s",
+    "file": "test/fixtures/deluge/2.2.0/transfer/update-ui.json"
+  },
+  "deluge-deluge.downloads.*.size": {
+    "id": "deluge-deluge.downloads.3232883d.size",
+    "recorded": 1073741824,
+    "unit": "B",
+    "file": "test/fixtures/deluge/2.2.0/transfer/update-ui.json"
+  },
+  "deluge-deluge.downloads.*.speed": {
+    "id": "deluge-deluge.downloads.f810fabf.speed",
+    "recorded": 294870,
+    "unit": "B/s",
+    "file": "test/fixtures/deluge/2.2.0/transfer/update-ui.json"
+  },
+  "deluge-deluge.downloads.*.uploadSpeed": {
+    "id": "deluge-deluge.downloads.3232883d.uploadSpeed",
+    "recorded": 569759,
+    "unit": "B/s",
+    "file": "test/fixtures/deluge/2.2.0/transfer/update-ui.json"
+  },
+  "deluge-deluge.freeSpace": {
+    "id": "deluge-deluge.freeSpace",
+    "recorded": 91884478464,
+    "unit": "B",
+    "file": "test/fixtures/deluge/2.2.0/transfer/update-ui.json"
+  },
+  "deluge-deluge.speedLimit": {
+    "id": "deluge-deluge.speedLimit",
+    "recorded": 2000,
+    "unit": "KiB/s",
+    "file": "test/fixtures/deluge/2.2.0/limited/config-values.json"
+  },
+  "deluge-deluge.uploadLimit": {
+    "id": "deluge-deluge.uploadLimit",
+    "recorded": 500,
+    "unit": "KiB/s",
+    "file": "test/fixtures/deluge/2.2.0/limited/config-values.json"
+  },
+  "deluge-deluge.uploadSpeed": {
+    "id": "deluge-deluge.uploadSpeed",
+    "recorded": 1081813,
+    "unit": "B/s",
+    "file": "test/fixtures/deluge/2.2.0/transfer/update-ui.json"
+  },
+  "downloadstation-downloadstation.downloads.*.downloaded": {
+    "id": "downloadstation-downloadstation.downloads.4.downloaded",
+    "recorded": 4112431185,
+    "unit": "B",
+    "file": "test/fixtures/downloadstation/synodl/transfer/list.json"
+  },
+  "downloadstation-downloadstation.downloads.*.size": {
+    "id": "downloadstation-downloadstation.downloads.4.size",
+    "recorded": 4112431185,
+    "unit": "B",
+    "file": "test/fixtures/downloadstation/synodl/transfer/list.json"
+  },
+  "downloadstation-downloadstation.downloads.*.speed": {
+    "id": "downloadstation-downloadstation.downloads.0.speed",
+    "recorded": 121021,
+    "unit": "B/s",
+    "file": "test/fixtures/downloadstation/synodl/transfer/list.json"
+  },
+  "downloadstation-downloadstation.downloads.*.uploadSpeed": {
+    "id": "downloadstation-downloadstation.downloads.2.uploadSpeed",
+    "recorded": 83923,
+    "unit": "B/s",
+    "file": "test/fixtures/downloadstation/synodl/transfer/list.json"
+  },
+  "downloadstation-downloadstation.uploadLimit": {
+    "id": "downloadstation-downloadstation.uploadLimit",
+    "recorded": 20,
+    "unit": "KB/s",
+    "file": "test/fixtures/downloadstation/4.1-5012/running/config.json"
+  },
+  "flood-flood.downloads.*.downloaded": {
+    "id": "flood-flood.downloads.3232883d.downloaded",
+    "recorded": 1073741824,
+    "unit": "B",
+    "file": "test/fixtures/flood/4.16.4-qbittorrent/transfer/torrents.json"
+  },
+  "flood-flood.downloads.*.eta": {
+    "id": "flood-flood.downloads.f810fabf.eta",
+    "recorded": 177,
+    "unit": "s",
+    "file": "test/fixtures/flood/4.16.4-qbittorrent/transfer/torrents.json"
+  },
+  "flood-flood.downloads.*.size": {
+    "id": "flood-flood.downloads.3232883d.size",
+    "recorded": 1073741824,
+    "unit": "B",
+    "file": "test/fixtures/flood/4.16.4-qbittorrent/transfer/torrents.json"
+  },
+  "flood-flood.downloads.*.speed": {
+    "id": "flood-flood.downloads.f810fabf.speed",
+    "recorded": 163360,
+    "unit": "B/s",
+    "file": "test/fixtures/flood/4.16.4-qbittorrent/transfer/torrents.json"
+  },
+  "flood-flood.downloads.*.uploadSpeed": {
+    "id": "flood-flood.downloads.3232883d.uploadSpeed",
+    "recorded": 175478,
+    "unit": "B/s",
+    "file": "test/fixtures/flood/4.16.4-qbittorrent/transfer/torrents.json"
+  },
+  "flood-flood.speedLimit": {
+    "id": "flood-flood.speedLimit",
+    "recorded": 102400,
+    "unit": "B/s",
+    "file": "test/fixtures/flood/4.16.4-qbittorrent/limited/settings.json"
+  },
+  "flood-flood.uploadLimit": {
+    "id": "flood-flood.uploadLimit",
+    "recorded": 51200,
+    "unit": "B/s",
+    "file": "test/fixtures/flood/4.16.4-qbittorrent/limited/settings.json"
+  },
+  "freebox-mafreebox.downloads.*.eta": {
+    "id": "freebox-mafreebox.downloads.365.eta",
+    "recorded": 29,
+    "unit": "s",
+    "file": "test/fixtures/freebox/v8/queue/list.json"
+  },
+  "freebox-mafreebox.downloads.*.size": {
+    "id": "freebox-mafreebox.downloads.341.size",
+    "recorded": 11300000000,
+    "unit": "B",
+    "file": "test/fixtures/freebox/v8/queue/list.json"
+  },
+  "freebox-mafreebox.downloads.*.speed": {
+    "id": "freebox-mafreebox.downloads.365.speed",
+    "recorded": 104230000,
+    "unit": "B/s",
+    "file": "test/fixtures/freebox/v8/queue/list.json"
+  },
+  "freebox-mafreebox.downloads.*.uploadSpeed": {
+    "id": "freebox-mafreebox.downloads.365.uploadSpeed",
+    "recorded": 132600,
+    "unit": "B/s",
+    "file": "test/fixtures/freebox/v8/queue/list.json"
+  },
+  "freebox-mafreebox.speedLimit": {
+    "id": "freebox-mafreebox.speedLimit",
+    "recorded": 512,
+    "unit": "B/s",
+    "file": "test/fixtures/freebox/v8/config/get-limited.json"
+  },
+  "freebox-mafreebox.uploadLimit": {
+    "id": "freebox-mafreebox.uploadLimit",
+    "recorded": 40,
+    "unit": "B/s",
+    "file": "test/fixtures/freebox/v8/config/get-limited.json"
+  },
+  "hadouken-hadouken.downloads.*.eta": {
+    "id": "hadouken-hadouken.downloads.f810fabf.eta",
+    "recorded": 130,
+    "unit": "s",
+    "file": "test/fixtures/hadouken/5.2.0/transfer/list.json"
+  },
+  "hadouken-hadouken.downloads.*.size": {
+    "id": "hadouken-hadouken.downloads.3232883d.size",
+    "recorded": 1073741824,
+    "unit": "B",
+    "file": "test/fixtures/hadouken/5.2.0/transfer/list.json"
+  },
+  "hadouken-hadouken.downloads.*.speed": {
+    "id": "hadouken-hadouken.downloads.f810fabf.speed",
+    "recorded": 237124,
+    "unit": "B/s",
+    "file": "test/fixtures/hadouken/5.2.0/transfer/list.json"
+  },
+  "hadouken-hadouken.downloads.*.uploadSpeed": {
+    "id": "hadouken-hadouken.downloads.3232883d.uploadSpeed",
+    "recorded": 169473,
+    "unit": "B/s",
+    "file": "test/fixtures/hadouken/5.2.0/transfer/list.json"
+  },
+  "hadouken-hadouken.speedLimit": {
+    "id": "hadouken-hadouken.speedLimit",
+    "recorded": 2048000,
+    "unit": "B/s",
+    "file": "test/fixtures/hadouken/5.2.0/limited/get-settings.json"
+  },
+  "hadouken-hadouken.uploadLimit": {
+    "id": "hadouken-hadouken.uploadLimit",
+    "recorded": 512000,
+    "unit": "B/s",
+    "file": "test/fixtures/hadouken/5.2.0/limited/get-settings.json"
+  },
+  "jdownloader-dev1.downloadSpeed": {
+    "id": "jdownloader-dev1.downloadSpeed",
+    "recorded": 1021506,
+    "unit": "B/s",
+    "file": "test/fixtures/jdownloader/48637/limited/toolbar-get-status.json"
+  },
+  "jdownloader-dev1.downloads.*.downloaded": {
+    "id": "jdownloader-dev1.downloads.33547449.downloaded",
+    "recorded": 31981568,
+    "unit": "B",
+    "file": "test/fixtures/jdownloader/48637/running/query-packages.json"
+  },
+  "jdownloader-dev1.downloads.*.eta": {
+    "id": "jdownloader-dev1.downloads.33547449.eta",
+    "recorded": 1,
+    "unit": "s",
+    "file": "test/fixtures/jdownloader/48637/running/query-packages.json"
+  },
+  "jdownloader-dev1.downloads.*.size": {
+    "id": "jdownloader-dev1.downloads.33547449.size",
+    "recorded": 33554432,
+    "unit": "B",
+    "file": "test/fixtures/jdownloader/48637/running/query-packages.json"
+  },
+  "jdownloader-dev1.downloads.*.speed": {
+    "id": "jdownloader-dev1.downloads.33547449.speed",
+    "recorded": 1058202,
+    "unit": "B/s",
+    "file": "test/fixtures/jdownloader/48637/running/query-packages.json"
+  },
+  "jdownloader-dev1.speedLimit": {
+    "id": "jdownloader-dev1.speedLimit",
+    "recorded": 2000000,
+    "unit": "B/s",
+    "file": "test/fixtures/jdownloader/48637/limited/toolbar-get-status.json"
+  },
+  "jdownloader-jdownloader.downloadSpeed": {
+    "id": "jdownloader-jdownloader.downloadSpeed",
+    "recorded": 1021506,
+    "unit": "B/s",
+    "file": "test/fixtures/jdownloader/48637/limited/toolbar-get-status.json"
+  },
+  "jdownloader-jdownloader.downloads.*.downloaded": {
+    "id": "jdownloader-jdownloader.downloads.33547449.downloaded",
+    "recorded": 31981568,
+    "unit": "B",
+    "file": "test/fixtures/jdownloader/48637/running/query-packages.json"
+  },
+  "jdownloader-jdownloader.downloads.*.eta": {
+    "id": "jdownloader-jdownloader.downloads.33547449.eta",
+    "recorded": 1,
+    "unit": "s",
+    "file": "test/fixtures/jdownloader/48637/running/query-packages.json"
+  },
+  "jdownloader-jdownloader.downloads.*.size": {
+    "id": "jdownloader-jdownloader.downloads.33547449.size",
+    "recorded": 33554432,
+    "unit": "B",
+    "file": "test/fixtures/jdownloader/48637/running/query-packages.json"
+  },
+  "jdownloader-jdownloader.downloads.*.speed": {
+    "id": "jdownloader-jdownloader.downloads.33547449.speed",
+    "recorded": 1058202,
+    "unit": "B/s",
+    "file": "test/fixtures/jdownloader/48637/running/query-packages.json"
+  },
+  "jdownloader-jdownloader.speedLimit": {
+    "id": "jdownloader-jdownloader.speedLimit",
+    "recorded": 2000000,
+    "unit": "B/s",
+    "file": "test/fixtures/jdownloader/48637/limited/toolbar-get-status.json"
+  },
+  "nzbget-nzbget.downloadSpeed": {
+    "id": "nzbget-nzbget.downloadSpeed",
+    "recorded": 1056066,
+    "unit": "B/s",
+    "file": "test/fixtures/nzbget/26.3/transfer/status.json"
+  },
+  "nzbget-nzbget.downloads.*.downloaded": {
+    "id": "nzbget-nzbget.downloads.4.downloaded",
+    "recorded": 139561878,
+    "unit": "B",
+    "file": "test/fixtures/nzbget/26.3/transfer/history.json"
+  },
+  "nzbget-nzbget.downloads.*.size": {
+    "id": "nzbget-nzbget.downloads.4.size",
+    "recorded": 134217728,
+    "unit": "B",
+    "file": "test/fixtures/nzbget/26.3/transfer/history.json"
+  },
+  "nzbget-nzbget.freeSpace": {
+    "id": "nzbget-nzbget.freeSpace",
+    "recorded": 88592,
+    "unit": "MiB",
+    "file": "test/fixtures/nzbget/26.3/transfer/status.json"
+  },
+  "nzbget-nzbget.speedLimit": {
+    "id": "nzbget-nzbget.speedLimit",
+    "recorded": 1048576,
+    "unit": "B/s",
+    "file": "test/fixtures/nzbget/26.3/transfer/status.json"
+  },
+  "nzbvortex-nzbvortex.downloads.*.downloaded": {
+    "id": "nzbvortex-nzbvortex.downloads.14.downloaded",
+    "recorded": 3000000000,
+    "unit": "B",
+    "file": "test/fixtures/nzbvortex/doc-1.7/queue/list.json"
+  },
+  "nzbvortex-nzbvortex.downloads.*.size": {
+    "id": "nzbvortex-nzbvortex.downloads.14.size",
+    "recorded": 3000000000,
+    "unit": "B",
+    "file": "test/fixtures/nzbvortex/doc-1.7/queue/list.json"
+  },
+  "nzbvortex-nzbvortex.downloads.*.speed": {
+    "id": "nzbvortex-nzbvortex.downloads.11.speed",
+    "recorded": 2500000,
+    "unit": "B/s",
+    "file": "test/fixtures/nzbvortex/doc-1.7/queue/list.json"
+  },
+  "nzbvortex-nzbvortex.speedLimit": {
+    "id": "nzbvortex-nzbvortex.speedLimit",
+    "recorded": 512,
+    "unit": "KB/s",
+    "file": "test/fixtures/nzbvortex/doc-1.7/speedlimit/enable.json"
+  },
+  "pyload-pyload.downloadSpeed": {
+    "id": "pyload-pyload.downloadSpeed",
+    "recorded": 1371952,
+    "unit": "B/s",
+    "file": "test/fixtures/pyload/0.5.0/running/status-server.json"
+  },
+  "pyload-pyload.freeSpace": {
+    "id": "pyload-pyload.freeSpace",
+    "recorded": 91633410048,
+    "unit": "B",
+    "file": "test/fixtures/pyload/0.5.0/running/free-space.json"
+  },
+  "pyload-pyload.speedLimit": {
+    "id": "pyload-pyload.speedLimit",
+    "recorded": 2000,
+    "unit": "KiB/s",
+    "file": "test/fixtures/pyload/0.5.0/limited/get-config-value-max-speed.json"
+  },
+  "qbittorrent-qbittorrent.downloadSpeed": {
+    "id": "qbittorrent-qbittorrent.downloadSpeed",
+    "recorded": 1334641,
+    "unit": "B/s",
+    "file": "test/fixtures/qbittorrent/5.2.3/transfer/maindata.json"
+  },
+  "qbittorrent-qbittorrent.downloads.*.downloaded": {
+    "id": "qbittorrent-qbittorrent.downloads.3232883d.downloaded",
+    "recorded": 1073741824,
+    "unit": "B",
+    "file": "test/fixtures/qbittorrent/5.2.3/transfer/maindata.json"
+  },
+  "qbittorrent-qbittorrent.downloads.*.eta": {
+    "id": "qbittorrent-qbittorrent.downloads.f810fabf.eta",
+    "recorded": 243,
+    "unit": "s",
+    "file": "test/fixtures/qbittorrent/5.2.3/transfer/maindata.json"
+  },
+  "qbittorrent-qbittorrent.downloads.*.size": {
+    "id": "qbittorrent-qbittorrent.downloads.3232883d.size",
+    "recorded": 1073741824,
+    "unit": "B",
+    "file": "test/fixtures/qbittorrent/5.2.3/transfer/maindata.json"
+  },
+  "qbittorrent-qbittorrent.downloads.*.speed": {
+    "id": "qbittorrent-qbittorrent.downloads.f810fabf.speed",
+    "recorded": 445727,
+    "unit": "B/s",
+    "file": "test/fixtures/qbittorrent/5.2.3/transfer/maindata.json"
+  },
+  "qbittorrent-qbittorrent.downloads.*.uploadSpeed": {
+    "id": "qbittorrent-qbittorrent.downloads.3232883d.uploadSpeed",
+    "recorded": 559410,
+    "unit": "B/s",
+    "file": "test/fixtures/qbittorrent/5.2.3/transfer/maindata.json"
+  },
+  "qbittorrent-qbittorrent.freeSpace": {
+    "id": "qbittorrent-qbittorrent.freeSpace",
+    "recorded": 91923648512,
+    "unit": "B",
+    "file": "test/fixtures/qbittorrent/5.2.3/transfer/maindata.json"
+  },
+  "qbittorrent-qbittorrent.speedLimit": {
+    "id": "qbittorrent-qbittorrent.speedLimit",
+    "recorded": 199680,
+    "unit": "B/s",
+    "file": "test/fixtures/qbittorrent/5.2.3/transfer/maindata.json"
+  },
+  "qbittorrent-qbittorrent.uploadLimit": {
+    "id": "qbittorrent-qbittorrent.uploadLimit",
+    "recorded": 20971520,
+    "unit": "B/s",
+    "file": "test/fixtures/qbittorrent/5.2.3/transfer/maindata.json"
+  },
+  "qbittorrent-qbittorrent.uploadSpeed": {
+    "id": "qbittorrent-qbittorrent.uploadSpeed",
+    "recorded": 320994,
+    "unit": "B/s",
+    "file": "test/fixtures/qbittorrent/5.2.3/transfer/maindata.json"
+  },
+  "rqbit-rqbit.downloadSpeed": {
+    "id": "rqbit-rqbit.downloadSpeed",
+    "recorded": 0.19062232971191406,
+    "unit": "MiB/s",
+    "file": "test/fixtures/rqbit/9.1.0/transfer/stats.json"
+  },
+  "rqbit-rqbit.downloads.*.downloaded": {
+    "id": "rqbit-rqbit.downloads.3232883d.downloaded",
+    "recorded": 1073741824,
+    "unit": "B",
+    "file": "test/fixtures/rqbit/9.1.0/transfer/torrents.json"
+  },
+  "rqbit-rqbit.downloads.*.eta": {
+    "id": "rqbit-rqbit.downloads.f810fabf.eta",
+    "recorded": 200,
+    "unit": "s",
+    "file": "test/fixtures/rqbit/9.1.0/transfer/torrents.json"
+  },
+  "rqbit-rqbit.downloads.*.size": {
+    "id": "rqbit-rqbit.downloads.3232883d.size",
+    "recorded": 1073741824,
+    "unit": "B",
+    "file": "test/fixtures/rqbit/9.1.0/transfer/torrents.json"
+  },
+  "rqbit-rqbit.downloads.*.speed": {
+    "id": "rqbit-rqbit.downloads.f810fabf.speed",
+    "recorded": 0.15460491180419922,
+    "unit": "MiB/s",
+    "file": "test/fixtures/rqbit/9.1.0/transfer/torrents.json"
+  },
+  "rqbit-rqbit.downloads.*.uploadSpeed": {
+    "id": "rqbit-rqbit.downloads.3232883d.uploadSpeed",
+    "recorded": 1.1398544311523438,
+    "unit": "MiB/s",
+    "file": "test/fixtures/rqbit/9.1.0/transfer/torrents.json"
+  },
+  "rqbit-rqbit.speedLimit": {
+    "id": "rqbit-rqbit.speedLimit",
+    "recorded": 2048000,
+    "unit": "B/s",
+    "file": "test/fixtures/rqbit/9.1.0/limited/limits.json"
+  },
+  "rqbit-rqbit.uploadLimit": {
+    "id": "rqbit-rqbit.uploadLimit",
+    "recorded": 512000,
+    "unit": "B/s",
+    "file": "test/fixtures/rqbit/9.1.0/limited/limits.json"
+  },
+  "rqbit-rqbit.uploadSpeed": {
+    "id": "rqbit-rqbit.uploadSpeed",
+    "recorded": 0.8874902725219727,
+    "unit": "MiB/s",
+    "file": "test/fixtures/rqbit/9.1.0/transfer/stats.json"
+  },
+  "rtorrent-rtorrent.downloadSpeed": {
+    "id": "rtorrent-rtorrent.downloadSpeed",
+    "recorded": 328771,
+    "unit": "B/s",
+    "file": "test/fixtures/rtorrent/0.16.25/transfer/poll.json"
+  },
+  "rtorrent-rtorrent.downloads.*.downloaded": {
+    "id": "rtorrent-rtorrent.downloads.3232883d.downloaded",
+    "recorded": 1073741824,
+    "unit": "B",
+    "file": "test/fixtures/rtorrent/0.16.25/transfer/poll.json"
+  },
+  "rtorrent-rtorrent.downloads.*.size": {
+    "id": "rtorrent-rtorrent.downloads.3232883d.size",
+    "recorded": 1073741824,
+    "unit": "B",
+    "file": "test/fixtures/rtorrent/0.16.25/transfer/poll.json"
+  },
+  "rtorrent-rtorrent.downloads.*.speed": {
+    "id": "rtorrent-rtorrent.downloads.f810fabf.speed",
+    "recorded": 258389,
+    "unit": "B/s",
+    "file": "test/fixtures/rtorrent/0.16.25/transfer/poll.json"
+  },
+  "rtorrent-rtorrent.downloads.*.uploadSpeed": {
+    "id": "rtorrent-rtorrent.downloads.3232883d.uploadSpeed",
+    "recorded": 196608,
+    "unit": "B/s",
+    "file": "test/fixtures/rtorrent/0.16.25/transfer/poll.json"
+  },
+  "rtorrent-rtorrent.speedLimit": {
+    "id": "rtorrent-rtorrent.speedLimit",
+    "recorded": 249856,
+    "unit": "B/s",
+    "file": "test/fixtures/rtorrent/0.16.25/transfer/poll.json"
+  },
+  "rtorrent-rtorrent.uploadLimit": {
+    "id": "rtorrent-rtorrent.uploadLimit",
+    "recorded": 512000,
+    "unit": "B/s",
+    "file": "test/fixtures/rtorrent/0.16.25/transfer/poll.json"
+  },
+  "rtorrent-rtorrent.uploadSpeed": {
+    "id": "rtorrent-rtorrent.uploadSpeed",
+    "recorded": 197150,
+    "unit": "B/s",
+    "file": "test/fixtures/rtorrent/0.16.25/transfer/poll.json"
+  },
+  "sabnzbd-sabnzbd.downloadSpeed": {
+    "id": "sabnzbd-sabnzbd.downloadSpeed",
+    "recorded": 1300.33,
+    "unit": "KiB/s",
+    "file": "test/fixtures/sabnzbd/5.1.3/transfer/queue.json"
+  },
+  "sabnzbd-sabnzbd.downloads.*.downloaded": {
+    "id": "sabnzbd-sabnzbd.downloads.36e358a9.downloaded",
+    "recorded": 134217728,
+    "unit": "B",
+    "file": "test/fixtures/sabnzbd/5.1.3/transfer/history.json"
+  },
+  "sabnzbd-sabnzbd.downloads.*.size": {
+    "id": "sabnzbd-sabnzbd.downloads.36e358a9.size",
+    "recorded": 134217728,
+    "unit": "B",
+    "file": "test/fixtures/sabnzbd/5.1.3/transfer/history.json"
+  },
+  "sabnzbd-sabnzbd.freeSpace": {
+    "id": "sabnzbd-sabnzbd.freeSpace",
+    "recorded": 86.39,
+    "unit": "GiB",
+    "file": "test/fixtures/sabnzbd/5.1.3/transfer/queue.json"
+  },
+  "sabnzbd-sabnzbd.speedLimit": {
+    "id": "sabnzbd-sabnzbd.speedLimit",
+    "recorded": 1048576,
+    "unit": "B/s",
+    "file": "test/fixtures/sabnzbd/5.1.3/transfer/queue.json"
+  },
+  "transmission-transmission.downloadSpeed": {
+    "id": "transmission-transmission.downloadSpeed",
+    "recorded": 196608,
+    "unit": "B/s",
+    "file": "test/fixtures/transmission/4.1.3/transfer/session-stats.json"
+  },
+  "transmission-transmission.downloads.*.eta": {
+    "id": "transmission-transmission.downloads.f810fabf.eta",
+    "recorded": 210,
+    "unit": "s",
+    "file": "test/fixtures/transmission/4.1.3/transfer/torrent-get.json"
+  },
+  "transmission-transmission.downloads.*.size": {
+    "id": "transmission-transmission.downloads.3232883d.size",
+    "recorded": 1073741824,
+    "unit": "B",
+    "file": "test/fixtures/transmission/4.1.3/transfer/torrent-get.json"
+  },
+  "transmission-transmission.downloads.*.speed": {
+    "id": "transmission-transmission.downloads.f810fabf.speed",
+    "recorded": 196608,
+    "unit": "B/s",
+    "file": "test/fixtures/transmission/4.1.3/transfer/torrent-get.json"
+  },
+  "transmission-transmission.downloads.*.uploadSpeed": {
+    "id": "transmission-transmission.downloads.3232883d.uploadSpeed",
+    "recorded": 705071,
+    "unit": "B/s",
+    "file": "test/fixtures/transmission/4.1.3/transfer/torrent-get.json"
+  },
+  "transmission-transmission.freeSpace": {
+    "id": "transmission-transmission.freeSpace",
+    "recorded": 92085129216,
+    "unit": "B",
+    "file": "test/fixtures/transmission/4.1.3/transfer/free-space.json"
+  },
+  "transmission-transmission.speedLimit": {
+    "id": "transmission-transmission.speedLimit",
+    "recorded": 2000,
+    "unit": "kB/s",
+    "file": "test/fixtures/transmission/4.1.3/limited/session-get.json"
+  },
+  "transmission-transmission.uploadLimit": {
+    "id": "transmission-transmission.uploadLimit",
+    "recorded": 500,
+    "unit": "kB/s",
+    "file": "test/fixtures/transmission/4.1.3/limited/session-get.json"
+  },
+  "transmission-transmission.uploadSpeed": {
+    "id": "transmission-transmission.uploadSpeed",
+    "recorded": 705071,
+    "unit": "B/s",
+    "file": "test/fixtures/transmission/4.1.3/transfer/session-stats.json"
+  },
+  "tribler-tribler.downloads.*.eta": {
+    "id": "tribler-tribler.downloads.f810fabf.eta",
+    "recorded": 1383.2170366285216,
+    "unit": "s",
+    "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+  },
+  "tribler-tribler.downloads.*.size": {
+    "id": "tribler-tribler.downloads.3232883d.size",
+    "recorded": 1073741824,
+    "unit": "B",
+    "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+  },
+  "tribler-tribler.downloads.*.speed": {
+    "id": "tribler-tribler.downloads.f810fabf.speed",
+    "recorded": 21180,
+    "unit": "B/s",
+    "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+  },
+  "tribler-tribler.downloads.*.uploadSpeed": {
+    "id": "tribler-tribler.downloads.3232883d.uploadSpeed",
+    "recorded": 44889,
+    "unit": "B/s",
+    "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+  },
+  "tribler-tribler.speedLimit": {
+    "id": "tribler-tribler.speedLimit",
+    "recorded": 102400,
+    "unit": "B/s",
+    "file": "test/fixtures/tribler/8.4.2/error/settings.json"
+  },
+  "tribler-tribler.uploadLimit": {
+    "id": "tribler-tribler.uploadLimit",
+    "recorded": 51200,
+    "unit": "B/s",
+    "file": "test/fixtures/tribler/8.4.2/error/settings.json"
+  },
+  "utorrent-utorrent.downloads.*.eta": {
+    "id": "utorrent-utorrent.downloads.f810fabf.eta",
+    "recorded": 2097150,
+    "unit": "s",
+    "file": "test/fixtures/utorrent/3.3.0.30470/running/list.json"
+  },
+  "utorrent-utorrent.downloads.*.size": {
+    "id": "utorrent-utorrent.downloads.3232883d.size",
+    "recorded": 1073741824,
+    "unit": "B",
+    "file": "test/fixtures/utorrent/3.3.0.30470/running/list.json"
+  },
+  "utorrent-utorrent.downloads.*.speed": {
+    "id": "utorrent-utorrent.downloads.f810fabf.speed",
+    "recorded": 428,
+    "unit": "B/s",
+    "file": "test/fixtures/utorrent/3.3.0.30470/running/list.json"
+  },
+  "utorrent-utorrent.downloads.*.uploadSpeed": {
+    "id": "utorrent-utorrent.downloads.f810fabf.uploadSpeed",
+    "recorded": 32,
+    "unit": "B/s",
+    "file": "test/fixtures/utorrent/3.3.0.30470/running/list.json"
+  },
+  "utorrent-utorrent.speedLimit": {
+    "id": "utorrent-utorrent.speedLimit",
+    "recorded": 2000,
+    "unit": "KiB/s",
+    "file": "test/fixtures/utorrent/3.3.0.30470/limited/getsettings.json"
+  },
+  "utorrent-utorrent.uploadLimit": {
+    "id": "utorrent-utorrent.uploadLimit",
+    "recorded": 500,
+    "unit": "KiB/s",
+    "file": "test/fixtures/utorrent/3.3.0.30470/limited/getsettings.json"
+  },
+  "vuze-vuze.downloadSpeed": {
+    "id": "vuze-vuze.downloadSpeed",
+    "recorded": 219731,
+    "unit": "B/s",
+    "file": "test/fixtures/vuze/5.7.6.0-xmwebui-0.6.5/transfer/session-stats.json"
+  },
+  "vuze-vuze.downloads.*.eta": {
+    "id": "vuze-vuze.downloads.f810fabf.eta",
+    "recorded": 176,
+    "unit": "s",
+    "file": "test/fixtures/vuze/5.7.6.0-xmwebui-0.6.5/transfer/torrent-get.json"
+  },
+  "vuze-vuze.downloads.*.size": {
+    "id": "vuze-vuze.downloads.3232883d.size",
+    "recorded": 1073741824,
+    "unit": "B",
+    "file": "test/fixtures/vuze/5.7.6.0-xmwebui-0.6.5/transfer/torrent-get.json"
+  },
+  "vuze-vuze.downloads.*.speed": {
+    "id": "vuze-vuze.downloads.f810fabf.speed",
+    "recorded": 219229,
+    "unit": "B/s",
+    "file": "test/fixtures/vuze/5.7.6.0-xmwebui-0.6.5/transfer/torrent-get.json"
+  },
+  "vuze-vuze.downloads.*.uploadSpeed": {
+    "id": "vuze-vuze.downloads.3232883d.uploadSpeed",
+    "recorded": 467172,
+    "unit": "B/s",
+    "file": "test/fixtures/vuze/5.7.6.0-xmwebui-0.6.5/transfer/torrent-get.json"
+  },
+  "vuze-vuze.freeSpace": {
+    "id": "vuze-vuze.freeSpace",
+    "recorded": 91719630848,
+    "unit": "B",
+    "file": "test/fixtures/vuze/5.7.6.0-xmwebui-0.6.5/transfer/free-space.json"
+  },
+  "vuze-vuze.speedLimit": {
+    "id": "vuze-vuze.speedLimit",
+    "recorded": 2000,
+    "unit": "KiB/s",
+    "file": "test/fixtures/vuze/5.7.6.0-xmwebui-0.6.5/limited/session-get.json"
+  },
+  "vuze-vuze.uploadLimit": {
+    "id": "vuze-vuze.uploadLimit",
+    "recorded": 500,
+    "unit": "KiB/s",
+    "file": "test/fixtures/vuze/5.7.6.0-xmwebui-0.6.5/limited/session-get.json"
+  },
+  "vuze-vuze.uploadSpeed": {
+    "id": "vuze-vuze.uploadSpeed",
+    "recorded": 467347,
+    "unit": "B/s",
+    "file": "test/fixtures/vuze/5.7.6.0-xmwebui-0.6.5/transfer/session-stats.json"
+  }
+}
