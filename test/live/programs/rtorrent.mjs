@@ -3,11 +3,22 @@
 // payloads and rTorrent gets it as a peer with `add_peer` (src/command_download.cc, 0.9.8 and 0.16.x). The image moves a
 // finished download to /downloads/complete; the recorder removes that event first, so every file stays where it is.
 // The status fields are ruTorrent's (js/rtorrent.js: is_open, d.state, is_active, d.hashing, is_hash_checking,
-// d.message) — the driver derives its status from the same ones.
+// d.message) — the driver derives its status from the same ones. For `transfer` rTorrent also seeds the torrent `check`
+// to the recording's peer (lib.mjs `peer`).
 import { lookup } from "node:dns/promises";
 import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { DEAD_MAGNET, Http, prepareTorrents, Recorder, TORRENT_FILES, torrentOf, waitFor } from "../lib.mjs";
+import {
+  DEAD_MAGNET,
+  Http,
+  peer as leecher,
+  prepareTorrents,
+  Recorder,
+  TORRENT_FILES,
+  TRANSFER_MIN,
+  torrentOf,
+  waitFor,
+} from "../lib.mjs";
 
 const USER = "admin";
 const PASS = "testpass1";
@@ -200,6 +211,7 @@ export function prepare(work, tag) {
     volumes: [`${join(work, "downloads")}:${DOWNLOADS}`, `${join(work, "passwd")}:/passwd`],
     sidecars: [
       { name: "rqseed", image: SEEDER, volumes: [`${join(work, "seed")}:/seed`], args: ["server", "start", "/seed"] },
+      leecher(work),
     ],
   };
 }
@@ -538,6 +550,48 @@ export async function record(ctx) {
     await send("throttle.global_up.max_rate.set", ["", 512000]),
   );
   await snapshot("limited");
+
+  // transfer: `limited` once `check` uploads to the recording's peer (it finds rTorrent through the seed server's
+  // tracker, and is handed to rTorrent as a second way) — `check` hashes again after the stop above, `big` still loads
+  // from the seeder; every rate the fixture hook plays tells its unit (≥ TRANSFER_MIN), the limits stay set (the
+  // upload limit 512000 B/s holds the peer's 600 KiB/s above the minimum)
+  const leech = `${(await lookup("peer", { family: 4 })).address}:6881`;
+  let samples = 0;
+  await waitFor(
+    "transfer recorded",
+    async () => {
+      if (samples % 10 === 0) {
+        await rpc("add_peer", hash("check"), leech).catch(err =>
+          console.log(`rtorrent: add_peer check: ${err.message}`),
+        );
+      }
+      const res = await send("system.multicall", [POLL]);
+      w("transfer", "poll", "POST /RPC2 system.multicall (global rates and limits, d.multicall2 main)", res);
+      const v = /** @type {unknown[][]} */ (parseResponse(res.text).value ?? []);
+      const [down, up] = [Number(v[0]?.[0]), Number(v[1]?.[0])];
+      const rows = /** @type {unknown[][]} */ (v[4]?.[0] ?? []);
+      /** @type {(name: string) => Record<string, unknown> | undefined} a torrent's row of this answer, keyed by field */
+      const row = name => {
+        const r = rows.find(x => String(x[0]) === hash(name));
+        return r && Object.fromEntries(FIELDS.map((f, i) => [f.replace(/=.*$/, ""), r[i]]));
+      };
+      const [b, c] = [row("big"), row("check")];
+      console.log(
+        `rtorrent transfer sample ${++samples}: global ${down}/${up} big ${b?.["d.complete"]}/${b?.["d.down.rate"]} check ${c?.["d.complete"]}/${c?.["d.hashing"]}/${c?.["d.up.rate"]}/${c?.["d.peers_connected"]}`,
+      );
+      return (
+        down >= TRANSFER_MIN &&
+        up >= TRANSFER_MIN &&
+        Number(b?.["d.complete"]) === 0 &&
+        Number(b?.["d.down.rate"]) >= TRANSFER_MIN &&
+        Number(c?.["d.complete"]) === 1 &&
+        Number(c?.["d.hashing"]) === 0 &&
+        Number(c?.["d.up.rate"]) >= TRANSFER_MIN
+      );
+    },
+    180_000,
+    1000,
+  );
   await rpc("throttle.global_down.max_rate.set", "", 0);
   await rpc("throttle.global_up.max_rate.set", "", 0);
 

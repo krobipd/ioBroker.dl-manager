@@ -175,8 +175,8 @@ export async function record(ctx) {
   // back to the state before: `check` gone without a trace, one place, no limit
   const removed = await rpc("aria2.forceRemove", [check]);
   console.log(`aria2 forceRemove check: ${removed.status} ${removed.text.slice(0, 200)}`);
-  // run 43857599965: tellStatus did not say "removed" within 120 s, nor did it stop knowing the GID — what counts is that
-  // `check` is in neither list any more; what tellStatus says on the way goes to the log
+  // a seeding torrent force-removed reads "complete", not "removed" (runs 43857599965 and 43872646144) — what counts is
+  // that `check` is in neither list any more; what tellStatus says on the way goes to the log
   await waitFor(
     "check out of the lists",
     async () => {
