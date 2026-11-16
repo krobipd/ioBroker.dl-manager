@@ -203,14 +203,19 @@ export function prepare(work, tag) {
     }
   }
   mkdirSync(join(work, "passwd"), { recursive: true });
-  // the peer's own log of its messages (interested, choke, request), read when `check` does not upload
+  // the peer's own log of its messages (interested, choke, request), read when `check` does not upload. The peer
+  // starts with the first 16 MiB of `check` (zeros, four pieces, found by its integrity check): with nothing it sends no
+  // bitfield, and 0.16.25 never queued its `interested` for an upload slot (run 43885023470: the peer said interested,
+  // rTorrent's choke queue stayed at queued:0)
   mkdirSync(join(work, "peerlog"), { recursive: true, mode: 0o777 });
   const leech = /** @type {{ volumes: string[], args: string[] }} */ (leecher(work));
   leech.volumes.push(`${join(work, "peerlog")}:/peerlog`);
-  leech.args[2] = leech.args[2].replace(
-    " /torrents/check.torrent",
-    " --log=/peerlog/aria2.log --log-level=debug /torrents/check.torrent",
-  );
+  leech.args[2] = leech.args[2]
+    .replace("mkdir -p /leech &&", "mkdir -p /leech && truncate -s 16M /leech/check.bin &&")
+    .replace(
+      " /torrents/check.torrent",
+      " --check-integrity=true --log=/peerlog/aria2.log --log-level=debug /torrents/check.torrent",
+    );
   // nginx reads RFC 2307 `{PLAIN}` entries (ngx_http_auth_basic_module) — a test password needs no hash
   writeFileSync(join(work, "passwd", "rpc.htpasswd"), `${USER}:{PLAIN}${PASS}\n`);
   return {
@@ -567,19 +572,18 @@ export async function record(ctx) {
   await snapshot("limited");
 
   // transfer: `limited` once `check` uploads to the recording's peer (it finds rTorrent through the seed server's
-  // tracker, and is handed to rTorrent as a second way) — `check` hashes again after the stop above, `big` still loads
-  // from the seeder; every rate the fixture hook plays tells its unit (≥ TRANSFER_MIN), the limits stay set (the
-  // upload limit 512000 B/s holds the peer's 600 KiB/s above the minimum)
+  // tracker, and is handed to rTorrent once `check` has hashed again after the stop above — 0.9.8 drops a peer it gets
+  // while hashing and never tries it again, run 43885023470), `big` still loads from the seeder — slower than in
+  // `limited`, so it loads until the upload runs (the peer is unchoked on rTorrent's 30 s cycle); every rate the fixture
+  // hook plays tells its unit (≥ TRANSFER_MIN), the limits stay set (the upload limit 512000 B/s holds the peer's
+  // 600 KiB/s above the minimum)
+  await rpc("throttle.global_down.max_rate.set", "", 250_000);
   const leech = `${(await lookup("peer", { family: 4 })).address}:6881`;
   let samples = 0;
+  let handed = -1;
   await waitFor(
     "transfer recorded",
     async () => {
-      if (samples % 10 === 0) {
-        await rpc("add_peer", hash("check"), leech).catch(err =>
-          console.log(`rtorrent: add_peer check: ${err.message}`),
-        );
-      }
       const res = await send("system.multicall", [POLL]);
       w("transfer", "poll", "POST /RPC2 system.multicall (global rates and limits, d.multicall2 main)", res);
       const v = /** @type {unknown[][]} */ (parseResponse(res.text).value ?? []);
@@ -591,6 +595,12 @@ export async function record(ctx) {
         return r && Object.fromEntries(FIELDS.map((f, i) => [f.replace(/=.*$/, ""), r[i]]));
       };
       const [b, c] = [row("big"), row("check")];
+      if (Number(c?.["d.complete"]) === 1 && Number(c?.["d.hashing"]) === 0 && (handed < 0 || samples - handed >= 15)) {
+        handed = samples;
+        await rpc("add_peer", hash("check"), leech).catch(err =>
+          console.log(`rtorrent: add_peer check: ${err.message}`),
+        );
+      }
       console.log(
         `rtorrent transfer sample ${++samples}: global ${down}/${up} big ${b?.["d.complete"]}/${b?.["d.down.rate"]} check ${c?.["d.complete"]}/${c?.["d.hashing"]}/${c?.["d.up.rate"]}/${c?.["d.peers_connected"]}`,
       );
