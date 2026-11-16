@@ -591,7 +591,32 @@ export async function record(ctx) {
     },
     180_000,
     1000,
-  );
+  ).catch(async err => {
+    // run 43882146957: 0.16.25 had the peer connected (aria2: "CN:1 SD:1 DL:0B") and never sent it a byte — 0.9.8 did
+    const peerFields = ["p.address=", "p.is_incoming=", "p.is_encrypted=", "p.is_snubbed=", "p.is_preferred="];
+    for (const [label, call] of /** @type {[string, () => Promise<unknown>][]} */ ([
+      ["check peers", () => rpc("p.multicall", hash("check"), "", ...peerFields, "p.up_rate=", "p.completed_percent=")],
+      ["check peers (interest)", () => rpc("p.multicall", hash("check"), "", "p.address=", "p.is_unwanted=")],
+      ["check uploads max", () => rpc("d.uploads_max", hash("check"))],
+      ["check uploads min", () => rpc("d.uploads_min", hash("check"))],
+      ["check group", () => rpc("d.group.name", hash("check"))],
+      ["check state", () => rpc("d.state", hash("check"))],
+      ["check active", () => rpc("d.is_active", hash("check"))],
+      ["check chunks", () => rpc("d.completed_chunks", hash("check"))],
+      ["max uploads", () => rpc("throttle.max_uploads", "")],
+      ["max uploads global", () => rpc("throttle.max_uploads.global", "")],
+      ["choke groups", () => rpc("choke_group.list", "")],
+      ["seed group up max", () => rpc("choke_group.up.max", "", "default_seed")],
+      ["seed group heuristics", () => rpc("choke_group.up.heuristics", "", "default_seed")],
+    ])) {
+      console.log(`rtorrent: ${label} ${JSON.stringify(await call().catch(e => e.message))}`);
+    }
+    const log = join(ctx.work, "downloads", RT_LOG);
+    console.log(
+      `---- rtorrent debug log ----\n${existsSync(log) ? readFileSync(log, "utf8").split("\n").slice(-200).join("\n") : "(none)"}`,
+    );
+    throw err;
+  });
   await rpc("throttle.global_down.max_rate.set", "", 0);
   await rpc("throttle.global_up.max_rate.set", "", 0);
 
