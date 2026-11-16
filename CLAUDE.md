@@ -157,8 +157,8 @@ krobi's decisions for this adapter. The register with his verbatim words lives i
 
 1. `src/lib/programs/<typ>/` mit `client.ts` (Adresse über `baseUrl`), `map.ts` (Status-Tabelle), `driver.ts`; Zeile in `catalog.ts` (Typ, Name, Familie, Port, Pfad, Anmeldeart), Treiber in `DRIVERS` (`registry.ts`).
 2. `driver.test.ts` über `runDriverContract` (`test/helpers/contract.ts`) plus die programmeigenen Fälle.
-3. Container-Modul `test/live/programs/<typ>.mjs` + Matrix-Zeile in `.github/workflows/live-programs.yml`; Lauf, dann `test/live/import.mjs` → `test/fixtures/<typ>/<version>/`. Läuft das Programm in keinem Container (Download Station, NZBVortex, Freebox), stammen die Fixtures aus fremden Mitschnitten und der Doku, je Datei `_source.origin`, und `test/fixtures/<typ>/SOURCES.md` nennt Quelle, Commit, Zeile und Lizenz; ersetzt werden nur Kennungen und Geheimnisse.
-4. Route in `test/fixture-hook.js` + Zeile in `PROGRAM_ROWS` (`test/inventory.js`), Inventar neu erzeugen.
+3. Container-Modul `test/live/programs/<typ>.mjs` + Matrix-Zeile in `.github/workflows/live-programs.yml`; Lauf, dann `test/live/import.mjs` → `test/fixtures/<typ>/<version>/`. Läuft das Programm in keinem Container (Download Station, NZBVortex, Freebox), stammen die Fixtures aus fremden Mitschnitten und der Doku, je Datei `_source.origin`, und `test/fixtures/<typ>/SOURCES.md` nennt Quelle, Commit, Zeile und Lizenz; ersetzt werden nur Kennungen und Geheimnisse. Ein Programm mit Tempo zeichnet den Zustand `transfer` auf (siehe Tests, Fixtures). Mehrere Programme starten als Komma-Liste (`program=a,b`) in EINEM Lauf — die Concurrency-Gruppe je Zweig bricht getrennte Starts ab.
+4. Route in `test/fixture-hook.js` + Zeile in `PROGRAM_ROWS` (`test/inventory.js`), Inventar neu erzeugen; je Zahl mit Einheit ein Eintrag in `test/unit-values.json` aus der Fixture, die der Hook spielt.
 5. Dialog-Hinweis: Schlüssel `hint_<typ>` in `HINT` (`dm-forms.ts`) und Text in allen elf `admin/i18n/*.json` (erzeugt vom lokalen i18n-Quellskript, nie von Hand einzeln); Piktogramm und Dialogfelder folgen dem Katalog.
 6. README: Programmliste, Tabelle „Tested with“, Changelog; `docs/<sprache>/README.md` (Programmtabelle, Hinweise),
    `docs/<sprache>/datapoints.md` (je eine Zeile in den beiden Verfügbarkeits-Tabellen, von Hand gegen `datapoints.ts`
@@ -176,7 +176,12 @@ krobi's decisions for this adapter. The register with his verbatim words lives i
   `move.test.ts` hält jeden Umzug fest (Wert mit ts/lc/q, `custom` + `aliasId`, Räume, Aliase, Löschreihenfolge,
   Wiederaufnahme) — die Aufzeichnungs-Prüfung des Inventars sieht eine beim Umzug verlorene Aufzeichnung nicht.
 - **Fixtures** `test/fixtures/<typ>/<version>/<zustand>/*.json` — aufgezeichnet von `live-programs.yml` (Container je
-  Programm und Version, `test/live/record.mjs`), maskiert und importiert mit `test/live/import.mjs`.
+  Programm und Version, `test/live/record.mjs`), maskiert und importiert mit `test/live/import.mjs` (`--state <zustand>`
+  nimmt nur diesen Zustand). Tempo belegt nur ein Zustand mit Verkehr: `transfer` — der Recorder schreibt ihn in einer
+  Warteschleife, bis die AUFGEZEICHNETE Antwort jedes Tempo, das der Hook spielt, mit mindestens `TRANSFER_MIN` trägt; den
+  Upload liefert der Peer-Sidecar `peer()` aus `test/live/lib.mjs` (aria2c lädt `check` über den Tracker des
+  Seed-Servers), `TRANSFER_LIMIT_DOWN` hält `big` so lange am Laden. Was ein Programm dafür braucht, steht im Kopf seines
+  Recorders.
 - **Objekt-Inventar** `test/inventory.js` + `test/fixture-hook.js` (ersetzt `fetch` nur im Adapter-Prozess): jeder
   Programmtyp des Katalogs aus seinen Fixtures, Ergebnis `test/objects.inventory.json`; nur über `with-werkstatt-lock.py`.
   Die Zeilen gehen wie bei 0.2.0 in `native.programs` (als ganzes Objekt geschrieben — `changeAdapterConfig` machte aus der
@@ -190,6 +195,8 @@ krobi's decisions for this adapter. The register with his verbatim words lives i
   sonst richtete der Start die Programme über den gesäten Geräten neu ein;
   `MOVES` (berechnet aus dem Vorgänger-Inventar) nennt die Umzüge von 0.3.0, deren Aufzeichnung ankommen muss.
 - **Paket-/Standard-Prüfung** `test/package.js`, `test/standards` (`iobroker-adapter-checks`),
-  `test/readable-values.json` (Werte-Prüfung); jeder Datenpunkt trägt eine Beschreibung (D08), eine
+  `test/readable-values.json` (Werte-Prüfung), `test/unit-values.json` (Paket-Regel `unit-value`: je Art eine Zahl der
+  gespielten Fixture samt Einheit, im Datenpunkt umgerechnet angekommen — weicht sie ab, rechnet der Code falsch um, der
+  Fix gehört in den Code); jeder Datenpunkt trägt eine Beschreibung (D08), eine
   `test/self-explaining.json` gibt es seit Runde 177 nicht mehr.
 - Zahlen nie pinnen — `npx vitest run` ist die Wahrheit.
