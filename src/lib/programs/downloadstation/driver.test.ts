@@ -177,11 +177,6 @@ runDriverContract({
     resume: { method: "POST", path: TASK, bodyContains: "method=resume" },
     remove: { method: "POST", path: TASK, bodyContains: "method=delete" },
     add: { method: "POST", path: TASK, bodyContains: "method=create" },
-    setSpeedLimit: {
-      method: "POST",
-      path: "/webapi/DownloadStation/info.cgi",
-      bodyContains: "bt_max_download=1953",
-    },
     setUploadLimit: { method: "POST", path: "/webapi/DownloadStation/info.cgi", bodyContains: "bt_max_upload=1953" },
   },
   isLoginCall: isLogin,
@@ -205,8 +200,8 @@ describe("Download Station driver", () => {
     await start();
     const s = await driver.poll();
     expect(s.status).toMatchObject({ version: "4.1-5012", paused: false, downloadBps: 0, uploadBps: 0 });
-    // every download limit 0 = unlimited; bt_max_upload 20 KB/s, eMule switched off
-    expect(s.status.speedLimitBps).toBe(0);
+    // no download limit for the whole program; bt_max_upload 20 KB/s, eMule switched off
+    expect(s.status).not.toHaveProperty("speedLimitBps");
     expect(s.status.uploadLimitBps).toBe(20 * 1024);
     expect(s.items).toEqual([
       expect.objectContaining({
@@ -313,24 +308,23 @@ describe("Download Station driver", () => {
     await expect(driver.poll()).rejects.toThrow(ProtocolError);
   });
 
-  it("shows no limits to an account that does not manage Download Station and refuses to set them", async () => {
+  it("shows no upload limit to an account that does not manage Download Station and refuses to set it", async () => {
     await start({ state: "user" });
     const s = await driver.poll();
-    expect([s.status.speedLimitBps, s.status.uploadLimitBps]).toEqual([null, null]);
-    await expect(driver.command({ kind: "setSpeedLimit", bps: 1_000_000 })).rejects.toThrow(/manager/);
+    expect(s.status.uploadLimitBps).toBeNull();
+    await expect(driver.command({ kind: "setUploadLimit", bps: 1_000_000 })).rejects.toThrow(/manager/);
     expect(server.calls.some(c => formOf(c).get("method") === "setserverconfig")).toBe(false);
   });
 
-  it("writes one limit into every protocol's download limit, 0 for unlimited", async () => {
+  it("writes the upload limit into the upload fields only, 0 for unlimited", async () => {
     await start();
     await driver.poll();
-    await driver.command({ kind: "setSpeedLimit", bps: 0 });
+    await driver.command({ kind: "setUploadLimit", bps: 0 });
     const set = formOf(server.calls.filter(c => formOf(c).get("method") === "setserverconfig")[0]);
-    expect(
-      ["bt_max_download", "nzb_max_download", "http_max_download", "ftp_max_download", "emule_max_download"].map(f =>
-        set.get(f),
-      ),
-    ).toEqual(["0", "0", "0", "0", null]);
+    expect([...set.keys()].filter(k => k.endsWith("_max_upload") || k.endsWith("_max_download"))).toEqual([
+      "bt_max_upload",
+    ]);
+    expect(set.get("bt_max_upload")).toBe("0");
   });
 
   it("refuses a pause Download Station refuses for the task (405)", async () => {

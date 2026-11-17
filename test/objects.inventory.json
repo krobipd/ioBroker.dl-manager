@@ -13042,44 +13042,6 @@
     "native": {},
     "_id": "dl-manager.0.downloadstation-downloadstation.queued"
   },
-  "dl-manager.0.downloadstation-downloadstation.speedLimit": {
-    "type": "state",
-    "common": {
-      "name": {
-        "de": "Download-Limit",
-        "en": "Download limit",
-        "es": "Límite de descarga",
-        "fr": "Limite de téléchargement",
-        "it": "Limite di download",
-        "nl": "Downloadlimiet",
-        "pl": "Limit pobierania",
-        "pt": "Limite de download",
-        "ru": "Ограничение загрузки",
-        "uk": "Обмеження завантаження",
-        "zh-cn": "下载限制"
-      },
-      "type": "number",
-      "role": "level",
-      "read": true,
-      "write": true,
-      "unit": "MB/s",
-      "desc": {
-        "de": "Höchste Download-Geschwindigkeit des Programms; 0 heißt unbegrenzt, leer, wenn das Programm sie nicht meldet.",
-        "en": "Maximum download speed of the program; 0 means unlimited, empty when the program does not report it.",
-        "es": "Velocidad máxima de descarga del programa; 0 significa ilimitada, vacía cuando el programa no la informa.",
-        "fr": "Vitesse de téléchargement maximale du programme ; 0 signifie illimité, vide quand le programme ne l'indique pas.",
-        "it": "Velocità massima di download del programma; 0 significa illimitata, vuota quando il programma non la comunica.",
-        "nl": "Maximale downloadsnelheid van het programma; 0 betekent onbeperkt, leeg als het programma die niet meldt.",
-        "pl": "Maksymalna prędkość pobierania programu; 0 oznacza bez ograniczeń, puste, gdy program jej nie podaje.",
-        "pt": "Velocidade máxima de download do programa; 0 significa ilimitado, vazio quando o programa não a indica.",
-        "ru": "Максимальная скорость загрузки программы; 0 — без ограничений, пусто, если программа её не сообщает.",
-        "uk": "Максимальна швидкість завантаження програми; 0 — без обмежень, порожньо, якщо програма її не повідомляє.",
-        "zh-cn": "程序的最大下载速度；0 表示不限速，程序未报告时为空。"
-      }
-    },
-    "native": {},
-    "_id": "dl-manager.0.downloadstation-downloadstation.speedLimit"
-  },
   "dl-manager.0.downloadstation-downloadstation.total": {
     "type": "state",
     "common": {

@@ -1,6 +1,6 @@
 import { loadFixture } from "../../../../test/helpers/fixtures";
 import { ProtocolError } from "../../core/errors";
-import { infoOf, limitBps, limitFields, rawStatus, taskOf, toSnapshot } from "./map";
+import { infoOf, limitBps, rawStatus, taskOf, toSnapshot, uploadLimitFields } from "./map";
 
 /** The live list of DSM 7.2.2: dbid_1 a magnet loading, dbid_2 a finished HTTP task. */
 const live = (): Record<string, unknown>[] =>
@@ -86,27 +86,22 @@ describe("Download Station map", () => {
     );
   });
 
-  it("reads one limit only while every protocol has the same one", () => {
+  it("reads the upload limit and no download limit — Download Station keeps that per protocol", () => {
     const c = config();
-    const { down, up } = limitFields(c);
-    expect(down).toEqual(["bt_max_download", "nzb_max_download", "http_max_download", "ftp_max_download"]);
-    expect(limitBps(c, down, true)).toBe(0);
-    expect(limitBps({ ...c, http_max_download: 300 }, down, true)).toBeNull();
-    expect(
-      limitBps(
-        { ...c, bt_max_download: 300, nzb_max_download: 300, http_max_download: 300, ftp_max_download: 300 },
-        down,
-        true,
-      ),
-    ).toBe(300 * 1024);
+    const up = uploadLimitFields(c);
+    expect(up).toEqual(["bt_max_upload"]);
     expect(limitBps(c, up, true)).toBe(20 * 1024);
     expect(limitBps(c, up, false)).toBeNull();
+    // even with every protocol's download limit at one value the program gets none
+    const same = { ...c, bt_max_download: 300, nzb_max_download: 300, http_max_download: 300, ftp_max_download: 300 };
+    const { status } = toSnapshot("4.1-5012", [], same, true, false, quiet);
+    expect(status).not.toHaveProperty("speedLimitBps");
+    expect(status.uploadLimitBps).toBe(20 * 1024);
   });
 
-  it("takes eMule's limits in only while eMule is switched on", () => {
+  it("takes eMule's upload limit in only while eMule is switched on", () => {
     const c = { ...config(), emule_enabled: true };
-    const { down, up } = limitFields(c);
-    expect(down).toContain("emule_max_download");
+    const up = uploadLimitFields(c);
     expect(up).toEqual(["bt_max_upload", "emule_max_upload"]);
     // bt_max_upload and emule_max_upload are both 20 in the live answer
     expect(limitBps(c, up, true)).toBe(20 * 1024);

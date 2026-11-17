@@ -4,7 +4,7 @@ import { ProtocolError } from "../../core/errors";
 import type { Capability, Command, DriverDeps, ProgramConfig, ProgramDriver, ProgramSnapshot } from "../../core/model";
 import { toKiB } from "../../core/units";
 import { DsClient, perId } from "./client";
-import { infoOf, isRunning, limitFields, taskOf, toSnapshot, type DsTask } from "./map";
+import { infoOf, isRunning, taskOf, toSnapshot, uploadLimitFields, type DsTask } from "./map";
 
 /** How many polls after a pause a task that runs again is paused once more instead of counting as started. */
 const WATCH_POLLS = 2;
@@ -27,7 +27,7 @@ export class DsDriver implements ProgramDriver {
     "itemPause",
     "itemRemove",
     "add",
-    "speedLimit",
+    // no "speedLimit": Download Station keeps a download limit per protocol, none for the whole program (map.ts)
     "upload",
     "uploadLimit",
     "itemSpeed",
@@ -42,7 +42,7 @@ export class DsDriver implements ProgramDriver {
   private readonly debug: (msg: string) => void;
   /** Version and manager right, read with the first query and again after a failed one; null = read them. */
   private info: { version: string; manager: boolean } | null = null;
-  /** The last `getconfig` — which limit fields there are. */
+  /** The last `getconfig` — which upload limit fields there are. */
   private config: Record<string, unknown> = {};
   /** The tasks of the last list, by id. */
   private tasks = new Map<string, DsTask>();
@@ -125,11 +125,8 @@ export class DsDriver implements ProgramDriver {
           }
         });
         return;
-      case "setSpeedLimit":
-        await this.setLimit(limitFields(this.config).down, cmd.bps);
-        return;
       case "setUploadLimit":
-        await this.setLimit(limitFields(this.config).up, cmd.bps);
+        await this.setUploadLimit(cmd.bps);
         return;
       default:
         throw new ProtocolError("Download Station: command not supported");
@@ -257,20 +254,19 @@ export class DsDriver implements ProgramDriver {
   }
 
   /**
-   * @param fields the limit fields of one direction
-   * @param bps bytes per second, 0 = unlimited
+   * @param bps bytes per second, 0 = unlimited — written into every upload limit field
    */
-  private async setLimit(fields: readonly string[], bps: number): Promise<void> {
+  private async setUploadLimit(bps: number): Promise<void> {
     this.info ??= infoOf(await this.client.call("SYNO.DownloadStation.Info", "getinfo"));
     if (!this.info.manager) {
       // a non-manager's setserverconfig answers success and changes nothing (live, cmeans #123)
-      throw new ProtocolError("Download Station: only a Download Station manager can set limits");
+      throw new ProtocolError("Download Station: only a Download Station manager can set the upload limit");
     }
     const value = String(bps > 0 ? toKiB(bps) : 0);
     await this.client.call(
       "SYNO.DownloadStation.Info",
       "setserverconfig",
-      Object.fromEntries(fields.map(f => [f, value])),
+      Object.fromEntries(uploadLimitFields(this.config).map(f => [f, value])),
     );
   }
 }

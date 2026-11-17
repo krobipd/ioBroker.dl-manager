@@ -93,29 +93,26 @@ export function mapDsStatus(raw: string | number, debug: (msg: string) => void):
   return statusFrom(STATUS, String(raw), "downloadstation", debug);
 }
 
-/** The download limits Download Station keeps per protocol (`SYNO.DownloadStation.Info getconfig`). */
-const DOWNLOAD_LIMITS = ["bt_max_download", "nzb_max_download", "http_max_download", "ftp_max_download"] as const;
-const UPLOAD_LIMITS = ["bt_max_upload"] as const;
-
 /**
+ * Download Station keeps its limits per protocol (`SYNO.DownloadStation.Info getconfig`), none for the whole program.
+ * The adapter shows no download limit: BitTorrent, NZB, HTTP/FTP and eMule each have their own, and the API guide's own
+ * example has HTTP/FTP unlimited beside 13 and 10 KB/s (p. 18) — one value would stand for protocols that differ.
+ * The upload limit is BitTorrent's, and eMule's while it is switched on.
+ *
  * @param config the answer of `getconfig`
- * @returns the limit fields of each direction — eMule's only while it is switched on
+ * @returns the upload limit fields — eMule's only while it is switched on
  */
-export function limitFields(config: Record<string, unknown>): { down: string[]; up: string[] } {
-  const emule = config.emule_enabled === true;
-  return {
-    down: [...DOWNLOAD_LIMITS, ...(emule ? ["emule_max_download"] : [])],
-    up: [...UPLOAD_LIMITS, ...(emule ? ["emule_max_upload"] : [])],
-  };
+export function uploadLimitFields(config: Record<string, unknown>): string[] {
+  return ["bt_max_upload", ...(config.emule_enabled === true ? ["emule_max_upload"] : [])];
 }
 
 /**
- * Download Station has no limit for the whole program, one per protocol: the adapter's limit is all of them at one
- * value. KB/s, 0 = unlimited (API guide p. 18); a KB is 1024 bytes as Synology's own interface counts it (download.js
- * shows rates as bytes / 1024 KB/s and hands its KB/s fields to the server unchanged — not measured).
+ * The adapter's upload limit is every upload field at one value. KB/s, 0 = unlimited (API guide p. 18); a KB is 1024
+ * bytes as Synology's own interface counts it (download.js shows rates as bytes / 1024 KB/s and hands its KB/s fields
+ * to the server unchanged — not measured).
  *
  * @param config the answer of `getconfig`
- * @param fields the limit fields of one direction
+ * @param fields the upload limit fields
  * @param manager the account manages Download Station — any other reads every limit as 0 (live, non-manager)
  * @returns bytes per second, 0 = unlimited, null when the protocols differ, a field is missing or the account cannot
  *   see them
@@ -180,7 +177,6 @@ export function toSnapshot(
   });
   const sum = (pick: (i: DownloadItem) => number | null | undefined): number =>
     items.reduce((total, i) => total + (pick(i) ?? 0), 0);
-  const fields = limitFields(config);
   return {
     status: {
       version,
@@ -188,8 +184,7 @@ export function toSnapshot(
       // the list carries every task's rates — the same as SYNO.DownloadStation.Statistic, without a call of its own
       downloadBps: sum(i => i.speedBps),
       uploadBps: sum(i => i.uploadBps),
-      speedLimitBps: limitBps(config, fields.down, manager),
-      uploadLimitBps: limitBps(config, fields.up, manager),
+      uploadLimitBps: limitBps(config, uploadLimitFields(config), manager),
     },
     items,
     complete: true,
