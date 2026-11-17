@@ -524,10 +524,33 @@
       ]
     }
   },
+  "freebox-mafreebox.downloads.*.downloaded": {
+    "id": "freebox-mafreebox.downloads.341.downloaded",
+    "computed": {
+      "product": [
+        {
+          "recorded": 11300000000,
+          "unit": "B",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        },
+        {
+          "recorded": 10000,
+          "unit": "\u2031",
+          "file": "test/fixtures/freebox/v8/queue/list.json"
+        }
+      ]
+    }
+  },
   "freebox-mafreebox.downloads.*.eta": {
     "id": "freebox-mafreebox.downloads.365.eta",
     "recorded": 29,
     "unit": "s",
+    "file": "test/fixtures/freebox/v8/queue/list.json"
+  },
+  "freebox-mafreebox.downloads.*.progress": {
+    "id": "freebox-mafreebox.downloads.364.progress",
+    "recorded": 10000,
+    "unit": "\u2031",
     "file": "test/fixtures/freebox/v8/queue/list.json"
   },
   "freebox-mafreebox.downloads.*.size": {
@@ -699,6 +722,23 @@
         {
           "recorded": 237124,
           "unit": "B/s",
+          "file": "test/fixtures/hadouken/5.2.0/transfer/list.json"
+        }
+      ]
+    }
+  },
+  "hadouken-hadouken.downloads.*.downloaded": {
+    "id": "hadouken-hadouken.downloads.3232883d.downloaded",
+    "computed": {
+      "product": [
+        {
+          "recorded": 1073741824,
+          "unit": "B",
+          "file": "test/fixtures/hadouken/5.2.0/transfer/list.json"
+        },
+        {
+          "recorded": 1000,
+          "unit": "\u2030",
           "file": "test/fixtures/hadouken/5.2.0/transfer/list.json"
         }
       ]
@@ -2106,6 +2146,23 @@
         {
           "recorded": 0,
           "unit": "B/s",
+          "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+        }
+      ]
+    }
+  },
+  "tribler-tribler.downloads.*.downloaded": {
+    "id": "tribler-tribler.downloads.3232883d.downloaded",
+    "computed": {
+      "product": [
+        {
+          "recorded": 1073741824,
+          "unit": "B",
+          "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
+        },
+        {
+          "recorded": 1,
+          "unit": "ratio",
           "file": "test/fixtures/tribler/8.4.2/transfer/downloads.json"
         }
       ]
