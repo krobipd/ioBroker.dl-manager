@@ -1786,7 +1786,9 @@ function offTheAddress(use, address) {
  * Round 87 (krobi 2026-10-02 23:52, F-05 of fakeroku as the fleet rule): a client from another network gets no answer —
  * every server and UDP port the adapter opened on `address` is asked once from LAN_ADDRESS (round 182: the chosen
  * address is 127.0.0.1, the machine's address in another network asks). A TCP reply counts unless it is an HTTP status of
- * 400 or above; any UDP reply counts.
+ * 400 or above; any UDP reply counts. Round 183 (R183-5): a TCP port that sends no byte on plain text, or a TLS alert, is
+ * asked again inside the TLS handshake without a certificate check — a TLS listener (the HTTPS option of the master
+ * secure-server.ts) answers only there.
  *
  * @param {object[]} use the records (networkUse)
  * @param {string} address the chosen address
@@ -1797,18 +1799,24 @@ async function askFromAnotherNetwork(use, address) {
   for (const r of use) {
     if (r.kind === "listen" && !asked.has(`tcp ${r.port}`)) {
       asked.add(`tcp ${r.port}`);
-      const reply = await new Promise(resolve => {
-        let data = "";
-        const socket = require("node:net").connect({ host: address, port: r.port, localAddress: LAN_ADDRESS });
-        const wait = setTimeout(() => socket.destroy(), 1500);
-        socket.on("connect", () => socket.write("GET / HTTP/1.0\r\n\r\n"));
-        socket.on("data", d => (data += d));
-        socket.on("error", () => {});
-        socket.on("close", () => {
-          clearTimeout(wait);
-          resolve(data);
+      const ask = secure =>
+        new Promise(resolve => {
+          let data = "";
+          const where = { host: address, port: r.port, localAddress: LAN_ADDRESS };
+          const socket = secure
+            ? require("node:tls").connect({ ...where, rejectUnauthorized: false })
+            : require("node:net").connect(where);
+          const wait = setTimeout(() => socket.destroy(), 1500);
+          socket.on(secure ? "secureConnect" : "connect", () => socket.write("GET / HTTP/1.0\r\n\r\n"));
+          socket.on("data", d => (data += d));
+          socket.on("error", () => {});
+          socket.on("close", () => {
+            clearTimeout(wait);
+            resolve(data);
+          });
         });
-      });
+      const plain = await ask(false);
+      const reply = plain && !plain.startsWith("\u0015\u0003") ? plain : await ask(true);
       const status = /^HTTP\/\d(?:\.\d)? (\d{3})/.exec(reply);
       if (reply && !(status && Number(status[1]) >= 400)) {
         answered.push(`TCP ${address}:${r.port} answered a client from ${LAN_ADDRESS}`);
