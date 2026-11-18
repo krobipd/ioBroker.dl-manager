@@ -73,6 +73,16 @@ vi.mock("@iobroker/adapter-core", () => {
     };
     public notified: { scope: string; category: string }[] = [];
     public sendTo = (...args: unknown[]): void => void this.sent.push(args);
+    /**
+     * A recording instance that deletes what it is asked to — the fleet's removal sends `deleteAll` here.
+     *
+     * @param args instance, command, message, options
+     * @returns the answer of history, sql and influxdb once the data is gone
+     */
+    public sendToAsync = (...args: unknown[]): Promise<unknown> => {
+      this.sent.push(args);
+      return Promise.resolve({ success: true });
+    };
     public name = "dl-manager";
     public terminated: { reason: string; code: number }[] = [];
     /**
@@ -455,6 +465,37 @@ describe("DownloadManagerAdapter — start", () => {
       [now, `${now}.last.finished`].sort(),
     );
     expect(polls()).toBe(1);
+  });
+
+  it.each([
+    ["keeps a recorded datapoint", { deleteRecordedStates: false, deleteRecordedHistory: false }],
+    ["deletes the recorded data too", { deleteRecordedStates: true, deleteRecordedHistory: true }],
+  ])("moves a recorded datapoint whole while the deletion option %s — a move is no removal", async (_, options) => {
+    const { h } = make();
+    Object.assign(h.config, options);
+    seedRows(h, [{ enabled: true, type: "qbittorrent", key: "nas", name: "NAS", host: "h1" }]);
+    const old = "dl-manager.0.qbittorrent-nas";
+    await h.store.setForeignObject(old, { type: "device", common: { name: "NAS" }, native: { type: "qbittorrent" } });
+    await h.store.setForeignObject(`${old}.lastFinished`, {
+      type: "state",
+      common: {
+        name: "last",
+        type: "string",
+        role: "text",
+        read: true,
+        write: false,
+        custom: { "history.0": { enabled: true } },
+      },
+      native: {},
+    });
+    await h.store.setState(`${old}.lastFinished`, { val: "movie.mkv", ack: true });
+    await h.handlers.get("ready")?.();
+    await flush();
+    expect([...h.store.objects.keys()].filter(id => id.startsWith(old))).toEqual([]);
+    expect(h.sent.filter(args => args[1] === "deleteAll")).toEqual([]);
+    expect(h.store.objects.get("dl-manager.0.qbittorrent-h1.last.finished")?.common.custom).toEqual({
+      "history.0": { enabled: true, aliasId: `${old}.lastFinished` },
+    });
   });
 
   it("starts without touching its instance object when nothing is left over", async () => {

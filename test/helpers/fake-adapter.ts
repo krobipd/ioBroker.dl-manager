@@ -158,6 +158,22 @@ export class FakeAdapter {
     return this.delObject(id, opts);
   }
 
+  /** The instance settings the fleet's removal reads — its defaults: delete, keep the recorded data. */
+  public readonly config: { deleteRecordedStates?: boolean; deleteRecordedHistory?: boolean } = {};
+
+  /** @returns no answer — no recording instance runs here */
+  public sendToAsync(): Promise<undefined> {
+    return Promise.resolve(undefined);
+  }
+
+  /** @returns no timer — the removal writes its line at once */
+  public setTimeout(): undefined {
+    return undefined;
+  }
+
+  /** No timer to clear. */
+  public clearTimeout(): void {}
+
   /**
    * Reads a copy of an object by its full id (no namespace added).
    *

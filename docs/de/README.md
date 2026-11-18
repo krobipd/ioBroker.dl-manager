@@ -107,6 +107,21 @@ eines Programms schreibst, während das Programm pausiert ist. Aus: Die Pause h�
 wartet, bis du das Programm fortsetzt; JDownloader, der bei jedem neuen Link von selbst startet, wird sofort wieder
 angehalten. An: Das Hinzufügen setzt das Programm zuerst fort, alle seine Downloads laufen weiter.
 
+## Löschen von Datenpunkten
+
+Stellt der Adapter einen Datenpunkt nicht mehr bereit — ein Download ist aus der Liste des Programms verschwunden oder
+fällt aus den Baum-Einstellungen, eine Programm-Karte wurde gelöscht —, löscht er ihn. Zwei Einstellungen am Ende der
+Einstellungsseite entscheiden, was mit einem Datenpunkt geschieht, den du aufzeichnest (history, sql, influxdb):
+
+- **Datenpunkte mit Aufzeichnung löschen** (Vorgabe an): an, geht ein solcher Datenpunkt wie jeder andere. Aus, bleibt er
+  samt Kanal und Gerät darüber stehen, und eine Zeile im Log nennt, wie viele Datenpunkte behalten wurden und welche
+  Instanzen sie aufzeichnen — bitte manuell prüfen.
+- **Auch die aufgezeichneten Daten löschen** (Vorgabe aus, nur sichtbar, solange die erste Einstellung an ist): jede
+  aufzeichnende Instanz löscht zuerst die aufgezeichneten Daten des Datenpunkts. Ein Datenpunkt, dessen Daten eine Instanz
+  nicht löscht, bleibt stehen.
+
+Ein Gerät, das auf eine neue ID umzieht, ist keine Löschung: seine Datenpunkte ziehen mit Werten und Aufzeichnung mit.
+
 ## Aktualisierung von 0.2
 
 Der erste Start von 0.3 zieht die Programme aus den Instanz-Einstellungen in den Programm-Speicher des Adapters um (die Instanz

@@ -173,7 +173,7 @@ class DownloadManagerAdapter extends utils.Adapter {
       return;
     }
     const moved = await this.programs.adopt(obj.native?.rows);
-    await this.delForeignObjectAsync(id);
+    await this.forgetObject(id, { recursive: false });
     if (moved === undefined) {
       this.log.debug(`${id} removed — the data folder holds the programs already`);
     } else {
@@ -199,7 +199,12 @@ class DownloadManagerAdapter extends utils.Adapter {
     this.log.info(`${kept.length} program(s) moved out of the instance settings — changes no longer restart it`);
   }
 
-  /** The object and state access of a move (`move.ts`) — every write goes through the known tree and values. */
+  /**
+   * The object and state access of a move (`move.ts`) — every write goes through the known tree and values. A move is
+   * no removal: the datapoint lives on under its new id, so the old one goes without the user's deletion options
+   * (`object-removal.ts` would keep it, or have its recording delete the history the new id's `aliasId` points at);
+   * the known tree is read again after each move ({@link moved}).
+   */
   private get mover(): MoveAdapter {
     const own = (id: string): boolean => id.startsWith(`${this.namespace}.`);
     return {
@@ -213,8 +218,23 @@ class DownloadManagerAdapter extends utils.Adapter {
         own(id) ? this.known.extend(id, patch) : this.extendForeignObjectAsync(id, patch),
       getForeignStates: pattern => this.getForeignStatesAsync(pattern),
       setForeignState: (id, state) => this.states.set(id, state),
-      delForeignObject: id => this.forgetObject(id, { recursive: false }),
+      delForeignObject: async id => {
+        await this.delForeignObjectAsync(id);
+        this.states.remove(id, { recursive: false });
+      },
     };
+  }
+
+  /**
+   * Waits for a move and reads the own tree again: the move deleted the old objects past the known tree.
+   *
+   * @param move the running move
+   * @returns what the move did
+   */
+  private async moved<T>(move: Promise<T>): Promise<T> {
+    const result = await move;
+    await this.known.load();
+    return result;
   }
 
   /**
@@ -224,9 +244,9 @@ class DownloadManagerAdapter extends utils.Adapter {
    * @param newId the device id from now on
    */
   private async moveDevice(oldId: string, newId: string): Promise<void> {
-    const r = await moveObjects(this.mover, [[`${this.namespace}.${oldId}`, `${this.namespace}.${newId}`]], {
-      device: true,
-    });
+    const r = await this.moved(
+      moveObjects(this.mover, [[`${this.namespace}.${oldId}`, `${this.namespace}.${newId}`]], { device: true }),
+    );
     this.log.info(
       `${oldId} is now ${newId} — ${r.objects} object(s), ${r.enums} room/function entr${r.enums === 1 ? "y" : "ies"}`,
     );
@@ -273,7 +293,7 @@ class DownloadManagerAdapter extends utils.Adapter {
       }
     }
     if (pairs.length) {
-      const r = await moveObjects(this.mover, pairs);
+      const r = await this.moved(moveObjects(this.mover, pairs));
       this.log.info(`${pairs.length} "last" value(s) moved into the "${LAST_CHANNEL}" channels`);
       this.log.debug(`last values: ${r.enums} room/function entries`);
     }
@@ -422,7 +442,9 @@ class DownloadManagerAdapter extends utils.Adapter {
   }
 
   /**
-   * Deletes an own object and forgets it in the object and the value memory — js-controller deletes its value with it.
+   * Removes an own object through the fleet's removal (`known-objects.ts` → `object-removal.ts`, which keeps a datapoint
+   * the user's deletion options keep) and forgets it in the object and the value memory — js-controller deletes the
+   * value of a removed state with it.
    *
    * @param id own or full id
    * @param opts delete the children too

@@ -22,7 +22,10 @@ export interface TreeAdapter {
   log: AdapterLog;
   /** Merges into an object (own namespace or full id). */
   extendObject(id: string, obj: ioBroker.PartialObject): Promise<unknown>;
-  /** Deletes an object (and with `recursive` its children and their values). */
+  /**
+   * Removes an own object (with `recursive` its children and their values) the way the user's two deletion options
+   * say — the adapter's removal goes through the fleet master `object-removal.ts`.
+   */
   delObject(id: string, opts: { recursive: boolean }): Promise<unknown>;
   /** An own object as the adapter holds it (read once at start) — no database read. */
   knownObject(id: string): unknown;

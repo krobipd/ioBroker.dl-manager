@@ -81,6 +81,8 @@ program or that its documentation shows; `test/fixtures/<program>/SOURCES.md` na
 | **Downloads in the object tree**                               | _All_ (default), _Without completed_ or _Only unfinished_ (no completed, no seeding). Failed downloads always stay. The program keeps every download, and the totals count all of them                                                |
 | **At most this many downloads per program in the object tree** | Default 100, 0 = all. Above the limit, running and failed downloads keep their channel first, completed and seeding ones give it up first. More than 200 per program slow ioBroker down — the settings page and the log warn about it |
 | **A new link resumes a paused program**                        | Default off: a link added while its program is paused waits until you resume the program (JDownloader, which starts on its own, is paused again). On: adding the link resumes the program                                             |
+| **Delete datapoints with recording**                           | Default on: a datapoint the adapter no longer provides goes even when you record it (history, sql, influxdb). Off: it stays, and the log names how many were kept — check them manually                                               |
+| **Delete the recorded data too**                               | Default off, shown only while the option above is on: each recording instance deletes the datapoint's recorded data first; a datapoint whose data an instance does not delete stays                                                   |
 
 Every program can be added as often as you like — two qBittorrent servers, a local JDownloader and one at a friend's.
 A second entry for the same program (the same address, or the same JDownloader of a My.JDownloader account) is refused.
@@ -160,6 +162,7 @@ The test button on a program's card asks the program once and shows its answer.
 - New: NZBVortex can be added as a program
 - New: the downloads of a Freebox can be added as a program, paired once on the Freebox's display
 - New: a setting lets a new link resume a paused program
+- New: two settings decide whether a datapoint with a recording is deleted, and whether its recorded data goes too
 - New: scripts can test a program's connection
 - Fixed: the e-mail address of a My.JDownloader account no longer appears in the device object or an object export
 - Fixed: a link added while downloads are paused now resumes together with them

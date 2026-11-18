@@ -5,6 +5,7 @@
 // js-controller has no `extendObjectChanged`: `extendObject` always writes, stamps `ts` anew and sends an
 // `objectChange` to every subscriber (7.2.2) — on every start of a real installation, also when nothing changed.
 // Read the own tree once, compare every write against it, write only on a difference, hold what the write left.
+import { removeObject, type RemovalAdapter } from "./object-removal";
 
 /**
  * A plain object — what the merge descends into (`is.hash` in node.extend), as opposed to an array, null or a value.
@@ -201,21 +202,15 @@ export function storedAfterSet(id: string, stored: unknown, obj: unknown): unkno
   return result;
 }
 
-/** The adapter methods the store needs — an `ioBroker.Adapter` carries all of them. */
-export interface KnownObjectsAdapter {
-  /** e.g. "demo.0" */
-  namespace: string;
+/**
+ * The adapter methods the store needs — an `ioBroker.Adapter` carries all of them; a remove goes through the fleet's
+ * removal (`object-removal.ts`), which reads and deletes the objects itself.
+ */
+export interface KnownObjectsAdapter extends RemovalAdapter {
   /** Merges into an object of the own namespace (relative or full id). */
   extendObject(id: string, obj: ioBroker.PartialObject): Promise<unknown>;
   /** Replaces an object completely. */
   setForeignObject(id: string, obj: ioBroker.SettableObject): Promise<unknown>;
-  /** Deletes an object (with `recursive` its children too). */
-  delObjectAsync(id: string, options?: { recursive?: boolean }): Promise<unknown>;
-  /** Reads the objects between two ids. */
-  getObjectListAsync(params: {
-    startkey: string;
-    endkey: string;
-  }): Promise<{ rows: Array<{ id: string; value: unknown }> }>;
 }
 
 /**
@@ -379,7 +374,8 @@ export class KnownObjects {
   }
 
   /**
-   * `delObject` — the object (with `recursive` its children too) is forgotten, so an id used again is written anew.
+   * `removeObject` of the fleet's removal — what it deletes (with `recursive` the children too) is forgotten, so an id
+   * used again is written anew; a datapoint the user's deletion options keep, and every object above it, stays known.
    *
    * @param id relative or full id
    * @param options delete the children too
@@ -388,9 +384,9 @@ export class KnownObjects {
   public async remove(id: string, options: { recursive: boolean } = { recursive: false }): Promise<void> {
     const key = this.full(id);
     await this.serialized(key, options.recursive, async () => {
-      await this.adapter.delObjectAsync(id, options);
+      const kept = new Set((await removeObject(this.adapter, id, options)).kept);
       for (const known of [...this.objects.keys()]) {
-        if (known === key || (options.recursive && known.startsWith(`${key}.`))) {
+        if ((known === key || (options.recursive && known.startsWith(`${key}.`))) && !kept.has(known)) {
           this.objects.delete(known);
         }
       }

@@ -63,7 +63,9 @@ src/lib/core/log-lines.ts        → rein: Sammelzeile des Starts (startLine), i
 src/lib/core/tree.ts             → ProgramTree: Gerät/Kanäle/Datenpunkte gegen den Schnappschuss abgleichen, itemKey
 src/lib/core/transitions.ts      → rein: welche Downloads seit der letzten Abfrage fertig/fehlgeschlagen sind (erste Abfrage: last.finishedTime)
 src/lib/known-objects.ts         → Flotten-Master (byte-gleich): KnownObjects, eigener Baum einmal gelesen, Objekte nur bei
-                                   Unterschied schreiben (coveredBy, mergedWith wie js-controller)
+                                   Unterschied schreiben (coveredBy, mergedWith wie js-controller); `remove` löscht über
+                                   `object-removal.ts` (die zwei Löschoptionen der Einstellungen, Runde 185) — jede Löschung
+                                   eines eigenen Objekts läuft über `forgetObject` in main.ts, nur ein Umzug löscht in `move.ts`
 src/lib/core/states.ts           → KnownStates: EIN Wertespeicher, jeder Zustand im Speicher verglichen; get (Karte, Baum),
                                    forget (fremder Schreibvorgang), remove (gelöschtes Objekt)
 src/lib/core/summary.ts          → info.* und summary.* aus allen Programmen
@@ -84,7 +86,7 @@ src/lib/programs/catalog.ts      → die EINZIGE Programmliste: Typ, Name, Famil
 src/lib/programs/registry.ts     → Katalog + Treiber (DRIVERS) → PROGRAMS, findProgram
 src/lib/programs/<typ>/          → client.ts (Transport + Anmeldung), map.ts (Rohantwort → Modell, Status-Tabelle),
                                    driver.ts (Fähigkeiten, Extras, Befehle)
-src/lib/{enum-carry,known-objects,err-text,native-key-migration,data-file}.ts → Kopien aus .consistency-master (byte-gleich);
+src/lib/{enum-carry,known-objects,object-removal,err-text,native-key-migration,data-file}.ts → Kopien aus .consistency-master (byte-gleich);
                                    jeder Zugriff auf den Datenordner (`programs.json`, `call-budget.json`) über data-file.ts
 src/lib/{actionable-problems,device-icons,i18n}.ts → Flotten-Muster
 src/lib/api-limits.{json,ts}     → Limits jeder Gegenstelle (lokale Programme `network: "private"`: pyLoads 100/min je Host;
@@ -119,7 +121,7 @@ _Jede Entscheidung steht hier als Regel-Satz; Beleg, Messung und Verlauf stehen 
 20. **Eine Karte zeigt, sie steuert nichts** — kein `controls`-Schalter (krobi: die Admin braucht keine Steuerung); der Datenpunkt `paused` bleibt.
 21. **Die vier „zuletzt“-Werte stehen im Kanal `last`** (`last.finished`, `last.finishedTime`, `last.failed`, `last.failedTime`) unter jedem Programm und unter `summary`; bis 0.2.0 flach, der Start zieht sie einmal um.
 22. **My.JDownloader wird über die gespeicherte Konto-Id verbunden, der Name ist nur Rückfall für eine Zeile ohne Id** — eine Zeile aus 0.2.0 behält ihre alte ID (`idPending`), bis die erste Verbindung die Id nennt, dann zieht das Gerät live um.
-23. **Eine Kartenänderung meldet ihr Ergebnis genau einmal auf info, der Start eine Sammelzeile, sonst ist ein Ausfall ein Zustand (debug)** — antwortet (Produkt + Version), nicht erreichbar, ausgeschaltet oder gelöscht (mit Datenpunktzahl); dieselbe Warnung höchstens einmal je Stunde und Programm, auch über eine gute Abfrage hinweg; die Anmelde-Warnung nennt, was die Karte trägt (`login-hint.ts`); was der Baum aus dem Objektbaum nimmt, steht nur nach dem Start auf info; die Aufzeichnung kommt in keiner Zeile vor.
+23. **Eine Kartenänderung meldet ihr Ergebnis genau einmal auf info, der Start eine Sammelzeile, sonst ist ein Ausfall ein Zustand (debug)** — antwortet (Produkt + Version), nicht erreichbar, ausgeschaltet oder gelöscht (mit Datenpunktzahl); dieselbe Warnung höchstens einmal je Stunde und Programm, auch über eine gute Abfrage hinweg; die Anmelde-Warnung nennt, was die Karte trägt (`login-hint.ts`); was der Baum aus dem Objektbaum nimmt, steht nur nach dem Start auf info; die Aufzeichnung kommt in keiner eigenen Zeile vor — nur in der Bilanzzeile des Flotten-Masters `object-removal.ts` (behaltene Datenpunkte samt Instanzen, Werkzeug-Runde 185).
 24. **Programmzeilen ändern sich nur über `updateRows`** — frisch lesen, ändern, speichern und übernehmen in einem Schritt nacheinander; ein Dialog, dessen Karte sich inzwischen geändert hat oder weg ist, speichert nichts und sagt es.
 25. **HTTP 502, 503 und 504 heißen „nicht erreichbar“** — ein Reverse-Proxy vor einem Programm, das nicht läuft; 500 entscheidet jeder Client selbst (JDownloader meldet damit eigene Fehler).
 26. **Ein neuer Link in einem pausierten Programm: die Instanz-Einstellung `addResumes` entscheidet, für alle Programme gleich (krobi 2026-10-22 22:24 zu K8: „… besser in der admin …, wo der user dieses verhalten einstellen kann“)** — Vorgabe aus: die Pause hält, der Link wartet; JDownloader startet bei jedem Link in der Downloadliste von selbst (`LinkgrabberAutoStartEnabled`, ab Werk an, per API nicht abschaltbar, auch `moveToDownloadlist`; gemessen 2026-10-01), deshalb hält ihn sein Treiber sofort wieder an, wie er war (stop bzw. pause). An: der Manager schickt vor dem `add` ein `resumeAll`, wenn das Programm `globalPause` kann und die letzte Abfrage es pausiert las.

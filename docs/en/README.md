@@ -103,6 +103,20 @@ while the program is paused. Off, the pause holds for every program and the link
 which starts on its own for every new link, is paused again right away. On, adding the link resumes the program first,
 so all its downloads continue.
 
+## Deleting datapoints
+
+When the adapter no longer provides a datapoint — a download left the program's list or the tree settings leave it out,
+a program's card was deleted — it deletes it. Two settings at the end of the settings page decide what happens to a
+datapoint you record (history, sql, influxdb):
+
+- **Delete datapoints with recording** (on by default): on, such a datapoint goes like any other. Off, it stays with the
+  channel and device above it, and one line in the log names how many datapoints were kept and which recording instances
+  record them — check them manually.
+- **Delete the recorded data too** (off by default, shown only while the first setting is on): each recording instance
+  deletes the recorded data of the datapoint first. A datapoint whose data an instance does not delete stays.
+
+A device that moves to a new ID is no deletion: its datapoints move with their values and recordings.
+
 ## Updating from 0.2
 
 The first start of 0.3 moves the programs out of the instance settings into the adapter's program store (the instance

@@ -248,7 +248,9 @@
     "pollInterval": 10,
     "treeScope": "all",
     "maxDownloads": 100,
-    "addResumes": false
+    "addResumes": false,
+    "deleteRecordedStates": true,
+    "deleteRecordedHistory": false
   },
   "encryptedNative": [],
   "protectedNative": [],

@@ -110,6 +110,47 @@
       "lg": 12,
       "xl": 12
     },
+    "_removalHeader": {
+      "newLine": true,
+      "type": "header",
+      "text": "removalHeader",
+      "size": 5
+    },
+    "_removalInfo": {
+      "type": "staticText",
+      "text": "removalInfo",
+      "xs": 12,
+      "sm": 12,
+      "md": 12,
+      "lg": 12,
+      "xl": 12,
+      "style": {
+        "fontSize": 14,
+        "marginBottom": 8
+      }
+    },
+    "deleteRecordedStates": {
+      "newLine": true,
+      "type": "checkbox",
+      "label": "deleteRecordedStates",
+      "help": "deleteRecordedStatesHelp",
+      "xs": 12,
+      "sm": 12,
+      "md": 6,
+      "lg": 6,
+      "xl": 6
+    },
+    "deleteRecordedHistory": {
+      "type": "checkbox",
+      "label": "deleteRecordedHistory",
+      "help": "deleteRecordedHistoryHelp",
+      "hidden": "!data.deleteRecordedStates",
+      "xs": 12,
+      "sm": 12,
+      "md": 6,
+      "lg": 6,
+      "xl": 6
+    },
     "_supportHeader": {
       "newLine": true,
       "type": "header",

@@ -163,9 +163,12 @@ export class ProgramManager {
     for (const oldId of before.keys()) {
       if (!nextIds.has(oldId)) {
         await this.stopProgram(oldId);
-        const states = await this.a.getForeignObjects(`${this.a.namespace}.${oldId}.*`, "state");
+        const pattern = `${this.a.namespace}.${oldId}.*`;
+        const before = Object.keys(await this.a.getForeignObjects(pattern, "state")).length;
         await this.a.delObject(`${this.a.namespace}.${oldId}`, { recursive: true });
-        this.a.log.info(`${oldId}: deleted — removed ${Object.keys(states).length} datapoint(s)`);
+        // a datapoint the user's deletion options keep stays — the removal names it in its own line
+        const kept = Object.keys(await this.a.getForeignObjects(pattern, "state")).length;
+        this.a.log.info(`${oldId}: deleted — removed ${before - kept} datapoint(s)`);
       }
     }
     this.rows = next;
