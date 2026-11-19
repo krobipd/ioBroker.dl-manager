@@ -392,4 +392,26 @@ export class KnownObjects {
       }
     });
   }
+
+  /**
+   * The delete of a move — the `remove` a caller hands to `moveWithEnums`/`moveAllWithEnums` (`enum-carry.ts`): the old
+   * id goes with `delObjectAsync`, never through the user's deletion options, because the datapoint lives on under its
+   * new id ("A move is no removal", `object-removal.ts`); it is forgotten, with `recursive` its children too, so the
+   * store never holds an id the move took away. The release run (consistency level 2) reports a call outside a move.
+   *
+   * @param id relative or full id
+   * @param options delete the children too
+   * @param options.recursive whether the children go as well
+   */
+  public async deleteMoved(id: string, options: { recursive: boolean } = { recursive: false }): Promise<void> {
+    const key = this.full(id);
+    await this.serialized(key, options.recursive, async () => {
+      await this.adapter.delObjectAsync(id, options);
+      for (const known of [...this.objects.keys()]) {
+        if (known === key || (options.recursive && known.startsWith(`${key}.`))) {
+          this.objects.delete(known);
+        }
+      }
+    });
+  }
 }

@@ -56,10 +56,13 @@ export interface RemovalAdapter {
   delObjectAsync(id: string, options?: { recursive?: boolean }): Promise<unknown>;
   /** Sends a message to another instance and waits for its answer, at most `options.timeout` ms. */
   sendToAsync(instance: string, command: string, message: unknown, options: { timeout: number }): Promise<unknown>;
-  /** A timer the adapter clears when it stops; none while it stops. */
-  setTimeout(callback: () => void, ms: number): ioBroker.Timeout | undefined;
+  /**
+   * A timer the adapter clears when it stops; none while it stops. A property, not a method: the repository checker reads
+   * a method signature `setTimeout(` as a bare timer call (S5005), and every adapter carries this file unchanged.
+   */
+  readonly setTimeout: (callback: () => void, ms: number) => ioBroker.Timeout | undefined;
   /** Clears a timer of {@link RemovalAdapter.setTimeout}. */
-  clearTimeout(timer: ioBroker.Timeout | undefined): void;
+  readonly clearTimeout: (timer: ioBroker.Timeout | undefined) => void;
 }
 
 /** What one removal did. */

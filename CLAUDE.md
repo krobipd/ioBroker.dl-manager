@@ -65,7 +65,8 @@ src/lib/core/transitions.ts      → rein: welche Downloads seit der letzten Abf
 src/lib/known-objects.ts         → Flotten-Master (byte-gleich): KnownObjects, eigener Baum einmal gelesen, Objekte nur bei
                                    Unterschied schreiben (coveredBy, mergedWith wie js-controller); `remove` löscht über
                                    `object-removal.ts` (die zwei Löschoptionen der Einstellungen, Runde 185) — jede Löschung
-                                   eines eigenen Objekts läuft über `forgetObject` in main.ts, nur ein Umzug löscht in `move.ts`
+                                   eines eigenen Objekts läuft über `forgetObject` in main.ts; ein Umzug löscht in `move.ts` über
+                                   `deleteMoved` (an den Löschoptionen vorbei, Runde 186), der Baum wird nur beim Start gelesen
 src/lib/core/states.ts           → KnownStates: EIN Wertespeicher, jeder Zustand im Speicher verglichen; get (Karte, Baum),
                                    forget (fremder Schreibvorgang), remove (gelöschtes Objekt)
 src/lib/core/summary.ts          → info.* und summary.* aus allen Programmen
@@ -86,7 +87,7 @@ src/lib/programs/catalog.ts      → die EINZIGE Programmliste: Typ, Name, Famil
 src/lib/programs/registry.ts     → Katalog + Treiber (DRIVERS) → PROGRAMS, findProgram
 src/lib/programs/<typ>/          → client.ts (Transport + Anmeldung), map.ts (Rohantwort → Modell, Status-Tabelle),
                                    driver.ts (Fähigkeiten, Extras, Befehle)
-src/lib/{enum-carry,known-objects,object-removal,err-text,native-key-migration,data-file}.ts → Kopien aus .consistency-master (byte-gleich);
+src/lib/{enum-carry,known-objects,object-removal,adapter-fake,err-text,native-key-migration,data-file}.ts → Kopien aus .consistency-master (byte-gleich);
                                    jeder Zugriff auf den Datenordner (`programs.json`, `call-budget.json`) über data-file.ts
 src/lib/{actionable-problems,device-icons,i18n}.ts → Flotten-Muster
 src/lib/api-limits.{json,ts}     → Limits jeder Gegenstelle (lokale Programme `network: "private"`: pyLoads 100/min je Host;
