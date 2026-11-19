@@ -363,7 +363,8 @@ function exactSend(
     const options = {
       method,
       agent: false as const,
-      headers: data ? { ...headers, "Content-Length": String(data.length) } : headers,
+      // `end(data)` with one chunk: node writes its byte length as `Content-Length` itself, in that case
+      headers,
     };
     const req =
       target.protocol === "https:"

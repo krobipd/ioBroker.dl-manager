@@ -151,7 +151,7 @@ export function settingOf(settings: unknown, name: string): unknown {
  */
 export function limitBps(value: unknown): number | null {
   const v = num(value);
-  return v === null ? null : v <= 0 ? 0 : fromKiB(v);
+  return v === null ? null : fromKiB(v);
 }
 
 /**

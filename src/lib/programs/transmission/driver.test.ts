@@ -255,6 +255,19 @@ describe("Transmission driver details", () => {
     }
   });
 
+  it("refuses a command it does not know and sends nothing", async () => {
+    const s = await trSynth({});
+    try {
+      const d = new TrDriver(cfg(s.baseUrl), { ...timers, log });
+      await expect(d.command({ kind: "extra", name: "recheck", key: "h" })).rejects.toThrow(
+        new ProtocolError("transmission: command not supported"),
+      );
+      expect(s.calls).toEqual([]);
+    } finally {
+      await s.close();
+    }
+  });
+
   it("turns error answers into the right error", async () => {
     const answer = async (a: { status?: number; body?: unknown }, re: RegExp | typeof AuthError): Promise<void> => {
       const s = await startFixtureServer(call =>

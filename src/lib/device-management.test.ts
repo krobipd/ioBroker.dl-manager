@@ -563,10 +563,12 @@ describe("pairing a Freebox", () => {
       ["timeout", "dmPairTimeout"],
       ["unknown", "dmPairUnknown"],
     ] as const) {
-      const { dm, host } = withPairing([], { refused });
+      const { dm, host, errors } = withPairing([], { refused });
       const ctx = context({ type: "freebox" }, boxForm);
       expect(await add(dm)(ctx)).toEqual({ refresh: false });
-      expect(ctx.showMessage).toHaveBeenCalledWith(key);
+      // the reason only — the dialog ends there, nothing breaks on the way to the store
+      expect(ctx.showMessage.mock.calls).toEqual([[key]]);
+      expect(errors).toEqual([]);
       expect(ctx.progressClosed()).toBe(1);
       expect(host.written).toEqual([]);
     }

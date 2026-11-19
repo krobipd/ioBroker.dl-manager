@@ -55,6 +55,8 @@ interface UtState {
   state: string;
   /** A build without `getversion`: it answers 400 "invalid request" like an unknown action. */
   noGetVersion?: boolean;
+  /** `list=1` answers 500 — a failed poll. */
+  failList?: boolean;
 }
 
 /**
@@ -82,6 +84,9 @@ async function utorrentServer(s: UtState = { state: "running" }): Promise<Contra
       return { status: invalid.status, body: String(invalid.body) };
     }
     if (q.get("list") === "1") {
+      if (s.failList) {
+        return { status: 500, body: "server busy" };
+      }
       return { body: loadFixture("utorrent", VERSION, s.state, "list").body };
     }
     switch (q.get("action")) {
@@ -143,10 +148,17 @@ describe("µTorrent's driver", () => {
   });
 
   it("takes the build number of the answers as the version of a build without getversion, asked once", async () => {
-    const s = await utorrentServer({ state: "running", noGetVersion: true });
+    const state: UtState = { state: "running", noGetVersion: true };
+    const s = await utorrentServer(state);
     try {
       const d = new UtDriver(cfg(s.baseUrl), { ...timers, log });
       expect((await d.poll()).status.version).toBe("30470");
+      expect((await d.poll()).status.version).toBe("30470");
+      expect(s.calls.filter(c => c.query.includes("action=getversion"))).toHaveLength(2);
+      // a failed poll reads the version anew — a build that refused getversion once is not asked again
+      state.failList = true;
+      await expect(d.poll()).rejects.toThrow();
+      state.failList = false;
       expect((await d.poll()).status.version).toBe("30470");
       expect(s.calls.filter(c => c.query.includes("action=getversion"))).toHaveLength(2);
     } finally {

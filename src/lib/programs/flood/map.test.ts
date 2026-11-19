@@ -244,5 +244,9 @@ describe("Flood and the emulated pause", () => {
     // an error that stopped the torrent is never one to stop and resume
     const rt = byName("4.16.4-rtorrent", "missing");
     expect([isRunning(rt["gone.bin"]), isRunning(rt["check.bin"])]).toEqual([false, true]);
+    // Deluge's state `Error` reaches Flood as `error` without `stopped` (Flood 4.16.4
+    // server/services/Deluge/util/torrentPropertiesUtil.ts) — Deluge paused it, the pause does not stop it again
+    const broken = { status: ["error", "inactive"], message: "Disk full" };
+    expect([rawStatus(broken), isRunning(broken)]).toEqual(["error", false]);
   });
 });
