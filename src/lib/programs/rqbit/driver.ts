@@ -6,7 +6,7 @@ import { asRecord, asText } from "../../core/units";
 import type { Capability, Command, DriverDeps, ProgramConfig, ProgramDriver, ProgramSnapshot } from "../../core/model";
 import { ProgramVersion } from "../../core/version";
 import { RqClient } from "./client";
-import { limitsIn, statsIn, toSnapshot } from "./map";
+import { limitsIn, stateOf, statsIn, toSnapshot } from "./map";
 
 /** The states a torrent can be paused from. */
 const RUNNING = new Set(["live", "initializing"]);
@@ -131,8 +131,8 @@ export class RqDriver implements ProgramDriver {
     }
     const hashes = torrents.map(t => idIn(t, "info_hash", "rqbit's torrent list", "text"));
     // what the global pause stops: live and initializing torrents — rqbit refuses to pause one in error state
-    // (torrent_state/mod.rs `pause`), and a paused one is no part of it
-    this.running = hashes.filter((_, i) => RUNNING.has(asText(asRecord(torrents[i].stats).state)));
+    // (torrent_state/mod.rs `pause`), and a paused one is no part of it, also one 9.x paused during its check
+    this.running = hashes.filter((_, i) => RUNNING.has(stateOf(asRecord(torrents[i].stats))));
     const paused = await this.pause.observe(new Set(this.running), new Set(hashes));
     return toSnapshot(version, torrents, stats, limits === undefined ? null : this.limits, paused, m =>
       this.deps.log.debug(m),

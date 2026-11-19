@@ -313,6 +313,66 @@ describe("rqbit driver details", () => {
     }
   });
 
+  it("keeps the pause of a torrent 9.x paused during its check — it stays initializing, flagged as paused (K4)", async () => {
+    // the recorded torrent `check.bin` before and after `POST /torrents/<hash>/pause` while it was checked: 9.1.0
+    // answers 200 and keeps the state `initializing` with `initializing_paused` — the check stands until it is started
+    const check = (st: string): unknown =>
+      (loadFixture("rqbit", "9.1.0", st, "torrents").body as { torrents: { name: string }[] }).torrents.find(
+        x => x.name === "check.bin",
+      );
+    const hash = "ccc4c11770321ec2ee5cc52b5829fce13232883d";
+    const state: RqState = {
+      torrents: [check("checking")],
+      answers: { [`POST /torrents/${hash}/pause`]: recorded("9.1.0", "commands", "torrent-pause-checking") },
+    };
+    const s = await rqSynth(state);
+    const store = memoryPauseStore();
+    try {
+      const d = new RqDriver(cfg(s.baseUrl), { ...timers, log, pauseStore: store });
+      await d.poll();
+      await d.command({ kind: "pauseAll" });
+      state.torrents = [check("checking-paused")];
+      await d.poll();
+      const snap = await d.poll();
+      expect(await store.load()).toEqual({ paused: true, keys: [hash] });
+      expect([snap.status.paused, snap.items[0].status]).toEqual([true, "paused"]);
+      state.answers = { [`POST /torrents/${hash}/start`]: recorded("9.1.0", "commands", "torrent-start-checked") };
+      await d.command({ kind: "resumeAll" });
+      expect(posts(s)).toEqual([`/torrents/${hash}/pause`, `/torrents/${hash}/start`]);
+      expect(await store.load()).toEqual({ paused: false, keys: [] });
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("pauses the others when 8.x refuses to pause a torrent during its check, which runs on (K4)", async () => {
+    const check = (st: string): unknown =>
+      (loadFixture("rqbit", "8.1.1", st, "torrents").body as { torrents: { name: string }[] }).torrents.find(
+        x => x.name === "check.bin",
+      );
+    const hash = "ccc4c11770321ec2ee5cc52b5829fce13232883d";
+    const a = "a".repeat(40);
+    const state: RqState = {
+      torrents: [check("checking"), t(a, "live")],
+      // 8.1.1: 400 "torrent is initializing, can't pause"
+      answers: { [`POST /torrents/${hash}/pause`]: recorded("8.1.1", "commands", "torrent-pause-checking") },
+    };
+    const s = await rqSynth(state);
+    const store = memoryPauseStore();
+    try {
+      const d = new RqDriver(cfg(s.baseUrl), { ...timers, log, pauseStore: store });
+      await d.poll();
+      await d.command({ kind: "pauseAll" });
+      state.torrents = [check("checking-paused"), t(a, "paused")];
+      await d.poll();
+      const snap = await d.poll();
+      expect(await store.load()).toEqual({ paused: true, keys: [a] });
+      expect([snap.status.paused, snap.items.map(i => i.status)]).toEqual([true, ["checking", "paused"]]);
+    } finally {
+      await s.close();
+    }
+  });
+
   it("pauses and holds a torrent whose add answered after the program was paused meanwhile", async () => {
     let release = (): void => undefined;
     const answered = new Promise<void>(resolve => (release = resolve));

@@ -21,6 +21,8 @@ export interface RqTorrent {
 interface RqStats {
   /** `initializing` · `live` · `paused` · `error`. */
   state?: unknown;
+  /** 9.x: a torrent paused during its check stays `initializing` with this set (recording `checking-paused`). */
+  initializing_paused?: unknown;
   /** The program's error text. */
   error?: unknown;
   /** Bytes of the torrent that are on disk. */
@@ -56,11 +58,22 @@ const STATUS = new Map<string, Status>(statusTable);
 
 /**
  * @param stats the torrent's stats
+ * @returns rqbit's state — a torrent paused during its check is `paused`: 9.x answers the pause with 200 and keeps it
+ *   `initializing` with `initializing_paused`, its check standing until it is started (recording `checking-paused`;
+ *   8.x refuses that pause)
+ */
+export function stateOf(stats: RqStats): string {
+  const state = asText(stats.state) || String(stats.state);
+  return state === "initializing" && stats.initializing_paused === true ? "paused" : state;
+}
+
+/**
+ * @param stats the torrent's stats
  * @returns the raw key of the status table — `live:stalled` is a live torrent that wants bytes and has no peer to get
  *   them from and nothing coming in (rqbit has no state of its own for it)
  */
 export function rawStatus(stats: RqStats): string {
-  const state = asText(stats.state) || String(stats.state);
+  const state = stateOf(stats);
   if (stats.finished === true) {
     return `${state}:done`;
   }
