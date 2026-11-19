@@ -172,7 +172,7 @@ The test button on a program's card asks the program once and shows its answer.
 - Fixed: NZBGet and pyLoad show their new version after an update
 - Fixed: pyLoad shows a decrypting package as queued
 - Fixed: pyLoad's speed limit keeps its value when pyLoad does not tell it, instead of emptying
-- Fixed: a small speed, limit or size shows its value instead of 0 (below 1 with three significant digits)
+- Fixed: a small speed, limit or size shows its value instead of 0
 - Fixed: a program on an IPv6 address is reachable
 - Fixed: the last finished and last failed download are named correctly
 - Fixed: a finished SABnzbd job keeps its added time
@@ -187,11 +187,11 @@ The test button on a program's card asks the program once and shows its answer.
 - Fixed: pause all is confirmed only once a program has paused
 - Changed: every datapoint of a download starts with the download's name
 - Changed: a busy or unreachable program is asked less often
-- Changed: password and API key in programs.json are stored in the platform's encrypted form; one that cannot be decrypted (programs.json from another installation) stops the start instead of being emptied
-- Changed: a start that cannot get going ends the adapter instead of running without function — after a wrong setting it waits until you save the settings, otherwise js-controller tries again
+- Changed: passwords and API keys use the platform's encryption; one that cannot be read stops the start instead of being emptied
+- Changed: a start that cannot get going ends the adapter instead of running without function
 - Changed: a poll interval that is no number ends the start with a notification in the admin instead of running at 10 s
 - Improved: the adapter keeps every program's and My.JDownloader's request limit, also across a restart
-- Improved: every datapoint explains in its description what it shows and when it stays empty
+- Improved: every datapoint has a short description
 - Changed: requires js-controller 7.2.5 and admin 8.3.5
 
 ### 0.4.0 (2026-10-02)
