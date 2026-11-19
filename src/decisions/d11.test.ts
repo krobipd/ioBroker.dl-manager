@@ -16,23 +16,18 @@ import { readDataFile, type DataFileCipher } from "../lib/data-file";
 import * as mainModule from "../main";
 const { DownloadManagerAdapter } = mainModule as unknown as { DownloadManagerAdapter: new () => ioBroker.Adapter };
 
-// The adapter base without js-controller: what the store needs — the instance's data folder and the installation secret.
-vi.mock("@iobroker/adapter-core", () => ({
-  Adapter: class {
-    namespace = "dl-manager.0";
-    adapterDir = "/opt/iobroker/node_modules/iobroker.dl-manager";
-    log = { debug: () => undefined, info: () => undefined, warn: () => undefined, error: () => undefined };
-    on(): void {}
-    encrypt(value: string): string {
-      return `$/aes-192-cbc:${Buffer.from(value).toString("base64")}`;
-    }
-    decrypt(value: string): string {
-      return Buffer.from(value.replace("$/aes-192-cbc:", ""), "base64").toString();
-    }
-  },
-  getAbsoluteInstanceDataDir: () => "/opt/iobroker/iobroker-data/dl-manager.0",
-  I18n: { getTranslatedObject: (key: string) => ({ en: key }), translate: (key: string) => key },
-}));
+// The adapter base without js-controller is the fleet's FakeAdapter (encrypt and decrypt from the master), with the
+// adapter's folder and the instance's data folder the store needs.
+vi.mock("@iobroker/adapter-core", async () => {
+  const { FakeAdapter } = await import("../lib/adapter-fake.js");
+  return {
+    Adapter: class extends FakeAdapter {
+      adapterDir = "/opt/iobroker/node_modules/iobroker.dl-manager";
+    },
+    getAbsoluteInstanceDataDir: () => "/opt/iobroker/iobroker-data/dl-manager.0",
+    I18n: { getTranslatedObject: (key: string) => ({ en: key }), translate: (key: string) => key },
+  };
+});
 
 const pkg = JSON.parse(readFileSync(join(process.cwd(), "io-package.json"), "utf8")) as {
   common: Record<string, unknown>;

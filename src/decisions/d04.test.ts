@@ -5,6 +5,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { ITEM_DATAPOINTS } from "../lib/core/datapoints";
 import type { DriverDeps, ProgramConfig, ProgramDriver } from "../lib/core/model";
+import { CATALOG } from "../lib/programs/catalog";
 import { JdDriver } from "../lib/programs/jdownloader/driver";
 import { findProgram } from "../lib/programs/registry";
 
@@ -69,6 +70,79 @@ vi.mock("../lib/programs/pyload/client", () => ({
     }
   },
 }));
+vi.mock("../lib/programs/rqbit/client", () => ({
+  RqClient: class {
+    post(path: string, body?: unknown): Promise<unknown> {
+      sent.push({ program: "rqbit", method: `POST ${path}`, params: body });
+      return Promise.resolve({});
+    }
+  },
+}));
+vi.mock("../lib/programs/rtorrent/client", () => ({
+  RtClient: class {
+    call(method: string, ...params: unknown[]): Promise<unknown> {
+      sent.push({ program: "rtorrent", method, params });
+      return Promise.resolve(0);
+    }
+  },
+}));
+vi.mock("../lib/programs/tribler/client", () => ({
+  TblClient: class {
+    send(method: string, path: string, json?: unknown): Promise<unknown> {
+      sent.push({ program: "tribler", method: `${method} ${path}`, params: json });
+      return Promise.resolve({});
+    }
+  },
+}));
+vi.mock("../lib/programs/flood/client", () => ({
+  FloodClient: class {
+    send(method: string, path: string, json?: unknown): Promise<unknown> {
+      sent.push({ program: "flood", method: `${method} ${path}`, params: json });
+      return Promise.resolve({});
+    }
+  },
+}));
+vi.mock("../lib/programs/utorrent/client", () => ({
+  UtClient: class {
+    call(query: string): Promise<Record<string, unknown>> {
+      sent.push({ program: "utorrent", method: query, params: undefined });
+      return Promise.resolve({});
+    }
+  },
+}));
+vi.mock("../lib/programs/hadouken/client", () => ({
+  HkClient: class {
+    call(method: string, params: unknown): Promise<unknown> {
+      sent.push({ program: "hadouken", method, params });
+      return Promise.resolve(null);
+    }
+  },
+}));
+vi.mock("../lib/programs/downloadstation/client", async importOriginal => ({
+  ...(await importOriginal<object>()),
+  DsClient: class {
+    call(api: string, method: string, params: Record<string, string>): Promise<unknown> {
+      sent.push({ program: "downloadstation", method: `${api} ${method}`, params });
+      return Promise.resolve(params.id.split(",").map(id => ({ id, error: 0 })));
+    }
+  },
+}));
+vi.mock("../lib/programs/nzbvortex/client", () => ({
+  NvClient: class {
+    get(resource: string, params?: unknown): Promise<Record<string, unknown>> {
+      sent.push({ program: "nzbvortex", method: resource, params });
+      return Promise.resolve({ result: "ok" });
+    }
+  },
+}));
+vi.mock("../lib/programs/freebox/client", () => ({
+  FbxClient: class {
+    call(method: string, resource: string, body?: unknown): Promise<unknown> {
+      sent.push({ program: "freebox", method: `${method} ${resource}`, params: body });
+      return Promise.resolve(null);
+    }
+  },
+}));
 
 const CFG: ProgramConfig = {
   type: "",
@@ -104,7 +178,7 @@ async function removeVia(type: string, listed: "queue" | "history"): Promise<{ m
     own.stopped?.add("42");
   }
   await driver.command({ kind: "remove", key: "42" });
-  return sent.filter(s => s.program === type).map(({ method, params }) => ({ method, params }));
+  return sent.map(({ method, params }) => ({ method, params }));
 }
 
 describe("D-04 remove takes a download out of the list, never its files", () => {
@@ -141,6 +215,56 @@ describe("D-04 remove takes a download out of the list, never its files", () => 
     ]);
     expect(await removeVia("aria2", "queue")).toEqual([{ method: "aria2.remove", params: ["42"] }]);
     expect(await removeVia("aria2", "history")).toEqual([{ method: "aria2.removeDownloadResult", params: ["42"] }]);
+    for (const listed of ["queue", "history"] as const) {
+      expect(await removeVia("vuze", listed)).toEqual([
+        { method: "torrent_remove", params: { ids: ["42"], delete_local_data: false } },
+      ]);
+      // forget keeps the files, delete would remove them
+      expect(await removeVia("rqbit", listed)).toEqual([{ method: "POST /torrents/42/forget", params: undefined }]);
+      expect(await removeVia("rtorrent", listed)).toEqual([{ method: "d.erase", params: ["42"] }]);
+      expect(await removeVia("tribler", listed)).toEqual([
+        { method: "DELETE /api/downloads/42", params: { remove_data: false } },
+      ]);
+      expect(await removeVia("flood", listed)).toEqual([
+        { method: "POST /torrents/delete", params: { hashes: ["42"], deleteData: false } },
+      ]);
+      // remove leaves the files, removedata would delete them
+      expect(await removeVia("utorrent", listed)).toEqual([{ method: "action=remove&hash=42", params: undefined }]);
+      expect(await removeVia("hadouken", listed)).toEqual([{ method: "webui.perform", params: ["remove", ["42"]] }]);
+      expect(await removeVia("downloadstation", listed)).toEqual([
+        { method: "SYNO.DownloadStation.Task delete", params: { id: "42", force_complete: "false" } },
+      ]);
+      // cancel takes the NZB out of the queue and leaves its files
+      expect(await removeVia("nzbvortex", listed)).toEqual([{ method: "nzb/42/cancel", params: undefined }]);
+      // DELETE without erase
+      expect(await removeVia("freebox", listed)).toEqual([{ method: "DELETE downloads/42", params: undefined }]);
+    }
+  });
+
+  it("checks every program of the catalog", () => {
+    expect(CATALOG.map(p => p.type).sort()).toEqual(
+      [
+        "aria2",
+        "deluge",
+        "downloadstation",
+        "flood",
+        "freebox",
+        "hadouken",
+        "jdownloader",
+        "jdownloader-cloud",
+        "nzbget",
+        "nzbvortex",
+        "pyload",
+        "qbittorrent",
+        "rqbit",
+        "rtorrent",
+        "sabnzbd",
+        "transmission",
+        "tribler",
+        "utorrent",
+        "vuze",
+      ].sort(),
+    );
   });
 
   it("asks JDownloader, local and through My.JDownloader, to remove the package from its list only", async () => {

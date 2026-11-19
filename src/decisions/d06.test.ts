@@ -11,7 +11,6 @@ import { describe, expect, it, vi } from "vitest";
 import { parseMaxDownloads, parseTreeScope } from "../lib/core/config";
 import { ProgramManager, type ManagerAdapter } from "../lib/core/manager";
 import type { DownloadItem, ProgramDriver, ProgramEntry, ProgramSnapshot, Status } from "../lib/core/model";
-import { computeSummary } from "../lib/core/summary";
 import { shownKeys } from "../lib/core/visibility";
 
 // adapter-core's I18n needs a running adapter; a text is not what this guard checks.
@@ -212,14 +211,7 @@ describe("D-06 scope and number per program decide which downloads stand in the 
     expect(a.channels("qbittorrent-b")).toHaveLength(1);
     expect(a.states.get("dl-manager.0.qbittorrent-a.total")).toBe(3);
     expect(a.states.get("dl-manager.0.qbittorrent-a.queued")).toBe(3);
-    const summary = computeSummary(
-      Object.values(lists).map(items => ({
-        online: true,
-        canPause: false,
-        snapshot: { status: { version: "1", paused: false, downloadBps: 0 }, items, complete: true },
-      })),
-    );
-    expect(summary["summary.queued"]).toBe(5);
+    expect(a.states.get("dl-manager.0.summary.queued")).toBe(5);
   });
 
   it("warns on the settings page and in the log at 0 or above 200", async () => {
