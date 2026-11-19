@@ -26,8 +26,15 @@ vi.mock("@iobroker/adapter-core", () => {
     public notifications: string[] = [];
     public instanceObject: Record<string, unknown> | null = { common: {}, native: {} };
     public instanceWrites: unknown[] = [];
+    /**
+     * Like an EventEmitter, every listener of an event hears it — dm-utils listens to "message" before the adapter.
+     *
+     * @param event the event
+     * @param fn its listener
+     */
     public on(event: string, fn: (...args: unknown[]) => unknown): void {
-      this.handlers.set(event, fn);
+      const before = this.handlers.get(event);
+      this.handlers.set(event, before ? (...args: unknown[]) => Promise.all([before(...args), fn(...args)]) : fn);
     }
     public extendObject = (id: string, obj: ioBroker.PartialObject): Promise<void> => this.store.extendObject(id, obj);
     public setForeignObject = (id: string, obj: ioBroker.SettableObject): Promise<void> =>
@@ -135,6 +142,7 @@ interface Harness {
   terminated: { reason: string; code: number }[];
   getObjectListAsync(p: { startkey: string; endkey: string }): Promise<unknown>;
   getForeignObjectsAsync(p: string, t: ioBroker.ObjectType): Promise<Record<string, ioBroker.Object>>;
+  getForeignObjectAsync(id: string): Promise<unknown>;
   getStatesAsync(p: string): Promise<Record<string, ioBroker.State>>;
   getStateAsync(id: string): Promise<ioBroker.State | null>;
 }
@@ -835,6 +843,16 @@ describe("DownloadManagerAdapter — messages", () => {
     }
   });
 
+  it("answers error when the test itself fails, so the sender does not wait for its timeout", async () => {
+    const { h } = make();
+    await h.handlers.get("ready")?.();
+    const own = h.getForeignObjectAsync;
+    h.getForeignObjectAsync = id => (id === "system.config" ? Promise.reject(new Error("database gone")) : own(id));
+    expect(await send(h, "testConnection", { id: "qbittorrent-nas" })).toEqual([
+      ["system.adapter.javascript.0", "testConnection", { error: "database gone" }, CALLBACK],
+    ]);
+  });
+
   it("answers error for an id no card has and for any command it does not know (D10)", async () => {
     const { h } = make();
     await h.handlers.get("ready")?.();
@@ -849,7 +867,15 @@ describe("DownloadManagerAdapter — messages", () => {
   it("leaves the device manager's messages to dm-utils", async () => {
     const { h } = make();
     await h.handlers.get("ready")?.();
-    expect(await send(h, "dm:instanceInfo", {})).toEqual([]);
+    // dm-utils answers; the adapter adds no "unknown command" of its own
+    expect(await send(h, "dm:instanceInfo", {})).toEqual([
+      [
+        "system.adapter.javascript.0",
+        "dm:instanceInfo",
+        expect.objectContaining({ actions: expect.any(Array) }),
+        CALLBACK,
+      ],
+    ]);
   });
 });
 

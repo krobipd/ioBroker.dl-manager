@@ -533,7 +533,13 @@ class DownloadManagerAdapter extends utils.Adapter {
       }
       let answer: { result: string } | { error: string };
       if (obj.command === "testConnection") {
-        answer = await this.testConnection(obj.message);
+        try {
+          answer = await this.testConnection(obj.message);
+        } catch (err: unknown) {
+          // the sender gets the failure instead of waiting for its timeout
+          this.log.error(`testConnection failed: ${errText(err)}`);
+          answer = { error: errText(err) };
+        }
       } else {
         this.log.debug(`unknown message ${obj.command}`);
         answer = { error: `unknown command ${obj.command}` };

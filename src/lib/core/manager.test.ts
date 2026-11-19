@@ -6,7 +6,7 @@ vi.mock("@iobroker/adapter-core", () => ({
 }));
 
 import { FakeAdapter } from "../../../test/helpers/fake-adapter";
-import { AuthError, UnreachableError } from "./errors";
+import { AuthError, ProtocolError, UnreachableError } from "./errors";
 import { objectPauseStore } from "./emulated-pause";
 import { startLine } from "./log-lines";
 import { ProgramManager, type ManagerOptions } from "./manager";
@@ -571,6 +571,19 @@ describe("ProgramManager — user writes", () => {
     expect(w.drivers.map(d => d.commands)).toEqual([[{ kind: "pauseAll" }], [{ kind: "pauseAll" }], []]);
     const info = w.a.logs.filter(l => l.level === "info").map(l => l.msg);
     expect(info).toContain("pause all: paused 2 of 3 program(s) — not reachable: qbittorrent-c");
+  });
+
+  it("names a program that refused the pause apart from one that is not reachable", async () => {
+    const w = world({ h1: { snapshot: snap(0) }, h2: { snapshot: snap(0) }, h3: { error: new UnreachableError("x") } });
+    const m = w.manager();
+    await m.start([row("qbittorrent", "a", "h1"), row("qbittorrent", "b", "h2"), row("qbittorrent", "c", "h3")]);
+    await flush();
+    w.drivers[1].command = (): Promise<void> => Promise.reject(new ProtocolError("refused"));
+    await m.onUserWrite("summary.pauseAll", true);
+    const info = w.a.logs.filter(l => l.level === "info").map(l => l.msg);
+    expect(info).toContain(
+      "pause all: paused 1 of 3 program(s) — not reachable: qbittorrent-c — refused: qbittorrent-b",
+    );
   });
 
   it("resume all resumes, and pause all leaves programs without a pause alone", async () => {

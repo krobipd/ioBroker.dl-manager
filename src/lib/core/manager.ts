@@ -5,6 +5,7 @@ import { addressOf, parsePrograms, type ProgramRow } from "./config";
 import { RESERVED_IDS } from "./device-id";
 import { readDevices, stampOffline, type DevicesAdapter } from "./devices";
 import { objectPauseStore, type PauseObjectAdapter } from "./emulated-pause";
+import { classify } from "./errors";
 import { programInfo } from "../programs/catalog";
 import { commandLine, startLine } from "./log-lines";
 import { loginHint } from "./login-hint";
@@ -343,6 +344,7 @@ export class ProgramManager {
     }
     let done = 0;
     const missed: string[] = [];
+    const refused: string[] = [];
     for (const [id, p] of targets) {
       if (!p.runner.online) {
         missed.push(id);
@@ -353,11 +355,14 @@ export class ProgramManager {
         done++;
       } catch (err: unknown) {
         this.a.log.debug(`${id}: ${on ? "pause" : "resume"} failed — ${redact(errText(err))}`);
-        missed.push(id);
+        // a program that answered and said no is no unreachable one
+        (classify(err) === "unreachable" ? missed : refused).push(id);
       }
     }
     const verb = on ? "pause all: paused" : "resume all: resumed";
-    const tail = missed.length ? ` — not reachable: ${missed.join(", ")}` : "";
+    const tail =
+      (missed.length ? ` — not reachable: ${missed.join(", ")}` : "") +
+      (refused.length ? ` — refused: ${refused.join(", ")}` : "");
     this.a.log.info(`${verb} ${done} of ${targets.length} program(s)${tail}`);
   }
 
