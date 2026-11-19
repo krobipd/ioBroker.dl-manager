@@ -1,6 +1,6 @@
 import { recordIn } from "../../core/answer";
 import { ProtocolError } from "../../core/errors";
-import type { DownloadItem, ProgramSnapshot, Status } from "../../core/model";
+import { RATIO_INFINITE, type DownloadItem, type ProgramSnapshot, type Status } from "../../core/model";
 import { statusFrom } from "../../core/status";
 import { asText, epochMs, eta, fromKiB, nonNegative, num, round2, sizeOf } from "../../core/units";
 import { UNLIMITED_BPS } from "../rtorrent/map";
@@ -258,7 +258,10 @@ export function toSnapshot(
     // only a torrent that loads has a rate: a stopped or finished one keeps its last (Transmission 950272 B/s stopped,
     // qBittorrent 1085357 B/s seeding — recordings `all-stopped`, `finished`)
     const loads = status === "downloading" || status === "waiting";
+    // not again: null for a loading torrent without a rate — none of the recorded Flood entries lacks it
     const speed = loads ? (nonNegative(t.downRate) ?? 0) : 0;
+    // Flood passes the backend's ratio on: Deluge's and qBittorrent's -1 is ∞ there (their own drivers say so too);
+    // the Transmission and rTorrent gateways compute one that is never negative
     const ratio = num(t.ratio);
     const tags = Array.isArray(t.tags) ? t.tags.filter((x): x is string => typeof x === "string") : [];
     items.push({
@@ -269,7 +272,7 @@ export function toSnapshot(
       doneBytes: nonNegative(t.bytesDone),
       speedBps: speed,
       uploadBps: loads || status === "seeding" ? (nonNegative(t.upRate) ?? 0) : 0,
-      ratio: ratio !== null && ratio >= 0 ? round2(ratio) : null,
+      ratio: ratio === RATIO_INFINITE ? RATIO_INFINITE : ratio !== null && ratio >= 0 ? round2(ratio) : null,
       etaSeconds: status === "downloading" && speed ? eta(t.eta, []) : null,
       addedMs: epochMs(t.dateAdded),
       finishedMs: epochMs(t.dateFinished),

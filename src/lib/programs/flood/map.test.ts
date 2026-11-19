@@ -1,4 +1,5 @@
 import { loadFixture } from "../../../../test/helpers/fixtures";
+import { RATIO_INFINITE } from "../../core/model";
 import {
   isLoading,
   isRunning,
@@ -170,7 +171,7 @@ describe("Flood snapshot", () => {
     expect(old?.sizeBytes).toBe(33554432);
   });
 
-  it("keeps the times only once there is one, the ratio only from 0 up", () => {
+  it("keeps the times only once there is one, the ratio from 0 up — Deluge's -1 is infinite, as in its own driver", () => {
     const q = Object.fromEntries(snap("4.16.4-qbittorrent", "running").items.map(i => [i.name, i]));
     // qBittorrent -1 before finishing, Transmission and Deluge 0
     expect(q["queued.bin"].finishedMs).toBeNull();
@@ -179,8 +180,9 @@ describe("Flood snapshot", () => {
     );
     const t = Object.fromEntries(snap("4.16.4-transmission", "running").items.map(i => [i.name, i]));
     expect([t["queued.bin"].finishedMs, t["nobody-seeds-this"].ratio]).toEqual([null, null]);
+    // Flood passes Deluge's ratio on unchanged: -1 (nothing done yet) is what Deluge itself shows as ∞
     const d = Object.fromEntries(snap("4.16.4-deluge", "running").items.map(i => [i.name, i]));
-    expect(d["stopped.bin"].ratio).toBeNull();
+    expect(d["stopped.bin"].ratio).toBe(RATIO_INFINITE);
   });
 
   it("reads the limits in bytes per second, 0 = unlimited — Deluge's KiB/s and -1, ruTorrent's maximum too", () => {
