@@ -174,6 +174,33 @@ export async function record(ctx) {
     throw new Error(`${err.message} — states seen: ${[...seen].join(", ")}`);
   });
   await snapshot("checking");
+  // a torrent paused while it is checked: 9.1.0 takes the pause during `initializing` (torrent_state/mod.rs), 8.1.1
+  // refuses it — the answer, the list right after and, when it was taken, the list once the check ended; then it starts
+  // again for the states below
+  const pauseChecking = await post(`/torrents/${hash("check")}/pause`);
+  w("commands", "torrent-pause-checking", `POST /torrents/${hash("check")}/pause (while checking)`, pauseChecking);
+  console.log(`rqbit: pause while checking answered ${pauseChecking.status}`);
+  await snapshot("checking-paused");
+  if (pauseChecking.status === 200) {
+    const after = new Set();
+    await waitFor(
+      "check ended paused",
+      async () => {
+        const st = (await find(hash("check")))?.stats?.state;
+        after.add(st);
+        return st !== "initializing";
+      },
+      180_000,
+    ).catch(err => console.log(`rqbit: ${err.message} — recorded as it is`));
+    console.log(`rqbit: states after the pause while checking: ${[...after].join(", ")}`);
+    await snapshot("checked-paused");
+    w(
+      "commands",
+      "torrent-start-checked",
+      `POST /torrents/${hash("check")}/start`,
+      await post(`/torrents/${hash("check")}/start`),
+    );
+  }
   await waitFor(
     "mixed states",
     async () => {
