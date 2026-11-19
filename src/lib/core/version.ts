@@ -1,7 +1,7 @@
 /**
- * A program's version for the drivers that ask it separately (JDownloader, qBittorrent, NZBGet, pyLoad): read with the
- * first query and again after a failed one — the program may have restarted for an update. An empty answer is not
- * kept: the next query asks again.
+ * A program's version for the drivers that ask it separately (JDownloader, NZBGet, pyLoad, rqbit, rTorrent, Tribler,
+ * Flood): read with the first query and again after a failed one — the program may have restarted for an update. An
+ * empty answer is not kept: the next query asks again.
  */
 export class ProgramVersion {
   private value: string | null = null;
@@ -20,10 +20,5 @@ export class ProgramVersion {
       this.value = null;
       throw err;
     }
-  }
-
-  /** The next query reads the version again. */
-  public forget(): void {
-    this.value = null;
   }
 }

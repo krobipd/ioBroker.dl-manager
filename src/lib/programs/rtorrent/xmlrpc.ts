@@ -9,20 +9,6 @@ import { ProtocolError } from "../../core/errors";
 /** An XML-RPC value the driver sends. */
 export type RpcParam = string | number | boolean | readonly RpcParam[] | { readonly [key: string]: RpcParam };
 
-/** A `<fault>` answer: rTorrent refused the call. */
-export class RpcFault extends ProtocolError {
-  /**
-   * @param code `faultCode`
-   * @param text `faultString`
-   */
-  public constructor(
-    public readonly code: number,
-    text: string,
-  ) {
-    super(text);
-  }
-}
-
 /**
  * @param s text
  * @returns escaped for an XML text node
@@ -164,7 +150,7 @@ function valueOf(v: Node | undefined): unknown {
 
 /**
  * @param text a `methodResponse` document
- * @returns the result; a `<fault>` throws an RpcFault, anything else a ProtocolError
+ * @returns the result; a `<fault>` and anything that is no answer throw a ProtocolError
  */
 export function parseResponse(text: string): unknown {
   const resp = child(tree(text), "methodResponse");
@@ -173,11 +159,9 @@ export function parseResponse(text: string): unknown {
   }
   const fault = child(resp, "fault");
   if (fault) {
-    const f = valueOf(child(fault, "value")) as { faultCode?: unknown; faultString?: unknown } | null;
-    throw new RpcFault(
-      typeof f?.faultCode === "number" ? f.faultCode : 0,
-      typeof f?.faultString === "string" ? f.faultString : "rTorrent refused the call",
-    );
+    const f = valueOf(child(fault, "value")) as { faultString?: unknown } | null;
+    // a `<fault>` answer: rTorrent refused the call — its `faultString` says why
+    throw new ProtocolError(typeof f?.faultString === "string" ? f.faultString : "rTorrent refused the call");
   }
   return valueOf(child(child(child(resp, "params"), "param"), "value"));
 }
@@ -193,12 +177,9 @@ export function multicallResult(entry: unknown, method: string): unknown {
   if (Array.isArray(entry) && entry.length === 1) {
     return entry[0];
   }
-  const f = entry as { faultCode?: unknown; faultString?: unknown } | null;
+  const f = entry as { faultString?: unknown } | null;
   if (f && typeof f === "object" && "faultString" in f) {
-    throw new RpcFault(
-      typeof f.faultCode === "number" ? f.faultCode : 0,
-      `${method}: ${typeof f.faultString === "string" ? f.faultString : "refused"}`,
-    );
+    throw new ProtocolError(`${method}: ${typeof f.faultString === "string" ? f.faultString : "refused"}`);
   }
   throw new ProtocolError(`rTorrent's answer to ${method} has lost its shape — answer refused`);
 }

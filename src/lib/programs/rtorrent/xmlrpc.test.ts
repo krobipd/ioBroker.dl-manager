@@ -1,6 +1,6 @@
 import { loadFixture } from "../../../../test/helpers/fixtures";
 import { ProtocolError } from "../../core/errors";
-import { methodCall, multicallResult, parseResponse, RpcFault } from "./xmlrpc";
+import { methodCall, multicallResult, parseResponse } from "./xmlrpc";
 
 /**
  * @param version recorded version
@@ -39,14 +39,9 @@ describe("rTorrent XML-RPC answer", () => {
       expect(typeof rows[0][8]).toBe("number");
     });
 
-    it(`throws the fault of ${version} for an unknown hash as an RpcFault`, () => {
-      expect(() => parseResponse(xml(version, "commands", "d-unknown"))).toThrow(RpcFault);
-      try {
-        parseResponse(xml(version, "commands", "d-unknown"));
-      } catch (err) {
-        expect((err as RpcFault).code).toBeLessThan(0);
-        expect((err as RpcFault).message).toMatch(/info-hash/i);
-      }
+    it(`throws the fault of ${version} for an unknown hash as a refusal with rTorrent's text`, () => {
+      expect(() => parseResponse(xml(version, "commands", "d-unknown"))).toThrow(ProtocolError);
+      expect(() => parseResponse(xml(version, "commands", "d-unknown"))).toThrow(/info-hash/i);
     });
 
     it(`throws the fault of one call inside a multicall of ${version}, naming its method`, () => {

@@ -33,7 +33,7 @@ export class RtClient {
   /**
    * @param method the method
    * @param params its parameters, the target first
-   * @returns the result; a fault of rTorrent throws an RpcFault
+   * @returns the result; a fault of rTorrent throws a ProtocolError
    */
   public async call(method: string, ...params: RpcParam[]): Promise<unknown> {
     const res = await this.http.request({
@@ -55,7 +55,7 @@ export class RtClient {
    * Several calls in one request.
    *
    * @param calls the calls
-   * @returns their results in the same order; a call rTorrent refused throws an RpcFault
+   * @returns their results in the same order; a call rTorrent refused throws a ProtocolError
    */
   public async multicall(calls: readonly RpcCall[]): Promise<unknown[]> {
     const results = listIn(

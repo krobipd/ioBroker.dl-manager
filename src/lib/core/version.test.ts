@@ -9,8 +9,6 @@ describe("ProgramVersion", () => {
     expect(await v.poll(read, version => Promise.resolve(version))).toBe("v1");
     await expect(v.poll(read, () => Promise.reject(new Error("down")))).rejects.toThrow("down");
     expect(await v.poll(read, version => Promise.resolve(version))).toBe("v2");
-    v.forget();
-    expect(await v.poll(read, version => Promise.resolve(version))).toBe("v3");
   });
 
   it("keeps no empty version — the next query asks again (fleet C26b)", async () => {
