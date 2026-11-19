@@ -168,8 +168,8 @@ export function toSnapshot(
     const s = asRecord(t.stats) as RqStats;
     const live = asRecord(s.live);
     const status = mapRqStatus(rawStatus(s), debug);
-    // while initializing these are the bytes checked so far, as qBittorrent's `completed` (the same libtorrent meaning)
-    // — not again: empty while checking, Tribler alone does that
+    // while initializing these are the bytes checked so far — they grow during the check (9.1.0 `checking` 4194304,
+    // `checking-paused` 8388608) — as qBittorrent's `completed`; not again: empty while checking, Tribler alone does that
     const done = nonNegative(s.progress_bytes);
     const up = nonNegative(s.uploaded_bytes);
     const left = asRecord(asRecord(live.time_remaining).duration);

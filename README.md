@@ -149,6 +149,17 @@ The test button on a program's card asks the program once and shows its answer.
     ### **WORK IN PROGRESS**
 -->
 
+### **WORK IN PROGRESS**
+
+- Fixed: pausing all no longer stops halfway when a download ended meanwhile (rqbit, rTorrent, Tribler)
+- Fixed: when the connection breaks off during pause all or resume all, the downloads already paused are resumed later
+- Fixed: a link added during a pause is held on the next poll when its first hold did not reach the program
+- Fixed: an rqbit 9 torrent paused during its check no longer ends the pause and shows as paused
+- Fixed: with rqbit 8, adding a link whose files are already there during a pause no longer fails; it is paused after its check
+- Fixed: Flood shows the infinite ratio of Deluge and qBittorrent instead of none
+- Fixed: the log line of pause all names a program that refused apart from one that was not reachable
+- Fixed: a script testing a connection gets the error as its answer when the test itself fails
+
 ### 0.5.0 (2026-11-19)
 
 - New: rqbit can be added as a program
