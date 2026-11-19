@@ -227,7 +227,7 @@ export function runDriverContract(c: ContractCase): void {
       await d.close();
     });
 
-    it("sends exactly the expected request for each offered command and refuses the others", async () => {
+    it("sends the expected request among its calls for each offered command and refuses the others", async () => {
       const d = c.makeDriver(server.baseUrl, { good: true });
       const key = (await d.poll()).items[0].key;
       for (const kind of Object.keys(COMMAND_CAPABILITY) as CommandKind[]) {

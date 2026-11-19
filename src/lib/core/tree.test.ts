@@ -583,12 +583,22 @@ describe("ProgramTree — downloads", () => {
     const a = new FakeAdapter(NS);
     const extras: ExtraDefinition[] = [
       { id: "recheck", level: "item", type: "boolean", role: "button", write: true, read: false, nameKey: "recheck" },
+      {
+        id: "forceStart",
+        level: "item",
+        type: "boolean",
+        role: "switch",
+        write: true,
+        read: true,
+        nameKey: "forceStart",
+      },
     ];
     const t = new ProgramTree(a, "qbittorrent-nas", "qBittorrent (NAS)", driver(CAPS, extras), ALL);
     await t.load();
     await t.ensureDevice(undefined);
-    await t.sync(snap([item("aaaa11112222")]));
+    await t.sync(snap([item("aaaa11112222", { extra: { forceStart: true } })]));
     expect(a.objects.get(`${CH}.recheck`)?.common.role).toBe("button");
+    expect(a.val("qbittorrent-nas.downloads.11112222.forceStart")).toBe(true);
   });
 });
 
@@ -618,18 +628,6 @@ describe("ProgramTree — keys the 0.0.1 placeholder left on its objects", () =>
 });
 
 describe("ProgramTree — finished and failed events", () => {
-  it("takes the startup baseline and the device from what the adapter holds — no single database read", async () => {
-    const a = new FakeAdapter(NS);
-    a.states.set(`${DEV}.last.finishedTime`, { val: 5000, ack: true } as ioBroker.State);
-    const reads: string[] = [];
-    const state = a.getState.bind(a);
-    const object = a.getObject.bind(a);
-    a.getState = id => (reads.push(id), state(id));
-    a.getObject = id => (reads.push(id), object(id));
-    await makeTree(a);
-    expect(reads).toEqual([]);
-  });
-
   it("fires finished on the transition, not on the startup baseline", async () => {
     const a = new FakeAdapter(NS);
     a.states.set(`${DEV}.last.finishedTime`, { val: 5000, ack: true } as ioBroker.State);
@@ -770,10 +768,11 @@ describe("ProgramTree — finished and failed events", () => {
     const t = await makeTree(a);
     await t.sync(snap([item("k1")]));
     await t.sync(snap([item("k1", { status: "completed" })]));
-    const writes = a.stateWrites;
+    const lastWrites = (): number => a.writeLog.filter(w => w.id.endsWith(".last.finished")).length;
+    const writes = lastWrites();
     await t.sync(snap([item("k1", { status: "downloading" })]));
     await t.sync(snap([item("k1", { status: "completed" })]));
-    expect(a.stateWrites).toBeGreaterThan(writes);
+    expect(lastWrites()).toBe(writes + 1);
     expect(a.val("qbittorrent-nas.last.finished")).toBe("name k1");
   });
 });

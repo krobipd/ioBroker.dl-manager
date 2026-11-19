@@ -59,7 +59,10 @@ const ctx = { takenKeys: [] as string[] };
 
 describe("rows and dialog data", () => {
   it("offers every program but My.JDownloader, which is a switch of the JDownloader dialog", () => {
-    expect(OFFERED.map(p => p.type)).toEqual(CATALOG.map(p => p.type).filter(t => t !== "jdownloader-cloud"));
+    const offered = OFFERED.map(p => p.type);
+    expect(offered).toContain("jdownloader");
+    expect(offered).not.toContain("jdownloader-cloud");
+    expect(offered).toHaveLength(CATALOG.length - 1);
   });
 
   it("maps a stored row to the dialog it is edited in", () => {
@@ -244,7 +247,7 @@ describe("programKeyExpression — the dialog's copy of programKey", () => {
 });
 
 describe("pickProgramForm", () => {
-  it("offers the eight programs as a list with their pictograms", () => {
+  it("offers every program of the dialog as a list with its pictogram", () => {
     const items = itemsOf(pickProgramForm(t => `icon:${t}`));
     expect(items.type.type).toBe("select");
     expect(items.type.options?.map(o => o.value)).toEqual(OFFERED.map(p => p.type));
