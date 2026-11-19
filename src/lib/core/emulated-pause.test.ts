@@ -144,4 +144,19 @@ describe("EmulatedPause (plan § 5.3)", () => {
     await p.observe(new Set(), new Set(["early", "mine"]));
     expect(await store.load()).toEqual({ paused: true, keys: [] });
   });
+
+  it("stores a poll that forgets one download and takes a new one — the same number of keys, other ones", async () => {
+    const store = memoryPauseStore({ paused: true, keys: ["a", "gone"] });
+    const p = new EmulatedPause(store);
+    await p.holdNext();
+    await p.observe(new Set(), new Set(["a", "gone"]));
+    await p.observe(new Set(), new Set(["a", "new"]));
+    expect(await store.load()).toEqual({ paused: true, keys: ["a", "new"] });
+    const started: string[][] = [];
+    await p.resume(keys => {
+      started.push(keys);
+      return Promise.resolve();
+    });
+    expect(started).toEqual([["a", "new"]]);
+  });
 });

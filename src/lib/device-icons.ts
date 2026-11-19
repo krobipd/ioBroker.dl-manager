@@ -34,10 +34,11 @@ export function deviceIcon(type: string | undefined): string | undefined {
   if (cache.has(type)) {
     return cache.get(type);
   }
+  const file = join(ICON_DIR, ICON_BY_TYPE[type]);
   let uri: string | undefined;
+  // only the read: an unreadable file leaves the program without a pictogram
   try {
-    const svg = readFileSync(join(ICON_DIR, ICON_BY_TYPE[type]), "utf8");
-    uri = `${ICON_URI_PREFIX}${Buffer.from(normaliseLineEndings(svg)).toString("base64")}`;
+    uri = `${ICON_URI_PREFIX}${Buffer.from(normaliseLineEndings(readFileSync(file, "utf8"))).toString("base64")}`;
   } catch {
     uri = undefined;
   }
