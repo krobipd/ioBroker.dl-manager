@@ -370,6 +370,27 @@ describe("NZBVortex driver", () => {
     expect(paths(back)).toContain("/api/nzb/18/resume");
   });
 
+  it("forgets a link it held before a hold did not reach NZBVortex — a later NZB of the user stays running (K4)", async () => {
+    await start({ added: { result: "ok" } });
+    await driver.poll();
+    await driver.command({ kind: "pauseAll" });
+    await driver.command({ kind: "add", url: "https://example.com/a.nzb" });
+    await driver.command({ kind: "add", url: "https://example.com/b.nzb" });
+    const list = queue();
+    list.nzbs.push({ ...list.nzbs[1], id: 18, uiTitle: "nzb-a", addUUID: null });
+    list.nzbs.push({ ...list.nzbs[1], id: 19, uiTitle: "nzb-b", addUUID: null });
+    state.list = list;
+    // 18 is held, the hold of 19 does not reach NZBVortex
+    state.route = c => (c.path === "/api/nzb/19/pause" ? { status: 503, body: "" } : undefined);
+    await expect(driver.poll()).rejects.toThrow(UnreachableError);
+    state.route = undefined;
+    await driver.poll();
+    list.nzbs.push({ ...list.nzbs[1], id: 20, uiTitle: "nzb-of-the-user", addUUID: null });
+    const from = server.calls.length;
+    await driver.poll();
+    expect(paths(from)).toEqual(["/api/nzb", "/api/speedlimit"]);
+  });
+
   it("leaves a link added while nothing is paused running", async () => {
     await start();
     await driver.poll();

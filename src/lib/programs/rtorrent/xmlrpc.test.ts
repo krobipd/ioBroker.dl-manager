@@ -44,9 +44,10 @@ describe("rTorrent XML-RPC answer", () => {
       expect(() => parseResponse(xml(version, "commands", "d-unknown"))).toThrow(/info-hash/i);
     });
 
-    it(`throws the fault of one call inside a multicall of ${version}, naming its method`, () => {
+    it(`throws the fault of one call inside a multicall of ${version} as a refusal, naming its method`, () => {
       const [ok, failed] = parseResponse(xml(version, "commands", "multicall-fault")) as unknown[];
       expect(typeof multicallResult(ok, "throttle.global_down.rate")).toBe("number");
+      expect(() => multicallResult(failed, "no.such.method")).toThrow(ProtocolError);
       expect(() => multicallResult(failed, "no.such.method")).toThrow(/no\.such\.method: Method 'no\.such\.method'/i);
     });
   }

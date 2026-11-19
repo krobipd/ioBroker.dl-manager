@@ -511,6 +511,21 @@ describe("Freebox driver", () => {
     );
   });
 
+  it("lets a link whose stop did not reach the Freebox run once the pause ended before the next poll (K4)", async () => {
+    await start({ list: list("list-stopped") });
+    await driver.poll();
+    await driver.command({ kind: "pauseAll" });
+    state.route = c => (c.method === "PUT" && c.path === `${API}downloads/365` ? { status: 503, body: "" } : undefined);
+    await expect(driver.command({ kind: "add", url: "https://example.com/a.torrent" })).rejects.toThrow(
+      UnreachableError,
+    );
+    state.route = undefined;
+    await driver.command({ kind: "resumeAll" });
+    const from = server.calls.length;
+    await driver.poll();
+    expect(made(from).filter(c => c.startsWith("PUT"))).toEqual([]);
+  });
+
   it("leaves a link added while nothing is paused running, and refuses an answer without the new id", async () => {
     await start();
     await driver.poll();

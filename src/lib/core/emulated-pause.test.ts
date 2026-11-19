@@ -145,6 +145,20 @@ describe("EmulatedPause (plan § 5.3)", () => {
     expect(await store.load()).toEqual({ paused: true, keys: [] });
   });
 
+  it("pauseEach leaves the program unpaused when the very first stop fails on the way, not a pause of nothing", async () => {
+    const store = memoryPauseStore();
+    const p = new EmulatedPause(store);
+    const down = new Error("socket hang up");
+    await expect(
+      p.pauseEach(
+        ["a", "b"],
+        () => Promise.reject(down),
+        () => undefined,
+      ),
+    ).rejects.toBe(down);
+    expect(await store.load()).toEqual({ paused: false, keys: [] });
+  });
+
   it("stores a poll that forgets one download and takes a new one — the same number of keys, other ones", async () => {
     const store = memoryPauseStore({ paused: true, keys: ["a", "gone"] });
     const p = new EmulatedPause(store);
