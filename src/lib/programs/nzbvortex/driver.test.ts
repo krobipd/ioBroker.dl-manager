@@ -2,7 +2,7 @@ import { runDriverContract, type ContractServer } from "../../../../test/helpers
 import { startFixtureServer, type FixtureAnswer, type RecordedCall } from "../../../../test/helpers/fixture-server";
 import { loadFixture } from "../../../../test/helpers/fixtures";
 import { memoryPauseStore } from "../../core/emulated-pause";
-import { AuthError, ProtocolError } from "../../core/errors";
+import { AuthError, ProtocolError, UnreachableError } from "../../core/errors";
 import type { ProgramConfig } from "../../core/model";
 import { loginHash } from "./client";
 import { NvDriver } from "./driver";
@@ -73,6 +73,8 @@ interface NvState {
   lapseAs200?: boolean;
   /** These NZBs refuse a pause. */
   refusePause?: string[];
+  /** The answer to a request ahead of every other route, undefined for the usual one. */
+  route?: (call: RecordedCall) => FixtureAnswer | undefined;
 }
 
 /**
@@ -86,6 +88,10 @@ async function nvServer(state: NvState = {}): Promise<ContractServer> {
   let lapse = false;
   const pausedNow = new Map<string, boolean>();
   const s = await startFixtureServer(call => {
+    const own = state.route?.(call);
+    if (own) {
+      return own;
+    }
     const q = new URLSearchParams(call.query);
     if (call.path === "/api/auth/nonce") {
       return answer("auth", "nonce");
@@ -262,6 +268,8 @@ describe("NZBVortex driver", () => {
   it("refuses an answer that is not ok", async () => {
     await start({ limit: { result: "unknown_command" } });
     await expect(driver.poll()).rejects.toThrow(/speedlimit refused \(unknown_command\)/);
+    // a refusal that is no lost session opens no new one
+    expect(server.calls.filter(isLogin)).toHaveLength(1);
   });
 
   it("pauses everything by pausing what runs, and resumes exactly that", async () => {
@@ -336,10 +344,12 @@ describe("NZBVortex driver", () => {
     state.list = list;
     const s = await driver.poll();
     expect(s.items.find(i => i.key === "18")?.status).toBe("paused");
-    // held once: the next poll pauses nothing more
+    // held once: the next poll pauses nothing more, not even an NZB the user adds in NZBVortex itself
     const from = server.calls.length;
     await driver.poll();
-    expect(paths(from)).toEqual(["/api/nzb", "/api/speedlimit"]);
+    list.nzbs.push({ ...list.nzbs[1], id: 19, uiTitle: "nzb-of-the-user", addUUID: null });
+    await driver.poll();
+    expect(paths(from)).toEqual(["/api/nzb", "/api/speedlimit", "/api/nzb", "/api/speedlimit"]);
   });
 
   it("leaves a link added while nothing is paused running", async () => {
@@ -376,5 +386,66 @@ describe("NZBVortex driver", () => {
     await expect(driver.command({ kind: "pause", key: "../app" })).rejects.toThrow(ProtocolError);
     expect(server.calls.length).toBe(from);
     expect(server.calls.some(c => c.path.includes("cancelDelete"))).toBe(false);
+  });
+
+  it("refuses the session opened after a lapse when NZBVortex rejects it at once too", async () => {
+    await start();
+    await driver.poll();
+    state.refuseAll = true;
+    await expect(driver.poll()).rejects.toThrow(
+      new ProtocolError("nzbvortex: the new session was refused at once (HTTP 403)"),
+    );
+    expect(server.calls.filter(isLogin)).toHaveLength(2);
+  });
+
+  it("fails the poll when the call repeated with the new session is refused", async () => {
+    await start();
+    await driver.poll();
+    server.expireSession?.();
+    let lists = 0;
+    state.route = c => (c.path === "/api/nzb" && ++lists === 2 ? { body: { result: "failed" } } : undefined);
+    await expect(driver.poll()).rejects.toThrow("nzbvortex: nzb refused (failed)");
+    expect(server.calls.filter(isLogin)).toHaveLength(2);
+  });
+
+  it("refuses a login without its nonce or session id, and names what an answer that is none answered", async () => {
+    await start({ route: c => (c.path === "/api/auth/nonce" ? { body: { result: "ok" } } : undefined) });
+    await expect(driver.poll()).rejects.toThrow("NZBVortex's nonce is missing — answer refused");
+    state.route = c =>
+      c.path === "/api/auth/login" ? { body: { result: "ok", loginResult: "successful" } } : undefined;
+    await expect(driver.poll()).rejects.toThrow("NZBVortex's login answer lost its shape — answer refused");
+    state.route = c => (c.path === "/api/auth/nonce" ? { status: 500, body: "x" } : undefined);
+    await expect(driver.poll()).rejects.toThrow("nzbvortex: auth/nonce answered HTTP 500");
+    state.route = c => (c.path === "/api/nzb" ? { status: 500, body: "x" } : undefined);
+    await expect(driver.poll()).rejects.toThrow("nzbvortex: nzb answered HTTP 500");
+    state.route = c => (c.path === "/api/nzb" ? { body: { nzbs: [] } } : undefined);
+    await expect(driver.poll()).rejects.toThrow("nzbvortex: nzb refused (no result)");
+  });
+
+  it("fails the pause for everything when a pause does not reach NZBVortex, instead of passing over it", async () => {
+    await start({ route: c => (c.path === "/api/nzb/11/pause" ? { status: 503, body: "" } : undefined) });
+    await driver.poll();
+    await expect(driver.command({ kind: "pauseAll" })).rejects.toThrow(UnreachableError);
+  });
+
+  it("leaves a link added during the pause running when the pause ended before it was listed", async () => {
+    await start();
+    await driver.poll();
+    await driver.command({ kind: "pauseAll" });
+    await driver.poll();
+    await driver.command({ kind: "add", url: "https://example.com/a.nzb" });
+    await driver.command({ kind: "resumeAll" });
+    const list = queue();
+    list.nzbs.push({
+      ...list.nzbs[0],
+      id: 17,
+      uiTitle: "nzb-added",
+      addUUID: "{0D4E1F2A-0000-4000-8000-000000000021}",
+    });
+    state.list = list;
+    const from = server.calls.length;
+    const s = await driver.poll();
+    expect(paths(from)).toEqual(["/api/nzb", "/api/speedlimit"]);
+    expect(s.items.find(i => i.key === "17")?.status).toBe("downloading");
   });
 });

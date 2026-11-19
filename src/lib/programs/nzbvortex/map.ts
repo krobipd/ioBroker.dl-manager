@@ -143,8 +143,7 @@ export function fieldOf(row: Record<string, unknown>, name: string): unknown {
     return row[name];
   }
   const lower = name.toLowerCase();
-  const key = Object.keys(row).find(k => k.toLowerCase() === lower);
-  return key === undefined ? undefined : row[key];
+  return Object.entries(row).find(([k]) => k.toLowerCase() === lower)?.[1];
 }
 
 /**

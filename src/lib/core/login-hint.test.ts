@@ -49,6 +49,10 @@ describe("loginHint", () => {
     }
   });
 
+  it("asks Download Station to check user and password — its card cannot be saved without a user", () => {
+    expect(loginHint(cfg("downloadstation"))).toEqual({ action: "check user and password on its card" });
+  });
+
   it("points a Freebox at the pairing, and at the right to the downloads once it holds a token", () => {
     expect(loginHint(cfg("freebox"))).toEqual({
       cause: "its card holds no app token",

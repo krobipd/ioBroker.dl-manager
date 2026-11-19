@@ -46,6 +46,8 @@ describe("catalog", () => {
     expect(needsOf(catalogEntry("sabnzbd"))).toEqual(["host", "apiKey"]);
     // the Freebox's app token comes from the pairing — a card without one cannot run
     expect(needsOf(catalogEntry("freebox"))).toEqual(["host", "apiKey"]);
+    // a DSM account: user and password, the user required
+    expect(needsOf(catalogEntry("downloadstation"))).toEqual(["host", "username"]);
     for (const t of ["qbittorrent", "transmission", "nzbget", "aria2", "pyload"] as const) {
       expect(needsOf(catalogEntry(t))).toEqual(["host"]);
     }

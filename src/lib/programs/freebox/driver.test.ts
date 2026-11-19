@@ -85,6 +85,8 @@ interface FbxState {
   configAnswer?: unknown;
   /** The statuses `GET login/authorize/42` answers in turn, the last one for ever. */
   track?: string[];
+  /** The answer to a request ahead of every other route, undefined for the usual one. */
+  route?: (call: RecordedCall) => FixtureAnswer | undefined;
 }
 
 /**
@@ -101,6 +103,10 @@ async function fbxServer(state: FbxState = {}): Promise<ContractServer> {
   const current = config();
   let track = 0;
   const s = await startFixtureServer(call => {
+    const own = state.route?.(call);
+    if (own) {
+      return own;
+    }
     if (call.method === "GET" && call.path === "/api_version") {
       return answer("app", "api-version");
     }
@@ -381,6 +387,8 @@ describe("Freebox driver", () => {
     await expect(driver.command({ kind: "setSpeedLimit", bps: 1000 })).rejects.toThrow(
       /needs a right the app lacks.*Gestion des accès/,
     );
+    // a refusal that is no lost session opens no new one
+    expect(server.calls.filter(isLogin)).toHaveLength(1);
     expect((await driver.poll()).complete).toBe(true);
   });
 
@@ -491,6 +499,53 @@ describe("Freebox driver", () => {
     expect(server.calls.length).toBe(from);
     expect(server.calls.some(c => c.path.endsWith("/erase"))).toBe(false);
   });
+  it("names the HTTP status of an answer that is no Freebox's, and refuses an answer that is no object", async () => {
+    await start({ route: c => (c.path === "/api_version" ? { status: 404, body: "Not Found" } : undefined) });
+    await expect(driver.poll()).rejects.toThrow("freebox: api_version answered HTTP 404");
+    state.route = c => (c.path === `${API}downloads/` ? { status: 500, body: "Internal Server Error" } : undefined);
+    await expect(driver.poll()).rejects.toThrow("freebox: downloads/ answered HTTP 500");
+    state.route = c => (c.path === `${API}downloads/` ? { body: [] } : undefined);
+    await expect(driver.poll()).rejects.toThrow("the Freebox's answer to downloads/ is no object — answer refused");
+  });
+
+  it("refuses the session opened after a lapse when the Freebox rejects it at once too", async () => {
+    await start();
+    await driver.poll();
+    state.refuseAll = true;
+    await expect(driver.poll()).rejects.toThrow(
+      new ProtocolError("freebox: the new session was refused at once (HTTP 403)"),
+    );
+    expect(server.calls.filter(isLogin)).toHaveLength(2);
+  });
+
+  it("fails the poll when the call repeated with the new session fails, instead of reading an empty list", async () => {
+    await start();
+    await driver.poll();
+    server.expireSession?.();
+    let lists = 0;
+    state.route = c =>
+      c.method === "GET" && c.path === `${API}downloads/` && ++lists === 2 ? { status: 500, body: "x" } : undefined;
+    await expect(driver.poll()).rejects.toThrow("freebox: downloads/ answered HTTP 500");
+    expect(server.calls.filter(isLogin)).toHaveLength(2);
+  });
+
+  it("refuses a login without its challenge or session token, and a challenge that asks for a session", async () => {
+    const challenge = (c: RecordedCall): boolean => c.method === "GET" && c.path === `${API}login/`;
+    await start({ route: c => (challenge(c) ? { body: { success: true, result: {} } } : undefined) });
+    await expect(driver.poll()).rejects.toThrow("the Freebox's challenge is missing — answer refused");
+    state.route = c => (challenge(c) ? answer("auth", "auth-required") : undefined);
+    await expect(driver.poll()).rejects.toThrow("freebox: login/ asked for a session");
+    state.route = c => (c.path === `${API}login/session/` ? { body: { success: true, result: {} } } : undefined);
+    await expect(driver.poll()).rejects.toThrow("the Freebox's session token is missing — answer refused");
+  });
+
+  it("fails the pause for everything when a stop does not reach the Freebox, instead of passing over it", async () => {
+    await start({
+      route: c => (c.method === "PUT" && c.path === `${API}downloads/341` ? { status: 503, body: "" } : undefined),
+    });
+    await driver.poll();
+    await expect(driver.command({ kind: "pauseAll" })).rejects.toThrow(UnreachableError);
+  });
 });
 
 describe("Freebox pairing", () => {
@@ -543,5 +598,15 @@ describe("Freebox pairing", () => {
     await server.close();
     server = await fbxServer({ track: ["waiting"] });
     await expect(pairFreebox(endpoint(server.baseUrl), timers, app, quick)).rejects.toThrow(/answered "waiting"/);
+  });
+
+  it("refuses a pairing answer without its app token", async () => {
+    server = await fbxServer({
+      route: c =>
+        c.path === `${API}login/authorize/` ? { body: { success: true, result: { track_id: 42 } } } : undefined,
+    });
+    await expect(pairFreebox(endpoint(server.baseUrl), timers, app, quick)).rejects.toThrow(
+      "the Freebox's answer to the pairing lost its shape — answer refused",
+    );
   });
 });

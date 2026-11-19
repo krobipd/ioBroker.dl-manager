@@ -159,9 +159,6 @@ export class NvDriver implements ProgramDriver {
    * @param before every id of the poll before
    */
   private async holdAdded(entries: readonly NvEntry[], before: ReadonlySet<string> | null): Promise<void> {
-    if (!this.adding.length) {
-      return;
-    }
     if (!(await this.pause.isPaused())) {
       this.adding = [];
       return;
@@ -191,9 +188,6 @@ export class NvDriver implements ProgramDriver {
     });
     // an entry that came in paused (a group of NZBVortex may say so) is no download the adapter stopped
     const stop = [...found.filter(isRunning), ...fresh].map(e => e.id);
-    if (!stop.length) {
-      return;
-    }
     for (const k of await this.halt(stop)) {
       await this.pause.hold(k);
       const e = this.entries.get(k);

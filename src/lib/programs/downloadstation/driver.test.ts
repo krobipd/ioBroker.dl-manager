@@ -96,6 +96,8 @@ interface DsState {
   apis?: unknown;
   /** Every call with a session answers this error code. */
   refuseAll?: number;
+  /** The answer to a request ahead of every other route, undefined for the usual one. */
+  route?: (call: RecordedCall, form: URLSearchParams) => FixtureAnswer | undefined;
 }
 
 /**
@@ -109,10 +111,14 @@ async function dsServer(state: DsState): Promise<ContractServer & { expireWith(c
   let expire: number | null = null;
   const v = state.version;
   const s = await startFixtureServer(call => {
+    const form = new URLSearchParams(call.body);
+    const own = state.route?.(call, form);
+    if (own) {
+      return own;
+    }
     if (call.path === "/webapi/query.cgi") {
       return state.apis ? { body: state.apis } : answer(v, "auth", "api-info");
     }
-    const form = new URLSearchParams(call.body);
     if (form.get("method") === "login") {
       return form.get("account") === "admin" && form.get("passwd") === "good"
         ? answer(v, "auth", "login")
@@ -305,7 +311,9 @@ describe("Download Station driver", () => {
         success: true,
       },
     });
-    await expect(driver.poll()).rejects.toThrow(ProtocolError);
+    await expect(driver.poll()).rejects.toThrow(
+      new ProtocolError("Download Station's API list, SYNO.API.Auth, lost its shape — answer refused"),
+    );
   });
 
   it("shows no upload limit to an account that does not manage Download Station and refuses to set it", async () => {
@@ -392,5 +400,141 @@ describe("Download Station driver", () => {
     expect(s.items.find(i => i.key === "dbid_3")?.status).toBe("paused");
     await driver.command({ kind: "resumeAll" });
     expect(formOf(server.calls.filter(c => formOf(c).get("method") === "resume")[0]).get("id")).toBe("dbid_1,dbid_3");
+  });
+
+  it("reads a refusal with the bare code of the 2014 API guide as one with {code}", async () => {
+    await start({
+      route: (_, f) => (f.get("method") === "login" ? { body: { error: 400, success: false } } : undefined),
+    });
+    await expect(driver.poll()).rejects.toThrow(
+      new AuthError("downloadstation: login rejected — no such account or wrong password"),
+    );
+  });
+
+  it("refuses a no without a whole-number code, and an answer without success, as an answer that lost its shape", async () => {
+    await start();
+    await driver.poll();
+    const shape = "Download Station's answer to SYNO.DownloadStation.Task list lost its shape — answer refused";
+    state.route = (_, f) =>
+      f.get("method") === "list" ? { body: { error: { code: "119" }, success: false } } : undefined;
+    await expect(driver.poll()).rejects.toThrow(shape);
+    state.route = (_, f) => (f.get("method") === "list" ? { body: { data: {}, success: "yes" } } : undefined);
+    await expect(driver.poll()).rejects.toThrow(shape);
+  });
+
+  it("passes on a refusal that is no lost session as a protocol error, without a new login", async () => {
+    await start();
+    await driver.poll();
+    state.route = (_, f) =>
+      f.get("method") === "list" ? { body: { error: { code: 544 }, success: false } } : undefined;
+    const err = await driver.poll().catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ProtocolError);
+    expect((err as Error).message).toBe("downloadstation: SYNO.DownloadStation.Task list refused — error 544");
+    expect(server.calls.filter(isLogin)).toHaveLength(1);
+  });
+
+  it("calls a session refused again right after the new login a protocol error", async () => {
+    await start();
+    await driver.poll();
+    state.refuseAll = 119;
+    await expect(driver.poll()).rejects.toThrow(
+      new ProtocolError("downloadstation: the new session was refused at once (error 119)"),
+    );
+    expect(server.calls.filter(isLogin)).toHaveLength(2);
+  });
+
+  it("passes on a refusal of the call repeated after the new login as a protocol error", async () => {
+    await start();
+    await driver.poll();
+    const codes = [119, 544];
+    state.route = (_, f) =>
+      f.get("method") === "list" && codes.length
+        ? { body: { error: { code: codes.shift() }, success: false } }
+        : undefined;
+    const err = await driver.poll().catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ProtocolError);
+    expect((err as Error).message).toBe("downloadstation: SYNO.DownloadStation.Task list refused — error 544");
+    expect(server.calls.filter(isLogin)).toHaveLength(2);
+  });
+
+  it("passes on a login refused with a code outside the login codes as a protocol error", async () => {
+    await start({
+      route: (_, f) => (f.get("method") === "login" ? { body: { error: { code: 101 }, success: false } } : undefined),
+    });
+    const err = await driver.poll().catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ProtocolError);
+    expect(err).not.toBeInstanceOf(AuthError);
+    expect((err as Error).message).toBe("downloadstation: SYNO.API.Auth login refused — error 101");
+  });
+
+  it("refuses a login answer without a session id", async () => {
+    await start({ route: (_, f) => (f.get("method") === "login" ? { body: { data: {}, success: true } } : undefined) });
+    await expect(driver.poll()).rejects.toThrow("Download Station's login without a session id — answer refused");
+  });
+
+  it("names what the API list or a call answered when it is no answer of Download Station", async () => {
+    await start({ route: call => (call.path === "/webapi/query.cgi" ? { status: 500, body: "" } : undefined) });
+    await expect(driver.poll()).rejects.toThrow("downloadstation: the API list answered HTTP 500");
+    state.route = call =>
+      call.path === "/webapi/query.cgi" ? { body: { error: { code: 102 }, success: false } } : undefined;
+    const err = await driver.poll().catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ProtocolError);
+    expect((err as Error).message).toBe("downloadstation: SYNO.API.Info query refused — error 102");
+    state.route = (_, f) => (f.get("method") === "list" ? { status: 500, body: "" } : undefined);
+    await expect(driver.poll()).rejects.toThrow("downloadstation: SYNO.DownloadStation.Task list answered HTTP 500");
+  });
+
+  it("refuses an answer to a pause that is no list of ids and codes", async () => {
+    await start();
+    await driver.poll();
+    state.route = (_, f) => (f.get("method") === "pause" ? { body: { success: true } } : undefined);
+    await expect(driver.command({ kind: "pause", key: "dbid_1" })).rejects.toThrow(
+      "Download Station's answer to pause is no list — answer refused",
+    );
+    state.route = (_, f) =>
+      f.get("method") === "pause" ? { body: { data: [{ error: "0", id: "dbid_1" }], success: true } } : undefined;
+    await expect(driver.command({ kind: "pause", key: "dbid_1" })).rejects.toThrow(
+      "an entry of Download Station's answer to pause lost its shape — answer refused",
+    );
+  });
+
+  it("leaves a task added during the pause running when the pause ended before it was listed", async () => {
+    await start();
+    await driver.poll();
+    await driver.command({ kind: "pauseAll" });
+    state.list = withStatus(listOf("4.1-5012", "running"), "dbid_1", "paused");
+    await driver.poll();
+    await driver.command({ kind: "add", url: "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567" });
+    await driver.command({ kind: "resumeAll" });
+    const running = listOf("4.1-5012", "running");
+    const added = { ...running.data.tasks[0], id: "dbid_3", title: "added" };
+    state.list = { ...running, data: { ...running.data, tasks: [...running.data.tasks, added] } };
+    const s = await driver.poll();
+    expect(server.calls.filter(c => formOf(c).get("method") === "pause").map(c => formOf(c).get("id"))).toEqual([
+      "dbid_1",
+    ]);
+    expect(s.items.find(i => i.key === "dbid_3")?.status).toBe("downloading");
+  });
+
+  it("holds the first task that comes new after an add made before the first poll, and asks nothing before", async () => {
+    await start();
+    await driver.close();
+    driver = new DsDriver(cfg(server.baseUrl), {
+      ...timers,
+      log,
+      pauseStore: memoryPauseStore({ paused: true, keys: [] }),
+    });
+    await driver.command({ kind: "add", url: "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567" });
+    // the first poll cannot tell a new task from an old one, the second lists none that is new
+    expect((await driver.poll()).complete).toBe(true);
+    await driver.poll();
+    const running = listOf("4.1-5012", "running");
+    const added = { ...running.data.tasks[0], id: "dbid_3", title: "added" };
+    state.list = { ...running, data: { ...running.data, tasks: [...running.data.tasks, added] } };
+    const s = await driver.poll();
+    expect(server.calls.filter(c => formOf(c).get("method") === "pause").map(c => formOf(c).get("id"))).toEqual([
+      "dbid_3",
+    ]);
+    expect(s.items.find(i => i.key === "dbid_3")?.status).toBe("paused");
   });
 });

@@ -174,6 +174,7 @@ describe("formToRow", () => {
     // the Freebox's app token, which the pairing put into the form
     expect(creds("freebox", all)).toEqual(["", "", "k"]);
     expect(creds("nzbget", all)).toEqual(["u", "p", ""]);
+    expect(creds("downloadstation", all)).toEqual(["u", "p", ""]);
     expect(creds("transmission", all)).toEqual(["", "", ""]);
     expect(creds("transmission", { ...all, needLogin: true })).toEqual(["u", "p", ""]);
     expect(creds("qbittorrent", { ...all, login: "user" })).toEqual(["u", "p", ""]);
@@ -297,6 +298,7 @@ describe("programForm — only the fields of the program", () => {
     expect(fields("sabnzbd")).toEqual([...common, "apiKey"].sort());
     expect(fields("aria2")).toEqual([...common, "apiKey"].sort());
     expect(fields("nzbget")).toEqual([...common, "password", "username"].sort());
+    expect(fields("downloadstation")).toEqual([...common, "password", "username"].sort());
     expect(fields("transmission")).toEqual([...common, "needLogin", "password", "username"].sort());
     expect(fields("qbittorrent")).toEqual([...common, "apiKey", "login", "password", "username"].sort());
     expect(fields("pyload")).toEqual([...common, "apiKey", "login", "password", "username"].sort());
@@ -382,6 +384,10 @@ describe("programForm — only the fields of the program", () => {
     expect(run(itemsOf(programForm("sabnzbd", ctx)).apiKey.validator, { apiKey: " " })).toBe(false);
     expect(run(itemsOf(programForm("deluge", ctx)).password.validator, { password: "" })).toBe(false);
     expect(itemsOf(programForm("aria2", ctx)).apiKey.validator).toBeUndefined();
+    // Download Station logs in with a DSM account — never without its user, NZBGet may run without one
+    expect(run(itemsOf(programForm("downloadstation", ctx)).username.validator, { username: " " })).toBe(false);
+    expect(run(itemsOf(programForm("downloadstation", ctx)).username.validator, { username: "admin" })).toBe(true);
+    expect(itemsOf(programForm("nzbget", ctx)).username.validator).toBeUndefined();
   });
 
   it("has no ID field — the adapter gives the device id, the name is only a label", () => {

@@ -74,6 +74,13 @@ describe("HttpClient over node:https (selfSignedTls, trustedCa)", () => {
     const c = new HttpClient(timers, { selfSignedTls: true });
     const r = await c.request({ method: "GET", url: `http://127.0.0.1:${port}/api/nzb` });
     expect([r.status, r.json()]).toEqual([200, { result: "ok" }]);
+    // node:http would refuse a multipart body — over plain HTTP fetch sends it
+    const parts = await c.request({
+      method: "POST",
+      url: `http://127.0.0.1:${port}/api/nzb/add`,
+      multipart: { a: "b" },
+    });
+    expect(parts.status).toBe(200);
     const checked = new HttpClient(timers, { timeoutMs: 2000 });
     await expect(checked.request({ method: "GET", url: `https://127.0.0.1:${port}/` })).rejects.toThrow(
       UnreachableError,

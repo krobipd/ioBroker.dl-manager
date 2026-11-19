@@ -388,18 +388,10 @@ function exactSend(
       const text = new Promise<string>((done, broke) => {
         breakBody = broke;
         const chunks: Buffer[] = [];
-        let ended = false;
         res.on("data", (chunk: Buffer) => chunks.push(chunk));
-        res.on("end", () => {
-          ended = true;
-          done(Buffer.concat(chunks).toString("utf8"));
-        });
+        res.on("end", () => done(Buffer.concat(chunks).toString("utf8")));
+        // a connection that closes before the body ended: node emits "aborted" and an "error" on the answer first
         res.on("error", fail);
-        res.on("close", () => {
-          if (!ended) {
-            fail(new Error("the connection closed before the answer ended"));
-          }
-        });
       });
       // `read` hands a failure on — until it is asked, the failure is no unhandled rejection
       text.catch(() => undefined);

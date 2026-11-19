@@ -193,9 +193,6 @@ export class DsDriver implements ProgramDriver {
    * @param before every id of the poll before
    */
   private async holdAdded(tasks: readonly DsTask[], before: ReadonlySet<string> | null): Promise<void> {
-    if (!this.adding) {
-      return;
-    }
     if (!(await this.pause.isPaused())) {
       this.adding = 0;
       return;

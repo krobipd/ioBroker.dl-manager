@@ -50,13 +50,19 @@ describe("NZBVortex map", () => {
     const [loading] = rows();
     const items = toSnapshot(
       "3.4.3",
-      [entryOf({ ...loading, transferedSpeed: undefined }), entryOf({ ...loading, id: 20, transferedSpeed: 0 })],
+      [
+        entryOf({ ...loading, transferedSpeed: undefined }),
+        entryOf({ ...loading, id: 20, transferedSpeed: 0 }),
+        // a paused entry may keep its last rate
+        entryOf({ ...loading, id: 23, isPaused: true, transferedSpeed: 900 }),
+      ],
       0,
       false,
       quiet,
     ).items;
     expect(items.map(i => [i.speedBps, i.etaSeconds])).toEqual([
       [null, null],
+      [0, null],
       [0, null],
     ]);
   });
@@ -97,7 +103,7 @@ describe("NZBVortex map", () => {
       quiet,
     ).items;
     expect(items.map(i => i.category)).toEqual(["Movies", "TV"]);
-    expect(fieldOf({ groupName: "a", GroupName: "b" }, "groupName")).toBe("a");
+    expect(fieldOf({ GroupName: "b", groupName: "a" }, "groupName")).toBe("a");
     expect(fieldOf({ other: 1 }, "groupName")).toBeUndefined();
   });
 
