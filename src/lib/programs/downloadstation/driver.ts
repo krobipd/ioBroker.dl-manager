@@ -114,6 +114,8 @@ export class DsDriver implements ProgramDriver {
         );
         return;
       case "resumeAll":
+        // not again: check the codes per id — Download Station names every id (recording task-resume-v1: 0 and 405),
+        // and a task it refuses stays paused, like the one aria2 skips (8db57dc)
         await this.pause.resume(async keys => {
           await this.list();
           const listed = keys.filter(k => this.tasks.has(k));

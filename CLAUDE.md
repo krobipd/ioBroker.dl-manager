@@ -79,7 +79,9 @@ src/lib/core/call-budget.ts      → CallBudget: jeder Aufruf hält einen Platz 
                                    nach der Antwort, ohne Antwort ab dem Senden; beim Stopp nach `call-budget.json` im
                                    Datenordner, beim Start zurück (sonst begänne der neue Prozess mit einer leeren Minute)
 src/lib/core/answer.ts           → rein: Listen und Kennungen einer Programmantwort prüfen, sonst ProtocolError (ganz abgelehnt)
-src/lib/core/emulated-pause.ts   → nachgebildete Programm-Pause (PauseStore im native des paused-Objekts)
+src/lib/core/emulated-pause.ts   → nachgebildete Programm-Pause (PauseStore im native des paused-Objekts); `pauseEach`/`resumeEach`
+                                   für Programme mit einem Aufruf je Download (eine Ablehnung übersprungen, ein Ausfall behält,
+                                   was schon angehalten bzw. noch nicht fortgesetzt ist)
 src/lib/core/{errors,ids,units,redact,version,status}.ts → Fehlerklassen, Kennungen, Einheiten + Lesehelfer der Antworten,
                                    Geheimnisse, Programmversion (neu gelesen nach jedem Fehlschlag), unbekannter Status → queued
 src/lib/programs/catalog.ts      → die EINZIGE Programmliste: Typ, Name, Familie, Standard-Port/-Pfad, Anmeldeart → needsOf,
@@ -131,6 +133,13 @@ _Jede Entscheidung steht hier als Regel-Satz; Beleg, Messung und Verlauf stehen 
 29. **Ein 429 ist ein Ratenlimit (Flotten-Suite D21)** — der HTTP-Client fragt das Programm bis zum Ende von `retry-after` nicht mehr (Sekunden oder HTTP-Datum, ohne 60 s, höchstens 1 h); Fehlschläge in Folge verdoppeln den Abstand bis 120 s, ein länger eingestelltes Intervall bleibt.
 30. **Jeder Datenpunkt eines Downloads beginnt mit dem Namen des Downloads (Flottenregel D19, `same-name`)** — `tNameOf` in `i18n.ts`, geschrieben von `writeItemStates` (`tree.ts`); benennt das Programm den Download um, ziehen Kanal und Datenpunkte mit; die Datenpunkte des Programms behalten ihren eigenen Namen.
 31. **Jeder Aufruf an eine Gegenstelle wartet auf seinen Platz in den Fenstern, die `api-limits.json` für sie deklariert (Flotten-Suiten „stays within every limit it declares“ und „every limit holds when it is pressed“, Werkzeug-Runde 171)** — auch der WebSocket-Handshake von aria2; ein beantworteter Aufruf hält den Platz bis ein Fenster nach der Antwort, einer ohne Antwort ab dem Senden (gestempelt nach dem Transportaufruf), die Fenster kommen aus der geladenen Deklaration und die Plätze überdauern einen Neustart.
+32. **Ein µTorrent ohne `getversion` wird auch nach einem Fehlschlag nicht wieder danach gefragt** (nicht wieder: zurücksetzen — der Build fragte dann bei jeder Abfrage).
+33. **rqbit zeigt während der Prüfung die geprüften Bytes als `downloaded` und `progress`, wie qBittorrent** (gleiche libtorrent-Bedeutung; nur Tribler leert sie).
+34. **Ein Flood-401 direkt nach einer frischen Anmeldung ist eine abgelehnte Anmeldung** (nicht wieder: Protokollfehler — K5 sagt nicht, was eine ist, und keine Aufzeichnung zeigt dieses 401).
+35. **`speedLimit` und `uploadLimit` tragen kein `states`-Label für 0** (nicht wieder: die 0 liegt im Wertebereich, und admin machte aus dem Zahlenfeld eine Auswahl nur der Zustandswerte).
+36. **Ein ladender Download ohne Tempo-Feld zählt mit 0 B/s** (Flood, Download Station; keine Aufzeichnung hat einen ohne).
+37. **Die Ratio während der Prüfung ist die Zahl des Programms** (rTorrent, Tribler; jede Aufzeichnung hat dabei nichts hochgeladen).
+38. **Download Stations `resumeAll` wertet die Codes je Id nicht aus** — ein abgelehnter Task bleibt pausiert, wie ein übersprungener bei aria2 (8db57dc).
 
 <!-- core-decisions:begin (generated from the sealed register — change only through the Werkbank) -->
 

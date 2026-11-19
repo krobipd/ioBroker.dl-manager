@@ -234,6 +234,7 @@ export function toSnapshot(
       doneBytes: t.done,
       speedBps: t.down,
       uploadBps: t.up,
+      // not again: null while a torrent is checked — every recording has nothing uploaded then, the 0 is true
       ratio: t.ratio === null ? null : round2(t.ratio / 1000),
       // rTorrent tells no time left — the bytes left at the rate of now, like aria2
       etaSeconds: status === "downloading" && t.down && left !== null && left > 0 ? Math.round(left / t.down) : null,

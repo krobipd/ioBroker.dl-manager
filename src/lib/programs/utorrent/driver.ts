@@ -40,7 +40,10 @@ export class UtDriver implements ProgramDriver {
   private readonly debug: (msg: string) => void;
   /** µTorrent's version, read with the first query and again after a failed one; null = read it. */
   private version: string | null = null;
-  /** This build does not know `getversion` — the build number of every answer is its version. */
+  /**
+   * This build does not know `getversion` — the build number of every answer is its version. It stays across a failed
+   * poll (not again: reset it there — such a build would be asked for `getversion` on every poll, test of 0e066d2).
+   */
   private noGetVersion = false;
   /** The status bits of the last poll, by hash. */
   private statuses = new Map<string, number>();

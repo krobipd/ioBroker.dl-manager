@@ -128,6 +128,8 @@ export const PROGRAM_DATAPOINTS: readonly DatapointDef<ProgramSnapshot>[] = [
     nameKey: "uploadSpeed",
     descKey: "descUploadSpeed",
   }),
+  // the two limits carry no states label for 0 (not again: 0 lies inside the range, and admin shows a number with
+  // states but without min and max as a select of the listed values only — a limit could no longer be typed in)
   pr({
     id: "speedLimit",
     command: val => ({ kind: "setSpeedLimit", bps: fromMBps(val) }),

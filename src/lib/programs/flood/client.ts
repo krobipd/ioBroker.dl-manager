@@ -75,6 +75,8 @@ export class FloodClient {
       this.loggedIn = false;
       await this.login();
       res = await once();
+      // not again: a protocol error instead — K5 says what follows a refused login, not what one is, and no recording
+      // shows this 401
       if (res.status === 401) {
         throw new AuthError("flood: access refused after a new login (HTTP 401)");
       }

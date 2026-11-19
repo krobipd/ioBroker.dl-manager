@@ -155,6 +155,7 @@ export function toSnapshot(
     const { size, done } = bytesOf(t);
     const loads = status === "downloading";
     // a paused or finished task may keep its last rate; without `transfer` the answer has none
+    // not again: null for a loading task without a rate — every recorded `transfer` carries it
     const speed = transfer ? (loads ? (nonNegative(transfer.speed_download) ?? 0) : 0) : null;
     const uploaded = transfer ? nonNegative(transfer.size_uploaded) : null;
     const extra = asRecord(t.row.status_extra);
