@@ -35,7 +35,7 @@ class Memory implements ManagerAdapter {
     } as unknown as ioBroker.Object);
     return Promise.resolve();
   }
-  delObject(): Promise<void> {
+  removeObject(): Promise<void> {
     return Promise.resolve();
   }
   knownObject(id: string): unknown {

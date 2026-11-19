@@ -63,7 +63,7 @@ function storeBacked(a: FakeAdapter): { tree: FakeAdapter; states: KnownStates }
   const tree = Object.assign(Object.create(a) as FakeAdapter, {
     setState: (id: string, st: ioBroker.SettableState) => states.set(id, st),
     setStateChanged: (id: string, st: ioBroker.SettableState) => states.put(id, st),
-    delObject: async (id: string, opts?: { recursive?: boolean }) => {
+    removeObject: async (id: string, opts?: { recursive?: boolean }) => {
       await a.delObject(id, opts);
       states.remove(id, { recursive: opts?.recursive === true });
     },
@@ -148,8 +148,8 @@ describe("ProgramTree — device", () => {
     const a = new FakeAdapter(NS);
     const t = await makeTree(a);
     await t.sync(snap([item("aaaa11112222"), item("bbbb33334444")]));
-    const del = a.delObject.bind(a);
-    a.delObject = (id, opts): Promise<void> => {
+    const del = a.removeObject.bind(a);
+    a.removeObject = (id, opts): Promise<void> => {
       t.halt();
       return del(id, opts);
     };
@@ -356,7 +356,7 @@ describe("ProgramTree — downloads", () => {
       log: a.log,
       extendObject: (id: string, obj: ioBroker.PartialObject) => known.extend(id, obj),
       setForeignObject: (id: string, obj: ioBroker.SettableObject) => known.replace(id, obj),
-      delObject: (id: string, o: { recursive: boolean }) => known.remove(id, o),
+      removeObject: (id: string, o: { recursive: boolean }) => known.remove(id, o),
       knownObject: (id: string) => known.get(id),
       getForeignObjects: (p: string, ty: ioBroker.ObjectType) => a.getForeignObjects(p, ty),
       knownValue: (id: string) => a.knownValue(id),

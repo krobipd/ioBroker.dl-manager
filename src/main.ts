@@ -450,7 +450,7 @@ class DownloadManagerAdapter extends utils.Adapter {
       log: this.log,
       extendObject: (id, obj) => this.known.extend(id, obj),
       setForeignObject: (id, obj) => this.known.replace(id, obj),
-      delObject: (id, opts) => this.forgetObject(id, opts),
+      removeObject: (id, opts) => this.forgetObject(id, opts),
       knownObject: id => this.known.get(id),
       getForeignObjects: (pattern, type) => this.foreignObjects(pattern, type),
       getForeignObjectAsync: id => this.getForeignObjectAsync(id),

@@ -27,7 +27,7 @@ class Memory implements TreeAdapter {
     this.objects.set(id, { ...old, ...structuredClone(obj) } as unknown as ioBroker.Object);
     return Promise.resolve();
   }
-  delObject(): Promise<void> {
+  removeObject(): Promise<void> {
     return Promise.resolve();
   }
   knownObject(id: string): unknown {

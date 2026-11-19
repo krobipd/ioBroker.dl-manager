@@ -23,7 +23,7 @@ const adapter: ManagerAdapter = {
   namespace: "dl-manager.0",
   log: { debug: quiet, info: quiet, warn: quiet },
   extendObject: () => Promise.resolve(),
-  delObject: () => Promise.resolve(),
+  removeObject: () => Promise.resolve(),
   knownObject: () => undefined,
   getForeignObjects: () => Promise.resolve({}),
   knownValue: () => undefined,

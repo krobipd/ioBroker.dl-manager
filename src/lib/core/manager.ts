@@ -109,7 +109,7 @@ export class ProgramManager {
     for (const oldId of existing.keys()) {
       if (!ids.has(oldId)) {
         this.a.log.debug(`${oldId} is no longer configured — removing its objects`);
-        await this.a.delObject(`${this.a.namespace}.${oldId}`, { recursive: true });
+        await this.a.removeObject(`${this.a.namespace}.${oldId}`, { recursive: true });
       }
     }
     for (const row of this.rows) {
@@ -165,7 +165,7 @@ export class ProgramManager {
         await this.stopProgram(oldId);
         const pattern = `${this.a.namespace}.${oldId}.*`;
         const before = Object.keys(await this.a.getForeignObjects(pattern, "state")).length;
-        await this.a.delObject(`${this.a.namespace}.${oldId}`, { recursive: true });
+        await this.a.removeObject(`${this.a.namespace}.${oldId}`, { recursive: true });
         // a datapoint the user's deletion options keep stays — the removal names it in its own line
         const kept = Object.keys(await this.a.getForeignObjects(pattern, "state")).length;
         this.a.log.info(`${oldId}: deleted — removed ${before - kept} datapoint(s)`);

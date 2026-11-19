@@ -62,7 +62,7 @@ class Memory implements ManagerAdapter {
     } as unknown as ioBroker.Object);
     return Promise.resolve();
   }
-  delObject(id: string): Promise<void> {
+  removeObject(id: string): Promise<void> {
     const f = this.full(id);
     for (const key of [...this.objects.keys()].filter(k => k === f || k.startsWith(`${f}.`))) {
       this.objects.delete(key);

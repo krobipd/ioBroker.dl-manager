@@ -26,7 +26,7 @@ export interface TreeAdapter {
    * Removes an own object (with `recursive` its children and their values) the way the user's two deletion options
    * say — the adapter's removal goes through the fleet master `object-removal.ts`.
    */
-  delObject(id: string, opts: { recursive: boolean }): Promise<unknown>;
+  removeObject(id: string, opts: { recursive: boolean }): Promise<unknown>;
   /** An own object as the adapter holds it (read once at start) — no database read. */
   knownObject(id: string): unknown;
   /** Reads objects by pattern and type. */
@@ -421,7 +421,7 @@ export class ProgramTree {
 
   private async removeChannel(key: string): Promise<void> {
     const id = this.ids.idFor(key);
-    await this.adapter.delObject(`${this.dev}.downloads.${id}`, { recursive: true });
+    await this.adapter.removeObject(`${this.dev}.downloads.${id}`, { recursive: true });
     this.ids.release(key);
     this.known.delete(key);
   }

@@ -77,7 +77,7 @@ describe("K2 one status list for all programs", () => {
       namespace: "dl-manager.0",
       log: { debug: quiet, info: quiet, warn: quiet },
       extendObject: (id, obj) => Promise.resolve(void objects.set(id, obj)),
-      delObject: () => Promise.resolve(),
+      removeObject: () => Promise.resolve(),
       knownObject: () => undefined,
       getForeignObjects: () => Promise.resolve({}),
       knownValue: () => undefined,

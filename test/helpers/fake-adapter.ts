@@ -158,6 +158,17 @@ export class FakeAdapter {
     return this.delObject(id, opts);
   }
 
+  /**
+   * The tree's removal port — a plain delete here; the adapter routes it through the fleet's removal.
+   *
+   * @param id own or full id
+   * @param opts delete options
+   * @param opts.recursive delete children too
+   */
+  public removeObject(id: string, opts: { recursive: boolean }): Promise<void> {
+    return this.delObject(id, opts);
+  }
+
   /** The instance settings the fleet's removal reads — its defaults: delete, keep the recorded data. */
   public readonly config: { deleteRecordedStates?: boolean; deleteRecordedHistory?: boolean } = {};
 

@@ -156,7 +156,7 @@ describe("K4 what a program can do decides its datapoints; a missing program pau
         namespace: "dl-manager.0",
         log: { debug: quiet, info: quiet, warn: quiet },
         extendObject: (id, obj) => Promise.resolve(void (obj.type === "state" && ids.push(id))),
-        delObject: () => Promise.resolve(),
+        removeObject: () => Promise.resolve(),
         knownObject: () => undefined,
         getForeignObjects: () => Promise.resolve({}),
         knownValue: () => undefined,
