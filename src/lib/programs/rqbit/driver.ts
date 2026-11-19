@@ -37,6 +37,8 @@ export class RqDriver implements ProgramDriver {
   private readonly pause: EmulatedPause;
   private readonly version = new ProgramVersion();
   private running: string[] = [];
+  /** Torrents added during the pause that rqbit did not pause yet, oldest first. */
+  private adding: string[] = [];
   private limits: Record<string, unknown> = {};
 
   /**
@@ -78,8 +80,8 @@ export class RqDriver implements ProgramDriver {
         // rqbit adds running — while the adapter holds the program paused, the new torrent is paused and held too; asked
         // after the answer, which may come minutes later (a magnet's metadata), so a pause set meanwhile counts
         if (typeof added === "string" && (await this.pause.isPaused())) {
-          await this.client.post(`/torrents/${added}/pause`);
-          await this.pause.hold(added);
+          this.adding.push(added);
+          await this.holdAdded();
         }
         return;
       }
@@ -130,13 +132,68 @@ export class RqDriver implements ProgramDriver {
       this.limits = limitsIn(limits);
     }
     const hashes = torrents.map(t => idIn(t, "info_hash", "rqbit's torrent list", "text"));
+    const states = new Map(hashes.map((h, i) => [h, stateOf(asRecord(torrents[i].stats))]));
+    const held = await this.holdAdded(states);
+    for (const [i, h] of hashes.entries()) {
+      if (held.has(h)) {
+        // paused just now: it counts as paused in this list too
+        asRecord(torrents[i].stats).state = "paused";
+        states.set(h, "paused");
+      }
+    }
     // what the global pause stops: live and initializing torrents — rqbit refuses to pause one in error state
     // (torrent_state/mod.rs `pause`), and a paused one is no part of it, also one 9.x paused during its check
-    this.running = hashes.filter((_, i) => RUNNING.has(stateOf(asRecord(torrents[i].stats))));
+    this.running = hashes.filter(h => RUNNING.has(states.get(h) ?? ""));
     const paused = await this.pause.observe(new Set(this.running), new Set(hashes));
     return toSnapshot(version, torrents, stats, limits === undefined ? null : this.limits, paused, m =>
       this.deps.log.debug(m),
     );
+  }
+
+  /**
+   * Pauses and holds the torrents added during the pause. 8.x refuses to pause a torrent while it checks files that are
+   * already there (400 "torrent is initializing, can't pause", recording 8.1.1 `torrent-pause-checking`): such a one waits
+   * for the poll after its check; one rqbit no longer lists, or refuses once listed, is dropped; any other failure keeps
+   * the rest for the next poll. When the pause ended meanwhile, they run.
+   *
+   * @param states rqbit's state of each listed torrent by hash, from this poll — none right after the add
+   * @returns the torrents paused and held here
+   */
+  private async holdAdded(states?: ReadonlyMap<string, string>): Promise<Set<string>> {
+    const held = new Set<string>();
+    if (!(await this.pause.isPaused())) {
+      this.adding = [];
+      return held;
+    }
+    const later: string[] = [];
+    try {
+      while (this.adding.length) {
+        const key = this.adding[0];
+        const state = states ? states.get(key) : "";
+        if (state === "initializing") {
+          later.push(key);
+        } else if (state !== undefined) {
+          try {
+            await this.client.post(`/torrents/${key}/pause`);
+            await this.pause.hold(key);
+            held.add(key);
+          } catch (err: unknown) {
+            if (!(err instanceof ProtocolError)) {
+              throw err;
+            }
+            if (states) {
+              this.deps.log.debug(`rqbit: ${key} not paused — ${errText(err)}`);
+            } else {
+              later.push(key);
+            }
+          }
+        }
+        this.adding.shift();
+      }
+    } finally {
+      this.adding = [...later, ...this.adding];
+    }
+    return held;
   }
 
   /**

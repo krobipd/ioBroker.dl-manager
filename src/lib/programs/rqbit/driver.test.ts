@@ -5,7 +5,7 @@ import { startFixtureServer, type FixtureAnswer, type RecordedCall } from "../..
 import { firstUrl } from "../../../../test/helpers/first-url";
 import { loadFixture } from "../../../../test/helpers/fixtures";
 import { memoryPauseStore } from "../../core/emulated-pause";
-import { AuthError, ProtocolError } from "../../core/errors";
+import { AuthError, ProtocolError, UnreachableError } from "../../core/errors";
 import type { ProgramConfig } from "../../core/model";
 import { RqDriver } from "./driver";
 import { mapRqStatus, statusTable } from "./map";
@@ -368,6 +368,93 @@ describe("rqbit driver details", () => {
       const snap = await d.poll();
       expect(await store.load()).toEqual({ paused: true, keys: [a] });
       expect([snap.status.paused, snap.items.map(i => i.status)]).toEqual([true, ["checking", "paused"]]);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("holds a link added during the pause once 8.x has checked it — the add itself succeeds (decision 26)", async () => {
+    const a = "a".repeat(40);
+    const n = "n".repeat(40);
+    const state: RqState = { torrents: [t(a, "live")] };
+    const s = await rqSynth(state);
+    const store = memoryPauseStore();
+    try {
+      const d = new RqDriver(cfg(s.baseUrl), { ...timers, log, pauseStore: store });
+      await d.poll();
+      await d.command({ kind: "pauseAll" });
+      // its files are already there: rqbit checks them first, and 8.1.1 refuses the pause meanwhile (400)
+      state.answers = { [`POST /torrents/${n}/pause`]: recorded("8.1.1", "commands", "torrent-pause-checking") };
+      state.torrents = [t(a, "paused"), t(n, "initializing")];
+      await d.command({ kind: "add", url: "magnet:?xt=urn:btih:new" });
+      await d.poll();
+      expect(await store.load()).toEqual({ paused: true, keys: [a] });
+      // the check ended: the next poll pauses and holds it, and it counts as paused at once
+      state.answers = {};
+      state.torrents = [t(a, "paused"), t(n, "live")];
+      const snap = await d.poll();
+      expect(await store.load()).toEqual({ paused: true, keys: [a, n] });
+      expect([snap.status.paused, snap.items.map(i => i.status)]).toEqual([true, ["paused", "paused"]]);
+      await d.command({ kind: "resumeAll" });
+      expect(posts(s)).toEqual([
+        `/torrents/${a}/pause`,
+        "/torrents magnet:?xt=urn:btih:new",
+        `/torrents/${n}/pause`,
+        `/torrents/${n}/pause`,
+        `/torrents/${a}/start`,
+        `/torrents/${n}/start`,
+      ]);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("lets go of a torrent added during the pause once the pause ended or rqbit no longer lists it", async () => {
+    const a = "a".repeat(40);
+    const n = "n".repeat(40);
+    const refused = { [`POST /torrents/${n}/pause`]: recorded("8.1.1", "commands", "torrent-pause-checking") };
+    for (const after of ["resumed", "gone"] as const) {
+      const state: RqState = { torrents: [t(a, "live")] };
+      const s = await rqSynth(state);
+      try {
+        const d = new RqDriver(cfg(s.baseUrl), { ...timers, log, pauseStore: memoryPauseStore() });
+        await d.poll();
+        await d.command({ kind: "pauseAll" });
+        state.answers = refused;
+        state.torrents = [t(a, "paused"), t(n, "initializing")];
+        await d.command({ kind: "add", url: "magnet:?xt=urn:btih:new" });
+        state.answers = {};
+        if (after === "resumed") {
+          await d.command({ kind: "resumeAll" });
+          state.torrents = [t(a, "live"), t(n, "live")];
+        } else {
+          state.torrents = [t(a, "paused")];
+        }
+        const from = posts(s).length;
+        await d.poll();
+        expect([after, posts(s).slice(from)]).toEqual([after, []]);
+      } finally {
+        await s.close();
+      }
+    }
+  });
+
+  it("fails the add when its pause does not reach rqbit, and holds the torrent on the next poll (K4)", async () => {
+    const a = "a".repeat(40);
+    const n = "n".repeat(40);
+    const state: RqState = { torrents: [t(a, "live")] };
+    const s = await rqSynth(state);
+    const store = memoryPauseStore();
+    try {
+      const d = new RqDriver(cfg(s.baseUrl), { ...timers, log, pauseStore: store });
+      await d.poll();
+      await d.command({ kind: "pauseAll" });
+      state.answers = { [`POST /torrents/${n}/pause`]: { status: 503, body: "" } };
+      state.torrents = [t(a, "paused"), t(n, "live")];
+      await expect(d.command({ kind: "add", url: "magnet:?xt=urn:btih:new" })).rejects.toThrow(UnreachableError);
+      state.answers = {};
+      await d.poll();
+      expect(await store.load()).toEqual({ paused: true, keys: [a, n] });
     } finally {
       await s.close();
     }
