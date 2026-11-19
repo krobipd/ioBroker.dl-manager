@@ -402,6 +402,39 @@ describe("Download Station driver", () => {
     expect(formOf(server.calls.filter(c => formOf(c).get("method") === "resume")[0]).get("id")).toBe("dbid_1,dbid_3");
   });
 
+  it("pauses again on the next poll when pausing a task again did not reach Download Station (K4)", async () => {
+    await start();
+    await driver.poll();
+    await driver.command({ kind: "pauseAll" });
+    const pauses = (): number => server.calls.filter(c => formOf(c).get("method") === "pause").length;
+    state.route = (_, f) => (f.get("method") === "pause" ? { status: 503, body: "" } : undefined);
+    await expect(driver.poll()).rejects.toThrow(UnreachableError);
+    state.route = undefined;
+    // still read running: the pause that did not arrive is tried again, the pause for everything holds
+    const s = await driver.poll();
+    expect(pauses()).toBe(3);
+    expect(s.items[0].status).toBe("paused");
+    expect(s.status.paused).toBe(true);
+  });
+
+  it("pauses and holds a task added during the pause on the next poll when the first pause did not reach it (K4)", async () => {
+    await start();
+    await driver.poll();
+    await driver.command({ kind: "pauseAll" });
+    state.list = withStatus(listOf("4.1-5012", "running"), "dbid_1", "paused");
+    await driver.poll();
+    await driver.command({ kind: "add", url: "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567" });
+    const added = { ...listOf("4.1-5012", "running").data.tasks[0], id: "dbid_3", title: "added" };
+    state.list = { ...state.list, data: { ...state.list.data, tasks: [...state.list.data.tasks, added] } };
+    state.route = (_, f) => (f.get("method") === "pause" ? { status: 503, body: "" } : undefined);
+    await expect(driver.poll()).rejects.toThrow(UnreachableError);
+    state.route = undefined;
+    const s = await driver.poll();
+    expect(s.items.find(i => i.key === "dbid_3")?.status).toBe("paused");
+    await driver.command({ kind: "resumeAll" });
+    expect(formOf(server.calls.filter(c => formOf(c).get("method") === "resume")[0]).get("id")).toBe("dbid_1,dbid_3");
+  });
+
   it("reads a refusal with the bare code of the 2014 API guide as one with {code}", async () => {
     await start({
       route: (_, f) => (f.get("method") === "login" ? { body: { error: 400, success: false } } : undefined),

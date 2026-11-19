@@ -1,3 +1,5 @@
+import { ProtocolError } from "./errors";
+
 /** What an emulated pause has to remember across a restart. */
 export interface PauseState {
   /** The adapter paused the program. */
@@ -65,6 +67,46 @@ export class EmulatedPause {
     await this.write({ paused: true, keys: [...s.keys, ...add] });
   }
 
+  /**
+   * `pause` for a program that stops one download per call: one it refuses (ended or gone meanwhile, a
+   * `ProtocolError`) runs on and is skipped; any other failure ends the command — after the downloads stopped up to
+   * then are remembered, so the resume starts them too. A failure before the first stop leaves the pause as it was.
+   *
+   * @param running keys of the downloads that run or wait now
+   * @param stopOne stops one download in the program
+   * @param refused hears a download the program refused to stop
+   */
+  public async pauseEach(
+    running: readonly string[],
+    stopOne: (key: string) => Promise<unknown>,
+    refused: (key: string, err: ProtocolError) => void,
+  ): Promise<void> {
+    let failure: { err: unknown } | undefined;
+    await this.pause(running, async keys => {
+      const stopped: string[] = [];
+      for (const k of keys) {
+        try {
+          await stopOne(k);
+          stopped.push(k);
+        } catch (err: unknown) {
+          if (err instanceof ProtocolError) {
+            refused(k, err);
+            continue;
+          }
+          if (!stopped.length) {
+            throw err;
+          }
+          failure = { err };
+          break;
+        }
+      }
+      return stopped;
+    });
+    if (failure) {
+      throw failure.err;
+    }
+  }
+
   /** @param key a download the adapter added stopped because it holds the program paused — resumed with the others */
   public async hold(key: string): Promise<void> {
     const s = await this.load();
@@ -85,6 +127,34 @@ export class EmulatedPause {
     const s = await this.load();
     if (s.keys.length) {
       await start([...s.keys]);
+    }
+    await this.write({ paused: false, keys: [] });
+  }
+
+  /**
+   * `resume` for a program that starts one download per call: one it refuses (gone meanwhile) is skipped; any other
+   * failure ends the command and keeps the pause for the downloads not started yet — a started one no longer counts as
+   * held, so the next poll does not take it for one the user started.
+   *
+   * @param startOne starts one download in the program
+   * @param refused hears a download the program refused to start
+   */
+  public async resumeEach(
+    startOne: (key: string) => Promise<unknown>,
+    refused: (key: string, err: ProtocolError) => void,
+  ): Promise<void> {
+    const left = [...(await this.load()).keys];
+    while (left.length) {
+      try {
+        await startOne(left[0]);
+      } catch (err: unknown) {
+        if (!(err instanceof ProtocolError)) {
+          await this.write({ paused: true, keys: left });
+          throw err;
+        }
+        refused(left[0], err);
+      }
+      left.shift();
     }
     await this.write({ paused: false, keys: [] });
   }

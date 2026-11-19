@@ -352,6 +352,24 @@ describe("NZBVortex driver", () => {
     expect(paths(from)).toEqual(["/api/nzb", "/api/speedlimit", "/api/nzb", "/api/speedlimit"]);
   });
 
+  it("holds a link added during the pause on the next poll when the first hold did not reach NZBVortex (K4)", async () => {
+    await start({ added: { result: "ok" } });
+    await driver.poll();
+    await driver.command({ kind: "pauseAll" });
+    await driver.command({ kind: "add", url: "https://example.com/b.nzb" });
+    const list = queue();
+    list.nzbs.push({ ...list.nzbs[1], id: 18, uiTitle: "nzb-added", addUUID: null });
+    state.list = list;
+    state.route = c => (c.path === "/api/nzb/18/pause" ? { status: 503, body: "" } : undefined);
+    await expect(driver.poll()).rejects.toThrow(UnreachableError);
+    state.route = undefined;
+    const s = await driver.poll();
+    expect(s.items.find(i => i.key === "18")?.status).toBe("paused");
+    const back = server.calls.length;
+    await driver.command({ kind: "resumeAll" });
+    expect(paths(back)).toContain("/api/nzb/18/resume");
+  });
+
   it("leaves a link added while nothing is paused running", async () => {
     await start();
     await driver.poll();
@@ -426,6 +444,32 @@ describe("NZBVortex driver", () => {
     await start({ route: c => (c.path === "/api/nzb/11/pause" ? { status: 503, body: "" } : undefined) });
     await driver.poll();
     await expect(driver.command({ kind: "pauseAll" })).rejects.toThrow(UnreachableError);
+  });
+
+  it("remembers what it paused before a pause did not reach NZBVortex, and resumes that later (K4)", async () => {
+    await start({ route: c => (c.path === "/api/nzb/12/pause" ? { status: 503, body: "" } : undefined) });
+    await driver.poll();
+    await expect(driver.command({ kind: "pauseAll" })).rejects.toThrow(UnreachableError);
+    state.route = undefined;
+    expect((await driver.poll()).status.paused).toBe(true);
+    const back = server.calls.length;
+    await driver.command({ kind: "resumeAll" });
+    expect(paths(back)).toEqual(["/api/nzb", "/api/nzb/11/resume"]);
+  });
+
+  it("keeps the pause for what a resume did not reach yet, and resumes that next time (K4)", async () => {
+    await start();
+    await driver.poll();
+    await driver.command({ kind: "pauseAll" });
+    await driver.poll();
+    state.route = c => (c.path === "/api/nzb/12/resume" ? { status: 503, body: "" } : undefined);
+    await expect(driver.command({ kind: "resumeAll" })).rejects.toThrow(UnreachableError);
+    state.route = undefined;
+    // 11 runs again, the pause holds for 12
+    expect((await driver.poll()).status.paused).toBe(true);
+    const back = server.calls.length;
+    await driver.command({ kind: "resumeAll" });
+    expect(paths(back)).toEqual(["/api/nzb", "/api/nzb/12/resume"]);
   });
 
   it("leaves a link added during the pause running when the pause ended before it was listed", async () => {

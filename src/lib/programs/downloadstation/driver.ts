@@ -72,9 +72,9 @@ export class DsDriver implements ProgramDriver {
         await this.client.call("SYNO.DownloadStation.Info", "getconfig"),
         "Download Station's settings",
       );
-      const before = this.listed;
+      // the ids move on only after the holds: a hold that did not reach Download Station finds its task new again
+      await this.holdAdded(tasks, this.listed);
       this.listed = new Set(this.tasks.keys());
-      await this.holdAdded(tasks, before);
       const again = await this.pauseAgain(tasks);
       const running = new Set(tasks.filter(t => isRunning(t) && !again.has(t.id)).map(t => t.id));
       const paused = await this.pause.observe(running, this.listed);
@@ -230,7 +230,6 @@ export class DsDriver implements ProgramDriver {
       const t = this.tasks.get(k);
       if (t && isRunning(t)) {
         again.push(k);
-        this.watched.delete(k);
       } else if (!t || left <= 1) {
         this.watched.delete(k);
       } else {
@@ -241,6 +240,10 @@ export class DsDriver implements ProgramDriver {
       return new Set();
     }
     const codes = perId(await this.client.call("SYNO.DownloadStation.Task", "pause", { id: again.join(",") }), "pause");
+    // paused once more only once — a pause that did not reach Download Station stays watched for the next poll
+    for (const k of again) {
+      this.watched.delete(k);
+    }
     const held = new Set(again.filter(k => codes.get(k) === 0));
     for (const t of tasks) {
       if (held.has(t.id)) {

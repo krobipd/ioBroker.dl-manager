@@ -457,6 +457,60 @@ describe("Freebox driver", () => {
     expect(made(back)).toContain(`PUT ${API}downloads/365`);
   });
 
+  it("remembers what it stopped before a stop did not reach the Freebox, and resumes that later (K4)", async () => {
+    await start({
+      list: list("list-stopped"),
+      route: c => (c.method === "PUT" && c.path === `${API}downloads/424` ? { status: 503, body: "" } : undefined),
+    });
+    await driver.poll();
+    await expect(driver.command({ kind: "pauseAll" })).rejects.toThrow(UnreachableError);
+    state.route = undefined;
+    expect((await driver.poll()).status.paused).toBe(true);
+    const back = server.calls.length;
+    await driver.command({ kind: "resumeAll" });
+    expect(made(back).filter(c => c.startsWith("PUT"))).toEqual([`PUT ${API}downloads/423`]);
+  });
+
+  it("keeps the pause for what a resume did not reach yet, and resumes that next time (K4)", async () => {
+    await start({ list: list("list-stopped") });
+    await driver.poll();
+    await driver.command({ kind: "pauseAll" });
+    state.route = c => (c.method === "PUT" && c.path === `${API}downloads/424` ? { status: 503, body: "" } : undefined);
+    await expect(driver.command({ kind: "resumeAll" })).rejects.toThrow(UnreachableError);
+    state.route = undefined;
+    const back = server.calls.length;
+    await driver.command({ kind: "resumeAll" });
+    expect(made(back).filter(c => c.startsWith("PUT"))).toEqual([`PUT ${API}downloads/424`]);
+  });
+
+  it("stops and holds a link added during the pause on the next poll when the first stop did not reach the Freebox (K4)", async () => {
+    await start({ list: list("list-stopped") });
+    await driver.poll();
+    await driver.command({ kind: "pauseAll" });
+    // the Freebox lists what the pause stopped as stopped, and the link added meanwhile (365) as loading
+    const after = list("list-stopped");
+    const rows = after.result ?? [];
+    after.result = [...rows.map(t => ({ ...t, status: "stopped" })), { ...rows[0], id: 365, status: "downloading" }];
+    state.list = after;
+    await driver.poll();
+    state.route = c => (c.method === "PUT" && c.path === `${API}downloads/365` ? { status: 503, body: "" } : undefined);
+    await expect(driver.command({ kind: "add", url: "https://example.com/a.torrent" })).rejects.toThrow(
+      UnreachableError,
+    );
+    state.route = undefined;
+    const from = server.calls.length;
+    const s = await driver.poll();
+    expect(made(from)).toContain(`PUT ${API}downloads/365`);
+    // held from now on: it counts as stopped in this poll, so the pause holds
+    expect(s.items.find(i => i.key === "365")?.status).toBe("paused");
+    expect(s.status.paused).toBe(true);
+    const back = server.calls.length;
+    await driver.command({ kind: "resumeAll" });
+    expect(made(back).filter(c => c.startsWith("PUT"))).toEqual(
+      ["423", "424", "365"].map(id => `PUT ${API}downloads/${id}`),
+    );
+  });
+
   it("leaves a link added while nothing is paused running, and refuses an answer without the new id", async () => {
     await start();
     await driver.poll();

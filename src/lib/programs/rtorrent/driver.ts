@@ -93,19 +93,18 @@ export class RtDriver implements ProgramDriver {
         }
         return;
       case "pauseAll":
-        await this.pause.pause(this.running, async keys => {
-          for (const k of keys) {
-            await this.client.call("d.stop", k);
-          }
-          return keys;
-        });
+        // one torrent per call: one rTorrent no longer knows (fault, ended or gone meanwhile) is skipped
+        await this.pause.pauseEach(
+          this.running,
+          k => this.client.call("d.stop", k),
+          (k, err) => this.deps.log.debug(`rtorrent: ${k} not paused — ${errText(err)}`),
+        );
         return;
       case "resumeAll":
-        await this.pause.resume(async keys => {
-          for (const k of keys) {
-            await this.client.call("d.start", k);
-          }
-        });
+        await this.pause.resumeEach(
+          k => this.client.call("d.start", k),
+          (k, err) => this.deps.log.debug(`rtorrent: ${k} not resumed — ${errText(err)}`),
+        );
         return;
       case "setSpeedLimit":
         await this.client.call("throttle.global_down.max_rate.set", "", Math.max(0, cmd.bps));

@@ -104,22 +104,23 @@ export class TblDriver implements ProgramDriver {
         return;
       }
       case "pauseAll":
-        await this.pause.pause(this.running, async keys => {
-          for (const k of keys) {
+        // one download per call: one Tribler no longer knows (404, ended or gone meanwhile) is skipped
+        await this.pause.pauseEach(
+          this.running,
+          async k => {
             await this.stop(k);
             if (NO_HANDLE.has(this.statuses.get(k) ?? "")) {
               this.unsure.add(k);
             }
-          }
-          return keys;
-        });
+          },
+          (k, err) => this.deps.log.debug(`tribler: ${k} not paused — ${errText(err)}`),
+        );
         return;
       case "resumeAll":
-        await this.pause.resume(async keys => {
-          for (const k of keys) {
-            await this.client.send("PATCH", `/api/downloads/${k}`, { state: "resume" });
-          }
-        });
+        await this.pause.resumeEach(
+          k => this.client.send("PATCH", `/api/downloads/${k}`, { state: "resume" }),
+          (k, err) => this.deps.log.debug(`tribler: ${k} not resumed — ${errText(err)}`),
+        );
         this.unsure.clear();
         return;
       case "setSpeedLimit":

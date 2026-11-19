@@ -40,6 +40,8 @@ export class FbxDriver implements ProgramDriver {
   private version: string | null = null;
   /** Every id of the last list. */
   private listed = new Set<string>();
+  /** Links added while the pause holds whose stop has not reached the Freebox yet — the next poll stops them. */
+  private adding: string[] = [];
 
   /**
    * @param cfg the settings row
@@ -59,6 +61,7 @@ export class FbxDriver implements ProgramDriver {
       const limits = limitsOf(
         recordIn(await this.client.call("GET", "downloads/config/"), "the Freebox's download config"),
       );
+      await this.holdAdded(tasks);
       const paused = await this.pause.observe(new Set(tasks.filter(isRunning).map(t => t.id)), this.listed);
       return toSnapshot(this.version, tasks, limits, paused, this.debug);
     } catch (err: unknown) {
@@ -90,25 +93,25 @@ export class FbxDriver implements ProgramDriver {
           "number",
         );
         if (await this.pause.isPaused()) {
-          for (const k of await this.halt([id])) {
-            await this.pause.hold(k);
-          }
+          this.adding.push(id);
+          await this.holdAdded();
         }
         return;
       }
       case "pauseAll":
-        await this.pause.pause(
+        await this.pause.pauseEach(
           (await this.list()).filter(isRunning).map(t => t.id),
-          keys => this.halt(keys),
+          k => this.setStatus(k, "stopped"),
+          (k, err) => this.debug(`freebox: ${k} not stopped — ${errText(err)}`),
         );
         return;
       case "resumeAll":
-        await this.pause.resume(async keys => {
-          await this.list();
-          for (const k of keys.filter(key => this.listed.has(key))) {
-            await this.setStatus(k, "downloading");
-          }
-        });
+        // a held task that is gone meanwhile is skipped without a call
+        await this.list();
+        await this.pause.resumeEach(
+          k => (this.listed.has(k) ? this.setStatus(k, "downloading") : Promise.resolve()),
+          (k, err) => this.debug(`freebox: ${k} not resumed — ${errText(err)}`),
+        );
         return;
       case "setSpeedLimit":
         await this.setLimit("rx_rate", cmd.bps);
@@ -143,23 +146,34 @@ export class FbxDriver implements ProgramDriver {
   }
 
   /**
-   * @param keys tasks that run
-   * @returns the ones the Freebox stopped — one it refuses (finished or gone meanwhile) runs on, nothing else stops
+   * The links added while the pause holds: the Freebox starts them, so each is stopped and held — one it refuses
+   * (finished or gone meanwhile) runs on, one whose stop did not reach it stays for the next poll; when the pause ended
+   * meanwhile, they run.
+   *
+   * @param tasks this poll's list — a task stopped here counts as stopped in it
    */
-  private async halt(keys: readonly string[]): Promise<string[]> {
-    const done: string[] = [];
-    for (const k of keys) {
+  private async holdAdded(tasks: readonly FbxTask[] = []): Promise<void> {
+    if (!(await this.pause.isPaused())) {
+      this.adding = [];
+      return;
+    }
+    while (this.adding.length) {
+      const id = this.adding[0];
       try {
-        await this.setStatus(k, "stopped");
-        done.push(k);
+        await this.setStatus(id, "stopped");
+        await this.pause.hold(id);
+        const t = tasks.find(x => x.id === id);
+        if (t) {
+          t.status = "stopped";
+        }
       } catch (err: unknown) {
         if (!(err instanceof ProtocolError)) {
           throw err;
         }
-        this.debug(`freebox: ${k} not stopped — ${errText(err)}`);
+        this.debug(`freebox: ${id} not stopped — ${errText(err)}`);
       }
+      this.adding.shift();
     }
-    return done;
   }
 
   /**

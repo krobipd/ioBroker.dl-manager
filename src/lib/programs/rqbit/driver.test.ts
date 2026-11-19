@@ -120,6 +120,8 @@ interface RqState {
   stats?: unknown;
   /** The answer of `POST /torrents`. */
   add?: FixtureAnswer;
+  /** Answers by `<method> <path>` ahead of the default `{}`. */
+  answers?: Record<string, FixtureAnswer>;
 }
 
 /**
@@ -140,10 +142,14 @@ async function rqSynth(state: RqState): Promise<Awaited<ReturnType<typeof startF
       case "POST /torrents":
         return state.add ?? { body: { id: 9, details: { info_hash: "n".repeat(40) } } };
       default:
-        return { body: {} };
+        return state.answers?.[`${call.method} ${call.path}`] ?? { body: {} };
     }
   });
 }
+/** rqbit's recorded answer to a command on a torrent it does not know (404 torrent_not_found). */
+const UNKNOWN = ((f): FixtureAnswer => ({ status: f.status, body: f.body }))(
+  loadFixture("rqbit", "9.1.0", "commands", "torrent-unknown"),
+);
 const posts = (s: { calls: RecordedCall[] }): string[] =>
   s.calls.filter(c => c.method === "POST").map(c => `${c.path}${c.body ? ` ${c.body}` : ""}`);
 const t = (hash: string, state: string): Record<string, unknown> => ({
@@ -279,6 +285,29 @@ describe("rqbit driver details", () => {
         `/torrents/${"d".repeat(40)}/start`,
         `/torrents/${"n".repeat(40)}/start`,
       ]);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("pauses the others when rqbit refuses one that ended meanwhile, and resumes exactly those (K4)", async () => {
+    const [a, gone, c] = ["a", "b", "c"].map(x => x.repeat(40));
+    const state: RqState = {
+      torrents: [t(a, "live"), t(gone, "live"), t(c, "live")],
+      answers: { [`POST /torrents/${gone}/pause`]: UNKNOWN },
+    };
+    const s = await rqSynth(state);
+    const store = memoryPauseStore();
+    try {
+      const d = new RqDriver(cfg(s.baseUrl), { ...timers, log, pauseStore: store });
+      await d.poll();
+      await d.command({ kind: "pauseAll" });
+      expect(await store.load()).toEqual({ paused: true, keys: [a, c] });
+      // one gone before the resume is skipped too — the others still start
+      state.answers = { [`POST /torrents/${a}/start`]: UNKNOWN };
+      await d.command({ kind: "resumeAll" });
+      expect(posts(s).filter(p => p.endsWith("/start"))).toEqual([`/torrents/${a}/start`, `/torrents/${c}/start`]);
+      expect(await store.load()).toEqual({ paused: false, keys: [] });
     } finally {
       await s.close();
     }

@@ -236,6 +236,8 @@ interface RtState {
   other?: FixtureAnswer;
   /** The answer to the poll in place of the rows. */
   poll?: FixtureAnswer;
+  /** Hashes a `d.stop` or `d.start` is refused for, with rTorrent's recorded fault for a hash it does not know. */
+  unknown?: string[];
 }
 
 /**
@@ -244,7 +246,7 @@ interface RtState {
  */
 async function rtSynth(state: RtState): Promise<Awaited<ReturnType<typeof startFixtureServer>>> {
   return startFixtureServer(call => {
-    const { method, inner } = rpcOf(call);
+    const { method, inner, strings } = rpcOf(call);
     if (method === "system.client_version") {
       return answer("0.16.25");
     }
@@ -253,6 +255,10 @@ async function rtSynth(state: RtState): Promise<Awaited<ReturnType<typeof startF
     }
     if (method === "system.multicall") {
       return state.other ?? answer(inner.map(() => [0]));
+    }
+    if ((method === "d.stop" || method === "d.start") && state.unknown?.includes(strings[0])) {
+      const f = loadFixture("rtorrent", "0.9.8", "commands", "d-unknown");
+      return { headers: { "content-type": "text/xml" }, body: f.body };
     }
     return answer(0);
   });
@@ -372,6 +378,25 @@ describe("rTorrent driver details", () => {
         "d.start A",
         "d.start N",
       ]);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("pauses the others when rTorrent refuses one that ended meanwhile, and resumes exactly those (K4)", async () => {
+    const state: RtState = { rows: [{ hash: "A" }, { hash: "B" }, { hash: "C" }], unknown: ["B"] };
+    const s = await rtSynth(state);
+    const store = memoryPauseStore();
+    try {
+      const d = new RtDriver(cfg(s.baseUrl), { ...timers, log, pauseStore: store });
+      await d.poll();
+      await d.command({ kind: "pauseAll" });
+      expect(await store.load()).toEqual({ paused: true, keys: ["A", "C"] });
+      // one gone before the resume is skipped too — the others still start
+      state.unknown = ["A"];
+      await d.command({ kind: "resumeAll" });
+      expect(sent(s).filter(c => c.startsWith("d.start"))).toEqual(["d.start A", "d.start C"]);
+      expect(await store.load()).toEqual({ paused: false, keys: [] });
     } finally {
       await s.close();
     }

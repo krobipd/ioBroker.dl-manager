@@ -61,9 +61,9 @@ export class NvDriver implements ProgramDriver {
       this.version ??= versionOf(await this.client.get("app/appversion"));
       const entries = await this.list();
       const limit = limitOf(await this.client.get("speedlimit"));
-      const before = this.listed;
+      // the ids move on only after the holds: a hold that did not reach NZBVortex finds its entry new again next time
+      await this.holdAdded(entries, this.listed);
       this.listed = new Set(this.entries.keys());
-      await this.holdAdded(entries, before);
       const paused = await this.pause.observe(new Set(entries.filter(isRunning).map(e => e.id)), this.listed);
       return toSnapshot(this.version, entries, limit, paused, this.debug);
     } catch (err: unknown) {
@@ -94,18 +94,19 @@ export class NvDriver implements ProgramDriver {
         return;
       }
       case "pauseAll":
-        await this.pause.pause(
+        await this.pause.pauseEach(
           (await this.list()).filter(isRunning).map(e => e.id),
-          keys => this.halt(keys),
+          k => this.client.get(`nzb/${k}/pause`),
+          (k, err) => this.debug(`nzbvortex: ${k} not paused — ${errText(err)}`),
         );
         return;
       case "resumeAll":
-        await this.pause.resume(async keys => {
-          await this.list();
-          for (const k of keys.filter(key => this.entries.has(key))) {
-            await this.client.get(`nzb/${k}/resume`);
-          }
-        });
+        // a held NZB that is gone meanwhile is skipped without a call
+        await this.list();
+        await this.pause.resumeEach(
+          k => (this.entries.has(k) ? this.client.get(`nzb/${k}/resume`) : Promise.resolve()),
+          (k, err) => this.debug(`nzbvortex: ${k} not resumed — ${errText(err)}`),
+        );
         return;
       case "setSpeedLimit":
         await (cmd.bps > 0
@@ -132,26 +133,6 @@ export class NvDriver implements ProgramDriver {
   }
 
   /**
-   * @param keys entries that run
-   * @returns the ones NZBVortex paused — one it refuses (finished or gone meanwhile) runs on, nothing else stops
-   */
-  private async halt(keys: readonly string[]): Promise<string[]> {
-    const done: string[] = [];
-    for (const k of keys) {
-      try {
-        await this.client.get(`nzb/${k}/pause`);
-        done.push(k);
-      } catch (err: unknown) {
-        if (!(err instanceof ProtocolError)) {
-          throw err;
-        }
-        this.debug(`nzbvortex: ${k} not paused — ${errText(err)}`);
-      }
-    }
-    return done;
-  }
-
-  /**
    * The links added while the pause holds: NZBVortex starts them, so the poll that finds one pauses and holds it — by
    * its `addUUID`, or, without one, as one of the first new running entries; when the pause ended meanwhile, they run.
    *
@@ -163,23 +144,23 @@ export class NvDriver implements ProgramDriver {
       this.adding = [];
       return;
     }
-    const found: NvEntry[] = [];
+    const found: [NvEntry, string][] = [];
     const left: (string | null)[] = [];
     for (const uuid of this.adding) {
       const hit = uuid === null ? undefined : entries.find(e => e.row.addUUID === uuid);
-      if (hit) {
-        found.push(hit);
+      if (uuid !== null && hit) {
+        found.push([hit, uuid]);
       } else {
         left.push(uuid);
       }
     }
     const blind = left.filter(u => u === null).length;
     const fresh = before
-      ? entries.filter(e => !before.has(e.id) && isRunning(e) && !found.includes(e)).slice(0, blind)
+      ? entries.filter(e => !before.has(e.id) && isRunning(e) && !found.some(([f]) => f === e)).slice(0, blind)
       : [];
     // the blind links the fresh entries answer are done
     let answered = fresh.length;
-    this.adding = left.filter(u => {
+    const next = left.filter(u => {
       if (u === null && answered > 0) {
         answered--;
         return false;
@@ -187,14 +168,32 @@ export class NvDriver implements ProgramDriver {
       return true;
     });
     // an entry that came in paused (a group of NZBVortex may say so) is no download the adapter stopped
-    const stop = [...found.filter(isRunning), ...fresh].map(e => e.id);
-    for (const k of await this.halt(stop)) {
-      await this.pause.hold(k);
-      const e = this.entries.get(k);
-      if (e) {
-        e.paused = true;
+    const stop: [NvEntry, string | null][] = [
+      ...found.filter(([e]) => isRunning(e)),
+      ...fresh.map((e): [NvEntry, null] => [e, null]),
+    ];
+    // a hold that did not reach NZBVortex is tried again by the next poll: its link stays among the ones added
+    const pending = [...this.adding];
+    try {
+      for (const [e, link] of stop) {
+        try {
+          await this.client.get(`nzb/${e.id}/pause`);
+          await this.pause.hold(e.id);
+          e.paused = true;
+        } catch (err: unknown) {
+          // one NZBVortex refuses (finished or gone meanwhile) runs on
+          if (!(err instanceof ProtocolError)) {
+            throw err;
+          }
+          this.debug(`nzbvortex: ${e.id} not paused — ${errText(err)}`);
+        }
+        pending.splice(pending.indexOf(link), 1);
       }
+    } catch (err: unknown) {
+      this.adding = pending;
+      throw err;
     }
+    this.adding = next;
   }
 }
 

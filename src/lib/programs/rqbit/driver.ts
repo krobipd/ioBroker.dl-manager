@@ -1,5 +1,6 @@
 import { EmulatedPause, memoryPauseStore } from "../../core/emulated-pause";
 import { ProtocolError } from "../../core/errors";
+import { errText } from "../../err-text";
 import { idIn, recordIn, recordsIn } from "../../core/answer";
 import { asRecord, asText } from "../../core/units";
 import type { Capability, Command, DriverDeps, ProgramConfig, ProgramDriver, ProgramSnapshot } from "../../core/model";
@@ -83,19 +84,18 @@ export class RqDriver implements ProgramDriver {
         return;
       }
       case "pauseAll":
-        await this.pause.pause(this.running, async keys => {
-          for (const k of keys) {
-            await this.client.post(`/torrents/${k}/pause`);
-          }
-          return keys;
-        });
+        // one torrent per call: one rqbit no longer knows (404, ended or gone meanwhile) is skipped
+        await this.pause.pauseEach(
+          this.running,
+          k => this.client.post(`/torrents/${k}/pause`),
+          (k, err) => this.deps.log.debug(`rqbit: ${k} not paused — ${errText(err)}`),
+        );
         return;
       case "resumeAll":
-        await this.pause.resume(async keys => {
-          for (const k of keys) {
-            await this.client.post(`/torrents/${k}/start`);
-          }
-        });
+        await this.pause.resumeEach(
+          k => this.client.post(`/torrents/${k}/start`),
+          (k, err) => this.deps.log.debug(`rqbit: ${k} not resumed — ${errText(err)}`),
+        );
         return;
       case "setSpeedLimit":
         await this.setLimits({ download_bps: cmd.bps > 0 ? cmd.bps : null });

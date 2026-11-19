@@ -258,6 +258,8 @@ const row = (infohash: string, status: string, progress = 0.5): Record<string, u
 interface SynthState {
   downloads: unknown[];
   settings?: Record<string, unknown>;
+  /** Hashes a PATCH is answered for as Tribler answers a download it does not know (recorded `patch-unknown`). */
+  unknown?: string[];
 }
 
 /**
@@ -273,6 +275,10 @@ async function tblSynth(state: SynthState): Promise<Awaited<ReturnType<typeof st
         return { body: { downloads: state.downloads, checkpoints: {} } };
       case "GET /api/settings":
         return { body: { settings: state.settings ?? { libtorrent: { max_download_rate: 0, max_upload_rate: 0 } } } };
+      case "PATCH /api/downloads/<hash>":
+        return state.unknown?.some(h => call.path.endsWith(h))
+          ? recorded("8.4.2", "commands", "patch-unknown")
+          : { body: { modified: true } };
       default:
         return { body: { modified: true } };
     }
@@ -301,6 +307,29 @@ describe("Tribler driver details", () => {
       expect(patches(s)).toEqual([`${a} stop`, `${c} stop`, `${c} stop`]);
       await d.command({ kind: "resumeAll" });
       expect(patches(s).slice(3)).toEqual([`${a} resume`, `${c} resume`]);
+      expect(await store.load()).toEqual({ paused: false, keys: [] });
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("stops the others when Tribler refuses one that ended meanwhile, and resumes exactly those (K4)", async () => {
+    const [a, gone, c] = ["a", "b", "c"].map(x => x.repeat(40));
+    const state: SynthState = {
+      downloads: [row(a, "DOWNLOADING"), row(gone, "DOWNLOADING"), row(c, "DOWNLOADING")],
+      unknown: [gone],
+    };
+    const s = await tblSynth(state);
+    const store = memoryPauseStore();
+    try {
+      const d = new TblDriver(cfg(s.baseUrl), { ...timers, log, pauseStore: store });
+      await d.poll();
+      await d.command({ kind: "pauseAll" });
+      expect(await store.load()).toEqual({ paused: true, keys: [a, c] });
+      // one gone before the resume is skipped too — the others still start
+      state.unknown = [a];
+      await d.command({ kind: "resumeAll" });
+      expect(patches(s).filter(p => p.endsWith("resume"))).toEqual([`${a} resume`, `${c} resume`]);
       expect(await store.load()).toEqual({ paused: false, keys: [] });
     } finally {
       await s.close();
