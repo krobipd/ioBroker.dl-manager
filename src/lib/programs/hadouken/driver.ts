@@ -155,9 +155,6 @@ export class HkDriver implements ProgramDriver {
    * @param remember read which of the started ones ran outside the queue (a queued one waits in it)
    */
   private async halt(keys: readonly string[], remember: boolean): Promise<void> {
-    if (!keys.length) {
-      return;
-    }
     for (const key of remember ? keys.filter(k => ((this.statuses.get(k) ?? 0) & STARTED) !== 0) : []) {
       const props = recordIn(await this.client.call("webui.getProperties", [key]), "Hadouken's properties").props;
       const managed = recordIn(listIn(props, "Hadouken's properties")[0], "Hadouken's properties").auto_managed;

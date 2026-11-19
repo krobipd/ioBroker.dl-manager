@@ -35,6 +35,8 @@ describe("rqbit status", () => {
     // without its live block nothing tells the peers — a live torrent is then loading
     expect(rawStatus({ state: "live", finished: false, live: null })).toBe("live:left");
     expect(rawStatus({ state: "paused", finished: false })).toBe("paused:left");
+    // a state that is no text keeps its value in the key, so the debug line of the unknown status names it
+    expect(rawStatus({ state: 3, finished: false })).toBe("3:left");
   });
 
   it("reads a speed in MiB/s and a limit in bytes per second, null = unlimited, unknown when not served", () => {

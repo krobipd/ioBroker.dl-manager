@@ -129,6 +129,13 @@ describe("rTorrent torrent rows", () => {
     noHash[0] = "";
     expect(() => torrentOf(noHash)).toThrow(/without its d.hash/);
   });
+
+  it("reads a text field that is no text as empty — the name falls back to the hash, the message to none", () => {
+    const odd = row();
+    odd[1] = 7;
+    odd[15] = null;
+    expect(torrentOf(odd)).toMatchObject({ name: "", message: "" });
+  });
 });
 
 describe("rTorrent snapshot from the recorded answers", () => {

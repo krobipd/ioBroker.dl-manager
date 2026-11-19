@@ -3,7 +3,7 @@ import { startFixtureServer, type FixtureAnswer, type RecordedCall } from "../..
 import { firstUrl } from "../../../../test/helpers/first-url";
 import { loadFixture } from "../../../../test/helpers/fixtures";
 import { memoryPauseStore } from "../../core/emulated-pause";
-import { AuthError, ProtocolError } from "../../core/errors";
+import { AuthError } from "../../core/errors";
 import type { ProgramConfig } from "../../core/model";
 import { UtDriver } from "./driver";
 import { mapUtStatus, statusTable } from "./map";
@@ -330,9 +330,139 @@ describe("µTorrent's driver", () => {
     }
     const blank = await startFixtureServer(() => ({ body: "<html></html>" }));
     try {
-      await expect(new UtDriver(cfg(blank.baseUrl), { ...timers, log }).poll()).rejects.toThrow(ProtocolError);
+      await expect(new UtDriver(cfg(blank.baseUrl), { ...timers, log }).poll()).rejects.toThrow(
+        "utorrent: token.html answered HTTP 200 without a token",
+      );
     } finally {
       await blank.close();
+    }
+  });
+});
+
+/**
+ * A µTorrent that hands out its token and answers every other request as `answer` says — no basic auth, no session.
+ *
+ * @param answer the answer to a request after the token
+ * @param tokenStatus the HTTP status of `token.html`
+ * @returns the running server
+ */
+async function tokenServer(
+  answer: (q: URLSearchParams) => FixtureAnswer,
+  tokenStatus = 200,
+): Promise<Awaited<ReturnType<typeof startFixtureServer>>> {
+  const page = String(loadFixture("utorrent", VERSION, "auth", "token").body).replace("<token>", "tok1");
+  return startFixtureServer(call =>
+    call.path === "/gui/token.html"
+      ? { status: tokenStatus, body: page, headers: { "set-cookie": "GUID=g1" } }
+      : answer(new URLSearchParams(call.query)),
+  );
+}
+
+describe("µTorrent's answers", () => {
+  it("refuses an action µTorrent does not know even with a new token", async () => {
+    const invalid = loadFixture("utorrent", VERSION, "auth", "bad-token");
+    const s = await tokenServer(() => ({ status: invalid.status, body: String(invalid.body) }));
+    try {
+      await expect(new UtDriver(cfg(s.baseUrl), { ...timers, log }).poll()).rejects.toThrow(
+        "utorrent: list=1 answered HTTP 400 invalid request with a new token",
+      );
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("holds a login refused after the token as such and fetches a new token next time", async () => {
+    const s = await tokenServer(() => ({ status: 401, body: "" }));
+    try {
+      const d = new UtDriver(cfg(s.baseUrl), { ...timers, log });
+      await expect(d.poll()).rejects.toThrow(AuthError);
+      await expect(d.poll()).rejects.toThrow(AuthError);
+      expect(s.calls.filter(c => c.path === "/gui/token.html")).toHaveLength(2);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("refuses an HTTP error with the start of µTorrent's text, and an answer that is no JSON", async () => {
+    const busy = await tokenServer(() => ({ status: 500, body: "  server busy\n" }));
+    try {
+      await expect(new UtDriver(cfg(busy.baseUrl), { ...timers, log }).poll()).rejects.toThrow(
+        "utorrent: action=getversion answered HTTP 500 server busy",
+      );
+    } finally {
+      await busy.close();
+    }
+    const html = await tokenServer(() => ({ body: "<html>login</html>" }));
+    try {
+      await expect(new UtDriver(cfg(html.baseUrl), { ...timers, log }).poll()).rejects.toThrow(
+        "utorrent: action=getversion answered no JSON",
+      );
+    } finally {
+      await html.close();
+    }
+  });
+
+  it("takes no token from an error page", async () => {
+    const s = await tokenServer(() => ({ body: {} }), 500);
+    try {
+      await expect(new UtDriver(cfg(s.baseUrl), { ...timers, log }).poll()).rejects.toThrow(
+        "utorrent: token.html answered HTTP 500 without a token",
+      );
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("refuses a version that lost a part, so the version of the last poll stays", async () => {
+    const s = await tokenServer(q =>
+      q.get("action") === "getversion"
+        ? { body: { build: 30470, version: { major_version: 3, minor_version: 3 } } }
+        : { status: 500, body: "" },
+    );
+    try {
+      await expect(new UtDriver(cfg(s.baseUrl), { ...timers, log }).poll()).rejects.toThrow(
+        "µTorrent's version is incomplete",
+      );
+    } finally {
+      await s.close();
+    }
+  });
+});
+
+describe("µTorrent's driver — a torrent added during the pause", () => {
+  it("takes the first poll after a start as the list a new torrent is told by, even with an add before it", async () => {
+    const state: UtState = { state: "downloading" };
+    const s = await utorrentServer(state);
+    const store = memoryPauseStore({ paused: true, keys: [] });
+    try {
+      const d = new UtDriver(cfg(s.baseUrl), { ...timers, log, pauseStore: store });
+      await d.command({ kind: "add", url: "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567" });
+      await d.poll();
+      expect(s.calls.some(c => c.query.includes("action=pause"))).toBe(false);
+      state.state = "running";
+      await d.poll();
+      expect(s.calls.filter(c => c.query.includes("action=pause&hash="))).toHaveLength(1);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("pauses nothing while the added torrent has not shown yet", async () => {
+    const state: UtState = { state: "downloading" };
+    const s = await utorrentServer(state);
+    try {
+      const d = new UtDriver(cfg(s.baseUrl), { ...timers, log, pauseStore: memoryPauseStore() });
+      await d.poll();
+      await d.command({ kind: "pauseAll" });
+      await d.command({ kind: "add", url: "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567" });
+      const from = s.calls.length;
+      await d.poll();
+      expect(s.calls.slice(from).some(c => c.query.includes("action=pause"))).toBe(false);
+      state.state = "running";
+      await d.poll();
+      expect(s.calls.slice(from).filter(c => c.query.includes("action=pause&hash="))).toHaveLength(1);
+    } finally {
+      await s.close();
     }
   });
 });

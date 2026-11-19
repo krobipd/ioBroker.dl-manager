@@ -165,9 +165,6 @@ export class UtDriver implements ProgramDriver {
   private async holdAdded(torrents: UtTorrent[]): Promise<void> {
     const before = this.listed;
     this.listed = new Set(torrents.map(t => t.hash));
-    if (!this.adding) {
-      return;
-    }
     if (!(await this.pause.isPaused())) {
       this.adding = 0;
       return;

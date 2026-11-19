@@ -500,6 +500,21 @@ describe("rTorrent driver details", () => {
     }
   });
 
+  it("names the HTTP status of the web server in front of rTorrent, and calls its 403 a rejected login", async () => {
+    const cases: [FixtureAnswer, RegExp | typeof AuthError][] = [
+      [{ status: 500, body: "<html><body>Internal Server Error</body></html>" }, /XML-RPC answered HTTP 500/],
+      [{ status: 403, body: "" }, AuthError],
+    ];
+    for (const [poll, expected] of cases) {
+      const s = await rtSynth({ rows: [], poll });
+      try {
+        await expect(new RtDriver(cfg(s.baseUrl), { ...timers, log }).poll()).rejects.toThrow(expected);
+      } finally {
+        await s.close();
+      }
+    }
+  });
+
   it("names rTorrent's text when it does not know a torrent", async () => {
     const s = await rtServer();
     try {

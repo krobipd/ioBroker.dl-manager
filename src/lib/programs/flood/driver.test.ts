@@ -1,11 +1,13 @@
 import { existsSync, readdirSync } from "node:fs";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import { runDriverContract, type ContractServer } from "../../../../test/helpers/contract";
 import { startFixtureServer, type FixtureAnswer, type RecordedCall } from "../../../../test/helpers/fixture-server";
 import { firstUrl } from "../../../../test/helpers/first-url";
 import { loadFixture } from "../../../../test/helpers/fixtures";
 import { memoryPauseStore } from "../../core/emulated-pause";
-import { AuthError, ProtocolError } from "../../core/errors";
+import { AuthError, ProtocolError, UnreachableError } from "../../core/errors";
 import type { ProgramConfig } from "../../core/model";
 import { FloodDriver } from "./driver";
 import { behindDeluge, mapFloodStatus, statusTable } from "./map";
@@ -464,7 +466,9 @@ describe("Flood driver — details", () => {
   it("refuses a login answer without the jwt cookie", async () => {
     const s = await startFixtureServer(() => ({ body: { success: true } }));
     try {
-      await expect(new FloodDriver(cfg(s.baseUrl), { ...timers, log }).poll()).rejects.toThrow(ProtocolError);
+      await expect(new FloodDriver(cfg(s.baseUrl), { ...timers, log }).poll()).rejects.toThrow(
+        /unexpected login answer HTTP 200/,
+      );
     } finally {
       await s.close();
     }
@@ -506,5 +510,156 @@ describe("Flood driver — details", () => {
     expect(await firstUrl(() => new FloodDriver({ ...cfg("http://nas:1"), port: 0 }, { ...timers, log }).poll())).toBe(
       "http://nas:3000/api/auth/authenticate",
     );
+  });
+});
+
+/**
+ * A Flood whose session works: the login sets the jwt cookie, every other request goes to `route` first and otherwise
+ * gets the qBittorrent recording `running`.
+ *
+ * @param route the answer to a request, undefined for the recorded one
+ * @returns the running server
+ */
+async function floodWith(
+  route: (call: RecordedCall) => FixtureAnswer | undefined,
+): Promise<Awaited<ReturnType<typeof startFixtureServer>>> {
+  const v = "4.16.4-qbittorrent";
+  return startFixtureServer(call => {
+    if (call.path === "/api/auth/authenticate") {
+      return { body: { success: true }, headers: { "set-cookie": "jwt=abc; Path=/" } };
+    }
+    const own = route(call);
+    if (own) {
+      return own;
+    }
+    switch (`${call.method} ${call.path}`) {
+      case "GET /api/openapi.json":
+        return recorded(v, "auth", "openapi");
+      case "GET /api/torrents":
+        return recorded(v, "running", "torrents");
+      case "GET /api/client/settings":
+        return recorded(v, "running", "settings");
+      default:
+        return { status: 404, body: "" };
+    }
+  });
+}
+
+describe("Flood driver — failures that are no refusal of Flood", () => {
+  it("holds a session refused again after a new login as a refused login, and lists nothing to retry on it", async () => {
+    const s = await floodWith(call => (call.path === "/api/torrents/stop" ? { status: 401, body: "" } : undefined));
+    try {
+      const d = new FloodDriver(cfg(s.baseUrl), { ...timers, log, pauseStore: memoryPauseStore() });
+      await d.poll();
+      const lists = (): number => s.calls.filter(c => c.method === "GET" && c.path === "/api/torrents").length;
+      const before = lists();
+      await expect(d.command({ kind: "pauseAll" })).rejects.toThrow(
+        new AuthError("flood: access refused after a new login (HTTP 401)"),
+      );
+      expect(lists()).toBe(before);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("refuses a stop whose torrents are all still listed with Flood's reason, sent once", async () => {
+    const s = await floodWith(call =>
+      call.path === "/api/torrents/stop" ? { status: 500, body: { message: "boom" } } : undefined,
+    );
+    try {
+      const d = new FloodDriver(cfg(s.baseUrl), { ...timers, log, pauseStore: memoryPauseStore() });
+      await d.poll();
+      await expect(d.command({ kind: "pauseAll" })).rejects.toThrow(
+        "flood: POST /torrents/stop answered HTTP 500 (boom)",
+      );
+      expect(s.calls.filter(c => c.path === "/api/torrents/stop")).toHaveLength(1);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("fails the poll when the settings cannot be reached — only Flood's refusal leaves the limits as they are", async () => {
+    const s = await floodServer("4.16.4-qbittorrent", {
+      torrents: "running",
+      settingsAnswer: { status: 503, body: "" },
+    });
+    try {
+      await expect(new FloodDriver(cfg(s.baseUrl), { ...timers, log }).poll()).rejects.toThrow(UnreachableError);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("holds a refused login while setting a limit, even when the settings read back show the limit", async () => {
+    const throttled = loadFixture("flood", "4.16.4-rtorrent", "throttled", "settings").body;
+    expect(throttled).toMatchObject({ throttleGlobalDownSpeed: 102400 });
+    const s = await floodWith(call =>
+      call.method === "PATCH"
+        ? { status: 401, body: "" }
+        : call.path === "/api/client/settings"
+          ? { body: throttled }
+          : undefined,
+    );
+    try {
+      await expect(
+        new FloodDriver(cfg(s.baseUrl), { ...timers, log }).command({ kind: "setSpeedLimit", bps: 102400 }),
+      ).rejects.toThrow(AuthError);
+    } finally {
+      await s.close();
+    }
+  });
+});
+
+describe("Flood driver — an add and the pause", () => {
+  it("holds nothing it added started when the pause began while Flood took the add", async () => {
+    const pending: { answer?: () => void } = {};
+    const server = createServer((req, res) => {
+      req.resume();
+      req.on("end", () => {
+        const send = (status: number, body: unknown, headers: Record<string, string> = {}): void => {
+          res.writeHead(status, { "content-type": "application/json", ...headers });
+          res.end(JSON.stringify(body));
+        };
+        if (req.url === "/api/auth/authenticate") {
+          send(200, { success: true }, { "set-cookie": "jwt=abc; Path=/" });
+        } else {
+          // the add, answered with the hash Flood names only once the test says so
+          pending.answer = () => send(202, ["abc"]);
+        }
+      });
+    });
+    await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+    const store = memoryPauseStore();
+    try {
+      const d = new FloodDriver(cfg(`http://127.0.0.1:${(server.address() as AddressInfo).port}`), {
+        ...timers,
+        log,
+        pauseStore: store,
+      });
+      const adding = d.command({ kind: "add", url: "magnet:?xt=urn:btih:abc" });
+      while (!pending.answer) {
+        await new Promise(resolve => globalThis.setTimeout(resolve, 5));
+      }
+      await d.command({ kind: "pauseAll" });
+      pending.answer();
+      await adding;
+      expect(await store.load()).toEqual({ paused: true, keys: [] });
+    } finally {
+      server.closeAllConnections();
+      await new Promise<void>(resolve => server.close(() => resolve()));
+    }
+  });
+
+  it("holds the next new stopped torrent when Flood's add answers nothing at all", async () => {
+    const s = await floodServer("4.16.4-rtorrent", { torrents: "finished", add: { status: 202, body: "" } });
+    const store = memoryPauseStore({ paused: true, keys: [] });
+    try {
+      const d = new FloodDriver(cfg(s.baseUrl), { ...timers, log, pauseStore: store });
+      await d.poll();
+      await d.command({ kind: "add", url: "http://seed:8080/late.torrent" });
+      expect(await store.load()).toEqual({ paused: true, keys: [] });
+    } finally {
+      await s.close();
+    }
   });
 });

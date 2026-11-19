@@ -66,6 +66,8 @@ describe("Tribler status", () => {
     expect(rawStatus({ status: "DOWNLOADING", progress: 0.1, speed_down: 42934, num_peers: 0 })).toBe("DOWNLOADING");
     expect(rawStatus({ status: "DOWNLOADING", progress: 0.1, speed_down: 0, num_peers: 2 })).toBe("DOWNLOADING");
     expect(rawStatus({ status: "SEEDING", progress: 1 })).toBe("SEEDING");
+    // a status that is no text keeps its value, so the debug line of the unknown status names it
+    expect(rawStatus({ status: 3, progress: 0.5 })).toBe("3");
   });
 
   it("takes the error text out of the quotes of Python's repr", () => {

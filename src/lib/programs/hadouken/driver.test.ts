@@ -404,6 +404,33 @@ describe("Hadouken's driver", () => {
     }
   });
 
+  it("asks nothing more when every held torrent is gone by the resume — an empty list action would be a call for nothing", async () => {
+    const state: HkState = { state: "running" };
+    const s = await hadoukenServer(state);
+    try {
+      const d = new HkDriver(cfg(s.baseUrl), { ...timers, log, pauseStore: memoryPauseStore() });
+      await d.poll();
+      await d.command({ kind: "pauseAll" });
+      state.state = "empty";
+      const from = s.calls.length;
+      await d.command({ kind: "resumeAll" });
+      expect(s.calls.slice(from).map(rpcOf)).toEqual([{ method: "webui.list", params: [] }]);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("refuses an HTTP error with the start of Hadouken's text", async () => {
+    const s = await startFixtureServer(() => ({ status: 500, body: "  internal failure\n" }));
+    try {
+      await expect(new HkDriver(cfg(s.baseUrl), { ...timers, log }).poll()).rejects.toThrow(
+        "hadouken: core.getSystemInfo answered HTTP 500 internal failure",
+      );
+    } finally {
+      await s.close();
+    }
+  });
+
   it("holds a refused login as such and a refused call as a protocol error with Hadouken's message", async () => {
     const s = await hadoukenServer();
     try {

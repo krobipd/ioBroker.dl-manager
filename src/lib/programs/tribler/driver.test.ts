@@ -5,6 +5,7 @@ import { loadFixture } from "../../../../test/helpers/fixtures";
 import { memoryPauseStore, type PauseStore } from "../../core/emulated-pause";
 import { ProtocolError } from "../../core/errors";
 import type { ProgramConfig } from "../../core/model";
+import { reasonOf } from "./client";
 import { TblDriver } from "./driver";
 import { mapTblStatus, statusTable } from "./map";
 
@@ -306,6 +307,30 @@ describe("Tribler driver details", () => {
     }
   });
 
+  it("stops a download waiting for its circuits again only while the pause holds, and forgets one that is gone", async () => {
+    const [a, c, g] = ["a", "c", "g"].map(x => x.repeat(40));
+    const state: SynthState = { downloads: [row(a, "DOWNLOADING"), row(c, "EXIT_NODES"), row(g, "CIRCUITS")] };
+    const s = await tblSynth(state);
+    try {
+      const d = new TblDriver(cfg(s.baseUrl), { ...timers, log, pauseStore: memoryPauseStore() });
+      await d.poll();
+      await d.command({ kind: "pauseAll" });
+      expect(patches(s)).toEqual([`${a} stop`, `${c} stop`, `${g} stop`]);
+      // g leaves the list while it has no handle: nothing to stop again
+      state.downloads = [row(a, "STOPPED"), row(c, "EXIT_NODES")];
+      expect((await d.poll()).status.paused).toBe(true);
+      // the user starts a himself: the pause ends while c still waits for its circuits
+      state.downloads = [row(a, "DOWNLOADING"), row(c, "EXIT_NODES")];
+      expect((await d.poll()).status.paused).toBe(false);
+      // c runs with its handle now, outside the pause — it is left alone
+      state.downloads = [row(a, "DOWNLOADING"), row(c, "DOWNLOADING")];
+      expect((await d.poll()).status.paused).toBe(false);
+      expect(patches(s)).toHaveLength(3);
+    } finally {
+      await s.close();
+    }
+  });
+
   it("ends the pause when the user starts a download the pause stopped with its handle", async () => {
     const a = "a".repeat(40);
     const state: SynthState = { downloads: [row(a, "SEEDING", 1)] };
@@ -394,5 +419,13 @@ describe("Tribler driver details", () => {
     } finally {
       await s.close();
     }
+  });
+});
+
+describe("Tribler refusal text", () => {
+  it("reads the message of an error object, an error that is plain text as it is, and nothing from a body without JSON", () => {
+    expect(reasonOf('{"error": {"handled": true, "message": "uri parameter missing"}}')).toBe("uri parameter missing");
+    expect(reasonOf('{"error": "busy"}')).toBe("busy");
+    expect(reasonOf("<html>bad gateway</html>")).toBe("");
   });
 });

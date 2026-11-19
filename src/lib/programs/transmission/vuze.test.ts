@@ -102,6 +102,7 @@ describe("Vuze through Transmission's driver", () => {
       expect(d.type).toBe("vuze");
       expect(snap.status.version).toBe("5.7.6.0");
       expect(d.capabilities.has("altSpeed")).toBe(false);
+      await expect(d.command({ kind: "setAltSpeed", on: true })).rejects.toThrow("vuze: command not supported");
       expect(d.capabilities.has("category")).toBe(false);
       expect(d.capabilities.has("freeSpace")).toBe(true);
       expect(snap.items.every(i => i.key === i.key.toUpperCase())).toBe(true);

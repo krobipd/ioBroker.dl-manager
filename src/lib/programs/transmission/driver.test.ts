@@ -272,13 +272,16 @@ describe("Transmission driver details", () => {
     await answer({ status: 421, body: "" }, /rpc-host-whitelist/);
     await answer({ status: 404, body: {} }, /HTTP 404/);
     await answer({ body: { jsonrpc: "2.0", id: 1, error: { message: "boom" } } }, /failed: boom/);
+    await answer({ body: "null" }, /torrent_get answered without a body/);
     const legacy = await startFixtureServer(call =>
       call.headers["x-transmission-session-id"] !== "s"
         ? { status: 409, headers: { "x-transmission-session-id": "s" } }
         : { body: { result: "no such method", arguments: {} } },
     );
     try {
-      await expect(new TrDriver(cfg(legacy.baseUrl), { ...timers, log }).poll()).rejects.toThrow(ProtocolError);
+      await expect(new TrDriver(cfg(legacy.baseUrl), { ...timers, log }).poll()).rejects.toThrow(
+        /torrent_get failed: no such method/,
+      );
     } finally {
       await legacy.close();
     }

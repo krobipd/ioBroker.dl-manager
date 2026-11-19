@@ -213,6 +213,19 @@ describe("Flood snapshot", () => {
     const s = toSnapshot("", [], null, false, () => undefined);
     expect([s.status.speedLimitBps, s.status.uploadLimitBps]).toEqual([undefined, undefined]);
   });
+
+  it("calls a move of the files postprocessing, keeps the rate of a waiting torrent and reads the tags as category", () => {
+    const t = (status: string[], more: Record<string, unknown> = {}): [string, FloodTorrent] => [
+      "H",
+      { hash: "H", name: "x", status, ...more },
+    ];
+    expect(rawStatus(t(["moving", "seeding"])[1])).toBe("moving");
+    const item = (status: string[], more: Record<string, unknown> = {}): ReturnType<typeof toSnapshot>["items"][0] =>
+      toSnapshot("", [t(status, more)], null, false, () => undefined).items[0];
+    expect(item(["downloading", "inactive"], { downRate: 500 })).toMatchObject({ status: "waiting", speedBps: 500 });
+    expect(item(["seeding"], { tags: ["tv", 3, "hd"] }).category).toBe("tv,hd");
+    expect(item(["seeding"]).category).toBe("");
+  });
 });
 
 describe("Flood and the emulated pause", () => {
