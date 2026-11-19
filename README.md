@@ -149,7 +149,7 @@ The test button on a program's card asks the program once and shows its answer.
     ### **WORK IN PROGRESS**
 -->
 
-### **WORK IN PROGRESS**
+### 0.5.0 (2026-11-19)
 
 - New: rqbit can be added as a program
 - New: rTorrent can be added as a program, through the web server in front of it
@@ -225,14 +225,6 @@ The test button on a program's card asks the program once and shows its answer.
 - Changed: the last finished and failed download moved into a `last` channel below each program and the summary
 - Changed: the card shows the object ID in its details and has no pause switch; the `paused` datapoint stays
 - Fixed: a JDownloader renamed in its own settings keeps its My.JDownloader connection
-
-### 0.2.0 (2026-09-29)
-
-- New: programs are set up as cards — a dialog with only the program's fields, and test, pause and on/off on every card
-- New: for My.JDownloader you pick the JDownloader from a list of your account after logging in
-- New: a second entry for the same program (same address, or same My.JDownloader device) is refused
-- Changed: switching a JDownloader between local and My.JDownloader keeps its rooms and functions
-- Fixed: a download that showed up again could show empty values until something about it changed
 
 [Older changelogs can be found there](CHANGELOG_OLD.md)
 
