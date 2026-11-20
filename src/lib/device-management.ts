@@ -11,6 +11,7 @@ import {
 } from "@iobroker/dm-utils";
 import { addressOf, blocksAddress, parsePrograms, type ProgramRow, programKey, rowId, twinOf } from "./core/config";
 import { deviceIdFor, idSourceOf } from "./core/device-id";
+import { deviceManagerLog } from "./dm-log";
 import { sameRow } from "./core/store";
 import type { TestResult } from "./core/connection-test";
 import {
@@ -105,6 +106,11 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
     private readonly host: DmHost,
   ) {
     super(adapter);
+  }
+
+  /** @returns the adapter's log for dm-utils — a received message names its command, never what a dialog carried (S8) */
+  protected override get log(): ioBroker.Logger {
+    return deviceManagerLog(this.adapter.log);
   }
 
   /** @returns the add button above the cards and the label of the address line */

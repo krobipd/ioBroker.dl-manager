@@ -33,7 +33,8 @@ src/main.ts                      → Lebenszyklus: I18n (erste Anweisung) → `c
                                    My.JD-Id, kann länger dauern als `stopTimeout`) und stoppt danach, was die Änderung noch baute
 src/lib/device-management.ts     → DlDeviceManagement (dm-utils): Karten je Zeile, Details (Objekt-ID), Hinzufügen
                                    (Programmwahl → Dialog → bei My.JDownloader Instanzwahl), Bearbeiten, Löschen, Test, Ein/Aus;
-                                   jede Änderung über `DmHost.updateRows` auf den Zeilen von jetzt, kein Neustart
+                                   jede Änderung über `DmHost.updateRows` auf den Zeilen von jetzt, kein Neustart;
+                                   dm-utils bekommt das Log über `dm-log.ts` (eine empfangene Nachricht nur mit ihrem Befehl)
 src/lib/dm-forms.ts              → rein: Dialog-Schemas, Zeile ↔ Dialogdaten, Duplikat-Ausdruck
 src/lib/core/store.ts            → ProgramStore: `programs.json` im Datenordner der Instanz (`common.dataFolder`, im Backup),
                                    Passwort/API-Schlüssel (`SECRET_FIELDS`) versiegelt der Master `data-file.ts`; eine Zeile von
@@ -89,7 +90,7 @@ src/lib/programs/catalog.ts      → die EINZIGE Programmliste: Typ, Name, Famil
 src/lib/programs/registry.ts     → Katalog + Treiber (DRIVERS) → PROGRAMS, findProgram
 src/lib/programs/<typ>/          → client.ts (Transport + Anmeldung), map.ts (Rohantwort → Modell, Status-Tabelle),
                                    driver.ts (Fähigkeiten, Extras, Befehle)
-src/lib/{enum-carry,known-objects,object-removal,adapter-fake,err-text,native-key-migration,data-file}.ts → Kopien aus .consistency-master (byte-gleich);
+src/lib/{enum-carry,known-objects,object-removal,adapter-fake,err-text,native-key-migration,data-file,dm-log}.ts → Kopien aus .consistency-master (byte-gleich);
                                    jeder Zugriff auf den Datenordner (`programs.json`, `call-budget.json`) über data-file.ts
 src/lib/{actionable-problems,device-icons,i18n}.ts → Flotten-Muster
 src/lib/api-limits.{json,ts}     → Limits jeder Gegenstelle (lokale Programme `network: "private"`: pyLoads 100/min je Host;

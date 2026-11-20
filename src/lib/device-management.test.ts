@@ -78,6 +78,7 @@ interface Internals {
     identifierLabel: unknown;
     actions: { handler: (c: Ctx) => Promise<unknown> }[];
   };
+  handleMessage(msg: Record<string, unknown>): Promise<void>;
 }
 
 /**
@@ -99,12 +100,14 @@ function make(
   };
   timers: (() => void)[];
   errors: string[];
+  debugs: string[];
   devices: Mock;
   tested: Mock;
 } {
   let stored = structuredClone(rows);
   const timers: (() => void)[] = [];
   const errors: string[] = [];
+  const debugs: string[] = [];
   const devices = vi.fn((): Promise<{ id: string; name: string }[]> =>
     Promise.resolve([
       { id: "aaaa1111", name: "Keller-NAS" },
@@ -138,14 +141,20 @@ function make(
   const adapter = {
     namespace: NS,
     on: () => undefined,
-    log: { error: (m: string) => errors.push(m), warn: () => undefined, info: () => undefined, debug: () => undefined },
+    log: {
+      error: (m: string) => errors.push(m),
+      warn: () => undefined,
+      info: () => undefined,
+      debug: (m: string) => debugs.push(m),
+    },
+    sendTo: () => undefined,
     setTimeout: (cb: () => void) => {
       timers.push(cb);
       return undefined;
     },
   };
   const dm = new DlDeviceManagement(adapter as never, host) as unknown as Internals;
-  return { dm, host: host, timers, errors, devices, tested };
+  return { dm, host: host, timers, errors, debugs, devices, tested };
 }
 
 async function cards(dm: Internals): Promise<Card[]> {
@@ -811,5 +820,21 @@ describe("testText", () => {
       key: "dmTestOther",
       args: ["A", "host missing"],
     });
+  });
+});
+
+describe("the log of the device manager", () => {
+  it("names a received message by its command, never with what the user typed into a dialog (S8, round 187 R187-15)", async () => {
+    const { dm, debugs } = make([qbRow]);
+    await dm.handleMessage({
+      _id: 7,
+      command: "dm:instanceInfo",
+      from: "system.adapter.admin.0",
+      callback: { message: {}, id: 1, ack: false, time: 0 },
+      message: { origin: "x", data: { password: "typed-secret", apiKey: "typed-key" } },
+    });
+    expect(debugs.join("\n")).not.toContain("typed-secret");
+    expect(debugs.join("\n")).not.toContain("typed-key");
+    expect(debugs).toContain("DeviceManagement received: dm:instanceInfo");
   });
 });
