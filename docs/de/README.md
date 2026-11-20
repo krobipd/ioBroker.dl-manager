@@ -2,7 +2,8 @@
 
 Der Adapter verbindet ioBroker mit deinen Download-Programmen. Jedes Programm, das du einträgst, wird ein Gerät, jeder
 seiner Downloads ein Kanal mit eigenen Datenpunkten. Alles, was der Adapter zeigt, kommt vom Programm selbst; der
-Adapter lädt nie selbst etwas herunter und bittet nie ein Programm, Dateien zu löschen.
+Adapter lädt nie selbst etwas herunter und bittet ein Programm nur dann, Dateien zu löschen, wenn der Schalter _Beim
+Entfernen auch die Dateien löschen_ es sagt.
 
 ## Unterstützte Programme
 

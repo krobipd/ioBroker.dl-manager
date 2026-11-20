@@ -54,9 +54,11 @@ local JDownloader also report changes on their own as they happen (not over My.J
 
 ## Does `remove` delete my files?
 
-No. `remove` takes the download off the program's list; the files stay on disk. The adapter never asks a program to
-delete files. Only Download Station discards the partial data of a task that is not finished yet — on its own, whatever
-the adapter asks; a finished task's files it never touches.
+Only when the switch **Also delete the files when removing** says so — on the settings page for every program, or on
+the card of a program that can delete files. Off (the default): `remove` takes the download off the program's list and
+the files stay on disk. On: the program also deletes what it loaded to disk for this download. Where a program cannot
+remove a download the way the switch says, that download has no `remove` until it can — Download Station, for example,
+always discards the data of an unfinished task, so with the switch off an unfinished task has no `remove`.
 
 ## A finished download stays in the object tree
 

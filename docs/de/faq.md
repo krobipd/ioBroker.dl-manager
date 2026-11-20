@@ -59,9 +59,12 @@ danach neu gefragt. aria2 und ein lokaler JDownloader melden Änderungen zusätz
 
 ## Löscht `remove` meine Dateien?
 
-Nein. `remove` nimmt den Download aus der Liste des Programms; die Dateien bleiben erhalten. Der Adapter bittet nie ein
-Programm, Dateien zu löschen. Nur Download Station verwirft die Teildaten einer Aufgabe, die noch nicht fertig ist — von
-sich aus, gleich was der Adapter verlangt; die Dateien einer fertigen Aufgabe rührt sie nie an.
+Nur wenn der Schalter **Beim Entfernen auch die Dateien löschen** es sagt — auf der Einstellungsseite für alle Programme
+oder auf der Karte eines Programms, das Dateien löschen kann. Aus (Vorgabe): `remove` nimmt den Download aus der Liste des
+Programms, die Dateien bleiben erhalten. An: das Programm löscht auch, was es für diesen Download geladen hat. Kann ein
+Programm einen Download nicht so entfernen, wie der Schalter sagt, hat dieser Download kein `remove`, bis es geht —
+Download Station etwa verwirft die Daten einer unfertigen Aufgabe immer, also hat eine unfertige Aufgabe bei Schalter aus
+kein `remove`.
 
 ## Ein fertiger Download bleibt im Objektbaum
 

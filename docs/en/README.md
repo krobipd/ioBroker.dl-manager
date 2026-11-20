@@ -2,7 +2,8 @@
 
 The adapter connects ioBroker to your download programs. Each program you add becomes a device, each of its
 downloads a channel with its own datapoints. Everything the adapter shows comes from the program itself; the adapter
-never downloads anything on its own and never asks a program to delete files.
+never downloads anything on its own and asks a program to delete files only when the switch _Also delete the files when
+removing_ says so.
 
 ## Supported programs
 
