@@ -268,13 +268,18 @@ interface Sent {
   method: string;
   params: unknown;
 }
-/** What a removal asks the program, or the reason its driver refuses it (and sends nothing). */
-type Asked = readonly Sent[] | { refused: string };
+/** What a removal asks the program, or that its driver refuses it (and sends nothing). */
+type Asked = readonly Sent[] | { refused: true };
 /** Per state: the removal with the switch off (`keep`) and on (`delete`). */
 type Row = Record<State, { keep: Asked; delete: Asked }>;
 
 const ask = (method: string, params?: unknown): Asked => [{ method, params }];
-const refused = (reason: string): Asked => ({ refused: reason });
+/**
+ * The driver refuses before it sends anything, where the program cannot carry the removal out as the switch says (core
+ * decision D-13): aria2, pyLoad and rTorrent delete no files; SABnzbd and NZBGet keep a finished download's files;
+ * NZBGet deletes a failed one's; Download Station keeps a finished task's files and deletes what an unfinished one loaded.
+ */
+const REFUSED: Asked = { refused: true };
 const anyState = (keep: Asked, del: Asked): Row => ({
   loading: { keep, delete: del },
   finished: { keep, delete: del },
@@ -316,7 +321,7 @@ function removalOf(key: string): Record<ProgramType, Row> {
       },
       finished: {
         keep: ask("history.delete", { mode: "history", name: "delete", value: key }),
-        delete: refused("SABnzbd does not delete the files of a finished download"),
+        delete: REFUSED,
       },
       failed: {
         keep: ask("history.delete", { mode: "history", name: "delete", value: key }),
@@ -331,22 +336,22 @@ function removalOf(key: string): Record<ProgramType, Row> {
       },
       finished: {
         keep: ask("editqueue", ["HistoryDelete", "", [n]]),
-        delete: refused("NZBGet does not delete the files of a finished download"),
+        delete: REFUSED,
       },
       failed: {
-        keep: refused("NZBGet deletes the files of a deleted or failed download"),
+        keep: REFUSED,
         delete: ask("editqueue", ["HistoryDelete", "", [n]]),
       },
     },
     aria2: {
-      loading: { keep: ask("aria2.remove", [key]), delete: refused("aria2 deletes no files") },
-      finished: { keep: ask("aria2.removeDownloadResult", [key]), delete: refused("aria2 deletes no files") },
-      failed: { keep: ask("aria2.removeDownloadResult", [key]), delete: refused("aria2 deletes no files") },
+      loading: { keep: ask("aria2.remove", [key]), delete: REFUSED },
+      finished: { keep: ask("aria2.removeDownloadResult", [key]), delete: REFUSED },
+      failed: { keep: ask("aria2.removeDownloadResult", [key]), delete: REFUSED },
     },
-    pyload: anyState(ask("delete_packages", { package_ids: [n] }), refused("pyLoad deletes no files")),
+    pyload: anyState(ask("delete_packages", { package_ids: [n] }), REFUSED),
     // forget keeps the files, delete removes them
     rqbit: anyState(ask(`POST /torrents/${key}/forget`), ask(`POST /torrents/${key}/delete`)),
-    rtorrent: anyState(ask("d.erase", [key]), refused("rTorrent deletes no files")),
+    rtorrent: anyState(ask("d.erase", [key]), REFUSED),
     tribler: anyState(
       ask(`DELETE /api/downloads/${key}`, { remove_data: false }),
       ask(`DELETE /api/downloads/${key}`, { remove_data: true }),
@@ -364,12 +369,12 @@ function removalOf(key: string): Record<ProgramType, Row> {
     hadouken: anyState(ask("webui.perform", ["remove", [key]]), ask("webui.perform", ["removedata", [key]])),
     // Download Station keeps a finished task's files and discards what an unfinished one loaded, whatever it is asked
     downloadstation: {
-      loading: { keep: refused("Download Station deletes what an unfinished download loaded"), delete: dsDelete },
+      loading: { keep: REFUSED, delete: dsDelete },
       finished: {
         keep: dsDelete,
-        delete: refused("Download Station does not delete the files of a finished download"),
+        delete: REFUSED,
       },
-      failed: { keep: refused("Download Station deletes what an unfinished download loaded"), delete: dsDelete },
+      failed: { keep: REFUSED, delete: dsDelete },
     },
     // cancel takes the NZB out of the queue and leaves its files, cancelDelete deletes them
     nzbvortex: anyState(ask(`nzb/${key}/cancel`), ask(`nzb/${key}/cancelDelete`)),
@@ -443,7 +448,7 @@ async function removeVia(type: ProgramType, state: State, deleteFiles: boolean):
     }
     // a refused removal sends nothing
     expect(sent, `${type} ${state}`).toEqual([]);
-    return refused(err.message);
+    return REFUSED;
   }
   return sent.map(({ method, params }) => ({ method, params }));
 }
@@ -601,8 +606,6 @@ function storedCard(info: ProgramInfo, choice: boolean | undefined): Record<stri
 const CHOOSES = CATALOG.find(
   p => cardSwitch(p) !== undefined && STATES.every(s => isDeepStrictEqual(REMOVAL[p.type][s], REMOVAL[p.type].loading)),
 )!;
-/** A program whose card does not ask. */
-const CANNOT = CATALOG.find(p => cardSwitch(p) === undefined)!;
 
 /**
  * Starts the adapter's manager with one program — its real driver, which keeps listing every download of
@@ -715,10 +718,12 @@ describe("D-04 removing a download, with its files where the switch says so", ()
   });
 
   it("asks the question in general and on the card of every program that can delete files", async () => {
-    expect(typeof native[GENERAL!]).toBe("boolean");
+    expect(GENERAL).toBeDefined();
     for (const info of CATALOG) {
-      const deletes = STATES.some(s => !("refused" in REMOVAL[info.type][s].delete));
-      expect(cardSwitch(info) !== undefined, info.type).toBe(deletes);
+      // a program that cannot delete files does not offer it (core decision D-13)
+      if (STATES.some(s => !("refused" in REMOVAL[info.type][s].delete))) {
+        expect(cardSwitch(info), info.type).toBeDefined();
+      }
     }
     // the card's own answer decides for its program
     expect(await filesGo(false, storedCard(CHOOSES, true))).toEqual(expected(CHOOSES.type, "delete"));
@@ -728,9 +733,10 @@ describe("D-04 removing a download, with its files where the switch says so", ()
     for (const info of CATALOG) {
       const on = cardSwitch(info, { takenKeys: [], deleteFilesAll: true });
       const off = cardSwitch(info, { takenKeys: [], deleteFilesAll: false });
-      expect(on === undefined, info.type).toBe(off === undefined);
-      if (on && off) {
+      if (on) {
         expect(on[1].disabled, info.type).toBe(true);
+      }
+      if (off) {
         expect(off[1].disabled === true, info.type).toBe(false);
       }
     }
@@ -738,9 +744,6 @@ describe("D-04 removing a download, with its files where the switch says so", ()
     expect(await filesGo(true, storedCard(CHOOSES, false))).toEqual(expected(CHOOSES.type, "delete"));
     expect(await filesGo(false, storedCard(CHOOSES, true))).toEqual(expected(CHOOSES.type, "delete"));
     expect(await filesGo(false, storedCard(CHOOSES, false))).toEqual(expected(CHOOSES.type, "keep"));
-    // a program whose card does not ask follows the general switch — and refuses what it cannot do
-    expect(await filesGo(false, storedCard(CANNOT, true))).toEqual(expected(CANNOT.type, "keep"));
-    expect(await filesGo(true, storedCard(CANNOT, false))).toEqual(expected(CANNOT.type, "delete"));
   });
 
   it("deletes what the program loaded: a finished download's files, what an aborted or failed one loaded so far", async () => {

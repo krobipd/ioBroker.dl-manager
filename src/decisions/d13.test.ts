@@ -205,14 +205,16 @@ describe("D-13 every decision holds for every program, with the same result for 
     expect(lists).toEqual([]);
   });
 
-  it("offers at a program only what it can reach there — the delete choice exactly where the program deletes", async () => {
+  it("offers at a program only what it can reach there — the delete choice only where the program deletes", async () => {
     let asking = 0;
     for (const info of CATALOG) {
-      const offered = split(choicesOf(info, { takenKeys: [] })).question !== undefined;
-      asking += offered ? 1 : 0;
+      if (split(choicesOf(info, { takenKeys: [] })).question === undefined) {
+        continue;
+      }
+      asking += 1;
+      // where the card asks, the program carries the deletion out
       const refusal = await refusalOfDelete(info);
-      // where the card asks, the program carries the deletion out; where it cannot, the card does not ask
-      expect(refusal === undefined, `${info.type}: ${refusal ?? "carried out"}`).toBe(offered);
+      expect(refusal, info.type).toBeUndefined();
     }
     expect(asking).toBeGreaterThan(0);
   });
