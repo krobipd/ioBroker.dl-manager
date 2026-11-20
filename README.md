@@ -152,8 +152,8 @@ The test button on a program's card asks the program once and shows its answer.
 
 ### **WORK IN PROGRESS**
 
-- New: the switch "Also delete the files when removing" on the settings page, and the same switch on the card of each program that can delete files; off by default, so the files stay as before
-- Changed: a download has no remove datapoint while its program cannot remove it as the switch says, e.g. an unfinished one at Download Station with the switch off, which used to lose its data
+- New: the switch "Also delete the files when removing" on the settings page and on the card of each program that can delete files, off by default
+- Changed: a download has no remove datapoint while its program cannot remove it as the switch says
 - Fixed: pausing all no longer stops halfway when a download ended meanwhile (rqbit, rTorrent, Tribler)
 - Fixed: when the connection breaks off during pause all or resume all, the downloads already paused are resumed later
 - Fixed: a link added during a pause is held on the next poll when its first hold did not reach the program
