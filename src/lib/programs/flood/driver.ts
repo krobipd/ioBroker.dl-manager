@@ -76,8 +76,8 @@ export class FloodDriver implements ProgramDriver {
         await this.client.send("POST", "/torrents/start", { hashes: [cmd.key] });
         return;
       case "remove":
-        // deleteData false keeps the files (shared/schema/api/torrents.ts `deleteTorrentsSchema`)
-        await this.client.send("POST", "/torrents/delete", { hashes: [cmd.key], deleteData: false });
+        // deleteData decides whether the files go too (shared/schema/api/torrents.ts `deleteTorrentsSchema`)
+        await this.client.send("POST", "/torrents/delete", { hashes: [cmd.key], deleteData: cmd.deleteFiles === true });
         return;
       case "add":
         await this.add(cmd.url);

@@ -82,8 +82,8 @@ export class HkDriver implements ProgramDriver {
         await this.wake([cmd.key]);
         return;
       case "remove":
-        // remove takes the torrent out of the list and leaves its files; removedata would delete them
-        await this.client.call("webui.perform", ["remove", [cmd.key]]);
+        // remove takes the torrent out of the list and leaves its files; removedata deletes them (Sonarr HadoukenProxy.cs)
+        await this.client.call("webui.perform", [cmd.deleteFiles ? "removedata" : "remove", [cmd.key]]);
         return;
       case "add": {
         // a URL names no hash: while the adapter holds the program paused, the torrent is added paused

@@ -1,4 +1,4 @@
-import { ProtocolError } from "../../core/errors";
+import { ProtocolError, RefusedError } from "../../core/errors";
 import { ProgramVersion } from "../../core/version";
 import type {
   Capability,
@@ -35,6 +35,8 @@ export class NzbDriver implements ProgramDriver {
   private readonly client: NzbClient;
   private readonly version = new ProgramVersion();
   private inQueue = new Set<string>();
+  /** The history entries of the last answer, by NZBID. */
+  private history = new Map<string, Record<string, unknown>>();
 
   /**
    * @param cfg the settings row
@@ -66,7 +68,41 @@ export class NzbDriver implements ProgramDriver {
     // toSnapshot refuses a list out of shape — the queue is taken only from an answer it accepted
     const snapshot = toSnapshot(version, status, groups, history, m => this.deps.log.debug(m));
     this.inQueue = new Set(asRecords(groups).map(g => String(g.NZBID)));
+    this.history = new Map(asRecords(history).map(h => [String(h.NZBID), h]));
     return snapshot;
+  }
+
+  /**
+   * The edit action that removes a download as asked (core decisions D-04 and D-13). In the queue GroupParkDelete keeps
+   * what the job loaded and GroupDelete deletes it (QueueEditor.cpp `EditGroup`, `SetCleanupDisk`). From the history
+   * HistoryDelete deletes the folder of a job that was deleted or failed its repair or unpack, and keeps every other's
+   * (HistoryCoordinator.cpp `HistoryDelete`); a URL entry loaded nothing. What NZBGet cannot remove as asked is refused.
+   *
+   * @param key the NZBID
+   * @param deleteFiles the files go too
+   * @returns the edit action
+   */
+  private removal(key: string, deleteFiles: boolean): string {
+    if (this.inQueue.has(key)) {
+      return deleteFiles ? "GroupDelete" : "GroupParkDelete";
+    }
+    const entry = this.history.get(key);
+    if (!entry) {
+      throw new RefusedError("NZBGet's last answer does not list this download");
+    }
+    if (asText(entry.Kind) === "NZB") {
+      const deletesFolder =
+        asText(entry.DeleteStatus) !== "NONE" ||
+        asText(entry.ParStatus) === "FAILURE" ||
+        ["FAILURE", "PASSWORD"].includes(asText(entry.UnpackStatus));
+      if (deletesFolder && !deleteFiles) {
+        throw new RefusedError("NZBGet deletes the files of a deleted or failed download");
+      }
+      if (!deletesFolder && deleteFiles) {
+        throw new RefusedError("NZBGet does not delete the files of a finished download");
+      }
+    }
+    return "HistoryDelete";
   }
 
   /** @param cmd the command */
@@ -81,12 +117,7 @@ export class NzbDriver implements ProgramDriver {
         await this.client.call("editqueue", [cmd.kind === "pause" ? "GroupPause" : "GroupResume", "", id(cmd.key)]);
         return;
       case "remove":
-        // queue: park-delete keeps the files already loaded; history: only the entry goes
-        await this.client.call("editqueue", [
-          this.inQueue.has(cmd.key) ? "GroupParkDelete" : "HistoryDelete",
-          "",
-          id(cmd.key),
-        ]);
+        await this.client.call("editqueue", [this.removal(cmd.key, cmd.deleteFiles === true), "", id(cmd.key)]);
         return;
       case "add":
         await this.client.call("append", ["", cmd.url, "", 0, false, false, "", 0, "SCORE", false, []]);

@@ -89,6 +89,7 @@ runDriverContract({
     setSpeedLimit: { method: "POST", path: "/json", bodyContains: '"max_download_speed":1953.125' },
     setUploadLimit: { method: "POST", path: "/json", bodyContains: '"max_upload_speed":1953.125' },
   },
+  removeWithFiles: { method: "POST", path: "/json", bodyContains: ['"core.remove_torrent"', '",true]'] },
   isLoginCall: call => call.body.includes('"auth.login"'),
 });
 

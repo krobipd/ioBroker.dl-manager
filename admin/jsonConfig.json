@@ -110,6 +110,18 @@
       "lg": 12,
       "xl": 12
     },
+    "deleteFiles": {
+      "newLine": true,
+      "type": "checkbox",
+      "label": "label_deleteFiles",
+      "help": "help_deleteFiles",
+      "default": false,
+      "xs": 12,
+      "sm": 12,
+      "md": 12,
+      "lg": 12,
+      "xl": 12
+    },
     "_removalHeader": {
       "newLine": true,
       "type": "header",

@@ -20,6 +20,7 @@ export const JD_METHODS: ReadonlySet<string> = new Set([
   "/downloadsV2/setEnabled",
   "/downloadsV2/resumeLinks",
   "/downloadsV2/removeLinks",
+  "/downloadsV2/cleanup",
   "/downloadcontroller/start",
   "/downloadcontroller/stop",
   "/downloadcontroller/pause",
@@ -51,6 +52,13 @@ export function checkJdCall(path: string, params: readonly unknown[]): void {
     throw new ProtocolError(
       "jdownloader: config access is limited to DownloadSpeedLimit and DownloadSpeedLimitEnabled",
     );
+  }
+  // deleting files only for the packages named: `ALL` or `UNSELECTED` would clean up every other package as well
+  if (
+    path === "/downloadsV2/cleanup" &&
+    !(Array.isArray(params[1]) && params[1].length > 0 && params[4] === "SELECTED")
+  ) {
+    throw new ProtocolError("jdownloader: a cleanup is limited to the packages it names");
   }
 }
 

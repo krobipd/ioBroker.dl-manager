@@ -6,7 +6,7 @@ vi.mock("@iobroker/adapter-core", () => ({
 }));
 
 import { FakeAdapter } from "../../../test/helpers/fake-adapter";
-import { AuthError, ProtocolError, UnreachableError } from "./errors";
+import { AuthError, ProtocolError, RefusedError, UnreachableError } from "./errors";
 import { objectPauseStore } from "./emulated-pause";
 import { startLine } from "./log-lines";
 import { ProgramManager, type ManagerOptions } from "./manager";
@@ -109,6 +109,7 @@ function world(
   const entries: Record<string, ProgramEntry> = {
     qbittorrent: entry("qbittorrent"),
     sabnzbd: entry("sabnzbd"),
+    aria2: entry("aria2"),
     "jdownloader-cloud": entry("jdownloader-cloud"),
   };
   const test = (raw: unknown): Promise<TestResult> =>
@@ -135,7 +136,13 @@ function world(
         },
         onDeviceId: (programId, deviceId) => void learned.push([programId, deviceId]),
       },
-      { intervalMs: 10_000, scope: opts.scope ?? "all", limit: opts.limit ?? 0, addResumes: opts.addResumes ?? false },
+      {
+        intervalMs: 10_000,
+        scope: opts.scope ?? "all",
+        limit: opts.limit ?? 0,
+        addResumes: opts.addResumes ?? false,
+        deleteFiles: opts.deleteFiles ?? false,
+      },
     );
   return { a, drivers, manager, test, reported, resolved, moved, learned };
 }
@@ -227,13 +234,14 @@ describe("ProgramManager — start", () => {
     expect(w.a.val("info.programsAllOnline")).toBe(false);
   });
 
-  it("shows a row that cannot run on its device and starts no driver for it", async () => {
+  it("shows a row that cannot run on its device, gives a type outside the catalog none, and starts no driver", async () => {
     const w = world({});
     await w.manager().start([row("qbittorrent", "a", ""), row("emule", "b", "h")]);
     expect(w.drivers).toHaveLength(0);
     // the reason is the fleet's one word — what is wrong with the card goes to the log and onto the card
     expect(w.a.val("qbittorrent-a.error")).toBe("Unknown");
-    expect(w.a.val("emule-b.error")).toBe("Unknown");
+    expect(w.a.objects.has(`${NS}.emule-b`)).toBe(false);
+    expect(w.a.val("emule-b.error")).toBeUndefined();
     const warned = w.a.logs.filter(l => l.level === "warn").map(l => l.msg);
     expect(warned.some(m => m.startsWith("qbittorrent-a: host missing"))).toBe(true);
     expect(warned.some(m => m.startsWith("emule-b: unknown program type: emule"))).toBe(true);
@@ -726,7 +734,7 @@ describe("ProgramManager — user writes", () => {
     await flush();
     await w.a.setState("qbittorrent-nas.downloads.11112222.remove", { val: true, ack: false });
     await m.onUserWrite("qbittorrent-nas.downloads.11112222.remove", true);
-    expect(w.drivers[0].commands).toContainEqual({ kind: "remove", key: "aaaa11112222" });
+    expect(w.drivers[0].commands).toContainEqual({ kind: "remove", key: "aaaa11112222", deleteFiles: false });
     expect(w.a.states.get(`${NS}.qbittorrent-nas.downloads.11112222.remove`)).toMatchObject({ val: false, ack: true });
 
     await w.a.setState("qbittorrent-nas.paused", { val: true, ack: false });
@@ -769,6 +777,67 @@ describe("ProgramManager — user writes", () => {
     await flush();
     await m.onUserWrite("qbittorrent-nas.add", "https://host/file.iso");
     expect(w.a.logs.map(l => l.msg)).toContain("qbittorrent-nas: added https://host/file.iso — resumed the program");
+  });
+
+  it("deletes a download's files on removal exactly when the general switch or the card's own choice says so", async () => {
+    const sent = async (general: boolean, own: boolean): Promise<Command[]> => {
+      const w = world({ h1: { snapshot: snap(0, [item("aaaa11112222", "completed")]) } });
+      const m = w.manager({ deleteFiles: general });
+      await m.start([row("qbittorrent", "nas", "h1", { deleteFiles: own })]);
+      await flush();
+      await m.onUserWrite("qbittorrent-nas.downloads.11112222.remove", true);
+      return w.drivers[0].commands;
+    };
+    const remove = (deleteFiles: boolean): Command => ({ kind: "remove", key: "aaaa11112222", deleteFiles });
+    expect(await sent(false, false)).toEqual([remove(false)]);
+    expect(await sent(false, true)).toEqual([remove(true)]);
+    expect(await sent(true, false)).toEqual([remove(true)]);
+  });
+
+  it("takes a card's new choice over at the next removal, without starting its program anew", async () => {
+    const w = world({ h1: { snapshot: snap(0, [item("aaaa11112222", "downloading")]) } });
+    const m = w.manager();
+    await m.start([row("qbittorrent", "nas", "h1", { id: "qbittorrent-nas" })]);
+    await flush();
+    await m.apply([row("qbittorrent", "nas", "h1", { id: "qbittorrent-nas", deleteFiles: true })]);
+    await m.onUserWrite("qbittorrent-nas.downloads.11112222.remove", true);
+    expect(w.drivers).toHaveLength(1);
+    expect(w.drivers[0].commands).toEqual([{ kind: "remove", key: "aaaa11112222", deleteFiles: true }]);
+  });
+
+  it("asks the card's own choice only where the card offers one, and confirms no removal the program refused", async () => {
+    const removal = async (
+      general: boolean,
+      own: boolean,
+    ): Promise<{ sent: Command[]; warned: string[]; ack: unknown }> => {
+      const w = world({ h1: { snapshot: snap(0, [item("aaaa11112222", "completed")]) } });
+      const m = w.manager({ deleteFiles: general });
+      await m.start([row("aria2", "nas", "h1", { deleteFiles: own })]);
+      await flush();
+      // the program's driver refuses a removal it cannot carry out as asked
+      w.drivers[0].command = (cmd: Command): Promise<void> => {
+        w.drivers[0].commands.push(cmd);
+        return cmd.kind === "remove" && cmd.deleteFiles
+          ? Promise.reject(new RefusedError("aria2 deletes no files"))
+          : Promise.resolve();
+      };
+      await w.a.setState("aria2-nas.downloads.11112222.remove", { val: true, ack: false });
+      await m.onUserWrite("aria2-nas.downloads.11112222.remove", true);
+      return {
+        sent: w.drivers[0].commands,
+        warned: w.a.logs.filter(l => l.level === "warn").map(l => l.msg),
+        ack: w.a.states.get(`${NS}.aria2-nas.downloads.11112222.remove`)?.ack,
+      };
+    };
+    // aria2 deletes no files: its card offers no choice, a stored one changes nothing
+    expect((await removal(false, true)).sent).toEqual([{ kind: "remove", key: "aaaa11112222", deleteFiles: false }]);
+    // the general switch holds for every program — what aria2 cannot do, it refuses
+    const refused = await removal(true, false);
+    expect(refused.sent).toEqual([{ kind: "remove", key: "aaaa11112222", deleteFiles: true }]);
+    expect(refused.ack).toBe(false);
+    expect(refused.warned).toEqual([
+      'aria2-nas: removed "name-aaaa11112222" from the program\'s list with its files failed — aria2 deletes no files',
+    ]);
   });
 
   it("ignores a write to a program that does not run", async () => {

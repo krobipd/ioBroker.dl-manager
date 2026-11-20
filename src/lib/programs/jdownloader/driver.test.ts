@@ -78,6 +78,11 @@ runDriverContract({
     add: { method: "POST", path: "/linkgrabberv2/addLinks", bodyContains: '"autostart":true' },
     setSpeedLimit: { method: "POST", path: "/config/set", bodyContains: '"DownloadSpeedLimit",2000000' },
   },
+  removeWithFiles: {
+    method: "POST",
+    path: "/downloadsV2/cleanup",
+    bodyContains: '"params":[[],[1790633501919],"DELETE_ALL","REMOVE_LINKS_AND_DELETE_FILES","SELECTED"]',
+  },
   isLoginCall: () => false,
   noLogin: true,
 });
@@ -89,6 +94,14 @@ describe("JDownloader local transport", () => {
     await expect(
       t.call("/config/set", ["org.jdownloader.settings.GeneralSettings", null, "DefaultDownloadFolder", "/"]),
     ).rejects.toThrow(/DownloadSpeedLimit/);
+    // a cleanup deletes files: only for the packages it names, never for all others
+    for (const params of [
+      [[], [], "DELETE_ALL", "REMOVE_LINKS_AND_DELETE_FILES", "SELECTED"],
+      [[], [1], "DELETE_ALL", "REMOVE_LINKS_AND_DELETE_FILES", "ALL"],
+      [[], [1], "DELETE_ALL", "REMOVE_LINKS_AND_DELETE_FILES", "UNSELECTED"],
+    ]) {
+      await expect(t.call("/downloadsV2/cleanup", params)).rejects.toThrow(/limited to the packages it names/);
+    }
     expect([...JD_METHODS].sort()).toEqual(
       [
         "/config/set",
@@ -96,6 +109,7 @@ describe("JDownloader local transport", () => {
         "/downloadcontroller/pause",
         "/downloadcontroller/start",
         "/downloadcontroller/stop",
+        "/downloadsV2/cleanup",
         "/downloadsV2/queryLinks",
         "/downloadsV2/queryPackages",
         "/downloadsV2/removeLinks",

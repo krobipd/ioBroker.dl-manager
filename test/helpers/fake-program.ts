@@ -119,7 +119,7 @@ export class FakeProgramDriver implements ProgramDriver {
         await this.api("POST", "/resume", { id: cmd.key });
         return;
       case "remove":
-        await this.api("POST", "/remove", { id: cmd.key });
+        await this.api("POST", "/remove", { id: cmd.key, deleteFiles: cmd.deleteFiles === true });
         return;
       case "add":
         await this.api("POST", "/add", { url: cmd.url });

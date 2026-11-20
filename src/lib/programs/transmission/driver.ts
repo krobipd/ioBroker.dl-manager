@@ -138,7 +138,9 @@ export class TrDriver implements ProgramDriver {
         await this.client.call("torrent_start", { ids: [cmd.key] });
         return;
       case "remove":
-        await this.client.call("torrent_remove", { ids: [cmd.key], delete_local_data: false });
+        // delete_local_data deletes the torrent's data, finished or not (RPC spec `torrent-remove`; Vuze: xmwebui
+        // TorrentMethods.java, removeTorrent with deleteData)
+        await this.client.call("torrent_remove", { ids: [cmd.key], delete_local_data: cmd.deleteFiles === true });
         return;
       case "add": {
         const held = await this.pause.isPaused();

@@ -129,6 +129,7 @@ runDriverContract({
     setSpeedLimit: { method: "GET", path: "/gui/", bodyContains: "action=setsetting&s=max_dl_rate&v=1953" },
     setUploadLimit: { method: "GET", path: "/gui/", bodyContains: "action=setsetting&s=max_ul_rate&v=1953" },
   },
+  removeWithFiles: { method: "GET", path: "/gui/", bodyContains: "action=removedata&hash=" },
   isLoginCall: isLogin,
 });
 

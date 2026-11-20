@@ -49,6 +49,8 @@ export interface ProgramForm {
   path: string;
   /** The program is asked. */
   enabled: boolean;
+  /** Removing a download deletes its files too — only where the program can (core decision D-04). */
+  deleteFiles: boolean;
   /** Freebox: ask the Freebox for a new app token on save, although the card holds one. */
   pair: boolean;
 }
@@ -125,6 +127,7 @@ export function rowToForm(row: SettingsRow): ProgramForm {
     https,
     path,
     enabled: row.enabled !== false,
+    deleteFiles: row.deleteFiles === true,
     pair: false,
   };
 }
@@ -151,6 +154,8 @@ export function emptyForm(type: ProgramType): ProgramForm {
     https: tls,
     path: "",
     enabled: true,
+    // a new card keeps the files (core decision D-04)
+    deleteFiles: false,
     pair: false,
   };
 }
@@ -183,6 +188,7 @@ export function formFromData(data: Record<string, unknown>, opened: ProgramForm)
     https: flag("https"),
     path: text("path"),
     enabled: flag("enabled"),
+    deleteFiles: flag("deleteFiles"),
     pair: flag("pair"),
   };
 }
@@ -228,7 +234,16 @@ export function formToRow(
     device: "",
     deviceId: "",
   };
-  const row: SettingsRow = { ...previous, id, enabled: form.enabled, type: stored, name: form.name.trim(), ...blank };
+  const row: SettingsRow = {
+    ...previous,
+    id,
+    enabled: form.enabled,
+    // only a program that can delete files keeps the choice (core decisions D-04 and D-13)
+    deleteFiles: catalogEntry(stored).deletesFiles && form.deleteFiles,
+    type: stored,
+    name: form.name.trim(),
+    ...blank,
+  };
   if (login === "account") {
     return {
       ...row,
@@ -321,10 +336,45 @@ export function programKeyExpression(info: Pick<ProgramInfo, "port" | "path">): 
   );
 }
 
-/** What the program dialog needs to know about the other rows. */
+/** What the program dialog needs to know about the other rows and the instance's settings. */
 export interface FormContext {
   /** `programKey` of every other row. */
   takenKeys: readonly string[];
+  /**
+   * The settings page's switch deletes the files at every program (core decision D-04): the card's own choice is shown
+   * on and cannot be changed. Absent: off.
+   */
+  deleteFilesAll?: boolean;
+}
+
+/**
+ * The settings every program's card offers alike (core decision D-13): whether the program is asked, and, where it can
+ * delete files, whether removing a download deletes them too (core decision D-04) — while the settings page's switch is
+ * on, that one decides for every program.
+ *
+ * @param info the program
+ * @param ctx the instance's settings
+ * @returns the dialog items
+ */
+export function settingsItems(
+  info: Pick<ProgramInfo, "deletesFiles">,
+  ctx: Pick<FormContext, "deleteFilesAll">,
+): Record<string, unknown> {
+  const items: Record<string, unknown> = {
+    enabled: { type: "checkbox", label: tName("dmEnabled"), newLine: true, sm: 12 },
+  };
+  if (info.deletesFiles) {
+    const all = ctx.deleteFilesAll === true;
+    items.deleteFiles = {
+      type: "checkbox",
+      label: tName("label_deleteFiles"),
+      help: tName(all ? "dmDeleteFilesAll" : "dmDeleteFilesHelp"),
+      disabled: all,
+      newLine: true,
+      sm: 12,
+    };
+  }
+  return items;
 }
 
 /**
@@ -433,7 +483,7 @@ export function programForm(type: DialogType, ctx: FormContext): JsonFormSchema 
     sm: 12,
     md: 4,
   };
-  items.enabled = { type: "checkbox", label: tName("dmEnabled"), newLine: true, sm: 12 };
+  Object.assign(items, settingsItems(info, ctx));
   // the field's own error text is not shown in a device-manager dialog — say it where it is read
   items.taken = {
     type: "infoBox",

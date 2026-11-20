@@ -64,6 +64,11 @@ export interface DmHost {
   icon(type: string): string | undefined;
   /** The name of the ioBroker host this instance runs on — part of a local program's device id. */
   iobHost(): string;
+  /**
+   * Whether the settings page's switch deletes the files at every program (core decision D-04) — the adapter always
+   * has it; a host without it reads off (the sealed guards build hosts of their own).
+   */
+  deleteFilesAll?(): boolean;
 }
 
 /**
@@ -366,11 +371,15 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
       rows.filter((_, i) => i !== index),
       findProgram,
     );
-    const opened: ProgramForm = previous
+    const stored: ProgramForm = previous
       ? rowToForm(previous)
       : { ...emptyForm(type), name: this.suggestedName(type, rows) };
+    // while the settings page's switch deletes the files at every program, the card shows it on (core decision D-04)
+    const deleteFilesAll = this.host.deleteFilesAll?.() === true;
+    const opened: ProgramForm = deleteFilesAll ? { ...stored, deleteFiles: true } : stored;
     const schema = programForm(type, {
       takenKeys: parsed.filter(r => blocksAddress(r) && r.cfg.host).map(r => programKey(r.cfg)),
+      deleteFilesAll,
     });
     const answer = await ctx.showForm(schema, {
       title: tName(previous ? "dmEditTitle" : "dmAddTitle", previous ? opened.name : programLabel(type)),
@@ -387,6 +396,10 @@ export class DlDeviceManagement extends DeviceManagement<AdapterInstance> {
       return false;
     }
     const form = formFromData(answer, opened);
+    // the card's own choice stays for when the switch is off again
+    if (deleteFilesAll) {
+      form.deleteFiles = stored.deleteFiles;
+    }
     let device: JdChoice | undefined;
     if (storedType(type, form) === "jdownloader-cloud") {
       device = await this.pickJdDevice(ctx, form, parsed, previous);

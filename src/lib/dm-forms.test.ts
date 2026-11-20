@@ -143,6 +143,7 @@ describe("formToRow", () => {
       extra: 1,
       id: "deluge-nas",
       enabled: false,
+      deleteFiles: false,
       type: "deluge",
       name: "",
       host: "nas",
@@ -297,17 +298,43 @@ describe("programForm — only the fields of the program", () => {
   const common = ["advanced", "enabled", "hint", "host", "https", "name", "path", "port", "taken"];
 
   it("gives every program exactly its login fields", () => {
-    expect(fields("deluge")).toEqual([...common, "password"].sort());
-    expect(fields("sabnzbd")).toEqual([...common, "apiKey"].sort());
+    // aria2 and pyLoad delete no files: their cards offer no choice for it (core decisions D-04 and D-13)
+    expect(fields("deluge")).toEqual([...common, "deleteFiles", "password"].sort());
+    expect(fields("sabnzbd")).toEqual([...common, "apiKey", "deleteFiles"].sort());
     expect(fields("aria2")).toEqual([...common, "apiKey"].sort());
-    expect(fields("nzbget")).toEqual([...common, "password", "username"].sort());
-    expect(fields("downloadstation")).toEqual([...common, "password", "username"].sort());
-    expect(fields("transmission")).toEqual([...common, "needLogin", "password", "username"].sort());
-    expect(fields("qbittorrent")).toEqual([...common, "apiKey", "login", "password", "username"].sort());
+    expect(fields("nzbget")).toEqual([...common, "deleteFiles", "password", "username"].sort());
+    expect(fields("downloadstation")).toEqual([...common, "deleteFiles", "password", "username"].sort());
+    expect(fields("transmission")).toEqual([...common, "deleteFiles", "needLogin", "password", "username"].sort());
+    expect(fields("qbittorrent")).toEqual([...common, "apiKey", "deleteFiles", "login", "password", "username"].sort());
     expect(fields("pyload")).toEqual([...common, "apiKey", "login", "password", "username"].sort());
-    expect(fields("jdownloader")).toEqual([...common, "hintCloud", "mode", "password", "username"].sort());
+    expect(fields("jdownloader")).toEqual(
+      [...common, "deleteFiles", "hintCloud", "mode", "password", "username"].sort(),
+    );
     // the Freebox's token comes from the pairing: no field for it, only the switch to pair anew
-    expect(fields("freebox")).toEqual([...common, "pair"].sort());
+    expect(fields("freebox")).toEqual([...common, "deleteFiles", "pair"].sort());
+  });
+
+  it("offers the delete choice where the program can delete files, locked on while the settings page's switch is on", () => {
+    const choice = (deleteFilesAll: boolean): unknown => {
+      const item = itemsOf(programForm("qbittorrent", { ...ctx, deleteFilesAll })).deleteFiles as unknown;
+      const { label, help, disabled } = item as { label: unknown; help: unknown; disabled: unknown };
+      return { label, help, disabled };
+    };
+    expect(choice(false)).toEqual({
+      label: { key: "label_deleteFiles" },
+      help: { key: "dmDeleteFilesHelp" },
+      disabled: false,
+    });
+    expect(choice(true)).toEqual({
+      label: { key: "label_deleteFiles" },
+      help: { key: "dmDeleteFilesAll" },
+      disabled: true,
+    });
+    expect(itemsOf(programForm("rtorrent", { ...ctx, deleteFilesAll: true })).deleteFiles).toBeUndefined();
+    // a card of a program that deletes no files stores no choice
+    expect(formToRow("aria2", form({ deleteFiles: true }), "").deleteFiles).toBe(false);
+    expect(formToRow("deluge", form({ deleteFiles: true }), "").deleteFiles).toBe(true);
+    expect([emptyForm("deluge").deleteFiles, rowToForm({ type: "deluge" }).deleteFiles]).toEqual([false, false]);
   });
 
   it("shows the default port and path as placeholders", () => {

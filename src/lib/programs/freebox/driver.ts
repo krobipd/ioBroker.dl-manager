@@ -81,8 +81,8 @@ export class FbxDriver implements ProgramDriver {
         await this.setStatus(idOf(cmd.key), "downloading");
         return;
       case "remove":
-        // the task leaves the list, its files stay (documentation download: DELETE without `erase`)
-        await this.client.call("DELETE", `downloads/${idOf(cmd.key)}`);
+        // the task leaves the list; its files stay, or go with `/erase` (documentation download: delete, erase)
+        await this.client.call("DELETE", `downloads/${idOf(cmd.key)}${cmd.deleteFiles ? "/erase" : ""}`);
         return;
       case "add": {
         const added = await this.client.call("POST", "downloads/add", { form: { download_url: cmd.url } });

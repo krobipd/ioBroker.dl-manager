@@ -95,8 +95,8 @@ export class UtDriver implements ProgramDriver {
         );
         return;
       case "remove":
-        // remove takes the torrent out of the list and leaves its files; removedata would delete them
-        await this.client.call(`action=remove&${hashes([cmd.key])}`);
+        // remove takes the torrent out of the list and leaves its files; removedata deletes them (Sonarr UTorrentProxy.cs)
+        await this.client.call(`action=${cmd.deleteFiles ? "removedata" : "remove"}&${hashes([cmd.key])}`);
         return;
       case "add":
         // add-url names no hash and the torrent starts at once: while the adapter holds the program paused, the next

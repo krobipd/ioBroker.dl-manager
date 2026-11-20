@@ -34,7 +34,7 @@ export function commandLine(cmd: Command, name: (key: string) => string): string
     case "resume":
       return `resumed "${name(cmd.key)}"`;
     case "remove":
-      return `removed "${name(cmd.key)}" from the program's list`;
+      return `removed "${name(cmd.key)}" from the program's list${cmd.deleteFiles ? " with its files" : ""}`;
     case "add":
       return `added ${redact(cmd.url)}`;
     case "setSpeedLimit":

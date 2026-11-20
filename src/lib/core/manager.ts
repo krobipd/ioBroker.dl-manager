@@ -9,7 +9,7 @@ import { classify } from "./errors";
 import { programInfo } from "../programs/catalog";
 import { commandLine, startLine } from "./log-lines";
 import { loginHint } from "./login-hint";
-import type { DriverDeps, ProgramDriver, ProgramEntry } from "./model";
+import type { Command, DriverDeps, ProgramDriver, ProgramEntry } from "./model";
 import { redact } from "./redact";
 import { ProgramRunner, type RunnerDeps } from "./runner";
 import { computeSummary, idleSummary, REACHABILITY_IDS, type SummaryInput } from "./summary";
@@ -45,6 +45,8 @@ export interface ManagerOptions {
   limit: number;
   /** A link added while its program is paused resumes the program — off or absent: the pause holds and the link waits. */
   addResumes?: boolean;
+  /** Removing a download deletes its files too, at every program (core decision D-04) — off or absent: each card decides. */
+  deleteFiles?: boolean;
 }
 
 interface Running {
@@ -212,8 +214,11 @@ export class ProgramManager {
     }
     const name = row.cfg.name || row.id;
     if (!row.entry) {
-      const bare = { type: row.cfg.type, capabilities: new Set<never>(), extras: [] };
-      await new ProgramTree(this.a, row.id, name, bare, this.opts, row.scheme).ensureBareDevice();
+      // a type outside the catalog is no download program of this adapter: no device (D-14)
+      if (programInfo(row.cfg.type)) {
+        const bare = { type: row.cfg.type, capabilities: new Set<never>(), extras: [] };
+        await new ProgramTree(this.a, row.id, name, bare, this.opts, row.scheme).ensureBareDevice();
+      }
       this.a.log.warn(`${row.id}: ${row.problem} — check the program in the adapter settings`);
       return undefined;
     }
@@ -271,7 +276,8 @@ export class ProgramManager {
     if (!p) {
       return;
     }
-    const what = commandLine(route.cmd, key => p.runner.lastSnapshot?.items.find(i => i.key === key)?.name ?? key);
+    const cmd = route.cmd.kind === "remove" ? this.removal(route.program, route.cmd.key) : route.cmd;
+    const what = commandLine(cmd, key => p.runner.lastSnapshot?.items.find(i => i.key === key)?.name ?? key);
     // the program's own pause, as the last poll read it — the user chose whether a new link ends it
     const resume =
       route.cmd.kind === "add" &&
@@ -282,7 +288,7 @@ export class ProgramManager {
       if (resume) {
         await p.runner.command({ kind: "resumeAll" });
       }
-      await p.runner.command(route.cmd);
+      await p.runner.command(cmd);
       this.a.log.info(`${route.program}: ${what}${resume ? " — resumed the program" : ""}`);
       if (route.confirm) {
         // only write-only datapoints are confirmed here: a button falls back to false, `add` empties
@@ -291,6 +297,21 @@ export class ProgramManager {
     } catch (err: unknown) {
       this.a.log.warn(`${route.program}: ${what} failed — ${redact(errText(err))}`);
     }
+  }
+
+  /**
+   * How a download is removed (core decision D-04): with its files when the general switch says so, or the card's own
+   * choice where the card offers one (the program can delete files); a download the program cannot remove that way,
+   * its driver refuses (core decision D-13).
+   *
+   * @param id the program's device id
+   * @param key the download
+   * @returns the command
+   */
+  private removal(id: string, key: string): Command {
+    const row = this.rows.find(r => r.id === id);
+    const own = programInfo(row?.cfg.type ?? "")?.deletesFiles === true && row?.deleteFiles === true;
+    return { kind: "remove", key, deleteFiles: this.opts.deleteFiles === true || own };
   }
 
   /** Stops every runner (they mark their program Unknown) and marks the adapter disconnected. */

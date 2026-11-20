@@ -84,6 +84,7 @@ runDriverContract({
     setSpeedLimit: { method: "POST", path: "/jsonrpc", bodyContains: '"max-overall-download-limit":"2000000"' },
     setUploadLimit: { method: "POST", path: "/jsonrpc", bodyContains: '"max-overall-upload-limit":"2000000"' },
   },
+  removeWithFiles: "refused",
   isLoginCall: call => call.body.includes("token:bad"),
 });
 

@@ -86,8 +86,8 @@ export class TblDriver implements ProgramDriver {
         await this.client.send("PATCH", `/api/downloads/${cmd.key}`, { state: "resume" });
         return;
       case "remove":
-        // remove_data false keeps the files (downloads_endpoint.py delete_download)
-        await this.client.send("DELETE", `/api/downloads/${cmd.key}`, { remove_data: false });
+        // remove_data decides whether the files go too (downloads_endpoint.py delete_download)
+        await this.client.send("DELETE", `/api/downloads/${cmd.key}`, { remove_data: cmd.deleteFiles === true });
         return;
       case "add": {
         // the uri alone: hops and safe seeding are the installation's download defaults, as in Tribler's own dialog

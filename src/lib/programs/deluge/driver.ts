@@ -61,7 +61,8 @@ export class DlDriver implements ProgramDriver {
         await this.client.call("core.resume_torrent", [[cmd.key]]);
         return;
       case "remove":
-        await this.client.call("core.remove_torrent", [cmd.key, false]);
+        // the second argument, remove_data, deletes the torrent's data (core.py `remove_torrent`)
+        await this.client.call("core.remove_torrent", [cmd.key, cmd.deleteFiles === true]);
         return;
       case "add":
         await this.client.call(cmd.url.startsWith("magnet:") ? "core.add_torrent_magnet" : "core.add_torrent_url", [

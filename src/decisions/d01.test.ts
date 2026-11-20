@@ -1,8 +1,7 @@
-// Core decision D-01 (accepted 2026-10-22): one adapter for every download program — JDownloader, qBittorrent,
-// Transmission, Deluge, SABnzbd, NZBGet, aria2 and pyLoad run through this adapter, each as a driver behind the same
-// interface; a new program is one more driver, the core stays. krobi 2026-09-28 21:10: "of course one adapter that can
-// do all of them, not several — that was always the concept" · 21:13: "it is basically about the right structure, so
-// that new downloaders can simply be added later".
+// Core decision D-01 (accepted 2026-10-22, its program list dropped 2026-11-19 18:54): one adapter for every download
+// program; a new program joins as one more driver behind the same interface, the core stays. krobi 2026-09-28 21:10:
+// "of course one adapter that can do all of them, not several — that was always the concept" · 21:13: "it is basically
+// about the right structure, so that new downloaders can simply be added later".
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -30,22 +29,6 @@ const DEPS: DriverDeps = {
 };
 
 describe("D-01 one adapter for every download program", () => {
-  it("knows all eight programs", () => {
-    const labels = new Set(CATALOG.map(p => p.label));
-    expect([...labels]).toEqual(
-      expect.arrayContaining([
-        "JDownloader 2",
-        "qBittorrent",
-        "Transmission",
-        "Deluge",
-        "SABnzbd",
-        "NZBGet",
-        "aria2",
-        "pyLoad",
-      ]),
-    );
-  });
-
   it("reaches every program through a driver behind the one driver interface", () => {
     expect(PROGRAMS.map(p => p.type)).toEqual(CATALOG.map(p => p.type));
     for (const info of CATALOG) {

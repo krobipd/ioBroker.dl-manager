@@ -115,7 +115,8 @@ export class QbDriver implements ProgramDriver {
         await this.client.post(start, { hashes: cmd.key });
         return;
       case "remove":
-        await this.client.post("torrents/delete", { hashes: cmd.key, deleteFiles: "false" });
+        // deleteFiles deletes what qBittorrent loaded for the torrent, finished or not (WebUI API `torrents/delete`)
+        await this.client.post("torrents/delete", { hashes: cmd.key, deleteFiles: cmd.deleteFiles ? "true" : "false" });
         return;
       case "add": {
         const held = (await this.pause.isPaused()) && !this.hasSessionPause();

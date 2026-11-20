@@ -114,6 +114,7 @@ runDriverContract({
       bodyContains: '"option":"limit_speed","value":true',
     },
   },
+  removeWithFiles: "refused",
   isLoginCall: call => call.headers["x-api-key"] === "bad",
 });
 

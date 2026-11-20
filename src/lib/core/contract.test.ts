@@ -23,5 +23,6 @@ runDriverContract({
     remove: { method: "POST", path: "/remove", bodyContains: '"id":"a1b2c3d4e5"' },
     add: { method: "POST", path: "/add", bodyContains: "magnet:" },
   },
+  removeWithFiles: { method: "POST", path: "/remove", bodyContains: '"deleteFiles":true' },
   isLoginCall: call => call.path === "/login",
 });

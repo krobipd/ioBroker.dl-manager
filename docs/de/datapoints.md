@@ -93,22 +93,22 @@ Ein Download ist, was du hinzugefügt hast: ein JDownloader- oder pyLoad-Paket, 
 aria2-Download, eine Aufgabe von Download Station oder der Freebox. Der Kanal trägt den Namen des Downloads, und jeder Datenpunkt-Name beginnt damit
 (`ubuntu.iso: Fortschritt`), damit auch Listen, die nur den Namen zeigen, zwei Downloads auseinanderhalten.
 
-| Datenpunkt    | Typ           | Zugriff | Bedeutung                                                                                                                                                          |
-| ------------- | ------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `status`      | string        | r       | Einer der Status-Werte unten.                                                                                                                                      |
-| `progress`    | number (%)    | r       | Fortschritt.                                                                                                                                                       |
-| `size`        | number (GB)   | r       | Größe; leer, solange das Programm sie noch nicht kennt (ein Magnet ohne Metadaten).                                                                                |
-| `downloaded`  | number (GB)   | r       | Heruntergeladen.                                                                                                                                                   |
-| `speed`       | number (MB/s) | r       | Geschwindigkeit.                                                                                                                                                   |
-| `uploadSpeed` | number (MB/s) | r       | Upload-Geschwindigkeit.                                                                                                                                            |
-| `ratio`       | number        | r       | Hochgeladene Menge geteilt durch heruntergeladene Menge; `-1` = unendlich (∞).                                                                                     |
-| `eta`         | number (s)    | r       | Sekunden, bis der Download fertig ist; leer, solange ein Torrent weiterverteilt wird oder das Programm es nicht sagen kann.                                        |
-| `added`       | number        | r       | Wann der Download hinzugefügt wurde.                                                                                                                               |
-| `finished`    | number        | r       | Wann der Download fertig wurde.                                                                                                                                    |
-| `category`    | string        | r       | Die Kategorie oder das Label, das du dem Download im Programm gegeben hast.                                                                                        |
-| `error`       | string        | r       | Fehlermeldung des Programms; leer, solange alles in Ordnung ist.                                                                                                   |
-| `paused`      | boolean       | rw      | Wahr hält diesen Download an, falsch setzt ihn fort.                                                                                                               |
-| `remove`      | boolean       | w       | Entfernt den Download aus der Liste des Programms; die Dateien bleiben erhalten — nur Download Station verwirft die Teildaten einer Aufgabe, die nicht fertig ist. |
+| Datenpunkt    | Typ           | Zugriff | Bedeutung                                                                                                                                                         |
+| ------------- | ------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `status`      | string        | r       | Einer der Status-Werte unten.                                                                                                                                     |
+| `progress`    | number (%)    | r       | Fortschritt.                                                                                                                                                      |
+| `size`        | number (GB)   | r       | Größe; leer, solange das Programm sie noch nicht kennt (ein Magnet ohne Metadaten).                                                                               |
+| `downloaded`  | number (GB)   | r       | Heruntergeladen.                                                                                                                                                  |
+| `speed`       | number (MB/s) | r       | Geschwindigkeit.                                                                                                                                                  |
+| `uploadSpeed` | number (MB/s) | r       | Upload-Geschwindigkeit.                                                                                                                                           |
+| `ratio`       | number        | r       | Hochgeladene Menge geteilt durch heruntergeladene Menge; `-1` = unendlich (∞).                                                                                    |
+| `eta`         | number (s)    | r       | Sekunden, bis der Download fertig ist; leer, solange ein Torrent weiterverteilt wird oder das Programm es nicht sagen kann.                                       |
+| `added`       | number        | r       | Wann der Download hinzugefügt wurde.                                                                                                                              |
+| `finished`    | number        | r       | Wann der Download fertig wurde.                                                                                                                                   |
+| `category`    | string        | r       | Die Kategorie oder das Label, das du dem Download im Programm gegeben hast.                                                                                       |
+| `error`       | string        | r       | Fehlermeldung des Programms; leer, solange alles in Ordnung ist.                                                                                                  |
+| `paused`      | boolean       | rw      | Wahr hält diesen Download an, falsch setzt ihn fort.                                                                                                              |
+| `remove`      | boolean       | w       | Entfernt den Download aus der Liste des Programms; mit dem Schalter „Beim Entfernen auch die Dateien löschen“ löscht das Programm auch, was es dafür geladen hat. |
 
 Jedes Programm hat `status`, `progress`, `size`, `downloaded` und `remove`. Die übrigen:
 

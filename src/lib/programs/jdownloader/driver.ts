@@ -166,7 +166,14 @@ export class JdDriver implements ProgramDriver {
         await this.api.call("/downloadsV2/resumeLinks", [[], pkg(cmd.key)]);
         return;
       case "remove":
-        await this.api.call("/downloadsV2/removeLinks", [[], pkg(cmd.key)]);
+        // cleanup with REMOVE_LINKS_AND_DELETE_FILES deletes the package's finished files and its .part files
+        // (DownloadsAPIV2Impl.cleanup → PackageControllerUtils.cleanup; DownloadWatchDog, PluginForHost)
+        await this.api.call(
+          cmd.deleteFiles ? "/downloadsV2/cleanup" : "/downloadsV2/removeLinks",
+          cmd.deleteFiles
+            ? [[], pkg(cmd.key), "DELETE_ALL", "REMOVE_LINKS_AND_DELETE_FILES", "SELECTED"]
+            : [[], pkg(cmd.key)],
+        );
         return;
       case "add":
         await this.add(cmd.url);

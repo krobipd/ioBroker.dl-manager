@@ -148,7 +148,8 @@ async function fbxServer(state: FbxState = {}): Promise<ContractServer> {
       statusNow.set(task[1], status);
       return answer("commands", "put");
     }
-    if (task && call.method === "DELETE") {
+    // erase answers as the plain delete does (documentation download: delete, erase)
+    if ((task || /^downloads\/\d+\/erase$/.test(resource)) && call.method === "DELETE") {
       return answer("commands", "delete");
     }
     switch (`${call.method} ${resource}`) {
@@ -206,6 +207,7 @@ runDriverContract({
     setSpeedLimit: { method: "PUT", path: `${API}downloads/config/`, bodyContains: '"rx_rate":2000000' },
     setUploadLimit: { method: "PUT", path: `${API}downloads/config/`, bodyContains: '"tx_rate":2000000' },
   },
+  removeWithFiles: { method: "DELETE", path: `${API}downloads/341/erase` },
   isLoginCall: isLogin,
 });
 

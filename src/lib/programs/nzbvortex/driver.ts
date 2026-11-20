@@ -81,8 +81,8 @@ export class NvDriver implements ProgramDriver {
         await this.client.get(`nzb/${idOf(cmd.key)}/${cmd.kind}`);
         return;
       case "remove":
-        // `cancel` takes the NZB out of the queue and leaves its files (documentation p. 20)
-        await this.client.get(`nzb/${idOf(cmd.key)}/cancel`);
+        // `cancel` takes the NZB out of the queue and leaves its files, `cancelDelete` deletes them (documentation p. 20)
+        await this.client.get(`nzb/${idOf(cmd.key)}/${cmd.deleteFiles ? "cancelDelete" : "cancel"}`);
         return;
       case "add": {
         // a GET with the link in the query, as NZBVortex's web interface and its PHP example send it

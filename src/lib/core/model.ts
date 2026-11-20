@@ -126,7 +126,8 @@ export type Command =
   | { kind: "resumeAll" }
   | { kind: "pause"; key: string }
   | { kind: "resume"; key: string }
-  | { kind: "remove"; key: string }
+  /** `deleteFiles`: the program deletes the download's files too (core decision D-04) — absent: they stay. */
+  | { kind: "remove"; key: string; deleteFiles?: boolean }
   | { kind: "add"; url: string }
   | { kind: "setSpeedLimit"; bps: number }
   | { kind: "setUploadLimit"; bps: number }

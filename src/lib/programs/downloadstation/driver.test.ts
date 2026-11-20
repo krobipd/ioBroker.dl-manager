@@ -2,7 +2,7 @@ import { runDriverContract, type ContractServer } from "../../../../test/helpers
 import { startFixtureServer, type FixtureAnswer, type RecordedCall } from "../../../../test/helpers/fixture-server";
 import { loadFixture } from "../../../../test/helpers/fixtures";
 import { memoryPauseStore } from "../../core/emulated-pause";
-import { AuthError, ProtocolError, UnreachableError } from "../../core/errors";
+import { AuthError, ProtocolError, RefusedError, UnreachableError } from "../../core/errors";
 import type { ProgramConfig } from "../../core/model";
 import { DsDriver } from "./driver";
 import { mapDsStatus, statusTable } from "./map";
@@ -181,10 +181,11 @@ runDriverContract({
     resumeAll: { method: "POST", path: TASK, bodyContains: "method=resume" },
     pause: { method: "POST", path: TASK, bodyContains: "method=pause" },
     resume: { method: "POST", path: TASK, bodyContains: "method=resume" },
-    remove: { method: "POST", path: TASK, bodyContains: "method=delete" },
+    remove: "refused",
     add: { method: "POST", path: TASK, bodyContains: "method=create" },
     setUploadLimit: { method: "POST", path: "/webapi/DownloadStation/info.cgi", bodyContains: "bt_max_upload=1953" },
   },
+  removeWithFiles: { method: "POST", path: TASK, bodyContains: ["method=delete", "force_complete=false"] },
   isLoginCall: isLogin,
 });
 
@@ -341,13 +342,30 @@ describe("Download Station driver", () => {
     await expect(driver.command({ kind: "pause", key: "dbid_2" })).rejects.toThrow(/dbid_2 \(error 405\)/);
   });
 
-  it("removes with force_complete=false and adds one link with its commas escaped", async () => {
+  it("removes a finished task keeping its files and an unfinished one with them, refuses the rest, adds one link", async () => {
     await start();
     await driver.poll();
-    await driver.command({ kind: "remove", key: "dbid_1" });
+    const deletes = (): string[] =>
+      server.calls
+        .map(formOf)
+        .filter(f => f.get("method") === "delete")
+        .map(f => `${f.get("id")} ${f.get("force_complete")}`);
+    // dbid_1 loads, dbid_2 is finished: Download Station discards what dbid_1 loaded and keeps dbid_2's files
+    await expect(driver.command({ kind: "remove", key: "dbid_1" })).rejects.toThrow(
+      new RefusedError("Download Station deletes what an unfinished download loaded"),
+    );
+    await expect(driver.command({ kind: "remove", key: "dbid_2", deleteFiles: true })).rejects.toThrow(
+      new RefusedError("Download Station does not delete the files of a finished download"),
+    );
+    await expect(driver.command({ kind: "remove", key: "dbid_9", deleteFiles: true })).rejects.toThrow(
+      new RefusedError("Download Station's last answer does not list this download"),
+    );
+    expect(deletes()).toEqual([]);
+    await driver.command({ kind: "remove", key: "dbid_1", deleteFiles: true });
+    await driver.command({ kind: "remove", key: "dbid_2" });
+    expect(deletes()).toEqual(["dbid_1 false", "dbid_2 false"]);
     await driver.command({ kind: "add", url: "http://example.com/a,b" });
     const sent = server.calls.map(formOf);
-    expect(sent.find(f => f.get("method") === "delete")?.get("force_complete")).toBe("false");
     expect(sent.find(f => f.get("method") === "create")?.get("uri")).toBe("http://example.com/a\\,b");
   });
 

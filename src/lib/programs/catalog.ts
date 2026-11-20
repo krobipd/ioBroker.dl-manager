@@ -73,13 +73,43 @@ export interface ProgramInfo {
   readonly login: Login;
   /** The program answers over HTTPS out of the box — a new settings dialog starts with HTTPS on. */
   readonly tls?: boolean;
+  /**
+   * The program can delete the files of a download it removes, through its API (core decisions D-04 and D-13) — its card
+   * offers the switch. aria2, pyLoad and rTorrent remove only the entry; which download a program cannot remove as the
+   * switch says, its driver refuses.
+   */
+  readonly deletesFiles: boolean;
 }
 
 /** THE list of program types, in the order the settings dialog offers them. */
 export const CATALOG: readonly ProgramInfo[] = [
-  { type: "jdownloader", label: "JDownloader 2", family: "jdownloader", port: 3128, path: "", login: "none" },
-  { type: "jdownloader-cloud", label: "JDownloader 2", family: "jdownloader", port: 0, path: "", login: "account" },
-  { type: "qbittorrent", label: "qBittorrent", family: "torrent", port: 8080, path: "", login: "userOrKey" },
+  {
+    type: "jdownloader",
+    label: "JDownloader 2",
+    family: "jdownloader",
+    port: 3128,
+    path: "",
+    login: "none",
+    deletesFiles: true,
+  },
+  {
+    type: "jdownloader-cloud",
+    label: "JDownloader 2",
+    family: "jdownloader",
+    port: 0,
+    path: "",
+    login: "account",
+    deletesFiles: true,
+  },
+  {
+    type: "qbittorrent",
+    label: "qBittorrent",
+    family: "torrent",
+    port: 8080,
+    path: "",
+    login: "userOrKey",
+    deletesFiles: true,
+  },
   {
     type: "transmission",
     label: "Transmission",
@@ -87,22 +117,63 @@ export const CATALOG: readonly ProgramInfo[] = [
     port: 9091,
     path: "/transmission/rpc",
     login: "optionalUser",
+    deletesFiles: true,
   },
-  { type: "deluge", label: "Deluge", family: "torrent", port: 8112, path: "", login: "password" },
-  { type: "sabnzbd", label: "SABnzbd", family: "usenet", port: 8080, path: "", login: "apiKey" },
-  { type: "nzbget", label: "NZBGet", family: "usenet", port: 6789, path: "", login: "user" },
-  { type: "aria2", label: "aria2", family: "aria2", port: 6800, path: "/jsonrpc", login: "secret" },
-  { type: "pyload", label: "pyLoad", family: "pyload", port: 8000, path: "", login: "keyOrUser" },
-  { type: "rqbit", label: "rqbit", family: "torrent", port: 3030, path: "", login: "user" },
-  { type: "rtorrent", label: "rTorrent", family: "torrent", port: 8080, path: "/RPC2", login: "user" },
-  { type: "tribler", label: "Tribler", family: "torrent", port: 20100, path: "", login: "apiKey" },
-  { type: "flood", label: "Flood", family: "torrent", port: 3000, path: "", login: "user" },
+  { type: "deluge", label: "Deluge", family: "torrent", port: 8112, path: "", login: "password", deletesFiles: true },
+  { type: "sabnzbd", label: "SABnzbd", family: "usenet", port: 8080, path: "", login: "apiKey", deletesFiles: true },
+  { type: "nzbget", label: "NZBGet", family: "usenet", port: 6789, path: "", login: "user", deletesFiles: true },
+  {
+    type: "aria2",
+    label: "aria2",
+    family: "aria2",
+    port: 6800,
+    path: "/jsonrpc",
+    login: "secret",
+    deletesFiles: false,
+  },
+  { type: "pyload", label: "pyLoad", family: "pyload", port: 8000, path: "", login: "keyOrUser", deletesFiles: false },
+  { type: "rqbit", label: "rqbit", family: "torrent", port: 3030, path: "", login: "user", deletesFiles: true },
+  {
+    type: "rtorrent",
+    label: "rTorrent",
+    family: "torrent",
+    port: 8080,
+    path: "/RPC2",
+    login: "user",
+    deletesFiles: false,
+  },
+  { type: "tribler", label: "Tribler", family: "torrent", port: 20100, path: "", login: "apiKey", deletesFiles: true },
+  { type: "flood", label: "Flood", family: "torrent", port: 3000, path: "", login: "user", deletesFiles: true },
   // the Web Remote plugin (xmwebui) speaks Transmission's RPC under Transmission's path (Sonarr `Vuze : TransmissionBase`)
-  { type: "vuze", label: "Vuze", family: "torrent", port: 9091, path: "/transmission/rpc", login: "optionalUser" },
+  {
+    type: "vuze",
+    label: "Vuze",
+    family: "torrent",
+    port: 9091,
+    path: "/transmission/rpc",
+    login: "optionalUser",
+    deletesFiles: true,
+  },
   // the Web UI API under /gui/ (Sonarr UTorrentProxy.cs: resource "/gui/", port 8080 as µTorrent Server's ut_webui_port)
-  { type: "utorrent", label: "µTorrent", family: "torrent", port: 8080, path: "/gui", login: "user" },
+  {
+    type: "utorrent",
+    label: "µTorrent",
+    family: "torrent",
+    port: 8080,
+    path: "/gui",
+    login: "user",
+    deletesFiles: true,
+  },
   // JSON-RPC under <root>api (Sonarr HadoukenProxy.cs; Hadouken 5.2.0 hadouken.json.template: port 7070, root "/")
-  { type: "hadouken", label: "Hadouken", family: "torrent", port: 7070, path: "/api", login: "user" },
+  {
+    type: "hadouken",
+    label: "Hadouken",
+    family: "torrent",
+    port: 7070,
+    path: "/api",
+    login: "user",
+    deletesFiles: true,
+  },
   // Synology's Web API below /webapi/ on DSM's own port (Sonarr DownloadStationSettings.cs: port 5000, no URL base)
   {
     type: "downloadstation",
@@ -111,13 +182,32 @@ export const CATALOG: readonly ProgramInfo[] = [
     port: 5000,
     path: "",
     login: "requiredUser",
+    deletesFiles: true,
   },
   // HTTPS on port 4321 with a self-signed certificate out of the box (Sonarr NzbVortexSettings.cs and NzbVortexProxy.cs;
   // Network API documentation p. 6), the API below /api/
-  { type: "nzbvortex", label: "NZBVortex", family: "usenet", port: 4321, path: "", login: "apiKey", tls: true },
+  {
+    type: "nzbvortex",
+    label: "NZBVortex",
+    family: "usenet",
+    port: 4321,
+    path: "",
+    login: "apiKey",
+    tls: true,
+    deletesFiles: true,
+  },
   // Freebox OS: HTTPS at mafreebox.freebox.fr with a certificate of Free's own CA, the API below /api/v8/ (documentation,
   // index; v8 carries every download call of API 16.0, the objects are those of v1) — plain HTTP answers on port 80
-  { type: "freebox", label: "Freebox", family: "freebox", port: 443, path: "/api/v8", login: "pairing", tls: true },
+  {
+    type: "freebox",
+    label: "Freebox",
+    family: "freebox",
+    port: 443,
+    path: "/api/v8",
+    login: "pairing",
+    tls: true,
+    deletesFiles: true,
+  },
 ];
 
 /**

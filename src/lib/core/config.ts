@@ -16,6 +16,8 @@ export interface ProgramRow {
   cfg: ProgramConfig;
   /** Why the row cannot run, empty when it can (always empty for a disabled row). */
   problem: string;
+  /** Its own choice to delete a download's files when removing it (core decision D-04) — the general switch overrules it. */
+  deleteFiles: boolean;
   /** The program's registry entry — present exactly when the row is enabled and can run. */
   entry?: ProgramEntry;
 }
@@ -118,7 +120,15 @@ export function parsePrograms(raw: unknown, find: (type: string) => ProgramEntry
       }
     }
     seen.add(id);
-    rows.push({ id, scheme: o.idPending !== true, enabled, cfg, problem, ...(entry && !problem ? { entry } : {}) });
+    rows.push({
+      id,
+      scheme: o.idPending !== true,
+      enabled,
+      cfg,
+      problem,
+      deleteFiles: o.deleteFiles === true,
+      ...(entry && !problem ? { entry } : {}),
+    });
   }
   return rows;
 }

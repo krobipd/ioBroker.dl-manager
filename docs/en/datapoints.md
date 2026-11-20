@@ -92,22 +92,22 @@ Download Station or the Freebox. The channel
 carries the download's name, and every datapoint's name starts with it (`ubuntu.iso: Progress`), so lists that show
 only the name still tell two downloads apart.
 
-| Datapoint     | Type          | Access | Meaning                                                                                                                                                 |
-| ------------- | ------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `status`      | string        | r      | One of the status values below.                                                                                                                         |
-| `progress`    | number (%)    | r      | Progress.                                                                                                                                               |
-| `size`        | number (GB)   | r      | Size; empty while the program does not know it yet (a magnet without metadata).                                                                         |
-| `downloaded`  | number (GB)   | r      | Downloaded.                                                                                                                                             |
-| `speed`       | number (MB/s) | r      | Speed.                                                                                                                                                  |
-| `uploadSpeed` | number (MB/s) | r      | Upload speed.                                                                                                                                           |
-| `ratio`       | number        | r      | Uploaded amount divided by downloaded amount; `-1` = infinite (∞).                                                                                      |
-| `eta`         | number (s)    | r      | Seconds until the download is complete; empty while a torrent seeds or when the program cannot tell.                                                    |
-| `added`       | number        | r      | When the download was added.                                                                                                                            |
-| `finished`    | number        | r      | When the download finished.                                                                                                                             |
-| `category`    | string        | r      | The category or label you gave the download in the program.                                                                                             |
-| `error`       | string        | r      | Error message of the program; empty while all is well.                                                                                                  |
-| `paused`      | boolean       | rw     | True pauses this download, false resumes it.                                                                                                            |
-| `remove`      | boolean       | w      | Removes the download from the program's list; the files stay on disk — Download Station alone discards the partial data of a task that is not finished. |
+| Datapoint     | Type          | Access | Meaning                                                                                                                                            |
+| ------------- | ------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `status`      | string        | r      | One of the status values below.                                                                                                                    |
+| `progress`    | number (%)    | r      | Progress.                                                                                                                                          |
+| `size`        | number (GB)   | r      | Size; empty while the program does not know it yet (a magnet without metadata).                                                                    |
+| `downloaded`  | number (GB)   | r      | Downloaded.                                                                                                                                        |
+| `speed`       | number (MB/s) | r      | Speed.                                                                                                                                             |
+| `uploadSpeed` | number (MB/s) | r      | Upload speed.                                                                                                                                      |
+| `ratio`       | number        | r      | Uploaded amount divided by downloaded amount; `-1` = infinite (∞).                                                                                 |
+| `eta`         | number (s)    | r      | Seconds until the download is complete; empty while a torrent seeds or when the program cannot tell.                                               |
+| `added`       | number        | r      | When the download was added.                                                                                                                       |
+| `finished`    | number        | r      | When the download finished.                                                                                                                        |
+| `category`    | string        | r      | The category or label you gave the download in the program.                                                                                        |
+| `error`       | string        | r      | Error message of the program; empty while all is well.                                                                                             |
+| `paused`      | boolean       | rw     | True pauses this download, false resumes it.                                                                                                       |
+| `remove`      | boolean       | w      | Removes the download from the program's list; with the switch "Also delete the files when removing" the program deletes what it loaded for it too. |
 
 Every program has `status`, `progress`, `size`, `downloaded` and `remove`. The others:
 

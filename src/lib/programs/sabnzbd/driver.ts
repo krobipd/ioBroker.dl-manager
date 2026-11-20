@@ -1,4 +1,4 @@
-import { AuthError, ProtocolError } from "../../core/errors";
+import { AuthError, ProtocolError, RefusedError } from "../../core/errors";
 import type {
   Capability,
   Command,
@@ -16,6 +16,12 @@ import { toSnapshot } from "./map";
 
 /** History entries the driver mirrors — without a limit SABnzbd applies its own (short) history_limit. */
 const HISTORY_LIMIT = "1000";
+
+/**
+ * History states a removal reaches: a job waiting for post-processing, a completed and a failed one. A job SABnzbd
+ * post-processes right now it does not remove at all (postproc.py `delete`, SABnzbd 4.5.5 and 5.1.3).
+ */
+const REMOVABLE = new Set(["Queued", "Completed", "Failed"]);
 
 /** Retry of a failed job (a new nzo_id: the old channel goes, a new one comes). */
 const EXTRAS: readonly ExtraDefinition[] = [RETRY_EXTRA];
@@ -76,6 +82,36 @@ export class SabDriver implements ProgramDriver {
     return toSnapshot(queue, this.history, m => this.deps.log.debug(m), ppPause);
   }
 
+  /**
+   * Removes a job (core decisions D-04 and D-13). Without `del_files` SABnzbd keeps what it loaded; with it, it deletes a
+   * queued job's data and a failed job's folder, never a completed job's files (api.py `_api_queue_delete`,
+   * `_api_history_delete`; database.py `get_incomplete_path`; nzbstuff.py / nzb/object.py `purge_data`; SABnzbd 4.5.5
+   * and 5.1.3).
+   *
+   * @param key the job's nzo_id
+   * @param deleteFiles the files go too
+   */
+  private async remove(key: string, deleteFiles: boolean): Promise<void> {
+    const del: Record<string, string> = deleteFiles ? { del_files: "1" } : {};
+    if (this.inQueue.has(key)) {
+      await this.client.call({ mode: "queue", name: "delete", value: key, ...del });
+    } else {
+      const entry = this.history.find(e => (e as Record<string, unknown>).nzo_id === key) as Record<string, unknown>;
+      const status = entry ? asText(entry.status) : undefined;
+      if (status === undefined) {
+        throw new RefusedError("SABnzbd's last answer does not list this download");
+      }
+      if (!REMOVABLE.has(status)) {
+        throw new RefusedError("SABnzbd removes no download while it post-processes it");
+      }
+      if (deleteFiles && status === "Completed") {
+        throw new RefusedError("SABnzbd does not delete the files of a finished download");
+      }
+      await this.client.call({ mode: "history", name: "delete", value: key, ...del });
+    }
+    this.historyUpdate = "0";
+  }
+
   /** @returns the version, after SABnzbd confirmed the key as its full API key (`mode=auth`, no warning on a miss) */
   public async test(): Promise<string> {
     const auth = (await this.client.callWithoutKey({ mode: "auth", key: this.client.apiKey })).auth;
@@ -104,12 +140,7 @@ export class SabDriver implements ProgramDriver {
         await this.client.call({ mode: "queue", name: cmd.kind, value: cmd.key });
         return;
       case "remove":
-        await this.client.call(
-          this.inQueue.has(cmd.key)
-            ? { mode: "queue", name: "delete", value: cmd.key }
-            : { mode: "history", name: "delete", value: cmd.key },
-        );
-        this.historyUpdate = "0";
+        await this.remove(cmd.key, cmd.deleteFiles === true);
         return;
       case "add":
         await this.client.call({ mode: "addurl", name: cmd.url });

@@ -1,5 +1,5 @@
 import { errText } from "../../err-text";
-import { ProtocolError } from "../../core/errors";
+import { ProtocolError, RefusedError } from "../../core/errors";
 import { ProgramVersion } from "../../core/version";
 import type { Capability, Command, ProgramDriver, ProgramSnapshot, DriverDeps, ProgramConfig } from "../../core/model";
 import { PyClient } from "./client";
@@ -80,7 +80,11 @@ export class PyDriver implements ProgramDriver {
   public async command(cmd: Command): Promise<void> {
     switch (cmd.kind) {
       case "remove":
-        // only the list entry — pyLoad keeps the files
+        // only the list entry — pyLoad keeps the files (file_manager.py `remove_package`): a removal that is to delete
+        // them is refused
+        if (cmd.deleteFiles) {
+          throw new RefusedError("pyLoad deletes no files");
+        }
         await this.client.post("delete_packages", { package_ids: [Number(cmd.key)] });
         return;
       case "add": {

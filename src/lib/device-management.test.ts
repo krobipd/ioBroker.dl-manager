@@ -637,6 +637,23 @@ describe("editing a program", () => {
     expect(host.written[0][0]).not.toHaveProperty("key");
   });
 
+  it("shows the delete choice locked on while the settings page's switch is on, and keeps the card's own", async () => {
+    for (const all of [true, false]) {
+      const { dm, host } = make([{ ...qbRow, deleteFiles: false }]);
+      host.deleteFilesAll = () => all;
+      const [qb] = await cards(dm);
+      // the dialog answers what it shows: on while the switch is on
+      const ctx = context({ name: "NAS", host: "h1", username: "admin", password: "pw", deleteFiles: true });
+      await action(qb, "edit").handler("qbittorrent-nas", ctx);
+      const [schema, opts] = ctx.showForm.mock.calls[0] as [
+        { items: Record<string, { disabled?: boolean }> },
+        { data: Record<string, unknown> },
+      ];
+      expect([all, schema.items.deleteFiles.disabled, opts.data.deleteFiles]).toEqual([all, all, all]);
+      expect([all, host.written[0][0].deleteFiles]).toEqual([all, !all]);
+    }
+  });
+
   it("keeps the ID when a JDownloader switches to My.JDownloader — the device stays where it is", async () => {
     const { dm, host } = make([jdRow]);
     const [jd] = await cards(dm);

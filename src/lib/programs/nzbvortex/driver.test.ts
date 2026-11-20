@@ -107,13 +107,14 @@ async function nvServer(state: NvState = {}): Promise<ContractServer> {
       lapse = false;
       return state.lapseAs200 ? { body: { result: "not_logged_in" } } : answer("auth", "not-logged-in");
     }
-    const command = /^\/api\/nzb\/(\d+)\/(pause|resume|cancel)$/.exec(call.path);
+    // cancelDelete answers as cancel does (Network API documentation p. 20)
+    const command = /^\/api\/nzb\/(\d+)\/(pause|resume|cancel|cancelDelete)$/.exec(call.path);
     if (command) {
       const [, id, kind] = command;
       if (kind === "pause" && state.refusePause?.includes(id)) {
         return { body: { result: "failed" } };
       }
-      if (kind !== "cancel") {
+      if (!kind.startsWith("cancel")) {
         pausedNow.set(id, kind === "pause");
       }
       return answer("commands", "ok");
@@ -168,6 +169,7 @@ runDriverContract({
     add: { method: "GET", path: "/api/nzb/add", bodyContains: "url=magnet" },
     setSpeedLimit: { method: "GET", path: "/api/speedlimit/enable", bodyContains: "speed=1953" },
   },
+  removeWithFiles: { method: "GET", path: "/api/nzb/11/cancelDelete" },
   isLoginCall: isLogin,
 });
 

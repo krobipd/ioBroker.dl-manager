@@ -93,15 +93,30 @@ program that quickly adds up to thousands, which puts a load on the ioBroker dat
 admin down. The settings page shows a warning then, and the log warns once per program when more than 200 downloads
 actually stand in the tree.
 
-`remove` on a download takes it off the program's list; the files stay on disk. Only Download Station discards the
-partial data of a task that is not finished yet — it does so on its own, whatever the adapter asks.
-
 ## A new link while a program is paused
 
 **A new link resumes a paused program** (off by default) decides what a link does that you write to a program's `add`
 while the program is paused. Off, the pause holds for every program and the link waits until you resume it; JDownloader,
 which starts on its own for every new link, is paused again right away. On, adding the link resumes the program first,
 so all its downloads continue.
+
+## Removing a download
+
+`remove` on a download takes it off its program's list. Whether the program also deletes what it loaded for the
+download — a finished download's files, an aborted or failed one's data so far — the switch **Also delete the files when
+removing** decides, off by default. It sits on the settings page for every program; while it is off there, the card of
+each program that can delete files has the same switch for that program alone, and while it is on, every card follows
+it. The datapoints of the download are not part of it — the settings under _Deleting datapoints_ decide them.
+
+A program that cannot remove a download the way the switch says keeps it in its list; `remove` stays unconfirmed and
+the log says why:
+
+| Program                 | What it cannot do                                                                     |
+| ----------------------- | ------------------------------------------------------------------------------------- |
+| aria2, pyLoad, rTorrent | delete files — their cards have no switch                                             |
+| SABnzbd                 | delete the files of a finished download; remove a download while it post-processes it |
+| NZBGet                  | delete the files of a finished download; keep the files of a failed or deleted one    |
+| Download Station        | delete the files of a finished download; keep what an unfinished one loaded           |
 
 ## Deleting datapoints
 

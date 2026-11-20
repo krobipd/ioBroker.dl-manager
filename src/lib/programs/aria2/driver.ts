@@ -2,7 +2,7 @@ import { LOCAL_PROGRAMS } from "../../api-limits";
 import type { CallPlace } from "../../core/call-budget";
 import { errText } from "../../err-text";
 import { EmulatedPause, memoryPauseStore } from "../../core/emulated-pause";
-import { ProtocolError } from "../../core/errors";
+import { ProtocolError, RefusedError } from "../../core/errors";
 import type { Capability, Command, ProgramDriver, ProgramSnapshot, DriverDeps, ProgramConfig } from "../../core/model";
 import { AriaClient, nodeSocket, type SocketFactory } from "./client";
 import { toSnapshot } from "./map";
@@ -87,6 +87,10 @@ export class AriaDriver implements ProgramDriver {
         await this.client.call("aria2.unpause", [cmd.key]);
         return;
       case "remove":
+        // aria2's RPC deletes no file (RpcMethodFactory.cc): a removal that is to delete the files is refused
+        if (cmd.deleteFiles) {
+          throw new RefusedError("aria2 deletes no files");
+        }
         // a finished or failed one only leaves the result list; a running one is removed (files stay)
         await this.client.call(this.stopped.has(cmd.key) ? "aria2.removeDownloadResult" : "aria2.remove", [cmd.key]);
         return;

@@ -188,6 +188,7 @@ runDriverContract({
       bodyContains: callText("throttle.global_up.max_rate.set", "", 2e6),
     },
   },
+  removeWithFiles: "refused",
   isLoginCall: call => rejected.has(call),
 });
 

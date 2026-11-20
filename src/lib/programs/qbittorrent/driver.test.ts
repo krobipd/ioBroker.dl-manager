@@ -134,6 +134,7 @@ runDriverContract({
     setUploadLimit: { method: "POST", path: "/api/v2/transfer/setUploadLimit", bodyContains: "limit=2000000" },
     setAltSpeed: { method: "POST", path: "/api/v2/transfer/setSpeedLimitsMode", bodyContains: "mode=1" },
   },
+  removeWithFiles: { method: "POST", path: "/api/v2/torrents/delete", bodyContains: "deleteFiles=true" },
   isLoginCall: call => call.path === "/api/v2/auth/login",
 });
 

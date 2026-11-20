@@ -129,6 +129,7 @@ runDriverContract({
     setSpeedLimit: { method: "POST", path: "/api", bodyContains: '"params":[{"max_dl_rate":2000000}]' },
     setUploadLimit: { method: "POST", path: "/api", bodyContains: '"params":[{"max_ul_rate":2000000}]' },
   },
+  removeWithFiles: { method: "POST", path: "/api", bodyContains: '"method":"webui.perform","params":["removedata",[' },
   isLoginCall: call => rejected.has(call),
 });
 

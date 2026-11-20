@@ -141,6 +141,7 @@ runDriverContract({
     setSpeedLimit: { method: "POST", path: "/api/settings", bodyContains: '"max_download_rate":2000000' },
     setUploadLimit: { method: "POST", path: "/api/settings", bodyContains: '"max_upload_rate":2000000' },
   },
+  removeWithFiles: { method: "DELETE", path: `/api/downloads/${FIRST}`, bodyContains: '"remove_data":true' },
   isLoginCall: call => rejected.has(call),
 });
 

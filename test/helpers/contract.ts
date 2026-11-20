@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
-import { AuthError, ProtocolError, UnreachableError } from "../../src/lib/core/errors";
+import { AuthError, ProtocolError, RefusedError, UnreachableError } from "../../src/lib/core/errors";
 import {
   RATIO_INFINITE,
   STATUSES,
@@ -35,7 +35,15 @@ export interface ContractCase {
   /** A raw status no version of the program sends. */
   unknownStatus: string | number;
   /** Expected request per supported command. */
-  commandCalls: Partial<Record<CommandKind, { method: string; path: string; bodyContains?: string }>>;
+  commandCalls: Partial<Record<Exclude<CommandKind, "remove">, ExpectedCall>> & {
+    /** The removal keeping the files — `refused` where the program cannot keep the first listed download's files. */
+    remove?: ExpectedCall | "refused";
+  };
+  /**
+   * The removal of the first listed download with its files (core decision D-04): the request the program gets, or
+   * `refused` where the program cannot delete that download's files (core decision D-13) — then it gets no request.
+   */
+  removeWithFiles: ExpectedCall | "refused";
   /** Tells a login request from the rest. */
   isLoginCall: (call: RecordedCall) => boolean;
   /** The program has no login at all (JDownloader's local API) — the rejected-login test does not apply. */
@@ -43,6 +51,23 @@ export interface ContractCase {
 }
 
 type CommandKind = Exclude<Command["kind"], "extra">;
+
+/** A request a command must make: method, path, and every text its query and body must carry. */
+interface ExpectedCall {
+  method: string;
+  path: string;
+  bodyContains?: string | readonly string[];
+}
+
+/**
+ * @param call a recorded request
+ * @param expected the request a command must make
+ * @returns whether the request is it
+ */
+const isCall = (call: RecordedCall, expected: ExpectedCall | undefined): boolean =>
+  call.method === expected?.method &&
+  call.path === expected.path &&
+  [expected.bodyContains ?? []].flat().every(text => `${call.query}\n${call.body}`.includes(text));
 
 /** Which capability offers which command — a command without its capability must be refused. */
 const COMMAND_CAPABILITY: Readonly<Record<CommandKind, Capability>> = {
@@ -239,16 +264,39 @@ export function runDriverContract(c: ContractCase): void {
         }
         expect(expected, `capability of ${kind} without an expected request`).toBeDefined();
         const from = server.calls.length;
+        if (expected === "refused") {
+          await expect(d.command(sample(kind, key)), kind).rejects.toThrow(RefusedError);
+          expect(
+            server.calls.slice(from).filter(call => !c.isLoginCall(call)),
+            kind,
+          ).toEqual([]);
+          continue;
+        }
         await d.command(sample(kind, key));
         const made = server.calls.slice(from).filter(call => !c.isLoginCall(call));
         expect(
-          made.some(
-            call =>
-              call.method === expected?.method &&
-              call.path === expected.path &&
-              (!expected.bodyContains || `${call.query}\n${call.body}`.includes(expected.bodyContains)),
-          ),
+          made.some(call => isCall(call, expected)),
           `${kind}: ${JSON.stringify(made.map(m => [m.method, m.path, m.query, m.body]))}`,
+        ).toBe(true);
+      }
+      await d.close();
+    });
+
+    it("removes a download with its files as the program does it, or sends nothing where it cannot", async () => {
+      const d = c.makeDriver(server.baseUrl, { good: true });
+      const key = (await d.poll()).items[0].key;
+      const from = server.calls.length;
+      const removal = d.command({ kind: "remove", key, deleteFiles: true });
+      const expected = c.removeWithFiles;
+      if (expected === "refused") {
+        await expect(removal).rejects.toThrow(RefusedError);
+        expect(server.calls.slice(from).filter(call => !c.isLoginCall(call))).toEqual([]);
+      } else {
+        await removal;
+        const made = server.calls.slice(from).filter(call => !c.isLoginCall(call));
+        expect(
+          made.some(call => isCall(call, expected)),
+          JSON.stringify(made.map(m => [m.method, m.path, m.query, m.body])),
         ).toBe(true);
       }
       await d.close();

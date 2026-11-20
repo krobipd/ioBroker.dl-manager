@@ -72,7 +72,8 @@ async function rqServer(version = "9.1.0"): Promise<Awaited<ReturnType<typeof st
       return recorded(version, "auth", call.headers.authorization ? "root-wrong" : "root-no-auth");
     }
     const route = `${call.method} ${call.path}`;
-    const action = /^POST \/torrents\/([0-9a-f]{40})\/(pause|start|forget)$/.exec(route);
+    // delete answers as forget does (rqbit handlers: both an empty JSON answer)
+    const action = /^POST \/torrents\/([0-9a-f]{40})\/(pause|start|forget|delete)$/.exec(route);
     if (action) {
       return known.has(action[1])
         ? recorded(version, "commands", "torrent-pause")
@@ -108,6 +109,7 @@ runDriverContract({
     setSpeedLimit: { method: "POST", path: "/torrents/limits", bodyContains: '"download_bps":2000000' },
     setUploadLimit: { method: "POST", path: "/torrents/limits", bodyContains: '"upload_bps":2000000' },
   },
+  removeWithFiles: { method: "POST", path: `/torrents/${FIRST}/delete` },
   isLoginCall: call => rejected.has(call),
 });
 

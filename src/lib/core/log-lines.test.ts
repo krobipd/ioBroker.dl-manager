@@ -7,6 +7,9 @@ describe("commandLine — the info line after a user's command", () => {
     expect(commandLine({ kind: "pause", key: "k1" }, name)).toBe('paused "Ubuntu ISO"');
     expect(commandLine({ kind: "resume", key: "k2" }, name)).toBe('resumed "k2"');
     expect(commandLine({ kind: "remove", key: "k1" }, name)).toBe('removed "Ubuntu ISO" from the program\'s list');
+    expect(commandLine({ kind: "remove", key: "k1", deleteFiles: true }, name)).toBe(
+      'removed "Ubuntu ISO" from the program\'s list with its files',
+    );
   });
 
   it("says what a program-wide command did", () => {

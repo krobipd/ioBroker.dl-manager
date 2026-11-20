@@ -7,6 +7,12 @@ export class UnreachableError extends Error {}
 /** The program answered, but not in a way the driver understands (unexpected body, unsupported command). */
 export class ProtocolError extends Error {}
 
+/**
+ * The program cannot do what the command asks, so the driver sends nothing (core decision D-13: what a program cannot
+ * reach is not offered there) — the command is not confirmed, a warning says why.
+ */
+export class RefusedError extends Error {}
+
 /** What the runner and the connection test tell apart; a protocol error is an `other` like any unexpected one. */
 export type ErrorKind = "auth" | "unreachable" | "other";
 

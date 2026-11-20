@@ -1,7 +1,7 @@
 import { listIn } from "../../core/answer";
 import { errText } from "../../err-text";
 import { EmulatedPause, memoryPauseStore } from "../../core/emulated-pause";
-import { ProtocolError } from "../../core/errors";
+import { ProtocolError, RefusedError } from "../../core/errors";
 import type { Capability, Command, DriverDeps, ProgramConfig, ProgramDriver, ProgramSnapshot } from "../../core/model";
 import { asText } from "../../core/units";
 import { ProgramVersion } from "../../core/version";
@@ -79,7 +79,12 @@ export class RtDriver implements ProgramDriver {
         return;
       case "remove":
         // d.erase takes the torrent out of the session and leaves its files — ruTorrent deletes data only when it set
-        // its own mark first (plugin erasedata, d.custom5)
+        // its own mark first (plugin erasedata, d.custom5) and its own server-side code removes them; over XML-RPC
+        // only `execute.*` could, which rTorrent 0.16 refuses an untrusted caller: a removal that is to delete them
+        // is refused
+        if (cmd.deleteFiles) {
+          throw new RefusedError("rTorrent deletes no files");
+        }
         await this.client.call("d.erase", cmd.key);
         return;
       case "add":

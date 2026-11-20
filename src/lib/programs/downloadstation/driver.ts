@@ -1,6 +1,6 @@
 import { recordIn, recordsIn } from "../../core/answer";
 import { EmulatedPause, memoryPauseStore } from "../../core/emulated-pause";
-import { ProtocolError } from "../../core/errors";
+import { ProtocolError, RefusedError } from "../../core/errors";
 import type { Capability, Command, DriverDeps, ProgramConfig, ProgramDriver, ProgramSnapshot } from "../../core/model";
 import { toKiB } from "../../core/units";
 import { DsClient, perId } from "./client";
@@ -8,6 +8,11 @@ import { infoOf, isRunning, taskOf, toSnapshot, uploadLimitFields, type DsTask }
 
 /** How many polls after a pause a task that runs again is paused once more instead of counting as started. */
 const WATCH_POLLS = 2;
+/**
+ * Raw states of a task that has every byte: the cmeans spec's `finished` filter (`finished`, `seeding`) and a paused
+ * task that has every byte (`paused:done`) — Download Station keeps their files on removal.
+ */
+const FINISHED: ReadonlySet<string> = new Set(["finished", "seeding", "paused:done"]);
 
 /**
  * Synology Download Station over the v1 Web API (`SYNO.DownloadStation.Task`, `.Info`) — every call of it has a live
@@ -18,7 +23,8 @@ const WATCH_POLLS = 2;
  * everything. Download Station adds a link running and names no task (`create` answers success alone): while the pause
  * holds, the next poll pauses the new running tasks. Remove takes a task out of the list with `force_complete=false` —
  * Download Station never deletes a finished task's files; an unfinished one's partial data it discards itself
- * (cmeans spec, DSM 7.1 and 7.2.2).
+ * (cmeans spec, DSM 7.1 and 7.2.2), so it keeps the files of a finished task only and deletes those of an unfinished one
+ * only (core decision D-04).
  */
 export class DsDriver implements ProgramDriver {
   public readonly type = "downloadstation";
@@ -97,9 +103,24 @@ export class DsDriver implements ProgramDriver {
         this.watched.delete(cmd.key);
         await this.each("resume", [cmd.key]);
         return;
-      case "remove":
+      case "remove": {
+        // Download Station keeps a finished task's files and discards what an unfinished one loaded, with or without
+        // force_complete (cmeans spec `delete_download`, measured on DSM 7.1 and 7.2.2) — a removal it cannot carry out
+        // as asked is refused (core decision D-13)
+        const t = this.tasks.get(cmd.key);
+        if (!t) {
+          throw new RefusedError("Download Station's last answer does not list this download");
+        }
+        const finished = FINISHED.has(t.status);
+        if (finished && cmd.deleteFiles) {
+          throw new RefusedError("Download Station does not delete the files of a finished download");
+        }
+        if (!finished && !cmd.deleteFiles) {
+          throw new RefusedError("Download Station deletes what an unfinished download loaded");
+        }
         await this.each("delete", [cmd.key], { force_complete: "false" });
         return;
+      }
       case "add":
         // one link per call: v1 reads `uri` as a comma-separated list (cmeans tasks.py, #397)
         await this.client.call("SYNO.DownloadStation.Task", "create", { uri: cmd.url.replace(/,/g, "\\,") });

@@ -100,6 +100,11 @@ runDriverContract({
     add: { method: "POST", path: "/linkgrabberv2/addLinks", bodyContains: "autostart" },
     setSpeedLimit: { method: "POST", path: "/config/set", bodyContains: '"DownloadSpeedLimit","2000000"' },
   },
+  removeWithFiles: {
+    method: "POST",
+    path: "/downloadsV2/cleanup",
+    bodyContains: ["1790633501919", "DELETE_ALL", "REMOVE_LINKS_AND_DELETE_FILES", "SELECTED"],
+  },
   isLoginCall: call => call.path === "/my/connect" || call.path === "/my/reconnect",
 });
 

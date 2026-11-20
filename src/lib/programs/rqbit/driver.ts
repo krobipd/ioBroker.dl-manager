@@ -71,8 +71,8 @@ export class RqDriver implements ProgramDriver {
         await this.client.post(`/torrents/${cmd.key}/start`);
         return;
       case "remove":
-        // forget keeps the files, delete would remove them (handlers/mod.rs)
-        await this.client.post(`/torrents/${cmd.key}/forget`);
+        // forget keeps the files, delete removes them (handlers/mod.rs; Sonarr RQbitProxy.cs)
+        await this.client.post(`/torrents/${cmd.key}/${cmd.deleteFiles ? "delete" : "forget"}`);
         return;
       case "add": {
         const res = asRecord(await this.client.add(cmd.url));

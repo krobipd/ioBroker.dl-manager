@@ -2,6 +2,7 @@ import { runDriverContract, type ContractServer } from "../../../../test/helpers
 import { startFixtureServer } from "../../../../test/helpers/fixture-server";
 import { firstUrl } from "../../../../test/helpers/first-url";
 import { loadFixture } from "../../../../test/helpers/fixtures";
+import { RefusedError } from "../../core/errors";
 import { NzbClient } from "./client";
 import type { ProgramConfig } from "../../core/model";
 import { NzbDriver } from "./driver";
@@ -101,19 +102,40 @@ runDriverContract({
     add: { method: "POST", path: "/jsonrpc", bodyContains: '"method":"append","params":["","magnet:' },
     setSpeedLimit: { method: "POST", path: "/jsonrpc", bodyContains: '"method":"rate","params":[1953]' },
   },
+  removeWithFiles: { method: "POST", path: "/jsonrpc", bodyContains: '"GroupDelete","",[4]' },
   isLoginCall: call => call.headers.authorization !== `Basic ${Buffer.from("admin:good").toString("base64")}`,
 });
 
 describe("NZBGet driver", () => {
-  it("removes a history entry through the history and retries a failed job", async () => {
+  it("removes a history entry through the history as NZBGet deletes its files, and retries a failed job", async () => {
     const s = await nzbServer("24.8");
     try {
       const d = new NzbDriver(cfg(s.baseUrl), { ...timers, log });
       const snap = await d.poll();
       expect(snap.status.version).toBe("24.8");
       const failed = snap.items.find(i => i.name === "broken");
-      await d.command({ kind: "remove", key: String(failed?.key) });
-      expect(s.calls.at(-1)?.body).toContain('"HistoryDelete","",[2]');
+      const deletes = (): string[] => s.calls.map(c => c.body).filter(b => b.includes('"HistoryDelete"'));
+      // broken (2) was deleted for its health: HistoryDelete deletes its folder; small (1) succeeded: it keeps its files
+      await expect(d.command({ kind: "remove", key: "2" })).rejects.toThrow(
+        new RefusedError("NZBGet deletes the files of a deleted or failed download"),
+      );
+      await expect(d.command({ kind: "remove", key: "1", deleteFiles: true })).rejects.toThrow(
+        new RefusedError("NZBGet does not delete the files of a finished download"),
+      );
+      await expect(d.command({ kind: "remove", key: "9" })).rejects.toThrow(
+        new RefusedError("NZBGet's last answer does not list this download"),
+      );
+      expect(deletes()).toEqual([]);
+      // missing (3) is a URL entry that loaded nothing: both ways reach the same
+      for (const cmd of [
+        { key: "2", deleteFiles: true },
+        { key: "1", deleteFiles: false },
+        { key: "3", deleteFiles: false },
+        { key: "3", deleteFiles: true },
+      ]) {
+        await d.command({ kind: "remove", ...cmd });
+      }
+      expect(deletes().map(b => /"HistoryDelete","",\[(\d+)\]/.exec(b)?.[1])).toEqual(["2", "1", "3", "3"]);
       await d.command({ kind: "extra", name: "retry", key: String(failed?.key) });
       expect(s.calls.at(-1)?.body).toContain('"HistoryRedownload","",[2]');
       await expect(d.command({ kind: "pause", key: String(failed?.key) })).rejects.toThrow(/queue/);

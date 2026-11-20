@@ -152,6 +152,7 @@ runDriverContract({
     setSpeedLimit: { method: "PATCH", path: "/api/client/settings", bodyContains: '"throttleGlobalDownSpeed":2000000' },
     setUploadLimit: { method: "PATCH", path: "/api/client/settings", bodyContains: '"throttleGlobalUpSpeed":2000000' },
   },
+  removeWithFiles: { method: "POST", path: "/api/torrents/delete", bodyContains: '"deleteData":true' },
   isLoginCall: isLogin,
 });
 

@@ -97,15 +97,31 @@ Downloads je Programm werden es schnell Tausende; das belastet die ioBroker-Date
 langsam. Die Einstellungsseite zeigt dann eine Warnung, und das Log warnt einmal je Programm, wenn tatsächlich mehr als
 200 Downloads im Objektbaum stehen.
 
-`remove` an einem Download nimmt ihn aus der Liste des Programms; die Dateien bleiben erhalten. Nur Download Station
-verwirft die Teildaten einer Aufgabe, die noch nicht fertig ist — von sich aus, gleich was der Adapter verlangt.
-
 ## Ein neuer Link, während ein Programm pausiert ist
 
 **Ein neuer Link setzt ein pausiertes Programm fort** (Vorgabe aus) entscheidet, was ein Link bewirkt, den du in `add`
 eines Programms schreibst, während das Programm pausiert ist. Aus: Die Pause hält bei jedem Programm, und der Link
 wartet, bis du das Programm fortsetzt; JDownloader, der bei jedem neuen Link von selbst startet, wird sofort wieder
 angehalten. An: Das Hinzufügen setzt das Programm zuerst fort, alle seine Downloads laufen weiter.
+
+## Einen Download entfernen
+
+`remove` an einem Download nimmt ihn aus der Liste seines Programms. Ob das Programm dabei auch löscht, was es für den
+Download geladen hat — bei einem fertigen Download die Dateien, bei einem abgebrochenen oder fehlgeschlagenen das bis
+dahin Geladene —, entscheidet der Schalter **Beim Entfernen auch die Dateien löschen**, Vorgabe aus. Er steht auf der
+Einstellungsseite für alle Programme; solange er dort aus ist, hat die Karte jedes Programms, das Dateien löschen kann,
+denselben Schalter nur für dieses Programm, und solange er an ist, folgt ihm jede Karte. Die Datenpunkte des Downloads
+gehören nicht dazu — die regeln die Einstellungen unter _Löschen von Datenpunkten_.
+
+Ein Programm, das einen Download nicht so entfernen kann, wie der Schalter sagt, behält ihn in seiner Liste; `remove`
+bleibt unbestätigt, und das Log sagt warum:
+
+| Programm                | Was es nicht kann                                                                                         |
+| ----------------------- | --------------------------------------------------------------------------------------------------------- |
+| aria2, pyLoad, rTorrent | Dateien löschen — ihre Karten haben keinen Schalter                                                       |
+| SABnzbd                 | die Dateien eines fertigen Downloads löschen; einen Download entfernen, während es ihn nachbearbeitet     |
+| NZBGet                  | die Dateien eines fertigen Downloads löschen; die Dateien eines fehlgeschlagenen oder gelöschten behalten |
+| Download Station        | die Dateien eines fertigen Downloads löschen; behalten, was ein unfertiger geladen hat                    |
 
 ## Löschen von Datenpunkten
 

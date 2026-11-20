@@ -262,6 +262,7 @@
     "treeScope": "all",
     "maxDownloads": 100,
     "addResumes": false,
+    "deleteFiles": false,
     "deleteRecordedStates": true,
     "deleteRecordedHistory": false
   },

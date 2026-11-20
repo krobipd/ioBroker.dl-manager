@@ -13,6 +13,8 @@ declare global {
       maxDownloads: number;
       /** A link added while its program is paused resumes the program (off: the pause holds). */
       addResumes: boolean;
+      /** Removing a download deletes its files too, at every program (off: each program's card decides). */
+      deleteFiles: boolean;
       /** Fleet deletion option: a datapoint with a recording goes like any other (off: it stays, `object-removal.ts`). */
       deleteRecordedStates: boolean;
       /** Fleet deletion option: each recording instance deletes the recorded data first (only with the option above). */

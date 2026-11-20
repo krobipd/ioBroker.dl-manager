@@ -90,6 +90,7 @@ runDriverContract({
     setSpeedLimit: { method: "POST", path: "/transmission/rpc", bodyContains: '"speed-limit-down":1953' },
     setUploadLimit: { method: "POST", path: "/transmission/rpc", bodyContains: '"speed-limit-up":1953' },
   },
+  removeWithFiles: { method: "POST", path: "/transmission/rpc", bodyContains: '"delete-local-data":true' },
   isLoginCall: call => handshakes.has(call),
 });
 

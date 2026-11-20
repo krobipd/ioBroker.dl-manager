@@ -2,7 +2,7 @@ import { runDriverContract, type ContractServer } from "../../../../test/helpers
 import { startFixtureServer } from "../../../../test/helpers/fixture-server";
 import { firstUrl } from "../../../../test/helpers/first-url";
 import { loadFixture } from "../../../../test/helpers/fixtures";
-import { AuthError, ProtocolError } from "../../core/errors";
+import { AuthError, ProtocolError, RefusedError } from "../../core/errors";
 import type { ProgramConfig } from "../../core/model";
 import { SabDriver } from "./driver";
 import { mapSabStatus, statusTable } from "./map";
@@ -75,6 +75,7 @@ runDriverContract({
     add: { method: "GET", path: "/api", bodyContains: "mode=addurl" },
     setSpeedLimit: { method: "GET", path: "/api", bodyContains: "value=1953K" },
   },
+  removeWithFiles: { method: "GET", path: "/api", bodyContains: ["mode=queue", "name=delete", "del_files=1"] },
   isLoginCall: call => call.query.includes("apikey=bad"),
 });
 
@@ -248,6 +249,71 @@ describe("SABnzbd details", () => {
       await d.command({ kind: "remove", key: snap.items[0].key });
       await d.poll();
       expect(lastUpdate()).toBe("0");
+    } finally {
+      await s.close();
+    }
+  });
+});
+
+describe("SABnzbd removal with or without the files (core decisions D-04 and D-13)", () => {
+  it("deletes the files of a queued and a failed job, keeps a completed one's, and removes none it post-processes", async () => {
+    const slot = (nzo_id: string, status: string): Record<string, unknown> => ({
+      nzo_id,
+      status,
+      name: nzo_id,
+      bytes: 0,
+    });
+    const s = await startFixtureServer(call => {
+      const q = new URLSearchParams(call.query);
+      if (q.get("mode") === "queue" && !q.get("name")) {
+        return { body: { queue: { paused: false, slots: [{ nzo_id: "q", status: "Downloading", filename: "q" }] } } };
+      }
+      if (q.get("mode") === "history" && !q.get("name")) {
+        const slots = [
+          slot("done", "Completed"),
+          slot("bad", "Failed"),
+          slot("wait", "Queued"),
+          slot("pp", "Extracting"),
+        ];
+        return { body: { history: { last_history_update: 1, slots } } };
+      }
+      return { body: { status: true } };
+    });
+    try {
+      const d = new SabDriver(cfg(s.baseUrl), { ...timers, log });
+      await d.poll();
+      const deletes = (): string[] =>
+        s.calls
+          .map(c => new URLSearchParams(c.query))
+          .filter(q => q.get("name") === "delete")
+          .map(q => `${q.get("mode")} ${q.get("value")} ${q.get("del_files") ?? "-"}`);
+      // SABnzbd deletes no completed job's files (api.py `_api_history_delete`, database.py `get_incomplete_path`)
+      await expect(d.command({ kind: "remove", key: "done", deleteFiles: true })).rejects.toThrow(
+        new RefusedError("SABnzbd does not delete the files of a finished download"),
+      );
+      // a job it post-processes it does not remove at all (postproc.py `delete`)
+      await expect(d.command({ kind: "remove", key: "pp" })).rejects.toThrow(
+        new RefusedError("SABnzbd removes no download while it post-processes it"),
+      );
+      await expect(d.command({ kind: "remove", key: "gone" })).rejects.toThrow(
+        new RefusedError("SABnzbd's last answer does not list this download"),
+      );
+      expect(deletes()).toEqual([]);
+      for (const key of ["q", "bad", "wait"]) {
+        await d.command({ kind: "remove", key, deleteFiles: true });
+      }
+      for (const key of ["q", "done", "bad", "wait"]) {
+        await d.command({ kind: "remove", key });
+      }
+      expect(deletes()).toEqual([
+        "queue q 1",
+        "history bad 1",
+        "history wait 1",
+        "queue q -",
+        "history done -",
+        "history bad -",
+        "history wait -",
+      ]);
     } finally {
       await s.close();
     }

@@ -125,6 +125,7 @@ class DownloadManagerAdapter extends utils.Adapter {
         }),
       icon: deviceIcon,
       iobHost: () => this.host ?? "",
+      deleteFilesAll: () => this.config.deleteFiles === true,
     };
   }
 
@@ -478,6 +479,7 @@ class DownloadManagerAdapter extends utils.Adapter {
         scope: parseTreeScope(this.config.treeScope),
         limit: parseMaxDownloads(this.config.maxDownloads),
         addResumes: this.config.addResumes === true,
+        deleteFiles: this.config.deleteFiles === true,
       },
     );
   }
