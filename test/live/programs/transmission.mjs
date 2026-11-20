@@ -254,8 +254,10 @@ export async function record(ctx) {
   await rpc("session_set", { speed_limit_down_enabled: false, speed_limit_up_enabled: false });
 
   // seeding: the web-seeded download finishes — before the recheck of `check`: while 1 GiB is verified, Transmission
-  // 4.0.6 loaded the web seed at under 134 kB/s and `big` did not finish in 240 s
-  await waitFor("big seeding", async () => (await find(hash("big")))?.status === 6, 240_000, 1000);
+  // 4.0.6 loaded the web seed at under 134 kB/s and `big` did not finish in 240 s. Even before it, 4.0.6 loads the web
+  // seed at 147–247 kB/s while the peer leeches `check` at ~530 KiB/s (run 44758258105), so 32 MiB take up to ~230 s —
+  // 240 s timed out in three of six runs (10360e0, cb18114, a8ee6e3)
+  await waitFor("big seeding", async () => (await find(hash("big")))?.status === 6, 600_000, 1000);
   await snapshot("finished");
 
   // loading metadata: start the magnet past the queue
