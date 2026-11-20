@@ -110,7 +110,8 @@ aria2-Download, eine Aufgabe von Download Station oder der Freebox. Der Kanal tr
 | `paused`      | boolean       | rw      | Wahr hält diesen Download an, falsch setzt ihn fort.                                                                                                              |
 | `remove`      | boolean       | w       | Entfernt den Download aus der Liste des Programms; mit dem Schalter „Beim Entfernen auch die Dateien löschen“ löscht das Programm auch, was es dafür geladen hat. |
 
-Jedes Programm hat `status`, `progress`, `size`, `downloaded` und `remove`. Die übrigen:
+Jedes Programm hat `status`, `progress`, `size`, `downloaded` und `remove` — `remove` nur, solange das Programm den
+Download so entfernen kann, wie der Schalter sagt (siehe README, _Einen Download entfernen_). Die übrigen:
 
 | Programm         | `speed` | `uploadSpeed`, `ratio` | `eta` | `added` | `finished` | `category` | `error` | `paused` |
 | ---------------- | :-----: | :--------------------: | :---: | :-----: | :--------: | :--------: | :-----: | :------: |

@@ -52,17 +52,11 @@ vi.mock("node:http", async importOriginal => ({ ...(await importOriginal<object>
 vi.mock("node:https", async importOriginal => ({ ...(await importOriginal<object>()), request: offline }));
 
 const KEY = "42";
-/** One download, still loading — what every program lists. */
-const ITEM: DownloadItem = {
-  key: KEY,
-  name: "download",
-  status: "downloading",
-  sizeBytes: 100,
-  doneBytes: 50,
-  speedBps: 0,
-  etaSeconds: null,
-  error: "",
-};
+/** Where the one download every program lists stands: still loading, finished, or failed. */
+type State = "loading" | "finished" | "failed";
+const STATES: readonly State[] = ["loading", "finished", "failed"];
+/** The download's status in the common list, per state. */
+const STATUS = { loading: "downloading", finished: "completed", failed: "failed" } as const;
 
 /** The object and state store of an instance, in memory — this guard's own copy (a guard imports no test code). */
 class Memory implements ManagerAdapter {
@@ -125,17 +119,46 @@ const flush = async (): Promise<void> => {
 };
 
 /**
- * Puts the download where the driver looks for it — its record of the program's last answer, as a loading download.
+ * Puts the download where the driver looks for it — its record of the program's last answer, as the program keeps it.
  *
  * @param driver a fresh driver
+ * @param state where the download stands
  */
-function place(driver: ProgramDriver): void {
+function place(driver: ProgramDriver, state: State): void {
   const own = driver as unknown as Record<string, unknown>;
-  if (own.inQueue instanceof Set) {
-    own.inQueue.add(KEY);
-  }
-  if (own.tasks instanceof Map) {
-    own.tasks.set(KEY, { id: KEY, status: "downloading", row: {} });
+  const field = <T>(name: string, kind: abstract new (...args: never[]) => T): T => {
+    const value = own[name];
+    need(value instanceof kind, `${driver.type} keeps no ${name}`);
+    return value;
+  };
+  switch (driver.type) {
+    case "aria2":
+      if (state !== "loading") {
+        field("stopped", Set).add(KEY);
+      }
+      break;
+    case "sabnzbd":
+      if (state === "loading") {
+        field("inQueue", Set).add(KEY);
+      } else {
+        field("history", Array).push({ nzo_id: KEY, status: state === "finished" ? "Completed" : "Failed" });
+      }
+      break;
+    case "nzbget":
+      if (state === "loading") {
+        field("inQueue", Set).add(KEY);
+      } else {
+        const par = state === "finished" ? "SUCCESS" : "FAILURE";
+        field("history", Map).set(KEY, { Kind: "NZB", DeleteStatus: "NONE", ParStatus: par, UnpackStatus: "NONE" });
+      }
+      break;
+    case "downloadstation": {
+      const status = { loading: "downloading", finished: "finished", failed: "error" }[state];
+      field("tasks", Map).set(KEY, { id: KEY, status, row: {} });
+      break;
+    }
+    default:
+      break;
   }
 }
 
@@ -220,19 +243,39 @@ interface Outcome {
   forms: Map<string, Record<string, unknown>>;
   /** every command the program was handed when its switches and buttons were pressed, and whether its driver refused it */
   handed: string[];
+  /** whether the adapter asked the program at all */
+  asked: boolean;
 }
 
 /**
- * Starts the adapter's manager with one program — its own driver, whose program lists {@link ITEM} — and presses every
+ * Starts the adapter's manager with one program — its own driver, whose program lists one download — and presses every
  * switch and button of its device.
  *
  * @param info a program of the catalog
  * @param row the stored program row
+ * @param state where the download stands
+ * @param general the settings page's switch of D-04 (undefined: as a new installation has it)
  * @returns what the user gets of it
  */
-async function run(info: ProgramInfo, row: Record<string, unknown>): Promise<Outcome> {
+async function run(
+  info: ProgramInfo,
+  row: Record<string, unknown>,
+  state: State = "loading",
+  general?: boolean,
+): Promise<Outcome> {
+  const item: DownloadItem = {
+    key: KEY,
+    name: "download",
+    status: STATUS[state],
+    sizeBytes: 100,
+    doneBytes: state === "finished" ? 100 : 50,
+    speedBps: 0,
+    etaSeconds: null,
+    error: "",
+  };
   const a = new Memory();
   const handed: string[] = [];
+  let asked = false;
   let can: string[] = [];
   let pressing = "";
   // the adapter's own lookup and driver; only the program's list is a stand-in, so nothing is asked to list it
@@ -244,18 +287,21 @@ async function run(info: ProgramInfo, row: Record<string, unknown>): Promise<Out
         needs: [],
         create: (cfg, deps): ProgramDriver => {
           const real = entry.create(cfg, deps);
-          place(real);
+          place(real, state);
           can = [...real.capabilities].sort();
           return {
             type,
             capabilities: real.capabilities,
             extras: real.extras,
-            poll: () =>
-              Promise.resolve({
+            removable: (key, deleteFiles) => real.removable?.(key, deleteFiles) ?? true,
+            poll: () => {
+              asked = true;
+              return Promise.resolve({
                 status: { version: "1", paused: false, downloadBps: 0 },
-                items: [ITEM],
+                items: [item],
                 complete: true,
-              }),
+              });
+            },
             command: async cmd => {
               const said = `${pressing} ${JSON.stringify(cmd)}`;
               try {
@@ -280,7 +326,7 @@ async function run(info: ProgramInfo, row: Record<string, unknown>): Promise<Out
       problems: { report: () => undefined, forget: () => undefined },
       moveDevice: () => Promise.resolve(),
     },
-    { intervalMs: 10_000, scope: "all", limit: 100 },
+    { intervalMs: 10_000, scope: "all", limit: 100, ...(general === undefined ? {} : { deleteFiles: general }) },
   );
   await manager.start([row]);
   await flush();
@@ -302,7 +348,7 @@ async function run(info: ProgramInfo, row: Record<string, unknown>): Promise<Out
       return [id.slice(root.length), form];
     }),
   );
-  return { can, forms, handed };
+  return { can, forms, handed, asked };
 }
 
 /**
@@ -355,10 +401,29 @@ describe("D-13 every decision holds for every program, with the same result for 
       for (const d of ITEM_DATAPOINTS.filter(cannot)) {
         expect(ofDownloads, `${info.type} downloads.*.${d.id}`).not.toContain(d.id);
       }
-      // no choice on its card its driver cannot carry out
-      for (const [key, field] of Object.entries(choicesOf(info))) {
-        const answered = await run(info, rowOf(info, { [key]: otherAnswer(info, key, field) }));
-        expect(refused(answered), `${info.type} ${key}`).toEqual([]);
+      // no switch or button its driver refuses, wherever the download stands and however the user chose — in the
+      // settings and on its card; and no choice on its card that reaches nothing there: answered, the program is no
+      // longer asked, or it is handed a command it is not handed without the answer
+      const choices = Object.entries(choicesOf(info)).map(([key, field]) => ({
+        key,
+        row: rowOf(info, { [key]: otherAnswer(info, key, field) }),
+      }));
+      const reached = new Set<string>();
+      for (const state of STATES) {
+        for (const general of [undefined, true]) {
+          const plain = await run(info, rowOf(info, {}), state, general);
+          expect(refused(plain), `${info.type} ${state}, settings ${String(general)}`).toEqual([]);
+          for (const { key, row } of choices) {
+            const answered = await run(info, row, state, general);
+            expect(refused(answered), `${info.type} ${key} ${state}, settings ${String(general)}`).toEqual([]);
+            if (!answered.asked || answered.handed.some(h => !plain.handed.includes(h))) {
+              reached.add(key);
+            }
+          }
+        }
+      }
+      for (const { key } of choices) {
+        expect(reached.has(key), `${info.type} ${key} reaches nothing at the program`).toBe(true);
       }
     }
   });

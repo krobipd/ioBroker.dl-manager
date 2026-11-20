@@ -8376,44 +8376,6 @@
     "native": {},
     "_id": "dl-manager.0.downloadstation-downloadstation.downloads.0.ratio"
   },
-  "dl-manager.0.downloadstation-downloadstation.downloads.0.remove": {
-    "type": "state",
-    "common": {
-      "name": {
-        "de": "debian-8.6.0-amd64-netinst.iso: Aus dem Programm entfernen",
-        "en": "debian-8.6.0-amd64-netinst.iso: Remove from the program",
-        "es": "debian-8.6.0-amd64-netinst.iso: Quitar del programa",
-        "fr": "debian-8.6.0-amd64-netinst.iso: Retirer du programme",
-        "it": "debian-8.6.0-amd64-netinst.iso: Rimuovi dal programma",
-        "nl": "debian-8.6.0-amd64-netinst.iso: Uit het programma verwijderen",
-        "pl": "debian-8.6.0-amd64-netinst.iso: Usuń z programu",
-        "pt": "debian-8.6.0-amd64-netinst.iso: Remover do programa",
-        "ru": "debian-8.6.0-amd64-netinst.iso: Удалить из программы",
-        "uk": "debian-8.6.0-amd64-netinst.iso: Видалити з програми",
-        "zh-cn": "debian-8.6.0-amd64-netinst.iso: 从程序中移除"
-      },
-      "type": "boolean",
-      "role": "button",
-      "read": false,
-      "write": true,
-      "desc": {
-        "de": "Entfernt den Download aus der Liste des Programms; ob auch seine Dateien gelöscht werden, entscheidet der Schalter „Beim Entfernen auch die Dateien löschen“.",
-        "en": "Removes the download from the program's list; whether its files go too, the switch “Also delete the files when removing” decides.",
-        "es": "Quita la descarga de la lista del programa; si también se borran sus archivos lo decide el interruptor «Al quitar, borrar también los archivos».",
-        "fr": "Retire le téléchargement de la liste du programme ; l'interrupteur « Supprimer aussi les fichiers lors du retrait » décide si ses fichiers sont aussi effacés.",
-        "it": "Rimuove il download dall'elenco del programma; se vengono eliminati anche i file lo decide l'interruttore «Alla rimozione elimina anche i file».",
-        "nl": "Verwijdert de download uit de lijst van het programma; of ook de bestanden worden gewist, beslist de schakelaar „Bij verwijderen ook de bestanden wissen”.",
-        "pl": "Usuwa pobieranie z listy programu; czy pliki też zostaną usunięte, decyduje przełącznik „Przy usuwaniu usuwaj też pliki”.",
-        "pt": "Remove o download da lista do programa; se os ficheiros também são apagados, decide o interruptor «Ao remover, apagar também os ficheiros».",
-        "ru": "Удаляет загрузку из списка программы; удалять ли и её файлы, решает переключатель «При удалении также удалять файлы».",
-        "uk": "Видаляє завантаження зі списку програми; чи видаляти також файли, вирішує перемикач «Під час видалення також видаляти файли».",
-        "zh-cn": "从程序列表中移除该下载；是否同时删除其文件，由“移除时同时删除文件”开关决定。"
-      },
-      "def": false
-    },
-    "native": {},
-    "_id": "dl-manager.0.downloadstation-downloadstation.downloads.0.remove"
-  },
   "dl-manager.0.downloadstation-downloadstation.downloads.0.size": {
     "type": "state",
     "common": {
@@ -8889,44 +8851,6 @@
     },
     "native": {},
     "_id": "dl-manager.0.downloadstation-downloadstation.downloads.1.ratio"
-  },
-  "dl-manager.0.downloadstation-downloadstation.downloads.1.remove": {
-    "type": "state",
-    "common": {
-      "name": {
-        "de": "Slackware 14.2 x86_64 DVD ISO: Aus dem Programm entfernen",
-        "en": "Slackware 14.2 x86_64 DVD ISO: Remove from the program",
-        "es": "Slackware 14.2 x86_64 DVD ISO: Quitar del programa",
-        "fr": "Slackware 14.2 x86_64 DVD ISO: Retirer du programme",
-        "it": "Slackware 14.2 x86_64 DVD ISO: Rimuovi dal programma",
-        "nl": "Slackware 14.2 x86_64 DVD ISO: Uit het programma verwijderen",
-        "pl": "Slackware 14.2 x86_64 DVD ISO: Usuń z programu",
-        "pt": "Slackware 14.2 x86_64 DVD ISO: Remover do programa",
-        "ru": "Slackware 14.2 x86_64 DVD ISO: Удалить из программы",
-        "uk": "Slackware 14.2 x86_64 DVD ISO: Видалити з програми",
-        "zh-cn": "Slackware 14.2 x86_64 DVD ISO: 从程序中移除"
-      },
-      "type": "boolean",
-      "role": "button",
-      "read": false,
-      "write": true,
-      "desc": {
-        "de": "Entfernt den Download aus der Liste des Programms; ob auch seine Dateien gelöscht werden, entscheidet der Schalter „Beim Entfernen auch die Dateien löschen“.",
-        "en": "Removes the download from the program's list; whether its files go too, the switch “Also delete the files when removing” decides.",
-        "es": "Quita la descarga de la lista del programa; si también se borran sus archivos lo decide el interruptor «Al quitar, borrar también los archivos».",
-        "fr": "Retire le téléchargement de la liste du programme ; l'interrupteur « Supprimer aussi les fichiers lors du retrait » décide si ses fichiers sont aussi effacés.",
-        "it": "Rimuove il download dall'elenco del programma; se vengono eliminati anche i file lo decide l'interruttore «Alla rimozione elimina anche i file».",
-        "nl": "Verwijdert de download uit de lijst van het programma; of ook de bestanden worden gewist, beslist de schakelaar „Bij verwijderen ook de bestanden wissen”.",
-        "pl": "Usuwa pobieranie z listy programu; czy pliki też zostaną usunięte, decyduje przełącznik „Przy usuwaniu usuwaj też pliki”.",
-        "pt": "Remove o download da lista do programa; se os ficheiros também são apagados, decide o interruptor «Ao remover, apagar também os ficheiros».",
-        "ru": "Удаляет загрузку из списка программы; удалять ли и её файлы, решает переключатель «При удалении также удалять файлы».",
-        "uk": "Видаляє завантаження зі списку програми; чи видаляти також файли, вирішує перемикач «Під час видалення також видаляти файли».",
-        "zh-cn": "从程序列表中移除该下载；是否同时删除其文件，由“移除时同时删除文件”开关决定。"
-      },
-      "def": false
-    },
-    "native": {},
-    "_id": "dl-manager.0.downloadstation-downloadstation.downloads.1.remove"
   },
   "dl-manager.0.downloadstation-downloadstation.downloads.1.size": {
     "type": "state",
@@ -11973,44 +11897,6 @@
     },
     "native": {},
     "_id": "dl-manager.0.downloadstation-downloadstation.downloads.dbid-1.ratio"
-  },
-  "dl-manager.0.downloadstation-downloadstation.downloads.dbid-1.remove": {
-    "type": "state",
-    "common": {
-      "name": {
-        "de": "capture-magnet: Aus dem Programm entfernen",
-        "en": "capture-magnet: Remove from the program",
-        "es": "capture-magnet: Quitar del programa",
-        "fr": "capture-magnet: Retirer du programme",
-        "it": "capture-magnet: Rimuovi dal programma",
-        "nl": "capture-magnet: Uit het programma verwijderen",
-        "pl": "capture-magnet: Usuń z programu",
-        "pt": "capture-magnet: Remover do programa",
-        "ru": "capture-magnet: Удалить из программы",
-        "uk": "capture-magnet: Видалити з програми",
-        "zh-cn": "capture-magnet: 从程序中移除"
-      },
-      "type": "boolean",
-      "role": "button",
-      "read": false,
-      "write": true,
-      "desc": {
-        "de": "Entfernt den Download aus der Liste des Programms; ob auch seine Dateien gelöscht werden, entscheidet der Schalter „Beim Entfernen auch die Dateien löschen“.",
-        "en": "Removes the download from the program's list; whether its files go too, the switch “Also delete the files when removing” decides.",
-        "es": "Quita la descarga de la lista del programa; si también se borran sus archivos lo decide el interruptor «Al quitar, borrar también los archivos».",
-        "fr": "Retire le téléchargement de la liste du programme ; l'interrupteur « Supprimer aussi les fichiers lors du retrait » décide si ses fichiers sont aussi effacés.",
-        "it": "Rimuove il download dall'elenco del programma; se vengono eliminati anche i file lo decide l'interruttore «Alla rimozione elimina anche i file».",
-        "nl": "Verwijdert de download uit de lijst van het programma; of ook de bestanden worden gewist, beslist de schakelaar „Bij verwijderen ook de bestanden wissen”.",
-        "pl": "Usuwa pobieranie z listy programu; czy pliki też zostaną usunięte, decyduje przełącznik „Przy usuwaniu usuwaj też pliki”.",
-        "pt": "Remove o download da lista do programa; se os ficheiros também são apagados, decide o interruptor «Ao remover, apagar também os ficheiros».",
-        "ru": "Удаляет загрузку из списка программы; удалять ли и её файлы, решает переключатель «При удалении также удалять файлы».",
-        "uk": "Видаляє завантаження зі списку програми; чи видаляти також файли, вирішує перемикач «Під час видалення також видаляти файли».",
-        "zh-cn": "从程序列表中移除该下载；是否同时删除其文件，由“移除时同时删除文件”开关决定。"
-      },
-      "def": false
-    },
-    "native": {},
-    "_id": "dl-manager.0.downloadstation-downloadstation.downloads.dbid-1.remove"
   },
   "dl-manager.0.downloadstation-downloadstation.downloads.dbid-1.size": {
     "type": "state",
@@ -41504,44 +41390,6 @@
     },
     "native": {},
     "_id": "dl-manager.0.nzbget-nzbget.downloads.2.progress"
-  },
-  "dl-manager.0.nzbget-nzbget.downloads.2.remove": {
-    "type": "state",
-    "common": {
-      "name": {
-        "de": "broken: Aus dem Programm entfernen",
-        "en": "broken: Remove from the program",
-        "es": "broken: Quitar del programa",
-        "fr": "broken: Retirer du programme",
-        "it": "broken: Rimuovi dal programma",
-        "nl": "broken: Uit het programma verwijderen",
-        "pl": "broken: Usuń z programu",
-        "pt": "broken: Remover do programa",
-        "ru": "broken: Удалить из программы",
-        "uk": "broken: Видалити з програми",
-        "zh-cn": "broken: 从程序中移除"
-      },
-      "type": "boolean",
-      "role": "button",
-      "read": false,
-      "write": true,
-      "desc": {
-        "de": "Entfernt den Download aus der Liste des Programms; ob auch seine Dateien gelöscht werden, entscheidet der Schalter „Beim Entfernen auch die Dateien löschen“.",
-        "en": "Removes the download from the program's list; whether its files go too, the switch “Also delete the files when removing” decides.",
-        "es": "Quita la descarga de la lista del programa; si también se borran sus archivos lo decide el interruptor «Al quitar, borrar también los archivos».",
-        "fr": "Retire le téléchargement de la liste du programme ; l'interrupteur « Supprimer aussi les fichiers lors du retrait » décide si ses fichiers sont aussi effacés.",
-        "it": "Rimuove il download dall'elenco del programma; se vengono eliminati anche i file lo decide l'interruttore «Alla rimozione elimina anche i file».",
-        "nl": "Verwijdert de download uit de lijst van het programma; of ook de bestanden worden gewist, beslist de schakelaar „Bij verwijderen ook de bestanden wissen”.",
-        "pl": "Usuwa pobieranie z listy programu; czy pliki też zostaną usunięte, decyduje przełącznik „Przy usuwaniu usuwaj też pliki”.",
-        "pt": "Remove o download da lista do programa; se os ficheiros também são apagados, decide o interruptor «Ao remover, apagar também os ficheiros».",
-        "ru": "Удаляет загрузку из списка программы; удалять ли и её файлы, решает переключатель «При удалении также удалять файлы».",
-        "uk": "Видаляє завантаження зі списку програми; чи видаляти також файли, вирішує перемикач «Під час видалення також видаляти файли».",
-        "zh-cn": "从程序列表中移除该下载；是否同时删除其文件，由“移除时同时删除文件”开关决定。"
-      },
-      "def": false
-    },
-    "native": {},
-    "_id": "dl-manager.0.nzbget-nzbget.downloads.2.remove"
   },
   "dl-manager.0.nzbget-nzbget.downloads.2.retry": {
     "type": "state",

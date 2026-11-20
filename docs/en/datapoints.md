@@ -109,7 +109,8 @@ only the name still tell two downloads apart.
 | `paused`      | boolean       | rw     | True pauses this download, false resumes it.                                                                                                       |
 | `remove`      | boolean       | w      | Removes the download from the program's list; with the switch "Also delete the files when removing" the program deletes what it loaded for it too. |
 
-Every program has `status`, `progress`, `size`, `downloaded` and `remove`. The others:
+Every program has `status`, `progress`, `size`, `downloaded` and `remove` — `remove` only while the program can remove
+the download the way the switch says (see the README, _Removing a download_). The others:
 
 | Program          | `speed` | `uploadSpeed`, `ratio` | `eta` | `added` | `finished` | `category` | `error` | `paused` |
 | ---------------- | :-----: | :--------------------: | :---: | :-----: | :--------: | :--------: | :-----: | :------: |

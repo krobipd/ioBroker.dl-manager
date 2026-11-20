@@ -805,6 +805,26 @@ describe("ProgramManager — user writes", () => {
     expect(w.drivers[0].commands).toEqual([{ kind: "remove", key: "aaaa11112222", deleteFiles: true }]);
   });
 
+  it("offers the remove datapoints anew at once when a card's own files switch changes (core decision D-13)", async () => {
+    const w = world({ h1: { snapshot: snap(0, [item("aaaa11112222", "downloading")]) } });
+    const m = w.manager();
+    await m.start([row("qbittorrent", "nas", "h1", { id: "qbittorrent-nas" })]);
+    await flush();
+    // the program keeps the files of its downloads only
+    w.drivers[0].removable = (_key, deleteFiles) => !deleteFiles;
+    const remove = `${NS}.qbittorrent-nas.downloads.11112222.remove`;
+    expect(w.a.objects.has(remove)).toBe(true);
+    const polls = w.drivers[0].polls;
+    await m.apply([row("qbittorrent", "nas", "h1", { id: "qbittorrent-nas", deleteFiles: true })]);
+    await flush();
+    expect(w.drivers).toHaveLength(1);
+    expect(w.drivers[0].polls).toBe(polls + 1);
+    expect(w.a.objects.has(remove)).toBe(false);
+    await m.apply([row("qbittorrent", "nas", "h1", { id: "qbittorrent-nas", deleteFiles: false })]);
+    await flush();
+    expect(w.a.objects.has(remove)).toBe(true);
+  });
+
   it("asks the card's own choice only where the card offers one, and confirms no removal the program refused", async () => {
     const removal = async (
       general: boolean,

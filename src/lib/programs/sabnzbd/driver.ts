@@ -92,24 +92,46 @@ export class SabDriver implements ProgramDriver {
    * @param deleteFiles the files go too
    */
   private async remove(key: string, deleteFiles: boolean): Promise<void> {
-    const del: Record<string, string> = deleteFiles ? { del_files: "1" } : {};
-    if (this.inQueue.has(key)) {
-      await this.client.call({ mode: "queue", name: "delete", value: key, ...del });
-    } else {
-      const entry = this.history.find(e => (e as Record<string, unknown>).nzo_id === key) as Record<string, unknown>;
-      const status = entry ? asText(entry.status) : undefined;
-      if (status === undefined) {
-        throw new RefusedError("SABnzbd's last answer does not list this download");
-      }
-      if (!REMOVABLE.has(status)) {
-        throw new RefusedError("SABnzbd removes no download while it post-processes it");
-      }
-      if (deleteFiles && status === "Completed") {
-        throw new RefusedError("SABnzbd does not delete the files of a finished download");
-      }
-      await this.client.call({ mode: "history", name: "delete", value: key, ...del });
+    const refused = this.refusal(key, deleteFiles);
+    if (refused) {
+      throw new RefusedError(refused);
     }
+    const del: Record<string, string> = deleteFiles ? { del_files: "1" } : {};
+    const mode = this.inQueue.has(key) ? "queue" : "history";
+    await this.client.call({ mode, name: "delete", value: key, ...del });
     this.historyUpdate = "0";
+  }
+
+  /**
+   * @param key the job's nzo_id
+   * @param deleteFiles the files go too
+   * @returns whether removing it reaches what core decision D-04 asks, as SABnzbd's last answer stands
+   */
+  public removable(key: string, deleteFiles: boolean): boolean {
+    return this.refusal(key, deleteFiles) === undefined;
+  }
+
+  /**
+   * @param key the job's nzo_id
+   * @param deleteFiles the files go too
+   * @returns why SABnzbd cannot remove the job as asked, or undefined
+   */
+  private refusal(key: string, deleteFiles: boolean): string | undefined {
+    if (this.inQueue.has(key)) {
+      return undefined;
+    }
+    const entry = this.history.find(e => (e as Record<string, unknown>).nzo_id === key) as Record<string, unknown>;
+    const status = entry ? asText(entry.status) : undefined;
+    if (status === undefined) {
+      return "SABnzbd's last answer does not list this download";
+    }
+    if (!REMOVABLE.has(status)) {
+      return "SABnzbd removes no download while it post-processes it";
+    }
+    if (deleteFiles && status === "Completed") {
+      return "SABnzbd does not delete the files of a finished download";
+    }
+    return undefined;
   }
 
   /** @returns the version, after SABnzbd confirmed the key as its full API key (`mode=auth`, no warning on a miss) */

@@ -77,6 +77,15 @@ export class AriaDriver implements ProgramDriver {
     return toSnapshot(asText(reported), all, stat, option, paused, m => this.deps.log.debug(m));
   }
 
+  /**
+   * @param key the download
+   * @param deleteFiles the files go too
+   * @returns whether removing it reaches what core decision D-04 asks: only without its files, which aria2 keeps
+   */
+  public removable(key: string, deleteFiles: boolean): boolean {
+    return !deleteFiles;
+  }
+
   /** @param cmd the command */
   public async command(cmd: Command): Promise<void> {
     switch (cmd.kind) {
@@ -88,7 +97,7 @@ export class AriaDriver implements ProgramDriver {
         return;
       case "remove":
         // aria2's RPC deletes no file (RpcMethodFactory.cc): a removal that is to delete the files is refused
-        if (cmd.deleteFiles) {
+        if (!this.removable(cmd.key, cmd.deleteFiles === true)) {
           throw new RefusedError("aria2 deletes no files");
         }
         // a finished or failed one only leaves the result list; a running one is removed (files stay)

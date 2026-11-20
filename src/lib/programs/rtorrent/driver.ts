@@ -68,6 +68,15 @@ export class RtDriver implements ProgramDriver {
     );
   }
 
+  /**
+   * @param key the download
+   * @param deleteFiles the files go too
+   * @returns whether removing it reaches what core decision D-04 asks: only without its files, which rTorrent keeps
+   */
+  public removable(key: string, deleteFiles: boolean): boolean {
+    return !deleteFiles;
+  }
+
   /** @param cmd the command */
   public async command(cmd: Command): Promise<void> {
     switch (cmd.kind) {
@@ -82,7 +91,7 @@ export class RtDriver implements ProgramDriver {
         // its own mark first (plugin erasedata, d.custom5) and its own server-side code removes them; over XML-RPC
         // only `execute.*` could, which rTorrent 0.16 refuses an untrusted caller: a removal that is to delete them
         // is refused
-        if (cmd.deleteFiles) {
+        if (!this.removable(cmd.key, cmd.deleteFiles === true)) {
           throw new RefusedError("rTorrent deletes no files");
         }
         await this.client.call("d.erase", cmd.key);

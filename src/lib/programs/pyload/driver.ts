@@ -76,13 +76,22 @@ export class PyDriver implements ProgramDriver {
     return toSnapshot(version, server, queue, active, free, this.limit, m => this.deps.log.debug(m));
   }
 
+  /**
+   * @param key the download
+   * @param deleteFiles the files go too
+   * @returns whether removing it reaches what core decision D-04 asks: only without its files, which pyLoad keeps
+   */
+  public removable(key: string, deleteFiles: boolean): boolean {
+    return !deleteFiles;
+  }
+
   /** @param cmd the command */
   public async command(cmd: Command): Promise<void> {
     switch (cmd.kind) {
       case "remove":
         // only the list entry — pyLoad keeps the files (file_manager.py `remove_package`): a removal that is to delete
         // them is refused
-        if (cmd.deleteFiles) {
+        if (!this.removable(cmd.key, cmd.deleteFiles === true)) {
           throw new RefusedError("pyLoad deletes no files");
         }
         await this.client.post("delete_packages", { package_ids: [Number(cmd.key)] });

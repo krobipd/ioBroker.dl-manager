@@ -108,8 +108,8 @@ removing** decides, off by default. It sits on the settings page for every progr
 each program that can delete files has the same switch for that program alone, and while it is on, every card follows
 it. The datapoints of the download are not part of it — the settings under _Deleting datapoints_ decide them.
 
-A program that cannot remove a download the way the switch says keeps it in its list; `remove` stays unconfirmed and
-the log says why:
+A download its program cannot remove the way the switch says has no `remove` — it gets it back as soon as removing works
+again, for example once it has finished or the switch changed:
 
 | Program                 | What it cannot do                                                                     |
 | ----------------------- | ------------------------------------------------------------------------------------- |

@@ -391,6 +391,45 @@ describe("ProgramTree — downloads", () => {
     expect(a.objectWrites).toBe(0);
   });
 
+  it("gives a download its remove datapoint only while the program can remove it as the switch says (core decision D-13)", async () => {
+    const a = new FakeAdapter(NS);
+    let can = false;
+    const asked: boolean[] = [];
+    const removable = (_key: string, deleteFiles: boolean): boolean => {
+      asked.push(deleteFiles);
+      return can;
+    };
+    const t = new ProgramTree(a, "qbittorrent-nas", "q", { ...driver(), removable }, ALL, true, () => true);
+    await t.load();
+    await t.ensureDevice(undefined);
+    await t.sync(snap([item("aaaa11112222")]));
+    expect(a.objects.has(`${CH}.remove`)).toBe(false);
+    expect(a.objects.has(`${CH}.progress`)).toBe(true);
+    expect(asked).toEqual([true]);
+    // it can be removed now — finished, or the switch changed: the datapoint comes
+    can = true;
+    await t.sync(snap([item("aaaa11112222", { status: "completed" })]));
+    expect(a.objects.get(`${CH}.remove`)?.common).toMatchObject({ type: "boolean", write: true });
+    // no more — the datapoint goes, and an unchanged state writes nothing
+    can = false;
+    await t.sync(snap([item("aaaa11112222")]));
+    expect(a.objects.has(`${CH}.remove`)).toBe(false);
+    a.objectWrites = 0;
+    await t.sync(snap([item("aaaa11112222")]));
+    expect(a.objectWrites).toBe(0);
+  });
+
+  it("takes a stored remove datapoint away after a restart when the download cannot be removed so", async () => {
+    const a = new FakeAdapter(NS);
+    const t = await makeTree(a);
+    await t.sync(snap([item("aaaa11112222")]));
+    expect(a.objects.has(`${CH}.remove`)).toBe(true);
+    const again = new ProgramTree(a, "qbittorrent-nas", "q", { ...driver(), removable: () => false }, ALL);
+    await again.load();
+    await again.sync(snap([item("aaaa11112222")]));
+    expect(a.objects.has(`${CH}.remove`)).toBe(false);
+  });
+
   it("renames the channel when the program renames the download", async () => {
     const a = new FakeAdapter(NS);
     const t = await makeTree(a);

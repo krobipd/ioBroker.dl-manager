@@ -14,12 +14,13 @@
 // also delete the real data (or similar), that is switched on or off. this question exists for every downloader on its
 // own or in general. if general is on, one cannot choose individually. general off first, then one can choose
 // individually." · 19:35: "Yes right" (on: deleted is everything the program loaded for the download) · 19:47: "Off"
-// (on: how the switch stands after the update and on a new installation).
+// (on: how the switch stands after the update and on a new installation). Where removing a download cannot reach this
+// result at its program, core decision D-13 takes its remove datapoint away: this guard holds sentence 1 for every
+// download whose removal reaches it.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { describe, expect, it, vi } from "vitest";
-import { forCapabilities, ITEM_DATAPOINTS } from "../lib/core/datapoints";
 import { RefusedError } from "../lib/core/errors";
 import { ProgramManager, type ManagerAdapter } from "../lib/core/manager";
 import {
@@ -442,41 +443,6 @@ async function removeVia(type: ProgramType, state: State, deleteFiles: boolean):
   return sent.map(({ method, params }) => ({ method, params }));
 }
 
-/**
- * The datapoints a download of this program has whose write takes the download out of the program's list.
- *
- * @param info a program of the catalog
- * @param state where the download stands
- * @returns their ids
- */
-async function removersOf(info: ProgramInfo, state: State): Promise<string[]> {
-  const fresh = (): ProgramDriver => {
-    const driver = findProgram(info.type)!.create({ ...CFG, type: info.type }, DEPS);
-    place(driver, info.type, state, [KEY]);
-    return driver;
-  };
-  const ids: string[] = [];
-  for (const def of forCapabilities(ITEM_DATAPOINTS, fresh().capabilities).filter(d => d.write)) {
-    const cmd = def.command?.(true, KEY);
-    if (!cmd) {
-      continue;
-    }
-    sent.length = 0;
-    await fresh()
-      .command(cmd)
-      .catch(() => undefined);
-    if (
-      isDeepStrictEqual(
-        sent.map(({ method, params }) => ({ method, params })),
-        REMOVAL[info.type][state].keep,
-      )
-    ) {
-      ids.push(def.id);
-    }
-  }
-  return ids;
-}
-
 /** The object and state store of an instance, in memory — this guard's own copy (a guard imports no test code). */
 class Memory implements ManagerAdapter {
   readonly namespace = "dl-manager.0";
@@ -612,7 +578,7 @@ async function removeEvery(
   general: boolean | undefined,
   row: Record<string, unknown>,
 ): Promise<{ asked: Record<string, readonly Sent[]>; a: Memory }> {
-  const [remover] = await removersOf(CHOOSES, "loading");
+  const [remover] = await removersIn(CHOOSES, "loading", false);
   // every download has a datapoint of its own to remove it
   expect(remover, CHOOSES.type).toBeDefined();
   const a = new Memory();
@@ -629,6 +595,7 @@ async function removeEvery(
             type,
             capabilities: real.capabilities,
             extras: [],
+            removable: (key, deleteFiles) => real.removable?.(key, deleteFiles) ?? true,
             poll: () =>
               Promise.resolve({
                 status: { version: "1", paused: false, downloadBps: 0 },
@@ -669,6 +636,88 @@ async function removeEvery(
   return { asked, a };
 }
 
+/** The download's status in the common list, per state. */
+const STATUS_OF = { loading: "downloading", finished: "completed", failed: "failed" } as const;
+
+/**
+ * Starts the adapter's manager with one program — its real driver, the download placed where it stands — and presses
+ * every switch and button of the download.
+ *
+ * @param info a program of the catalog
+ * @param state where the download stands
+ * @param general the settings page's switch
+ * @returns the download's datapoints whose press takes it out of the program's list as the switch says
+ */
+async function removersIn(info: ProgramInfo, state: State, general: boolean): Promise<string[]> {
+  const a = new Memory();
+  // the adapter's own lookup and driver; only the program's list is a stand-in, so nothing is asked to list it
+  const find = (type: string): ProgramEntry | undefined => {
+    const entry = findProgram(type);
+    return (
+      entry && {
+        ...entry,
+        needs: [],
+        create: (cfg, deps): ProgramDriver => {
+          const real = entry.create(cfg, deps);
+          place(real, info.type, state, [KEY]);
+          return {
+            type,
+            capabilities: real.capabilities,
+            extras: [],
+            removable: (key, deleteFiles) => real.removable?.(key, deleteFiles) ?? true,
+            poll: () =>
+              Promise.resolve({
+                status: { version: "1", paused: false, downloadBps: 0 },
+                items: [
+                  {
+                    key: KEY,
+                    name: "download",
+                    status: STATUS_OF[state],
+                    sizeBytes: 100,
+                    doneBytes: state === "finished" ? 100 : 50,
+                    speedBps: 0,
+                    etaSeconds: null,
+                    error: "",
+                  },
+                ],
+                complete: true,
+              }),
+            command: cmd => real.command(cmd),
+            close: () => Promise.resolve(),
+          };
+        },
+      }
+    );
+  };
+  const manager = new ProgramManager(
+    {
+      adapter: a,
+      timers: { setTimeout: () => undefined, clearTimeout: () => undefined },
+      find,
+      problems: { report: () => undefined, forget: () => undefined },
+      moveDevice: () => Promise.resolve(),
+    },
+    { intervalMs: 10_000, scope: "all", limit: 100, deleteFiles: general },
+  );
+  await manager.start([storedCard(info, undefined)]);
+  await flush();
+  const ids: string[] = [];
+  for (const [id, o] of [...a.objects]) {
+    const common = o.common as ioBroker.StateCommon;
+    if (o.type !== "state" || !id.includes(".downloads.") || !common.write || common.type !== "boolean") {
+      continue;
+    }
+    sent.length = 0;
+    await manager.onUserWrite(id.slice(`${a.namespace}.`.length), true);
+    await flush();
+    const asked = sent.map(({ method, params }) => ({ method, params }));
+    if (isDeepStrictEqual(asked, REMOVAL[info.type][state][general ? "delete" : "keep"])) {
+      ids.push(id.slice(id.lastIndexOf(".") + 1));
+    }
+  }
+  return ids;
+}
+
 /**
  * @param type a program type
  * @param files keep or delete
@@ -686,11 +735,18 @@ const filesGo = async (general: boolean | undefined, row: Record<string, unknown
   (await removeEvery(general, row)).asked;
 
 describe("D-04 removing a download, with its files where the switch says so", () => {
-  it("gives every download a remove datapoint of its own, at every program", async () => {
+  it("gives every download a remove datapoint of its own, at every program, wherever removing reaches this result", async () => {
     for (const info of CATALOG) {
-      const state = STATES.find(s => REMOVAL[info.type][s].keep !== undefined);
-      need(state, `${info.type} keeps the files in no state`);
-      expect(await removersOf(info, state), info.type).toHaveLength(1);
+      for (const state of STATES) {
+        for (const general of [false, true].filter(
+          g => REMOVAL[info.type][state][g ? "delete" : "keep"] !== undefined,
+        )) {
+          expect(
+            await removersIn(info, state, general),
+            `${info.type} ${state}, switch ${String(general)}`,
+          ).toHaveLength(1);
+        }
+      }
     }
   });
 

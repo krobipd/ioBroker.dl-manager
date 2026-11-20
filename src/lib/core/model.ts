@@ -168,6 +168,11 @@ export interface ProgramDriver {
   poll(): Promise<ProgramSnapshot>;
   /** Sends a command; throws when the program refuses or does not support it. */
   command(cmd: Command): Promise<void>;
+  /**
+   * Whether removing this download reaches what core decision D-04 asks — it leaves the program's list, and its files go
+   * exactly when `deleteFiles` says so — as the program's last answer stands; absent: always (core decision D-13).
+   */
+  removable?(key: string, deleteFiles: boolean): boolean;
   /** Releases connections and timers. */
   close(): Promise<void>;
   /**

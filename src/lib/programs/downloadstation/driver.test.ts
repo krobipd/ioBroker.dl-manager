@@ -369,6 +369,20 @@ describe("Download Station driver", () => {
     expect(sent.find(f => f.get("method") === "create")?.get("uri")).toBe("http://example.com/a\\,b");
   });
 
+  it("counts a paused task with every byte as finished when it says what a removal can do (core decision D-13)", async () => {
+    // dbid_2 has every byte; paused, Download Station keeps its files on removal like a finished task's
+    await start({
+      list: withStatus(withStatus(listOf("4.1-5012", "running"), "dbid_2", "paused"), "dbid_1", "paused"),
+    });
+    const s = await driver.poll();
+    expect(s.items.map(i => [i.key, i.status])).toEqual([
+      ["dbid_1", "paused"],
+      ["dbid_2", "completed"],
+    ]);
+    expect([driver.removable("dbid_2", false), driver.removable("dbid_2", true)]).toEqual([true, false]);
+    expect([driver.removable("dbid_1", false), driver.removable("dbid_1", true)]).toEqual([false, true]);
+  });
+
   it("pauses again a task whose pause came undone within two polls, and keeps the pause for everything", async () => {
     await start();
     await driver.poll();

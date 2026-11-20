@@ -302,6 +302,23 @@ export function runDriverContract(c: ContractCase): void {
       await d.close();
     });
 
+    it("offers to remove a download exactly where it carries the removal out (core decision D-13)", async () => {
+      const d = c.makeDriver(server.baseUrl, { good: true });
+      if (d.capabilities.has("itemRemove")) {
+        for (const { key } of (await d.poll()).items) {
+          for (const deleteFiles of [false, true]) {
+            const offered = d.removable?.(key, deleteFiles) ?? true;
+            const refused = await d.command({ kind: "remove", key, deleteFiles }).then(
+              () => false,
+              (err: unknown) => err instanceof RefusedError,
+            );
+            expect(refused, `${key} deleteFiles=${deleteFiles}`).toBe(!offered);
+          }
+        }
+      }
+      await d.close();
+    });
+
     it("gives up after ONE rejected login with an AuthError", async ({ skip }) => {
       if (c.noLogin) {
         skip();

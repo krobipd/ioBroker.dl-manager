@@ -80,15 +80,15 @@ export class NzbDriver implements ProgramDriver {
    *
    * @param key the NZBID
    * @param deleteFiles the files go too
-   * @returns the edit action
+   * @returns the edit action, or why NZBGet cannot remove the job as asked
    */
-  private removal(key: string, deleteFiles: boolean): string {
+  private removal(key: string, deleteFiles: boolean): { action: string } | { refused: string } {
     if (this.inQueue.has(key)) {
-      return deleteFiles ? "GroupDelete" : "GroupParkDelete";
+      return { action: deleteFiles ? "GroupDelete" : "GroupParkDelete" };
     }
     const entry = this.history.get(key);
     if (!entry) {
-      throw new RefusedError("NZBGet's last answer does not list this download");
+      return { refused: "NZBGet's last answer does not list this download" };
     }
     if (asText(entry.Kind) === "NZB") {
       const deletesFolder =
@@ -96,13 +96,22 @@ export class NzbDriver implements ProgramDriver {
         asText(entry.ParStatus) === "FAILURE" ||
         ["FAILURE", "PASSWORD"].includes(asText(entry.UnpackStatus));
       if (deletesFolder && !deleteFiles) {
-        throw new RefusedError("NZBGet deletes the files of a deleted or failed download");
+        return { refused: "NZBGet deletes the files of a deleted or failed download" };
       }
       if (!deletesFolder && deleteFiles) {
-        throw new RefusedError("NZBGet does not delete the files of a finished download");
+        return { refused: "NZBGet does not delete the files of a finished download" };
       }
     }
-    return "HistoryDelete";
+    return { action: "HistoryDelete" };
+  }
+
+  /**
+   * @param key the NZBID
+   * @param deleteFiles the files go too
+   * @returns whether removing it reaches what core decision D-04 asks, as NZBGet's last answer stands
+   */
+  public removable(key: string, deleteFiles: boolean): boolean {
+    return "action" in this.removal(key, deleteFiles);
   }
 
   /** @param cmd the command */
@@ -116,9 +125,14 @@ export class NzbDriver implements ProgramDriver {
         }
         await this.client.call("editqueue", [cmd.kind === "pause" ? "GroupPause" : "GroupResume", "", id(cmd.key)]);
         return;
-      case "remove":
-        await this.client.call("editqueue", [this.removal(cmd.key, cmd.deleteFiles === true), "", id(cmd.key)]);
+      case "remove": {
+        const removal = this.removal(cmd.key, cmd.deleteFiles === true);
+        if ("refused" in removal) {
+          throw new RefusedError(removal.refused);
+        }
+        await this.client.call("editqueue", [removal.action, "", id(cmd.key)]);
         return;
+      }
       case "add":
         await this.client.call("append", ["", cmd.url, "", 0, false, false, "", 0, "SCORE", false, []]);
         return;

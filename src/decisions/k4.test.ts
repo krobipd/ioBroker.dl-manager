@@ -421,9 +421,11 @@ describe("K4 what a program can do decides its datapoints; a missing program pau
       const item = rel.filter(id => id.startsWith("downloads.")).map(id => id.split(".").slice(2).join("."));
       const can = (d: { capability?: string }): boolean =>
         !d.capability || driver.capabilities.has(d.capability as never);
-      // a download's datapoint stands exactly when the program can do what it shows
+      // a download's datapoint stands exactly when the program can do what it shows — for this download
+      const canWith = (d: { capability?: string }): boolean =>
+        can(d) && (d.capability !== "itemRemove" || (driver.removable?.("k", false) ?? true));
       for (const d of ITEM_DATAPOINTS) {
-        expect(item.includes(d.id), `${type} downloads.*.${d.id}`).toBe(can(d));
+        expect(item.includes(d.id), `${type} downloads.*.${d.id}`).toBe(canWith(d));
       }
       // a program's own datapoint stands exactly when the program can do what it shows
       for (const d of PROGRAM_DATAPOINTS) {

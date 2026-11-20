@@ -178,6 +178,11 @@ export class ProgramManager {
     for (const row of next) {
       const was = before.get(row.id);
       if (was && signature(was) === signature(row)) {
+        // the card's own files switch needs no new start, but it changes which downloads can be removed so (D-13):
+        // the program is asked at once, and its tree offers the remove datapoints anew
+        if (was.deleteFiles !== row.deleteFiles) {
+          void this.running.get(row.id)?.runner.pollNow();
+        }
         continue;
       }
       await this.stopProgram(row.id);
@@ -223,7 +228,7 @@ export class ProgramManager {
       return undefined;
     }
     const driver = row.entry.create(row.cfg, this.driverDeps(row.id));
-    const tree = new ProgramTree(this.a, row.id, name, driver, this.opts, row.scheme);
+    const tree = new ProgramTree(this.a, row.id, name, driver, this.opts, row.scheme, () => this.withFiles(row.id));
     await tree.load();
     // a program reached through an account has no address — its account never goes into the object tree
     await tree.ensureDevice(deviceIcon(row.cfg.type), row.cfg.host ? addressOf(row.cfg) : null);
@@ -301,17 +306,24 @@ export class ProgramManager {
 
   /**
    * How a download is removed (core decision D-04): with its files when the general switch says so, or the card's own
-   * choice where the card offers one (the program can delete files); a download the program cannot remove that way,
-   * its driver refuses (core decision D-13).
+   * choice where the card offers one (the program can delete files).
    *
    * @param id the program's device id
    * @param key the download
    * @returns the command
    */
   private removal(id: string, key: string): Command {
+    return { kind: "remove", key, deleteFiles: this.withFiles(id) };
+  }
+
+  /**
+   * @param id the program's device id
+   * @returns whether removing one of its downloads deletes the files too (core decision D-04)
+   */
+  private withFiles(id: string): boolean {
     const row = this.rows.find(r => r.id === id);
     const own = programInfo(row?.cfg.type ?? "")?.deletesFiles === true && row?.deleteFiles === true;
-    return { kind: "remove", key, deleteFiles: this.opts.deleteFiles === true || own };
+    return this.opts.deleteFiles === true || own;
   }
 
   /** Stops every runner (they mark their program Unknown) and marks the adapter disconnected. */

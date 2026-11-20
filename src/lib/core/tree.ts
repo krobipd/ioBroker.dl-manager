@@ -59,6 +59,8 @@ export interface TreeDriver {
   readonly capabilities: ReadonlySet<Capability>;
   /** Program-specific datapoints. */
   readonly extras: readonly ExtraDefinition[];
+  /** Whether removing the download reaches what core decision D-04 asks (`ProgramDriver.removable`). */
+  removable?(key: string, deleteFiles: boolean): boolean;
 }
 
 /** More download channels than this per program get a warning — unless the limit keeps them at or below it. */
@@ -133,7 +135,7 @@ export class ProgramTree {
    * Raw key → channel name; `fresh` once this start offered the channel's objects (a channel read from the database
    * gets them once, so a changed datapoint set or text reaches an existing installation).
    */
-  private readonly known = new Map<string, { name: string; fresh: boolean; leftSig: boolean }>();
+  private readonly known = new Map<string, { name: string; fresh: boolean; leftSig: boolean; removable?: boolean }>();
   /** The device still carries the removed list the 0.0.1 placeholder wrote (`native.removed`). */
   private leftRemoved = false;
   private warned = false;
@@ -150,6 +152,7 @@ export class ProgramTree {
    * @param opts adapter options that shape the tree (which downloads, how many)
    * @param scheme the device id follows the id scheme (`native.idScheme`) — not yet for a My.JDownloader program
    *   whose instance id is still unknown
+   * @param withFiles whether removing a download of this program deletes its files (core decision D-04)
    */
   public constructor(
     private readonly adapter: TreeAdapter,
@@ -158,6 +161,7 @@ export class ProgramTree {
     private readonly driver: TreeDriver,
     private readonly opts: TreeOptions,
     private readonly scheme = true,
+    private readonly withFiles: () => boolean = () => false,
   ) {
     this.dev = `${adapter.namespace}.${programId}`;
     this.itemDefs = forCapabilities(ITEM_DATAPOINTS, driver.capabilities);
@@ -348,18 +352,23 @@ export class ProgramTree {
     const id = this.ids.idFor(item.key);
     const ch = `${this.dev}.downloads.${id}`;
     const known = this.known.get(item.key);
+    // a download has its remove datapoint only while removing it reaches what core decision D-04 asks (D-13)
+    const removable = this.driver.removable?.(item.key, this.withFiles()) ?? true;
     if (!known || !known.fresh) {
       await this.adapter.extendObject(ch, {
         type: "channel",
         common: { name: item.name },
         native: { key: item.key, nameSource: "api", ...(known?.leftSig ? { sig: null } : {}) },
       });
-      await this.writeItemStates(ch, item.name);
-      this.known.set(item.key, { name: item.name, fresh: true, leftSig: false });
-    } else if (known.name !== item.name) {
-      await this.adapter.extendObject(ch, { common: { name: item.name } });
-      await this.writeItemStates(ch, item.name);
+      await this.writeItemStates(ch, item.name, removable);
+      this.known.set(item.key, { name: item.name, fresh: true, leftSig: false, removable });
+    } else if (known.name !== item.name || known.removable !== removable) {
+      if (known.name !== item.name) {
+        await this.adapter.extendObject(ch, { common: { name: item.name } });
+      }
+      await this.writeItemStates(ch, item.name, removable);
       known.name = item.name;
+      known.removable = removable;
     }
     await this.putValues(ch, this.itemDefs, item, this.itemExtras, item.extra);
   }
@@ -369,9 +378,16 @@ export class ProgramTree {
    *
    * @param ch the channel id
    * @param download the download's name
+   * @param removable removing the download reaches what core decision D-04 asks — else it has no remove datapoint
    */
-  private async writeItemStates(ch: string, download: string): Promise<void> {
+  private async writeItemStates(ch: string, download: string, removable: boolean): Promise<void> {
     for (const d of this.itemDefs) {
+      if (d.capability === "itemRemove" && !removable) {
+        if (this.adapter.knownObject(`${ch}.${d.id}`)) {
+          await this.adapter.removeObject(`${ch}.${d.id}`, { recursive: false });
+        }
+        continue;
+      }
       await this.adapter.extendObject(`${ch}.${d.id}`, this.stateObject(d, tNameOf(download, d.nameKey)));
     }
     for (const e of this.itemExtras) {

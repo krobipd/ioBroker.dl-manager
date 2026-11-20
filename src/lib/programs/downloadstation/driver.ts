@@ -4,7 +4,7 @@ import { ProtocolError, RefusedError } from "../../core/errors";
 import type { Capability, Command, DriverDeps, ProgramConfig, ProgramDriver, ProgramSnapshot } from "../../core/model";
 import { toKiB } from "../../core/units";
 import { DsClient, perId } from "./client";
-import { infoOf, isRunning, taskOf, toSnapshot, uploadLimitFields, type DsTask } from "./map";
+import { infoOf, isRunning, rawStatus, taskOf, toSnapshot, uploadLimitFields, type DsTask } from "./map";
 
 /** How many polls after a pause a task that runs again is paused once more instead of counting as started. */
 const WATCH_POLLS = 2;
@@ -92,6 +92,35 @@ export class DsDriver implements ProgramDriver {
     }
   }
 
+  /**
+   * @param key the task id
+   * @param deleteFiles the files go too
+   * @returns whether removing it reaches what core decision D-04 asks, as Download Station's last answer stands
+   */
+  public removable(key: string, deleteFiles: boolean): boolean {
+    return this.refusal(key, deleteFiles) === undefined;
+  }
+
+  /**
+   * @param key the task id
+   * @param deleteFiles the files go too
+   * @returns why Download Station cannot remove the task as asked, or undefined
+   */
+  private refusal(key: string, deleteFiles: boolean): string | undefined {
+    const t = this.tasks.get(key);
+    if (!t) {
+      return "Download Station's last answer does not list this download";
+    }
+    const finished = FINISHED.has(rawStatus(t));
+    if (finished && deleteFiles) {
+      return "Download Station does not delete the files of a finished download";
+    }
+    if (!finished && !deleteFiles) {
+      return "Download Station deletes what an unfinished download loaded";
+    }
+    return undefined;
+  }
+
   /** @param cmd the command */
   public async command(cmd: Command): Promise<void> {
     switch (cmd.kind) {
@@ -107,16 +136,9 @@ export class DsDriver implements ProgramDriver {
         // Download Station keeps a finished task's files and discards what an unfinished one loaded, with or without
         // force_complete (cmeans spec `delete_download`, measured on DSM 7.1 and 7.2.2) — a removal it cannot carry out
         // as asked is refused (core decision D-13)
-        const t = this.tasks.get(cmd.key);
-        if (!t) {
-          throw new RefusedError("Download Station's last answer does not list this download");
-        }
-        const finished = FINISHED.has(t.status);
-        if (finished && cmd.deleteFiles) {
-          throw new RefusedError("Download Station does not delete the files of a finished download");
-        }
-        if (!finished && !cmd.deleteFiles) {
-          throw new RefusedError("Download Station deletes what an unfinished download loaded");
+        const refused = this.refusal(cmd.key, cmd.deleteFiles === true);
+        if (refused) {
+          throw new RefusedError(refused);
         }
         await this.each("delete", [cmd.key], { force_complete: "false" });
         return;

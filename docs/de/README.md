@@ -113,8 +113,8 @@ Einstellungsseite für alle Programme; solange er dort aus ist, hat die Karte je
 denselben Schalter nur für dieses Programm, und solange er an ist, folgt ihm jede Karte. Die Datenpunkte des Downloads
 gehören nicht dazu — die regeln die Einstellungen unter _Löschen von Datenpunkten_.
 
-Ein Programm, das einen Download nicht so entfernen kann, wie der Schalter sagt, behält ihn in seiner Liste; `remove`
-bleibt unbestätigt, und das Log sagt warum:
+Ein Download, den sein Programm nicht so entfernen kann, wie der Schalter sagt, hat kein `remove` — er bekommt es
+zurück, sobald das Entfernen wieder geht, etwa wenn er fertig ist oder der Schalter umgestellt wurde:
 
 | Programm                | Was es nicht kann                                                                                         |
 | ----------------------- | --------------------------------------------------------------------------------------------------------- |
