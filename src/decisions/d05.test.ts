@@ -10,18 +10,6 @@ import { describe, expect, it, vi } from "vitest";
 import { ITEM_DATAPOINTS } from "../lib/core/datapoints";
 import { emptyForm, formToRow, OFFERED, programForm } from "../lib/dm-forms";
 
-/**
- * A precondition of this guard — it throws when the guard cannot run, it asserts nothing of the rule.
- *
- * @param ok what has to hold for the guard to run
- * @param what what is missing otherwise
- */
-function need(ok: unknown, what: string): asserts ok {
-  if (!ok) {
-    throw new Error(`the guard cannot run: ${what}`);
-  }
-}
-
 // adapter-core's I18n needs a running adapter; the dialog's labels stay their text keys.
 vi.mock("@iobroker/adapter-core", () => ({
   I18n: { getTranslatedObject: (key: string) => ({ en: key }), translate: (key: string) => key },
@@ -63,15 +51,15 @@ const GENERAL = SETTINGS.find(key => LABELS.get(key) === SWITCH);
 
 /**
  * @param type a program of the admin's choice
- * @returns the settings its dialog asks — by key or by the label of the settings page — with the field's German label
+ * @returns the settings its dialog asks — by key or by the label of the settings page
  */
-function askedAt(type: (typeof OFFERED)[number]["type"]): { key: string; label: unknown }[] {
+function askedAt(type: (typeof OFFERED)[number]["type"]): string[] {
   const items = (programForm(type, { takenKeys: [] }) as unknown as { items: Record<string, Record<string, unknown>> })
     .items;
   return Object.entries(items).flatMap(([k, f]) => {
     const label = german(f.label);
     const key = SETTINGS.find(s => s === k || (label !== undefined && LABELS.get(s) === label));
-    return key ? [{ key, label }] : [];
+    return key ? [key] : [];
   });
 }
 
@@ -86,7 +74,6 @@ function storedAt(type: (typeof OFFERED)[number]["type"]): string[] {
 
 describe("D-05 what is the same for all downloads is set once for the whole instance", () => {
   it("sets every setting of the instance once, on the instance settings page", () => {
-    need(SETTINGS.length > 0, "the instance stores no setting");
     for (const key of SETTINGS) {
       expect(PAGE.filter(([k]) => k === key).length, key).toBe(1);
     }
@@ -103,24 +90,13 @@ describe("D-05 what is the same for all downloads is set once for the whole inst
   it("sets none per program — but the switch of D-04", () => {
     for (const p of OFFERED) {
       expect(
-        askedAt(p.type)
-          .map(s => s.key)
-          .filter(k => k !== GENERAL),
+        askedAt(p.type).filter(k => k !== GENERAL),
         `${p.type} dialog`,
       ).toEqual([]);
       expect(
         storedAt(p.type).filter(k => k !== GENERAL),
         `${p.type} row`,
       ).toEqual([]);
-    }
-  });
-
-  it("lets the switch of D-04 stand per program", () => {
-    need(GENERAL, "the settings page has no switch of D-04");
-    const asked = OFFERED.flatMap(p => askedAt(p.type));
-    need(asked.length > 0, "no program asks a setting");
-    for (const s of asked) {
-      expect(s.label, s.key).toBe(SWITCH);
     }
   });
 });

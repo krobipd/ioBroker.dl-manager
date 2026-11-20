@@ -8,7 +8,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { parseMaxDownloads, parseTreeScope } from "../lib/core/config";
+import { parseMaxDownloads } from "../lib/core/config";
 import { ProgramManager, type ManagerAdapter } from "../lib/core/manager";
 import type { DownloadItem, ProgramDriver, ProgramEntry, ProgramSnapshot, Status } from "../lib/core/model";
 import { shownKeys } from "../lib/core/visibility";
@@ -109,10 +109,13 @@ const settle = async (): Promise<void> => {
 /**
  * @param items what every program lists, by host
  * @param limit the instance's highest number per program
- * @returns the store after every program was asked once
+ * @param polls how many times every program is asked
+ * @returns the store after every program was asked
  */
-async function treeWith(items: Record<string, DownloadItem[]>, limit: number): Promise<Memory> {
+async function treeWith(items: Record<string, DownloadItem[]>, limit: number, polls = 1): Promise<Memory> {
   const a = new Memory();
+  // the next poll each runner plans, run by hand
+  const planned: (() => void)[] = [];
   const entry: ProgramEntry = {
     type: "qbittorrent",
     needs: ["host"],
@@ -133,7 +136,7 @@ async function treeWith(items: Record<string, DownloadItem[]>, limit: number): P
   const manager = new ProgramManager(
     {
       adapter: a,
-      timers: { setTimeout: () => undefined, clearTimeout: () => undefined },
+      timers: { setTimeout: (fn: () => void) => void planned.push(fn), clearTimeout: () => undefined },
       find: () => entry,
       problems: { report: () => undefined, forget: () => undefined },
       moveDevice: () => Promise.resolve(),
@@ -144,19 +147,25 @@ async function treeWith(items: Record<string, DownloadItem[]>, limit: number): P
     Object.keys(items).map(host => ({ id: `qbittorrent-${host}`, type: "qbittorrent", name: host, host })),
   );
   await settle();
+  for (let i = 1; i < polls; i++) {
+    for (const poll of planned.splice(0)) {
+      poll();
+    }
+    await settle();
+  }
   return a;
 }
 
 describe("D-06 scope and number per program decide which downloads stand in the tree, with a clear warning", () => {
-  it("takes 0 to 1000 downloads per program, 100 by default", () => {
-    expect(parseMaxDownloads(undefined)).toBe(100);
-    expect(parseMaxDownloads("not a number")).toBe(100);
-    expect(parseMaxDownloads(5)).toBe(5);
-    expect(parseMaxDownloads(0)).toBe(0);
-    expect(parseMaxDownloads(-3)).toBe(0);
-    expect(parseMaxDownloads(5000)).toBe(1000);
-    expect((json("io-package.json").native as Record<string, unknown>).maxDownloads).toBe(100);
+  it("takes 0 to 1000 downloads per program, 0 for all, 100 by default", () => {
     expect(page().maxDownloads).toMatchObject({ type: "number", min: 0, max: 1000, default: 100 });
+    expect((json("io-package.json").native as Record<string, unknown>).maxDownloads).toBe(100);
+    for (const n of [0, 5, 1000]) {
+      expect(parseMaxDownloads(n), String(n)).toBe(n);
+    }
+    const many = Array.from({ length: 1001 }, (_, i) => item(`k${i}`, "queued", i));
+    expect(shownKeys(many, { scope: "all", limit: 0 }).size).toBe(1001);
+    expect(shownKeys(many, { scope: "all", limit: 1000 }).size).toBe(1000);
   });
 
   it("offers the scopes all, without finished and only unfinished — failed downloads always stay", () => {
@@ -165,18 +174,12 @@ describe("D-06 scope and number per program decide which downloads stand in the 
       "withoutCompleted",
       "unfinished",
     ]);
-    expect(parseTreeScope("something")).toBe("all");
-    const items = [
-      item("run", "downloading"),
-      item("bad", "failed"),
-      item("seed", "seeding"),
-      item("done", "completed"),
-    ];
+    const items = [item("run", "downloading"), item("bad", "failed"), item("done", "completed")];
     const keys = (scope: "all" | "withoutCompleted" | "unfinished"): string[] => [
       ...shownKeys(items, { scope, limit: 0 }),
     ];
-    expect(keys("all")).toEqual(["run", "bad", "seed", "done"]);
-    expect(keys("withoutCompleted")).toEqual(["run", "bad", "seed"]);
+    expect(keys("all")).toEqual(["run", "bad", "done"]);
+    expect(keys("withoutCompleted")).toEqual(["run", "bad"]);
     expect(keys("unfinished")).toEqual(["run", "bad"]);
   });
 
@@ -214,15 +217,18 @@ describe("D-06 scope and number per program decide which downloads stand in the 
     expect(a.states.get("dl-manager.0.summary.queued")).toBe(5);
   });
 
-  it("warns on the settings page and in the log at 0 or above 200", async () => {
+  it("shows a warning box on the settings page at 0 or above 200", () => {
     const box = page()._warnManyDownloads as { hidden: string };
     const shows = (maxDownloads: number): boolean =>
       !(new Function("data", `return ${box.hidden}`) as (d: unknown) => boolean)({ maxDownloads });
     expect([0, 1, 100, 200, 201, 1000].map(shows)).toEqual([true, false, false, false, true, true]);
+  });
 
+  it("warns in the log once per program and start when a program shows more than 200 downloads in the tree", async () => {
     const many = Array.from({ length: 201 }, (_, i) => item(`k${i}`, "queued", i));
     const warns = (a: Memory): string[] => a.lines.filter(l => l.startsWith("warn: "));
-    expect(warns(await treeWith({ all: many }, 0))).toHaveLength(1);
-    expect(warns(await treeWith({ all: many }, 200))).toEqual([]);
+    expect(warns(await treeWith({ all: many }, 0, 2))).toHaveLength(1);
+    expect(warns(await treeWith({ a: many, b: many }, 0, 2))).toHaveLength(2);
+    expect(warns(await treeWith({ all: many }, 200, 2))).toEqual([]);
   });
 });

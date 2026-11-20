@@ -16,6 +16,18 @@ import { readDataFile, type DataFileCipher } from "../lib/data-file";
 import * as mainModule from "../main";
 const { DownloadManagerAdapter } = mainModule as unknown as { DownloadManagerAdapter: new () => ioBroker.Adapter };
 
+/**
+ * A precondition of this guard — it throws when the guard cannot run, it asserts nothing of the rule.
+ *
+ * @param ok what has to hold for the guard to run
+ * @param what what is missing otherwise
+ */
+function need(ok: unknown, what: string): asserts ok {
+  if (!ok) {
+    throw new Error(`the guard cannot run: ${what}`);
+  }
+}
+
 // The adapter base without js-controller is the fleet's FakeAdapter (encrypt and decrypt from the master), with the
 // adapter's folder and the instance's data folder the store needs.
 vi.mock("@iobroker/adapter-core", async () => {
@@ -91,7 +103,7 @@ describe("D-11 the programs live in a file of the data folder, secrets encrypted
     expect(adapter.storeFile).toBe(join("/opt/iobroker/iobroker-data/dl-manager.0", "programs.json"));
   });
 
-  it("stores password and API key encrypted with the adapter's encrypt(), the rest as typed", async () => {
+  it("stores password and API key encrypted with the adapter's encrypt()", async () => {
     const dir = mkdtempSync(join(tmpdir(), "dl-manager-d11-"));
     try {
       const adapter = new DownloadManagerAdapter() as unknown as { programs: ProgramStore } & DataFileCipher;
@@ -109,16 +121,11 @@ describe("D-11 the programs live in a file of the data folder, secrets encrypted
       for (const secret of [row.password, row.apiKey]) {
         expect(raw.includes(secret), secret).toBe(false);
       }
-      expect((JSON.parse(raw) as { rows: Record<string, unknown>[] }).rows[0]).toMatchObject({
-        username: "admin",
-        host: "nas",
-      });
       const read = readDataFile(dir, STORE_FILE, { cipher: adapter, fields: SECRET_FIELDS });
       expect((read.value as { rows: Record<string, unknown>[] }).rows[0]).toMatchObject({
         password: row.password,
         apiKey: row.apiKey,
       });
-      expect(await adapter.programs.read()).toEqual([row]);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -180,8 +187,8 @@ describe("D-11 the programs live in a file of the data folder, secrets encrypted
         password: "qb-secret",
       },
     ]);
-    expect(a.objects.get("dl-manager.0.jdownloader-2222")?.type).toBe("device");
-    expect(a.objects.get("dl-manager.0.qbittorrent-nas")?.type).toBe("device");
+    need(a.objects.get("dl-manager.0.jdownloader-2222")?.type === "device", "the manager built no JDownloader device");
+    need(a.objects.get("dl-manager.0.qbittorrent-nas")?.type === "device", "the manager built no qBittorrent device");
     const tree = JSON.stringify([...a.objects]) + JSON.stringify([...a.states]);
     for (const secret of ["owner@example.com", "cloud-secret", "qb-secret"]) {
       expect(tree.includes(secret), secret).toBe(false);

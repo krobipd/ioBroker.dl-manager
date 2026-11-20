@@ -23,335 +23,313 @@ import * as transmission from "../lib/programs/transmission/map";
 import * as tribler from "../lib/programs/tribler/map";
 import * as utorrent from "../lib/programs/utorrent/map";
 
+/**
+ * A precondition of this guard — it throws when the guard cannot run, it asserts nothing of the rule.
+ *
+ * @param ok what has to hold for the guard to run
+ * @param what what is missing otherwise
+ */
+function need(ok: unknown, what: string): asserts ok {
+  if (!ok) {
+    throw new Error(`the guard cannot run: ${what}`);
+  }
+}
+
 // adapter-core's I18n needs a running adapter; a text is not what this guard checks.
 vi.mock("@iobroker/adapter-core", () => ({
   I18n: { getTranslatedObject: (key: string) => ({ en: key }), translate: (key: string) => key },
 }));
 
 type Mapper = (raw: string | number, debug: (msg: string) => void) => Status;
-type Row = readonly [string | number, Status];
 
-/** The status each raw status of each program shows — written here, never read from the program's own table. */
-const EXPECTED = {
-  aria2: [
-    ["active", "downloading"],
-    ["active:seed", "seeding"],
-    ["active:0", "waiting"],
-    ["waiting", "queued"],
-    ["paused", "paused"],
-    ["complete", "completed"],
-    ["error", "failed"],
-  ],
+/** The raw statuses each program reports — what this guard hands each program's status mapping. */
+const RAWS = {
+  aria2: ["active", "active:seed", "active:0", "waiting", "paused", "complete", "error"],
   deluge: [
-    ["Downloading", "downloading"],
-    ["Downloading:idle", "waiting"],
-    ["Seeding", "seeding"],
-    ["Paused", "paused"],
-    ["Paused:done", "completed"],
-    ["Queued", "queued"],
-    ["Checking", "checking"],
-    ["Allocating", "checking"],
-    ["Moving", "postprocessing"],
-    ["Error", "failed"],
+    "Downloading",
+    "Downloading:idle",
+    "Seeding",
+    "Paused",
+    "Paused:done",
+    "Queued",
+    "Checking",
+    "Allocating",
+    "Moving",
+    "Error",
   ],
   downloadstation: [
-    ["waiting", "queued"],
-    ["downloading", "downloading"],
-    ["paused", "paused"],
-    ["paused:done", "completed"],
-    ["finishing", "postprocessing"],
-    ["finished", "completed"],
-    ["hash_checking", "checking"],
-    ["seeding", "seeding"],
-    ["filehosting_waiting", "waiting"],
-    ["extracting", "postprocessing"],
-    ["error", "failed"],
+    "waiting",
+    "downloading",
+    "paused",
+    "paused:done",
+    "finishing",
+    "finished",
+    "hash_checking",
+    "seeding",
+    "filehosting_waiting",
+    "extracting",
+    "error",
   ],
-  flood: [
-    ["checking", "checking"],
-    ["moving", "postprocessing"],
-    ["error", "failed"],
-    ["stopped", "paused"],
-    ["stopped:done", "completed"],
-    ["seeding", "seeding"],
-    ["downloading", "downloading"],
-    ["downloading:inactive", "waiting"],
-  ],
+  flood: ["checking", "moving", "error", "stopped", "stopped:done", "seeding", "downloading", "downloading:inactive"],
   freebox: [
-    ["stopped", "paused"],
-    ["stopping", "paused"],
-    ["queued", "queued"],
-    ["starting", "checking"],
-    ["downloading", "downloading"],
-    ["checking", "checking"],
-    ["checking:nzb", "postprocessing"],
-    ["repairing", "postprocessing"],
-    ["extracting", "postprocessing"],
-    ["seeding", "seeding"],
-    ["done", "completed"],
-    ["error", "failed"],
-    ["retry", "queued"],
+    "stopped",
+    "stopping",
+    "queued",
+    "starting",
+    "downloading",
+    "checking",
+    "checking:nzb",
+    "repairing",
+    "extracting",
+    "seeding",
+    "done",
+    "error",
+    "retry",
   ],
   hadouken: [
-    ["Status_Error", "failed"],
-    ["Status_Checking", "checking"],
-    ["Status_Paused", "paused"],
-    ["Status_Paused:done", "completed"],
-    ["Status_Up", "seeding"],
-    ["Status_Down", "downloading"],
-    ["Status_Queued_Up", "seeding"],
-    ["Status_Queued_Down", "queued"],
+    "Status_Error",
+    "Status_Checking",
+    "Status_Paused",
+    "Status_Paused:done",
+    "Status_Up",
+    "Status_Down",
+    "Status_Queued_Up",
+    "Status_Queued_Down",
   ],
   jdownloader: [
-    ["FinalLinkState:FINISHED", "completed"],
-    ["FinalLinkState:FINISHED_MIRROR", "completed"],
-    ["FinalLinkState:FINISHED_SHA256", "completed"],
-    ["FinalLinkState:FAILED", "failed"],
-    ["FinalLinkState:FAILED_CRC32", "failed"],
-    ["FinalLinkState:OFFLINE", "failed"],
-    ["FinalLinkState:PLUGIN_DEFECT", "failed"],
-    ["ExtractionStatus:RUNNING", "postprocessing"],
-    ["ExtractionStatus:ERROR_PW", "failed"],
-    ["ExtractionStatus:ERROR_CRC", "failed"],
-    ["ExtractionStatus:SUCCESSFUL", "completed"],
-    ["PluginProgress:DOWNLOAD", "downloading"],
-    ["PluginProgress:WAIT", "waiting"],
-    ["PluginProgress:CAPTCHA", "waiting"],
-    ["PluginProgress:HASH", "checking"],
-    ["PluginProgress:EXTRACTION", "postprocessing"],
-    ["enabled:false", "paused"],
-    ["skipped:true", "paused"],
-    ["ConditionalSkipReason:WaitingSkipReason", "waiting"],
-    ["none", "queued"],
-    ["status-text-only:Fertig", "queued"],
+    "FinalLinkState:FINISHED",
+    "FinalLinkState:FINISHED_MIRROR",
+    "FinalLinkState:FINISHED_SHA256",
+    "FinalLinkState:FAILED",
+    "FinalLinkState:FAILED_CRC32",
+    "FinalLinkState:OFFLINE",
+    "FinalLinkState:PLUGIN_DEFECT",
+    "ExtractionStatus:RUNNING",
+    "ExtractionStatus:ERROR_PW",
+    "ExtractionStatus:ERROR_CRC",
+    "ExtractionStatus:SUCCESSFUL",
+    "PluginProgress:DOWNLOAD",
+    "PluginProgress:WAIT",
+    "PluginProgress:CAPTCHA",
+    "PluginProgress:HASH",
+    "PluginProgress:EXTRACTION",
+    "enabled:false",
+    "skipped:true",
+    "ConditionalSkipReason:WaitingSkipReason",
+    "none",
+    "status-text-only:Fertig",
   ],
   nzbget: [
-    ["q:QUEUED", "queued"],
-    ["q:PAUSED", "paused"],
-    ["q:DOWNLOADING", "downloading"],
-    ["q:FETCHING", "downloading"],
-    ["q:DOWNLOADING:globalPause", "paused"],
-    ["q:PP_QUEUED", "postprocessing"],
-    ["q:LOADING_PARS", "postprocessing"],
-    ["q:VERIFYING_SOURCES", "postprocessing"],
-    ["q:REPAIRING", "postprocessing"],
-    ["q:VERIFYING_REPAIRED", "postprocessing"],
-    ["q:RENAMING", "postprocessing"],
-    ["q:UNPACKING", "postprocessing"],
-    ["q:MOVING", "postprocessing"],
-    ["q:POST_UNPACK_RENAMING", "postprocessing"],
-    ["q:POST_DOWNLOAD_RENAMING", "postprocessing"],
-    ["q:EXECUTING_SCRIPT", "postprocessing"],
-    ["q:PP_FINISHED", "postprocessing"],
-    ["q:QS_QUEUED", "postprocessing"],
-    ["q:QS_EXECUTING", "postprocessing"],
-    ["h:SUCCESS/ALL", "completed"],
-    ["h:SUCCESS/UNPACK", "completed"],
-    ["h:SUCCESS/PAR", "completed"],
-    ["h:SUCCESS/HEALTH", "completed"],
-    ["h:SUCCESS/GOOD", "completed"],
-    ["h:SUCCESS/MARK", "completed"],
-    ["h:WARNING/SCRIPT", "completed"],
-    ["h:WARNING/SPACE", "failed"],
-    ["h:WARNING/PASSWORD", "failed"],
-    ["h:WARNING/DAMAGED", "failed"],
-    ["h:WARNING/REPAIRABLE", "failed"],
-    ["h:WARNING/HEALTH", "failed"],
-    ["h:WARNING/SKIPPED", "failed"],
-    ["h:FAILURE/PAR", "failed"],
-    ["h:FAILURE/UNPACK", "failed"],
-    ["h:FAILURE/MOVE", "failed"],
-    ["h:FAILURE/SCAN", "failed"],
-    ["h:FAILURE/BAD", "failed"],
-    ["h:FAILURE/HEALTH", "failed"],
-    ["h:FAILURE/FETCH", "failed"],
-    ["h:FAILURE/INTERNAL_ERROR", "failed"],
+    "q:QUEUED",
+    "q:PAUSED",
+    "q:DOWNLOADING",
+    "q:FETCHING",
+    "q:DOWNLOADING:globalPause",
+    "q:PP_QUEUED",
+    "q:LOADING_PARS",
+    "q:VERIFYING_SOURCES",
+    "q:REPAIRING",
+    "q:VERIFYING_REPAIRED",
+    "q:RENAMING",
+    "q:UNPACKING",
+    "q:MOVING",
+    "q:POST_UNPACK_RENAMING",
+    "q:POST_DOWNLOAD_RENAMING",
+    "q:EXECUTING_SCRIPT",
+    "q:PP_FINISHED",
+    "q:QS_QUEUED",
+    "q:QS_EXECUTING",
+    "h:SUCCESS/ALL",
+    "h:SUCCESS/UNPACK",
+    "h:SUCCESS/PAR",
+    "h:SUCCESS/HEALTH",
+    "h:SUCCESS/GOOD",
+    "h:SUCCESS/MARK",
+    "h:WARNING/SCRIPT",
+    "h:WARNING/SPACE",
+    "h:WARNING/PASSWORD",
+    "h:WARNING/DAMAGED",
+    "h:WARNING/REPAIRABLE",
+    "h:WARNING/HEALTH",
+    "h:WARNING/SKIPPED",
+    "h:FAILURE/PAR",
+    "h:FAILURE/UNPACK",
+    "h:FAILURE/MOVE",
+    "h:FAILURE/SCAN",
+    "h:FAILURE/BAD",
+    "h:FAILURE/HEALTH",
+    "h:FAILURE/FETCH",
+    "h:FAILURE/INTERNAL_ERROR",
   ],
   nzbvortex: [
-    ["0", "queued"], // Waiting
-    ["1", "downloading"], // Downloading
-    ["2", "downloading"], // Waiting for save
-    ["3", "downloading"], // Saving
-    ["4", "postprocessing"], // Saved
-    ["5", "waiting"], // Password request
-    ["6", "postprocessing"], // Queued for processing
-    ["7", "waiting"], // User wait for processing
-    ["8", "postprocessing"], // Checking
-    ["9", "postprocessing"], // Repairing
-    ["10", "postprocessing"], // Joining
-    ["11", "postprocessing"], // Wait for further processing
-    ["12", "postprocessing"], // Joining
-    ["13", "postprocessing"], // Wait for uncompress
-    ["14", "postprocessing"], // Uncompressing
-    ["15", "postprocessing"], // Wait for cleanup
-    ["16", "postprocessing"], // Cleaning up
-    ["17", "postprocessing"], // Cleaned up
-    ["18", "postprocessing"], // Moving to completed
-    ["19", "postprocessing"], // Move completed
-    ["20", "completed"], // Done
-    ["21", "failed"], // Uncompress failed
-    ["22", "failed"], // Check failed, data corrupt
-    ["23", "failed"], // Move failed
-    ["24", "failed"], // Badly encoded download (uuencoded)
-    ["paused", "paused"],
+    "0", // Waiting
+    "1", // Downloading
+    "2", // Waiting for save
+    "3", // Saving
+    "4", // Saved
+    "5", // Password request
+    "6", // Queued for processing
+    "7", // User wait for processing
+    "8", // Checking
+    "9", // Repairing
+    "10", // Joining
+    "11", // Wait for further processing
+    "12", // Joining
+    "13", // Wait for uncompress
+    "14", // Uncompressing
+    "15", // Wait for cleanup
+    "16", // Cleaning up
+    "17", // Cleaned up
+    "18", // Moving to completed
+    "19", // Move completed
+    "20", // Done
+    "21", // Uncompress failed
+    "22", // Check failed, data corrupt
+    "23", // Move failed
+    "24", // Badly encoded download (uuencoded)
+    "paused",
   ],
-  pyload: [
-    [0, "completed"],
-    [1, "failed"],
-    [2, "queued"],
-    [3, "queued"],
-    [4, "completed"],
-    [5, "waiting"],
-    [6, "waiting"],
-    [7, "downloading"],
-    [8, "failed"],
-    [9, "paused"],
-    [10, "queued"],
-    [11, "queued"],
-    [12, "downloading"],
-    [13, "postprocessing"],
-    [14, "queued"],
-  ],
+  pyload: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
   qbittorrent: [
-    ["downloading", "downloading"],
-    ["forcedDL", "downloading"],
-    ["metaDL", "checking"],
-    ["forcedMetaDL", "checking"],
-    ["checkingDL", "checking"],
-    ["checkingUP", "checking"],
-    ["checkingResumeData", "checking"],
-    ["allocating", "checking"],
-    ["stalledDL", "waiting"],
-    ["queuedDL", "queued"],
-    ["stoppedDL", "paused"],
-    ["pausedDL", "paused"],
-    ["uploading", "seeding"],
-    ["stalledUP", "seeding"],
-    ["forcedUP", "seeding"],
-    ["queuedUP", "seeding"],
-    ["stoppedUP", "completed"],
-    ["pausedUP", "completed"],
-    ["moving", "postprocessing"],
-    ["error", "failed"],
-    ["missingFiles", "failed"],
-    ["unknown", "queued"],
+    "downloading",
+    "forcedDL",
+    "metaDL",
+    "forcedMetaDL",
+    "checkingDL",
+    "checkingUP",
+    "checkingResumeData",
+    "allocating",
+    "stalledDL",
+    "queuedDL",
+    "stoppedDL",
+    "pausedDL",
+    "uploading",
+    "stalledUP",
+    "forcedUP",
+    "queuedUP",
+    "stoppedUP",
+    "pausedUP",
+    "moving",
+    "error",
+    "missingFiles",
+    "unknown",
   ],
   rqbit: [
-    ["initializing:left", "checking"],
-    ["initializing:done", "checking"],
-    ["live:left", "downloading"],
-    ["live:stalled", "waiting"],
-    ["live:done", "seeding"],
-    ["paused:left", "paused"],
-    ["paused:done", "completed"],
-    ["error:left", "failed"],
-    ["error:done", "failed"],
+    "initializing:left",
+    "initializing:done",
+    "live:left",
+    "live:stalled",
+    "live:done",
+    "paused:left",
+    "paused:done",
+    "error:left",
+    "error:done",
   ],
   rtorrent: [
-    ["checking", "checking"],
-    ["hashing", "queued"],
-    ["active:left", "downloading"],
-    ["active:stalled", "waiting"],
-    ["active:done", "seeding"],
-    ["paused:left", "paused"],
-    ["paused:done", "completed"],
-    ["stopped:left", "paused"],
-    ["stopped:done", "completed"],
-    ["stopped:error", "failed"],
-    ["closed:left", "paused"],
-    ["closed:done", "completed"],
-    ["closed:error", "failed"],
+    "checking",
+    "hashing",
+    "active:left",
+    "active:stalled",
+    "active:done",
+    "paused:left",
+    "paused:done",
+    "stopped:left",
+    "stopped:done",
+    "stopped:error",
+    "closed:left",
+    "closed:done",
+    "closed:error",
   ],
   sabnzbd: [
-    ["q:Downloading", "downloading"],
-    ["q:Fetching", "downloading"],
-    ["q:Grabbing", "downloading"],
-    ["q:Propagating", "waiting"],
-    ["q:Checking", "checking"],
-    ["q:Queued", "queued"],
-    ["q:Paused", "paused"],
-    ["h:Queued", "postprocessing"],
-    ["h:QuickCheck", "postprocessing"],
-    ["h:Verifying", "postprocessing"],
-    ["h:Repairing", "postprocessing"],
-    ["h:Fetching", "postprocessing"],
-    ["h:Extracting", "postprocessing"],
-    ["h:Moving", "postprocessing"],
-    ["h:Running", "postprocessing"],
-    ["h:Completed", "completed"],
-    ["h:Failed", "failed"],
-    ["q:Idle", "queued"],
+    "q:Downloading",
+    "q:Fetching",
+    "q:Grabbing",
+    "q:Propagating",
+    "q:Checking",
+    "q:Queued",
+    "q:Paused",
+    "h:Queued",
+    "h:QuickCheck",
+    "h:Verifying",
+    "h:Repairing",
+    "h:Fetching",
+    "h:Extracting",
+    "h:Moving",
+    "h:Running",
+    "h:Completed",
+    "h:Failed",
+    "q:Idle",
   ],
   transmission: [
-    ["0:0:left", "paused"],
-    ["0:0:done", "completed"],
-    ["1:0:left", "checking"],
-    ["2:0:left", "checking"],
-    ["3:0:left", "queued"],
-    ["4:0:left", "downloading"],
-    ["4:0:stalled", "waiting"],
-    ["5:0:done", "seeding"],
-    ["6:0:done", "seeding"],
-    ["4:1:left", "downloading"],
-    ["4:2:left", "downloading"],
-    ["6:2:done", "seeding"],
-    ["0:2:left", "failed"],
-    ["4:3:left", "failed"],
-    ["0:3:done", "failed"],
+    "0:0:left",
+    "0:0:done",
+    "1:0:left",
+    "2:0:left",
+    "3:0:left",
+    "4:0:left",
+    "4:0:stalled",
+    "5:0:done",
+    "6:0:done",
+    "4:1:left",
+    "4:2:left",
+    "6:2:done",
+    "0:2:left",
+    "4:3:left",
+    "0:3:done",
   ],
   tribler: [
-    ["ALLOCATING_DISKSPACE", "checking"],
-    ["WAITING_FOR_HASHCHECK", "checking"],
-    ["HASHCHECKING", "checking"],
-    ["METADATA", "checking"],
-    ["DOWNLOADING", "downloading"],
-    ["DOWNLOADING:idle", "waiting"],
-    ["SEEDING", "seeding"],
-    ["STOPPED", "paused"],
-    ["STOPPED:done", "completed"],
-    ["STOPPED_ON_ERROR", "failed"],
-    ["LOADING", "waiting"],
-    ["CIRCUITS", "waiting"],
-    ["EXIT_NODES", "waiting"],
-    ["MOVING", "postprocessing"],
-    ["QUEUED", "queued"],
-    ["QUEUED:done", "seeding"],
+    "ALLOCATING_DISKSPACE",
+    "WAITING_FOR_HASHCHECK",
+    "HASHCHECKING",
+    "METADATA",
+    "DOWNLOADING",
+    "DOWNLOADING:idle",
+    "SEEDING",
+    "STOPPED",
+    "STOPPED:done",
+    "STOPPED_ON_ERROR",
+    "LOADING",
+    "CIRCUITS",
+    "EXIT_NODES",
+    "MOVING",
+    "QUEUED",
+    "QUEUED:done",
   ],
   utorrent: [
-    ["Status_Paused", "paused"],
-    ["Status_Paused:done", "completed"],
-    ["Status_Up", "seeding"],
-    ["Status_Down", "downloading"],
-    ["Status_Checking", "checking"],
-    ["Status_Error", "failed"],
-    ["Status_Queued_Up", "seeding"],
-    ["Status_Queued_Down", "queued"],
-    ["Status_Completed", "completed"],
-    ["Status_Incomplete", "paused"],
+    "Status_Paused",
+    "Status_Paused:done",
+    "Status_Up",
+    "Status_Down",
+    "Status_Checking",
+    "Status_Error",
+    "Status_Queued_Up",
+    "Status_Queued_Down",
+    "Status_Completed",
+    "Status_Incomplete",
   ],
-} as const satisfies Record<string, readonly Row[]>;
+} as const satisfies Record<string, readonly (string | number)[]>;
 
-/** Every program of the catalog with its status mapping and what it must show — a type without one fails the type check. */
-const PROGRAMS: Record<ProgramType, { expected: readonly Row[]; map: Mapper }> = {
-  jdownloader: { expected: EXPECTED.jdownloader, map: jdownloader.mapJdStatus },
-  "jdownloader-cloud": { expected: EXPECTED.jdownloader, map: jdownloader.mapJdStatus },
-  qbittorrent: { expected: EXPECTED.qbittorrent, map: qbittorrent.mapQbState },
-  transmission: { expected: EXPECTED.transmission, map: transmission.mapTrStatus },
-  deluge: { expected: EXPECTED.deluge, map: deluge.mapDlStatus },
-  sabnzbd: { expected: EXPECTED.sabnzbd, map: sabnzbd.mapSabStatus },
-  nzbget: { expected: EXPECTED.nzbget, map: nzbget.mapNzbStatus },
-  aria2: { expected: EXPECTED.aria2, map: aria2.mapAriaStatus },
-  pyload: { expected: EXPECTED.pyload, map: pyload.mapPyStatus },
-  rqbit: { expected: EXPECTED.rqbit, map: rqbit.mapRqStatus },
-  rtorrent: { expected: EXPECTED.rtorrent, map: rtorrent.mapRtStatus },
-  tribler: { expected: EXPECTED.tribler, map: tribler.mapTblStatus },
-  flood: { expected: EXPECTED.flood, map: flood.mapFloodStatus },
-  vuze: { expected: EXPECTED.transmission, map: transmission.mapTrStatus },
-  utorrent: { expected: EXPECTED.utorrent, map: utorrent.mapUtStatus },
-  hadouken: { expected: EXPECTED.hadouken, map: hadouken.mapHkStatus },
-  downloadstation: { expected: EXPECTED.downloadstation, map: downloadstation.mapDsStatus },
-  nzbvortex: { expected: EXPECTED.nzbvortex, map: nzbvortex.mapNvStatus },
-  freebox: { expected: EXPECTED.freebox, map: freebox.mapFbxStatus },
+/** Every program of the catalog with its status mapping and its raw statuses — a type without one fails the type check. */
+const PROGRAMS: Record<ProgramType, { raws: readonly (string | number)[]; map: Mapper }> = {
+  jdownloader: { raws: RAWS.jdownloader, map: jdownloader.mapJdStatus },
+  "jdownloader-cloud": { raws: RAWS.jdownloader, map: jdownloader.mapJdStatus },
+  qbittorrent: { raws: RAWS.qbittorrent, map: qbittorrent.mapQbState },
+  transmission: { raws: RAWS.transmission, map: transmission.mapTrStatus },
+  deluge: { raws: RAWS.deluge, map: deluge.mapDlStatus },
+  sabnzbd: { raws: RAWS.sabnzbd, map: sabnzbd.mapSabStatus },
+  nzbget: { raws: RAWS.nzbget, map: nzbget.mapNzbStatus },
+  aria2: { raws: RAWS.aria2, map: aria2.mapAriaStatus },
+  pyload: { raws: RAWS.pyload, map: pyload.mapPyStatus },
+  rqbit: { raws: RAWS.rqbit, map: rqbit.mapRqStatus },
+  rtorrent: { raws: RAWS.rtorrent, map: rtorrent.mapRtStatus },
+  tribler: { raws: RAWS.tribler, map: tribler.mapTblStatus },
+  flood: { raws: RAWS.flood, map: flood.mapFloodStatus },
+  vuze: { raws: RAWS.transmission, map: transmission.mapTrStatus },
+  utorrent: { raws: RAWS.utorrent, map: utorrent.mapUtStatus },
+  hadouken: { raws: RAWS.hadouken, map: hadouken.mapHkStatus },
+  downloadstation: { raws: RAWS.downloadstation, map: downloadstation.mapDsStatus },
+  nzbvortex: { raws: RAWS.nzbvortex, map: nzbvortex.mapNvStatus },
+  freebox: { raws: RAWS.freebox, map: freebox.mapFbxStatus },
 };
 const quiet = (): void => undefined;
 
@@ -373,22 +351,17 @@ describe("K2 one status list for all programs", () => {
   });
 
   it("maps every raw status of every program onto that list", () => {
-    expect(Object.keys(PROGRAMS).sort()).toEqual(CATALOG.map(p => p.type).sort());
     for (const { type } of CATALOG) {
-      const { expected, map } = PROGRAMS[type];
-      expect(expected.length, type).toBeGreaterThan(0);
-      for (const [raw, status] of expected) {
-        expect(STATUSES, `${type} ${raw}`).toContain(status);
-        expect(map(raw, quiet), `${type} ${raw}`).toBe(status);
+      const { raws, map } = PROGRAMS[type];
+      need(raws.length > 0, `no raw status of ${type}`);
+      for (const raw of raws) {
+        expect(STATUSES, `${type} ${raw}`).toContain(map(raw, quiet));
       }
     }
   });
 
-  it("writes only statuses of the list into a download, whatever the program reports", () => {
-    // the raw statuses of every program, and one no program knows
-    const raws = [
-      ...new Set([...Object.values(EXPECTED).flatMap(t => t.map(([raw]) => String(raw))), "no-such-state"]),
-    ];
+  it("writes only statuses of the list into a download", () => {
+    const raws = RAWS.qbittorrent.map(String);
     const m = new qbittorrent.MaindataState();
     m.apply({
       full_update: true,

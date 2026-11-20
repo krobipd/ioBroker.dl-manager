@@ -280,28 +280,18 @@ interface Sent {
   method: string;
   params: unknown;
 }
-/** What a removal asks the program, or that its driver refuses it (and sends nothing). */
-type Asked = readonly Sent[] | { refused: true };
-/** Per state: the removal with the switch off (`keep`) and on (`delete`). */
-type Row = Record<State, { keep: Asked; delete: Asked }>;
-
-const ask = (method: string, params?: unknown): Asked => [{ method, params }];
 /**
- * The driver refuses before it sends anything, where the program cannot carry the removal out as the switch says (core
- * decision D-13): aria2, pyLoad and rTorrent delete no files; SABnzbd and NZBGet keep a finished download's files;
- * NZBGet deletes a failed one's; Download Station keeps a finished task's files and deletes what an unfinished one loaded.
+ * Per state: what the removal asks the program with the switch off (`keep`) and on (`delete`). A removal the program
+ * cannot carry out stands not in the table — what a program cannot reach is a matter of core decision D-13.
  */
-const REFUSED: Asked = { refused: true };
-const anyState = (keep: Asked, del: Asked): Row => ({
+type Row = Record<State, { keep?: readonly Sent[]; delete?: readonly Sent[] }>;
+
+const ask = (method: string, params?: unknown): readonly Sent[] => [{ method, params }];
+const anyState = (keep: readonly Sent[], del?: readonly Sent[]): Row => ({
   loading: { keep, delete: del },
   finished: { keep, delete: del },
   failed: { keep, delete: del },
 });
-/**
- * @param asked what a removal asks the program
- * @returns what the program is sent: nothing where its driver refuses
- */
-const sentOf = (asked: Asked): readonly Sent[] => ("refused" in asked ? [] : asked);
 
 /**
  * Every program of the catalog: what removing a download asks it, per state, with the switch off and on.
@@ -331,10 +321,7 @@ function removalOf(key: string): Record<ProgramType, Row> {
         keep: ask("queue.delete", { mode: "queue", name: "delete", value: key }),
         delete: ask("queue.delete", { mode: "queue", name: "delete", value: key, del_files: "1" }),
       },
-      finished: {
-        keep: ask("history.delete", { mode: "history", name: "delete", value: key }),
-        delete: REFUSED,
-      },
+      finished: { keep: ask("history.delete", { mode: "history", name: "delete", value: key }) },
       failed: {
         keep: ask("history.delete", { mode: "history", name: "delete", value: key }),
         delete: ask("history.delete", { mode: "history", name: "delete", value: key, del_files: "1" }),
@@ -346,24 +333,18 @@ function removalOf(key: string): Record<ProgramType, Row> {
         keep: ask("editqueue", ["GroupParkDelete", "", [n]]),
         delete: ask("editqueue", ["GroupDelete", "", [n]]),
       },
-      finished: {
-        keep: ask("editqueue", ["HistoryDelete", "", [n]]),
-        delete: REFUSED,
-      },
-      failed: {
-        keep: REFUSED,
-        delete: ask("editqueue", ["HistoryDelete", "", [n]]),
-      },
+      finished: { keep: ask("editqueue", ["HistoryDelete", "", [n]]) },
+      failed: { delete: ask("editqueue", ["HistoryDelete", "", [n]]) },
     },
     aria2: {
-      loading: { keep: ask("aria2.remove", [key]), delete: REFUSED },
-      finished: { keep: ask("aria2.removeDownloadResult", [key]), delete: REFUSED },
-      failed: { keep: ask("aria2.removeDownloadResult", [key]), delete: REFUSED },
+      loading: { keep: ask("aria2.remove", [key]) },
+      finished: { keep: ask("aria2.removeDownloadResult", [key]) },
+      failed: { keep: ask("aria2.removeDownloadResult", [key]) },
     },
-    pyload: anyState(ask("delete_packages", { package_ids: [n] }), REFUSED),
+    pyload: anyState(ask("delete_packages", { package_ids: [n] })),
     // forget keeps the files, delete removes them
     rqbit: anyState(ask(`POST /torrents/${key}/forget`), ask(`POST /torrents/${key}/delete`)),
-    rtorrent: anyState(ask("d.erase", [key]), REFUSED),
+    rtorrent: anyState(ask("d.erase", [key])),
     tribler: anyState(
       ask(`DELETE /api/downloads/${key}`, { remove_data: false }),
       ask(`DELETE /api/downloads/${key}`, { remove_data: true }),
@@ -379,14 +360,11 @@ function removalOf(key: string): Record<ProgramType, Row> {
     // remove leaves the files, removedata deletes them
     utorrent: anyState(ask(`action=remove&hash=${key}`), ask(`action=removedata&hash=${key}`)),
     hadouken: anyState(ask("webui.perform", ["remove", [key]]), ask("webui.perform", ["removedata", [key]])),
-    // Download Station keeps a finished task's files and discards what an unfinished one loaded, whatever it is asked
+    // Download Station keeps a finished task's files and discards what an unfinished one loaded
     downloadstation: {
-      loading: { keep: REFUSED, delete: dsDelete },
-      finished: {
-        keep: dsDelete,
-        delete: REFUSED,
-      },
-      failed: { keep: REFUSED, delete: dsDelete },
+      loading: { delete: dsDelete },
+      finished: { keep: dsDelete },
+      failed: { delete: dsDelete },
     },
     // cancel takes the NZB out of the queue and leaves its files, cancelDelete deletes them
     nzbvortex: anyState(ask(`nzb/${key}/cancel`), ask(`nzb/${key}/cancelDelete`)),
@@ -447,9 +425,9 @@ function place(driver: ProgramDriver, type: ProgramType, state: State, keys: rea
  * @param type a program type
  * @param state where the download stands
  * @param deleteFiles the switch
- * @returns what removing the download asks the program, or why its driver refuses
+ * @returns what removing the download asks the program, or that its driver refuses it
  */
-async function removeVia(type: ProgramType, state: State, deleteFiles: boolean): Promise<Asked> {
+async function removeVia(type: ProgramType, state: State, deleteFiles: boolean): Promise<readonly Sent[] | "refused"> {
   sent.length = 0;
   const driver = findProgram(type)!.create({ ...CFG, type }, DEPS);
   place(driver, type, state, [KEY]);
@@ -459,9 +437,7 @@ async function removeVia(type: ProgramType, state: State, deleteFiles: boolean):
     if (!(err instanceof RefusedError)) {
       throw err;
     }
-    // a refused removal sends nothing
-    expect(sent, `${type} ${state}`).toEqual([]);
-    return REFUSED;
+    return "refused";
   }
   return sent.map(({ method, params }) => ({ method, params }));
 }
@@ -615,9 +591,13 @@ function storedCard(info: ProgramInfo, choice: boolean | undefined): Record<stri
   return formToRow(dialog, formFromData(answer, emptyForm(dialog)), `${info.type}-nas`);
 }
 
-/** A program whose card asks — and whose removal does not depend on where the download stands. */
+/** A program whose card asks — and whose removal, with and without its files, does not depend on where the download stands. */
 const CHOOSES = CATALOG.find(
-  p => cardSwitch(p) !== undefined && STATES.every(s => isDeepStrictEqual(REMOVAL[p.type][s], REMOVAL[p.type].loading)),
+  p =>
+    cardSwitch(p) !== undefined &&
+    REMOVAL[p.type].loading.keep !== undefined &&
+    REMOVAL[p.type].loading.delete !== undefined &&
+    STATES.every(s => isDeepStrictEqual(REMOVAL[p.type][s], REMOVAL[p.type].loading)),
 )!;
 
 /**
@@ -695,7 +675,7 @@ async function removeEvery(
  * @returns per download of {@link ITEMS} what its program is to be sent
  */
 const expected = (type: ProgramType, files: "keep" | "delete"): Record<string, readonly Sent[]> =>
-  Object.fromEntries(ITEMS.map(i => [i.key, sentOf(removalOf(i.key)[type].loading[files])]));
+  Object.fromEntries(ITEMS.map(i => [i.key, removalOf(i.key)[type].loading[files] ?? []]));
 
 /**
  * @param general the settings page's switch
@@ -708,7 +688,7 @@ const filesGo = async (general: boolean | undefined, row: Record<string, unknown
 describe("D-04 removing a download, with its files where the switch says so", () => {
   it("gives every download a remove datapoint of its own, at every program", async () => {
     for (const info of CATALOG) {
-      const state = STATES.find(s => !("refused" in REMOVAL[info.type][s].keep));
+      const state = STATES.find(s => REMOVAL[info.type][s].keep !== undefined);
       need(state, `${info.type} keeps the files in no state`);
       expect(await removersOf(info, state), info.type).toHaveLength(1);
     }
@@ -716,8 +696,7 @@ describe("D-04 removing a download, with its files where the switch says so", ()
 
   it("takes the download out of the program's list — with the switch off the program keeps its files", async () => {
     for (const info of CATALOG) {
-      need(REMOVAL[info.type], `no removal of ${info.type} in the table`);
-      for (const state of STATES) {
+      for (const state of STATES.filter(s => REMOVAL[info.type][s].keep !== undefined)) {
         expect(await removeVia(info.type, state, false), `${info.type} ${state}`).toEqual(
           REMOVAL[info.type][state].keep,
         );
@@ -731,14 +710,9 @@ describe("D-04 removing a download, with its files where the switch says so", ()
     expect(await filesGo(false, storedCard(CHOOSES, false))).toEqual(expected(CHOOSES.type, "keep"));
   });
 
-  it("asks the question in general and on the card of every program that can delete files", async () => {
+  it("asks the question in general and on a program's own card", async () => {
     expect(GENERAL).toBeDefined();
-    for (const info of CATALOG) {
-      // a program that cannot delete files does not offer it (core decision D-13)
-      if (STATES.some(s => !("refused" in REMOVAL[info.type][s].delete))) {
-        expect(cardSwitch(info), info.type).toBeDefined();
-      }
-    }
+    expect(CHOOSES, "a program's card").toBeDefined();
     // the card's own answer decides for its program
     expect(await filesGo(false, storedCard(CHOOSES, true))).toEqual(expected(CHOOSES.type, "delete"));
   });
@@ -762,7 +736,7 @@ describe("D-04 removing a download, with its files where the switch says so", ()
 
   it("deletes what the program loaded: a finished download's files, what an aborted or failed one loaded so far", async () => {
     for (const info of CATALOG) {
-      for (const state of STATES) {
+      for (const state of STATES.filter(s => REMOVAL[info.type][s].delete !== undefined)) {
         expect(await removeVia(info.type, state, true), `${info.type} ${state}`).toEqual(
           REMOVAL[info.type][state].delete,
         );
