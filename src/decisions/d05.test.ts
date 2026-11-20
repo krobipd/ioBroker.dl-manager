@@ -10,6 +10,18 @@ import { describe, expect, it, vi } from "vitest";
 import { ITEM_DATAPOINTS } from "../lib/core/datapoints";
 import { emptyForm, formToRow, OFFERED, programForm } from "../lib/dm-forms";
 
+/**
+ * A precondition of this guard — it throws when the guard cannot run, it asserts nothing of the rule.
+ *
+ * @param ok what has to hold for the guard to run
+ * @param what what is missing otherwise
+ */
+function need(ok: unknown, what: string): asserts ok {
+  if (!ok) {
+    throw new Error(`the guard cannot run: ${what}`);
+  }
+}
+
 // adapter-core's I18n needs a running adapter; the dialog's labels stay their text keys.
 vi.mock("@iobroker/adapter-core", () => ({
   I18n: { getTranslatedObject: (key: string) => ({ en: key }), translate: (key: string) => key },
@@ -74,7 +86,7 @@ function storedAt(type: (typeof OFFERED)[number]["type"]): string[] {
 
 describe("D-05 what is the same for all downloads is set once for the whole instance", () => {
   it("sets every setting of the instance once, on the instance settings page", () => {
-    expect(SETTINGS.length).toBeGreaterThan(0);
+    need(SETTINGS.length > 0, "the instance stores no setting");
     for (const key of SETTINGS) {
       expect(PAGE.filter(([k]) => k === key).length, key).toBe(1);
     }
@@ -104,9 +116,9 @@ describe("D-05 what is the same for all downloads is set once for the whole inst
   });
 
   it("lets the switch of D-04 stand per program", () => {
-    expect(GENERAL).toBeDefined();
+    need(GENERAL, "the settings page has no switch of D-04");
     const asked = OFFERED.flatMap(p => askedAt(p.type));
-    expect(asked.length).toBeGreaterThan(0);
+    need(asked.length > 0, "no program asks a setting");
     for (const s of asked) {
       expect(s.label, s.key).toBe(SWITCH);
     }

@@ -44,6 +44,18 @@ import {
 import { CATALOG, type ProgramInfo, type ProgramType } from "../lib/programs/catalog";
 import { findProgram } from "../lib/programs/registry";
 
+/**
+ * A precondition of this guard — it throws when the guard cannot run, it asserts nothing of the rule.
+ *
+ * @param ok what has to hold for the guard to run
+ * @param what what is missing otherwise
+ */
+function need(ok: unknown, what: string): asserts ok {
+  if (!ok) {
+    throw new Error(`the guard cannot run: ${what}`);
+  }
+}
+
 /** Every request a program client was asked to send: program, method or endpoint, parameters. */
 const sent = vi.hoisted(() => [] as { program: string; method: string; params: unknown }[]);
 /** JDownloader's method list, the adapter's own — loaded with its client, judging both stand-in transports. */
@@ -394,8 +406,9 @@ const REMOVAL = removalOf(KEY);
 function place(driver: ProgramDriver, type: ProgramType, state: State, keys: readonly string[]): void {
   const own = driver as unknown as Record<string, unknown>;
   const field = <T>(name: string, kind: abstract new (...args: never[]) => T): T => {
-    expect(own[name], `${type}.${name}`).toBeInstanceOf(kind);
-    return own[name] as T;
+    const value = own[name];
+    need(value instanceof kind, `${type} keeps no ${name}`);
+    return value;
   };
   for (const key of keys) {
     switch (type) {
@@ -569,10 +582,10 @@ const ITEMS: readonly DownloadItem[] = STATUSES.map((status, i) => ({
  */
 function dialogOf(info: ProgramInfo): { dialog: DialogType; mode: "local" | "cloud" } {
   const dialog = dialogType({ type: info.type });
-  expect(dialog, info.type).toBeDefined();
-  const mode = (["local", "cloud"] as const).find(m => storedType(dialog!, { mode: m }) === info.type);
-  expect(mode, info.type).toBeDefined();
-  return { dialog: dialog!, mode: mode! };
+  need(dialog, `${info.type} has no dialog`);
+  const mode = (["local", "cloud"] as const).find(m => storedType(dialog, { mode: m }) === info.type);
+  need(mode, `no dialog answer stores ${info.type}`);
+  return { dialog, mode };
 }
 
 /**
@@ -620,7 +633,8 @@ async function removeEvery(
   row: Record<string, unknown>,
 ): Promise<{ asked: Record<string, readonly Sent[]>; a: Memory }> {
   const [remover] = await removersOf(CHOOSES, "loading");
-  expect(remover).toBeDefined();
+  // every download has a datapoint of its own to remove it
+  expect(remover, CHOOSES.type).toBeDefined();
   const a = new Memory();
   // the adapter's own lookup and driver; only the program's list is a stand-in, so nothing is asked to list it
   const find = (type: string): ProgramEntry | undefined => {
@@ -695,14 +709,14 @@ describe("D-04 removing a download, with its files where the switch says so", ()
   it("gives every download a remove datapoint of its own, at every program", async () => {
     for (const info of CATALOG) {
       const state = STATES.find(s => !("refused" in REMOVAL[info.type][s].keep));
-      expect(state, info.type).toBeDefined();
-      expect(await removersOf(info, state!), info.type).toHaveLength(1);
+      need(state, `${info.type} keeps the files in no state`);
+      expect(await removersOf(info, state), info.type).toHaveLength(1);
     }
   });
 
   it("takes the download out of the program's list — with the switch off the program keeps its files", async () => {
     for (const info of CATALOG) {
-      expect(REMOVAL[info.type], info.type).toBeDefined();
+      need(REMOVAL[info.type], `no removal of ${info.type} in the table`);
       for (const state of STATES) {
         expect(await removeVia(info.type, state, false), `${info.type} ${state}`).toEqual(
           REMOVAL[info.type][state].keep,
@@ -786,7 +800,13 @@ describe("D-04 removing a download, with its files where the switch says so", ()
   });
 
   it("holds for every download, whatever its status", async () => {
-    expect(ITEMS.map(i => i.status)).toEqual([...STATUSES]);
+    need(
+      isDeepStrictEqual(
+        ITEMS.map(i => i.status),
+        [...STATUSES],
+      ),
+      "a status without a download",
+    );
     expect(await filesGo(true, storedCard(CHOOSES, false))).toEqual(expected(CHOOSES.type, "delete"));
     expect(await filesGo(false, storedCard(CHOOSES, true))).toEqual(expected(CHOOSES.type, "delete"));
     expect(await filesGo(false, storedCard(CHOOSES, false))).toEqual(expected(CHOOSES.type, "keep"));

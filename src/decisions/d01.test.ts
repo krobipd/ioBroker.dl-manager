@@ -9,6 +9,18 @@ import type { DriverDeps, ProgramConfig } from "../lib/core/model";
 import { CATALOG } from "../lib/programs/catalog";
 import { findProgram, PROGRAMS } from "../lib/programs/registry";
 
+/**
+ * A precondition of this guard — it throws when the guard cannot run, it asserts nothing of the rule.
+ *
+ * @param ok what has to hold for the guard to run
+ * @param what what is missing otherwise
+ */
+function need(ok: unknown, what: string): asserts ok {
+  if (!ok) {
+    throw new Error(`the guard cannot run: ${what}`);
+  }
+}
+
 const CFG: ProgramConfig = {
   type: "",
   name: "guard",
@@ -46,7 +58,7 @@ describe("D-01 one adapter for every download program", () => {
   it("keeps the core free of program code — it knows the programs only through the catalog", () => {
     const core = join(process.cwd(), "src", "lib", "core");
     const sources = readdirSync(core).filter(f => f.endsWith(".ts") && !f.endsWith(".test.ts"));
-    expect(sources.length).toBeGreaterThan(0);
+    need(sources.length > 0, "no source file in the core");
     for (const file of sources) {
       const text = readFileSync(join(core, file), "utf8");
       const programImports = [...text.matchAll(/from\s+["'](\.\.\/programs\/[^"']+)["']/g)].map(m => m[1]);

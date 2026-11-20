@@ -11,6 +11,18 @@ import { CATALOG } from "../lib/programs/catalog";
 import { findProgram } from "../lib/programs/registry";
 
 /**
+ * A precondition of this guard — it throws when the guard cannot run, it asserts nothing of the rule.
+ *
+ * @param ok what has to hold for the guard to run
+ * @param what what is missing otherwise
+ */
+function need(ok: unknown, what: string): asserts ok {
+  if (!ok) {
+    throw new Error(`the guard cannot run: ${what}`);
+  }
+}
+
+/**
  * Two downloads in every program: the first runs, the second does not. Each mocked client shows them in its program's
  * own form and moves one between the two when the adapter stops or starts it; `stopped` and `started` record whom.
  */
@@ -433,7 +445,7 @@ describe("K4 what a program can do decides its datapoints; a missing program pau
   });
 
   it("gives every program a pause of the whole program, its own or one the adapter makes", () => {
-    expect(MADE_PAUSE.length).toBeGreaterThan(0);
+    need(MADE_PAUSE.length > 0, "no program whose pause the adapter makes");
     for (const { type } of CATALOG) {
       expect(driverOf(type, plainDeps()).capabilities.has("globalPause"), type).toBe(true);
     }

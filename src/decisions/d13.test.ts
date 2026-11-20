@@ -27,6 +27,18 @@ import {
 import { CATALOG, type ProgramInfo } from "../lib/programs/catalog";
 import { findProgram } from "../lib/programs/registry";
 
+/**
+ * A precondition of this guard — it throws when the guard cannot run, it asserts nothing of the rule.
+ *
+ * @param ok what has to hold for the guard to run
+ * @param what what is missing otherwise
+ */
+function need(ok: unknown, what: string): asserts ok {
+  if (!ok) {
+    throw new Error(`the guard cannot run: ${what}`);
+  }
+}
+
 // adapter-core's I18n needs a running adapter; a text is not what this guard checks.
 vi.mock("@iobroker/adapter-core", () => ({
   I18n: { getTranslatedObject: (key: string) => ({ en: key }), translate: (key: string) => key },
@@ -128,10 +140,10 @@ async function refusalOfDelete(info: ProgramInfo): Promise<string | undefined> {
  */
 function dialogOf(info: ProgramInfo): { dialog: DialogType; mode: "local" | "cloud" } {
   const dialog = dialogType({ type: info.type });
-  expect(dialog, info.type).toBeDefined();
-  const mode = (["local", "cloud"] as const).find(m => storedType(dialog!, { mode: m }) === info.type);
-  expect(mode, info.type).toBeDefined();
-  return { dialog: dialog!, mode: mode! };
+  need(dialog, `${info.type} has no dialog`);
+  const mode = (["local", "cloud"] as const).find(m => storedType(dialog, { mode: m }) === info.type);
+  need(mode, `no dialog answer stores ${info.type}`);
+  return { dialog, mode };
 }
 
 /**
@@ -158,7 +170,7 @@ function isChoice(info: ProgramInfo, key: string, field: unknown): boolean {
   const read = (answer: Record<string, unknown>): Record<string, unknown> => {
     const row = formToRow(dialog, formFromData(answer, opened), `${info.type}-nas`);
     const [program] = parsePrograms([row], findProgram);
-    expect(program, info.type).toBeDefined();
+    need(program, `${info.type}: the stored row is not read`);
     return program as unknown as Record<string, unknown>;
   };
   // the program is reached with what the row hands its driver
@@ -197,10 +209,10 @@ describe("D-13 every decision holds for every program, with the same result for 
     vi.unstubAllGlobals();
   });
 
-  it("holds every decision for every program — no guard keeps a list of programs of its own", () => {
+  it("holds every decision for every program with the same result, a program's own handling reaching it — no guard keeps a list of programs of its own", () => {
     const dir = join(process.cwd(), "src", "decisions");
     const guards = readdirSync(dir).filter(f => f.endsWith(".test.ts"));
-    expect(guards.length).toBeGreaterThan(1);
+    need(guards.length > 1, "no guards to read");
     const lists = guards.flatMap(f => programLists(f, readFileSync(join(dir, f), "utf8")));
     expect(lists).toEqual([]);
   });
@@ -216,7 +228,7 @@ describe("D-13 every decision holds for every program, with the same result for 
       const refusal = await refusalOfDelete(info);
       expect(refusal, info.type).toBeUndefined();
     }
-    expect(asking).toBeGreaterThan(0);
+    need(asking > 0, "no card asks the delete question");
   });
 
   it("makes what the user chooses a setting that offers every program the same choice", () => {
@@ -224,7 +236,7 @@ describe("D-13 every decision holds for every program, with the same result for 
       const ctx: FormContext = { takenKeys: [], deleteFilesAll };
       const cards = CATALOG.map(info => ({ type: info.type, ...split(choicesOf(info, ctx)) }));
       const question = cards.find(c => c.question !== undefined)?.question;
-      expect(question).toBeDefined();
+      need(question !== undefined, "no card asks the delete question");
       for (const card of cards) {
         // every choice is the same at every program
         expect(card.rest, card.type).toEqual(cards[0].rest);

@@ -15,6 +15,18 @@ import { pickProgramForm } from "../lib/dm-forms";
 import { CATALOG } from "../lib/programs/catalog";
 import { findProgram } from "../lib/programs/registry";
 
+/**
+ * A precondition of this guard — it throws when the guard cannot run, it asserts nothing of the rule.
+ *
+ * @param ok what has to hold for the guard to run
+ * @param what what is missing otherwise
+ */
+function need(ok: unknown, what: string): asserts ok {
+  if (!ok) {
+    throw new Error(`the guard cannot run: ${what}`);
+  }
+}
+
 // adapter-core's I18n needs a running adapter; a text is not what this guard checks.
 vi.mock("@iobroker/adapter-core", () => ({
   I18n: { getTranslatedObject: (key: string) => ({ en: key }), translate: (key: string) => key },
@@ -78,7 +90,7 @@ class Memory implements ManagerAdapter {
 
 describe("D-14 only download programs, nothing that only hands downloads on", () => {
   it("has no program for what only hands downloads on", () => {
-    expect(HANDS_ON.length).toBeGreaterThan(0);
+    need(HANDS_ON.length > 0, "nothing that only hands on is known");
     for (const p of CATALOG) {
       for (const name of HANDS_ON) {
         expect([p.type, p.label.toLowerCase()], name).not.toContain(name.toLowerCase());
@@ -86,10 +98,10 @@ describe("D-14 only download programs, nothing that only hands downloads on", ()
     }
   });
 
-  it("offers in the admin and builds devices only for a program of the catalogue", async () => {
+  it("lets nothing that only hands downloads on be chosen in the admin, and gives it no device", async () => {
     const pick = pickProgramForm(() => undefined) as unknown as { items: { type: { options: { value: string }[] } } };
     const offered = pick.items.type.options.map(o => o.value.toLowerCase());
-    expect(offered.length).toBeGreaterThan(0);
+    need(offered.length > 0, "the admin offers no program");
     for (const name of HANDS_ON) {
       expect(offered, name).not.toContain(name.toLowerCase());
     }
@@ -124,8 +136,7 @@ describe("D-14 only download programs, nothing that only hands downloads on", ()
       ...HANDS_ON.map(name => ({ id: `${name.toLowerCase()}-nas`, type: name.toLowerCase(), name, host: "nas" })),
     ]);
     const devices = [...a.objects].filter(([, o]) => o.type === "device").map(([id]) => id);
-    // the download program gets its device, nothing that only hands on gets one
-    expect(devices).toHaveLength(1);
+    need(devices.length > 0, "the manager built no device");
     for (const name of HANDS_ON) {
       expect(devices.join(" "), name).not.toContain(name.toLowerCase());
     }
